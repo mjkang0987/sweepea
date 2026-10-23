@@ -1,6 +1,6 @@
 # index.md
 
-스윗피(Sweetpea) 웹. 부모가 올린 아이 사진을 조부모·친척이 카톡 링크로 설치 없이 보는 가족 공유 앨범. 이 문서가 프로젝트 구조와 현재 상태의 기준이다. 작업 계획은 `plan.md`.
+스위피(Sweepea) 웹. 부모가 올린 아이 사진을 조부모·친척이 카톡 링크로 설치 없이 보는 가족 공유 앨범. 이 문서가 프로젝트 구조와 현재 상태의 기준이다. 작업 계획은 `plan.md`.
 
 ## 현재 상태
 
@@ -15,6 +15,7 @@
 | 웹 | Astro 7 서버 렌더링(`output: 'server'`), 필요한 곳만 바닐라 JS |
 | 배포 | Cloudflare Workers (`@astrojs/cloudflare`, `wrangler.jsonc`) |
 | 백엔드 (예정) | Supabase (Postgres·Auth·Edge Functions), 사진은 Cloudflare R2 |
+| 도메인 | sweepea.co.kr (가비아 등록, DNS는 Cloudflare) |
 | Node | 24 (`.nvmrc`). Astro 7은 22.23.4 이상 필요 |
 
 ## 구조
@@ -25,7 +26,7 @@ wrangler.jsonc          Worker 이름·호환 날짜
 lighthouserc.json       성능 예산 (LCP 1.8초, CLS 0.05, JS 비압축 50KB, 접근성 100점)
 .github/workflows/      perf.yml: 타입 검사 → 빌드 → 성능 예산 (PR, dev 푸시)
 public/favicon.svg      심볼 (시스템 테마에 맞춰 색 바뀜)
-src/styles/tokens.css   디자인 토큰 (색·글자·간격·모서리·터치). 원본은 디자인 시스템 '스윗피'
+src/styles/tokens.css   디자인 토큰 (색·글자·간격·모서리·터치). 원본은 디자인 시스템 '스위피'
 src/styles/base.css     문서 기본 스타일 (.sp-html, .sp-body, 포커스 링)
 src/layouts/Base.astro  공통 HTML 뼈대 (lang=ko, theme-color)
 src/pages/index.astro   임시 첫 화면
