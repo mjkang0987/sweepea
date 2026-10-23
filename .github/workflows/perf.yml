@@ -18,5 +18,10 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
-      # 예산(LCP 1.8초, CLS 0.05, JS 50KB, 접근성 100점)을 넘으면 실패 → 머지하지 않는다.
+      # 예산(LCP 1.8초, CLS 0.05, JS 50KB 비압축 기준, 접근성 100점)을 넘으면 실패 → 머지하지 않는다.
       - run: npm run perf
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse
+          path: .lighthouseci
