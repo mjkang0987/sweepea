@@ -1,0 +1,62 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="스윗피">
+  <main class="sp-home">
+    <svg class="sp-home__symbol" viewBox="0 0 100 100" aria-hidden="true">
+      <g transform="translate(50 50) rotate(-45) translate(-2 0)">
+        <rect class="sp-home__pod" x="-52" y="-26" width="108" height="52" rx="26"></rect>
+        <circle class="sp-home__pea" cx="-34" cy="0" r="10"></circle>
+        <circle class="sp-home__pea" cx="-6" cy="0" r="14"></circle>
+        <circle class="sp-home__pea" cx="30" cy="0" r="18"></circle>
+      </g>
+    </svg>
+    <h1 class="sp-home__title">스윗피</h1>
+    <p class="sp-home__lead">카톡으로 보내고, 설치 없이 보는 가족 앨범</p>
+  </main>
+</Base>
+
+<style>
+  .sp-home {
+    min-height: 100vh;
+    box-sizing: border-box;
+    padding: var(--space-8) var(--space-5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    text-align: center;
+  }
+  @supports (min-height: 100dvh) {
+    .sp-home {
+      min-height: 100dvh;
+    }
+  }
+  .sp-home__symbol {
+    width: 6rem;
+    height: 6rem;
+  }
+  .sp-home__pod {
+    fill: none;
+    stroke: var(--pea);
+    stroke-width: 5;
+  }
+  .sp-home__pea {
+    fill: var(--pea);
+  }
+  .sp-home__title {
+    margin: 0;
+    font-size: var(--large-title-size);
+    line-height: var(--large-title-line);
+    font-weight: var(--large-title-weight);
+    letter-spacing: var(--large-title-tracking);
+  }
+  .sp-home__lead {
+    margin: 0;
+    color: var(--label-2);
+    font-size: var(--subhead-size);
+    line-height: var(--subhead-line);
+  }
+</style>
