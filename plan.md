@@ -1,6 +1,6 @@
 # plan.md
 
-현재 진행 중인 작업과 앞으로의 계획. 기획서: [스윗피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스윗피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
+현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
 ## 진행 방식
 
@@ -26,9 +26,18 @@
 - 예상 결과: `npm run build`가 통과하고, `npm run perf`가 예산 안에서 통과한다
 - 범위 밖: Pretendard 글꼴 로딩(용량이 커서 서브셋 방식을 따로 정함), Supabase 연결
 
+### 2. feature/rename-sweepea — 이름을 스위피(Sweepea)로 변경 (완료, dev 머지)
+
+- 요구사항: 서비스 이름을 스윗피(Sweetpea)에서 **스위피(Sweepea)**로, 대표 도메인을 **sweepea.co.kr**(가비아, DNS는 Cloudflare)로 바꾼다
+- 이유: "스윗피"는 2026년 OpenAI 이어버드 코드명 기사로 검색이 덮여 있고, 영어권에 같은 이름의 아기 기록 앱(Sweetpea - Baby Tracker)이 있다. sweetpea 도메인은 대부분 선점됨. Sweepea는 pea(콩)를 살려 심볼·콩이 마스코트를 그대로 쓴다
+- 구현 방식: 화면 글자·문서·패키지·Worker 이름 교체. 디자인(색·심볼·마스코트)은 그대로
+- 영향받는 파일: `README.md`, `index.md`, `plan.md`, `package.json`, `package-lock.json`, `wrangler.jsonc`, `src/pages/index.astro`, `src/layouts/Base.astro`, `src/styles/tokens.css`
+- 예상 결과: 저장소 안에 옛 이름이 남지 않고, 빌드·성능 검사 통과
+- 남은 일: 도메인 Active 후 Worker에 `sweepea.co.kr` 연결, 출시 전 키프리스 상표 확인(스위피·SWEEPEA, 9·42류)
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
-저장소는 `sweetpea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweetpea-ios`, `sweetpea-android`.
+저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
 
 1. 확인: 카톡 인앱 브라우저에서 출입증 쿠키 유지 (작은 테스트 페이지)
 2. supabase: 프로젝트 생성, 스키마·RLS·마이그레이션
@@ -44,6 +53,11 @@
 12. supabase·web: 부모 최근 반응·승인 목록 + iOS 홈 화면 추가 안내
 13. supabase: 용량 집계, 5GB 상한
 14. web: PC 화면 (모아 보기·크게 보기)
+
+## 결정됨
+
+- 이름: 스위피 / Sweepea (2026-10-23)
+- 도메인: sweepea.co.kr 하나만. 다른 확장자 방어 등록은 하지 않음
 
 ## 결정 필요
 

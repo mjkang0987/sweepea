@@ -1,4 +1,4 @@
-/* 스윗피 디자인 토큰. 원본: 디자인 시스템 '스윗피' tokens.json. 바꿀 땐 원본과 같이 바꾼다. */
+/* 스위피 디자인 토큰. 원본: 디자인 시스템 '스위피' tokens.json. 바꿀 땐 원본과 같이 바꾼다. */
 /* 테마는 기기 설정(prefers-color-scheme)만 따른다. 앱 안 전환 없음. */
 :root {
   color-scheme: light dark;
