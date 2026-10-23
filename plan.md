@@ -26,14 +26,14 @@
 - 예상 결과: `npm run build`가 통과하고, `npm run perf`가 예산 안에서 통과한다
 - 범위 밖: Pretendard 글꼴 로딩(용량이 커서 서브셋 방식을 따로 정함), Supabase 연결
 
-### 2. feature/rename-sweepea — 이름을 스위피(Sweepea)로 변경 (진행 중)
+### 2. feature/rename-sweepea — 이름을 스위피(Sweepea)로 변경 (완료, dev 머지)
 
 - 요구사항: 서비스 이름을 스윗피(Sweetpea)에서 **스위피(Sweepea)**로, 대표 도메인을 **sweepea.co.kr**(가비아, DNS는 Cloudflare)로 바꾼다
 - 이유: "스윗피"는 2026년 OpenAI 이어버드 코드명 기사로 검색이 덮여 있고, 영어권에 같은 이름의 아기 기록 앱(Sweetpea - Baby Tracker)이 있다. sweetpea 도메인은 대부분 선점됨. Sweepea는 pea(콩)를 살려 심볼·콩이 마스코트를 그대로 쓴다
 - 구현 방식: 화면 글자·문서·패키지·Worker 이름 교체. 디자인(색·심볼·마스코트)은 그대로
 - 영향받는 파일: `README.md`, `index.md`, `plan.md`, `package.json`, `package-lock.json`, `wrangler.jsonc`, `src/pages/index.astro`, `src/layouts/Base.astro`, `src/styles/tokens.css`
 - 예상 결과: 저장소 안에 옛 이름이 남지 않고, 빌드·성능 검사 통과
-- 남은 일: GitHub 저장소 이름을 `sweepea`로 바꾸기(사용자), 도메인 Active 후 Worker에 `sweepea.co.kr` 연결, 출시 전 키프리스 상표 확인(스위피·SWEEPEA, 9·42류)
+- 남은 일: 도메인 Active 후 Worker에 `sweepea.co.kr` 연결, 출시 전 키프리스 상표 확인(스위피·SWEEPEA, 9·42류)
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
