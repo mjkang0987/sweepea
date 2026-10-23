@@ -11,7 +11,7 @@
 
 ## 지금 하는 일
 
-### 1. feature/setup — 웹 기본 설정 (진행 중)
+### 1. feature/setup — 웹 기본 설정 (완료, dev 머지)
 
 - 요구사항
   - Astro 서버 렌더링 + Cloudflare 어댑터로 빌드되는 빈 앱
