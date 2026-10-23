@@ -1,0 +1,21 @@
+/* 태그 선택자 금지: 문서 루트도 클래스로 잡는다. */
+.sp-html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.sp-body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--label);
+  font-family: var(--font-sans);
+  font-size: var(--body-size);
+  line-height: var(--body-line);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sp-body :focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
