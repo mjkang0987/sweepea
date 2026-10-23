@@ -19,7 +19,7 @@ import Base from '../layouts/Base.astro';
 
 <style>
   .sp-home {
-    min-height: 100dvh;
+    min-height: 100vh;
     box-sizing: border-box;
     padding: var(--space-8) var(--space-5);
     display: flex;
@@ -28,6 +28,11 @@ import Base from '../layouts/Base.astro';
     justify-content: center;
     gap: var(--space-4);
     text-align: center;
+  }
+  @supports (min-height: 100dvh) {
+    .sp-home {
+      min-height: 100dvh;
+    }
   }
   .sp-home__symbol {
     width: 6rem;
@@ -45,8 +50,8 @@ import Base from '../layouts/Base.astro';
     margin: 0;
     font-size: var(--large-title-size);
     line-height: var(--large-title-line);
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-weight: var(--large-title-weight);
+    letter-spacing: var(--large-title-tracking);
   }
   .sp-home__lead {
     margin: 0;
