@@ -20,9 +20,9 @@
 ## 구조
 
 ```
-astro.config.mjs        Astro + Cloudflare 어댑터 (Images 바인딩 안 씀)
+astro.config.mjs        Astro + Cloudflare 어댑터 (Images 바인딩·세션 KV 안 씀)
 wrangler.jsonc          Worker 이름·호환 날짜
-lighthouserc.json       성능 예산 (LCP 1.8초, CLS 0.05, JS 50KB, 접근성 100점)
+lighthouserc.json       성능 예산 (LCP 1.8초, CLS 0.05, JS 비압축 50KB, 접근성 100점)
 .github/workflows/      perf.yml: 타입 검사 → 빌드 → 성능 예산 (PR, dev 푸시)
 public/favicon.svg      심볼 (시스템 테마에 맞춰 색 바뀜)
 src/styles/tokens.css   디자인 토큰 (색·글자·간격·모서리·터치). 원본은 디자인 시스템 '스윗피'
