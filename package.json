@@ -10,13 +10,16 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "perf": "npx -y @lhci/cli@0.15.1 autorun"
   },
   "dependencies": {
     "@astrojs/cloudflare": "14.4.2",
     "astro": "7.4.2"
   },
   "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "typescript": "6.0.3",
     "wrangler": "4.152.0"
   }
 }
