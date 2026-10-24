@@ -57,9 +57,10 @@ export interface Me {
 export interface Backend {
   /** 처음 오는 기기에 익명 출입증을 만든다 */
   signInAnonymously(): Promise<Pass>;
-  /** 만료된 출입증을 갱신한다. 실패하면 null(새로 만들어야 함) */
+  /** 만료된 출입증을 갱신한다. 토큰이 확실히 무효일 때만 null, 일시 오류는 예외 */
   refresh(pass: Pass): Promise<Pass | null>;
-  entryInfo(pass: Pass, code: string): Promise<EntryInfo>;
+  /** 출입증 없이도(처음 온 기기) 부를 수 있다 */
+  entryInfo(pass: Pass | null, code: string): Promise<EntryInfo>;
   enter(pass: Pass, input: EnterInput): Promise<EnterResult>;
   me(pass: Pass): Promise<Me>;
 }

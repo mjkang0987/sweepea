@@ -13,21 +13,28 @@ export class BackendError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: string,
   ) {
     super(message);
   }
 }
 
+// 이 코드들만 '토큰이 영영 무효'로 보고 출입증을 버린다(이미 쓴 토큰은 10초 재사용 창이 지난 경우). 429·5xx·네트워크는 일시 오류
+const DEAD_REFRESH = new Set(['refresh_token_not_found', 'refresh_token_already_used', 'invalid_grant', 'user_not_found', 'session_not_found']);
+
 export function createSupabaseBackend(url: string, anonKey: string): Backend {
   const base = url.replace(/\/$/, '');
 
-  async function call<T>(path: string, init: RequestInit & { token?: string }): Promise<T> {
+  async function call<T>(path: string, init: RequestInit & { token?: string | null }): Promise<T> {
     const headers = new Headers(init.headers);
     headers.set('apikey', anonKey);
     headers.set('content-type', 'application/json');
     headers.set('authorization', `Bearer ${init.token ?? anonKey}`);
-    const res = await fetch(`${base}${path}`, { ...init, headers });
-    if (!res.ok) throw new BackendError(`${path} ${res.status}`, res.status);
+    const res = await fetch(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(8000) });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error_code?: string; code?: string };
+      throw new BackendError(`${path} ${res.status}`, res.status, body.error_code ?? body.code);
+    }
     return (await res.json()) as T;
   }
 
@@ -39,8 +46,8 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     };
   }
 
-  const rpc = <T>(pass: Pass, fn: string, args: Record<string, unknown>) =>
-    call<T>(`/rest/v1/rpc/${fn}`, { method: 'POST', body: JSON.stringify(args), token: pass.access });
+  const rpc = <T>(pass: Pass | null, fn: string, args: Record<string, unknown>) =>
+    call<T>(`/rest/v1/rpc/${fn}`, { method: 'POST', body: JSON.stringify(args), token: pass?.access });
 
   return {
     async signInAnonymously() {
@@ -56,7 +63,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
           }),
         );
       } catch (e) {
-        if (e instanceof BackendError && e.status >= 400 && e.status < 500) return null;
+        if (e instanceof BackendError && e.code && DEAD_REFRESH.has(e.code)) return null;
         throw e;
       }
     },
