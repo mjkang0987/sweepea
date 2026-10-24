@@ -36,7 +36,8 @@ create table public.children (
   birth_date date not null,
   show_health boolean not null default true,
   sort_order int not null default 0,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (family_id, id)
 );
 
 -- 그룹 기능이 꺼져 있어도 가족방마다 기본 그룹 하나("가족")가 있다
@@ -49,7 +50,8 @@ create table public.groups (
   password_hint text check (char_length(password_hint) <= 30),
   sort_order int not null default 0,
   created_at timestamptz not null default now(),
-  unique (family_id, name)
+  unique (family_id, name),
+  unique (family_id, id)
 );
 
 create table public.shares (
@@ -59,13 +61,14 @@ create table public.shares (
   -- 문자로 공유하기: 한 사람용 설치 링크. 값이 있으면 그 사람만, 한 번만 쓴다
   target_member_id uuid,
   used_at timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (family_id, id)
 );
 
 create table public.members (
   id uuid primary key default gen_random_uuid(),
   family_id uuid not null references public.families (id) on delete cascade,
-  group_id uuid not null references public.groups (id) on delete cascade,
+  group_id uuid not null,
   display_name text not null check (char_length(display_name) between 1 and 12),
   status text not null default 'active' check (status in ('active', 'pending', 'rejected')),
   -- 새 이름 승인 대기 마감(3일). 지나면 만료로 본다
@@ -75,39 +78,54 @@ create table public.members (
   text_size text check (text_size in ('base', 'large', 'xlarge')),
   created_at timestamptz not null default now(),
   unique (group_id, display_name),
+  unique (family_id, id),
+  -- 같은 가족방 그룹만(다른 가족방 id를 넣어도 FK가 막는다)
+  foreign key (family_id, group_id) references public.groups (family_id, id) on delete cascade,
   check (status <> 'pending' or pending_until is not null)
 );
 
 alter table public.shares
-  add constraint shares_target_member_fk foreign key (target_member_id) references public.members (id) on delete cascade;
+  add constraint shares_target_member_fk foreign key (family_id, target_member_id) references public.members (family_id, id) on delete cascade;
 
 create table public.share_groups (
-  share_id uuid not null references public.shares (id) on delete cascade,
-  group_id uuid not null references public.groups (id) on delete cascade,
-  primary key (share_id, group_id)
+  family_id uuid not null,
+  share_id uuid not null,
+  group_id uuid not null,
+  primary key (share_id, group_id),
+  foreign key (family_id, share_id) references public.shares (family_id, id) on delete cascade,
+  foreign key (family_id, group_id) references public.groups (family_id, id) on delete cascade
 );
 
 create table public.devices (
   id uuid primary key default gen_random_uuid(),
   auth_user_id uuid not null unique references auth.users (id) on delete cascade,
   family_id uuid not null references public.families (id) on delete cascade,
-  member_id uuid references public.members (id) on delete set null,
+  member_id uuid,
   -- pending: 비밀번호 10번 틀려서 부모 승인 대기. revoked: 부모가 "내 가족 아님"
   status text not null default 'active' check (status in ('active', 'pending', 'revoked')),
   -- 올리기 권한은 승인된 기기에만 붙는다. 새 기기는 다시 승인
   can_upload boolean not null default false,
-  failed_attempts int not null default 0,
-  locked_until timestamptz,
   label text check (char_length(label) <= 30),
   last_seen_at timestamptz not null default now(),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  foreign key (family_id, member_id) references public.members (family_id, id) on delete set null (member_id)
+);
+
+-- 비밀번호 틀린 기록. 기기·그룹별(3번 → 30초, 10번 → 승인 대기)과 그룹 전체(1시간 20번 → 새 기기는 승인 대기)로 센다.
+-- 익명 사용자를 새로 만들어 횟수를 초기화하는 공격을 그룹 전체 한도로 막는다
+create table public.entry_failures (
+  id bigint generated always as identity primary key,
+  family_id uuid not null references public.families (id) on delete cascade,
+  group_id uuid not null references public.groups (id) on delete cascade,
+  auth_user_id uuid not null,
+  at timestamptz not null default now()
 );
 
 create table public.media (
   id uuid primary key default gen_random_uuid(),
   family_id uuid not null references public.families (id) on delete cascade,
   uploaded_by_parent uuid references public.parents (user_id) on delete set null,
-  uploaded_by_member uuid references public.members (id) on delete set null,
+  uploaded_by_member uuid,
   kind text not null check (kind in ('photo', 'video')),
   taken_at timestamptz not null,
   taken_at_source text not null check (taken_at_source in ('exif', 'file', 'upload', 'manual')),
@@ -121,25 +139,37 @@ create table public.media (
   duration_sec numeric(7, 2),
   status text not null default 'uploading' check (status in ('uploading', 'ready', 'deleted')),
   created_at timestamptz not null default now(),
+  unique (family_id, id),
+  foreign key (family_id, uploaded_by_member) references public.members (family_id, id) on delete set null (uploaded_by_member),
   check (num_nonnulls(uploaded_by_parent, uploaded_by_member) <= 1)
 );
 
+-- 연결 표는 family_id를 같이 들고 복합 FK로 같은 가족방끼리만 잇는다
 create table public.media_groups (
-  media_id uuid not null references public.media (id) on delete cascade,
-  group_id uuid not null references public.groups (id) on delete cascade,
-  primary key (media_id, group_id)
+  family_id uuid not null,
+  media_id uuid not null,
+  group_id uuid not null,
+  primary key (media_id, group_id),
+  foreign key (family_id, media_id) references public.media (family_id, id) on delete cascade,
+  foreign key (family_id, group_id) references public.groups (family_id, id) on delete cascade
 );
 
 create table public.media_children (
-  media_id uuid not null references public.media (id) on delete cascade,
-  child_id uuid not null references public.children (id) on delete cascade,
-  primary key (media_id, child_id)
+  family_id uuid not null,
+  media_id uuid not null,
+  child_id uuid not null,
+  primary key (media_id, child_id),
+  foreign key (family_id, media_id) references public.media (family_id, id) on delete cascade,
+  foreign key (family_id, child_id) references public.children (family_id, id) on delete cascade
 );
 
 create table public.share_media (
-  share_id uuid not null references public.shares (id) on delete cascade,
-  media_id uuid not null references public.media (id) on delete cascade,
-  primary key (share_id, media_id)
+  family_id uuid not null,
+  share_id uuid not null,
+  media_id uuid not null,
+  primary key (share_id, media_id),
+  foreign key (family_id, share_id) references public.shares (family_id, id) on delete cascade,
+  foreign key (family_id, media_id) references public.media (family_id, id) on delete cascade
 );
 
 create table public.reactions (
@@ -185,6 +215,8 @@ create index on public.share_media (media_id);
 create index on public.reactions (member_id);
 create index on public.comments (media_id, created_at);
 create index on public.entitlements (family_id);
+create index on public.entry_failures (group_id, at);
+create index on public.entry_failures (auth_user_id, group_id);
 
 -- ───────────────────────── 권한 함수 ─────────────────────────
 -- 모두 security definer + 빈 search_path. RLS 정책 안에서 다른 표를 읽을 때 재귀를 피한다.
@@ -270,21 +302,8 @@ as $$
     select 1 from public.media x
     where x.id = p_media_id
       and (x.family_id = public.sp_parent_family()
-           or (x.uploaded_by_member is not null and x.uploaded_by_member = public.sp_device_member()))
-  )
-$$;
-
--- 사진과 그룹(또는 아이)이 같은 가족방인가. 가족은 다른 그룹을 못 읽으니 definer로 판정
-create function public.sp_same_family(p_media_id uuid, p_target_id uuid, p_kind text) returns boolean
-language sql stable security definer set search_path = ''
-as $$
-  select exists (
-    select 1 from public.media x
-    where x.id = p_media_id
-      and x.family_id = case p_kind
-        when 'group' then (select g.family_id from public.groups g where g.id = p_target_id)
-        when 'child' then (select c.family_id from public.children c where c.id = p_target_id)
-      end
+           or (x.uploaded_by_member is not null and x.uploaded_by_member = public.sp_device_member()
+               and public.sp_can_upload(x.family_id)))
   )
 $$;
 
@@ -305,6 +324,8 @@ alter table public.share_media enable row level security;
 alter table public.reactions enable row level security;
 alter table public.comments enable row level security;
 alter table public.entitlements enable row level security;
+-- 정책 없음: 입장 함수(definer)만 읽고 쓴다
+alter table public.entry_failures enable row level security;
 
 create policy families_read on public.families for select to authenticated
   using (id = public.sp_my_family());
@@ -329,14 +350,15 @@ create policy groups_parent_delete on public.groups for delete to authenticated
 create policy groups_member_own on public.groups for select to authenticated
   using (id = (select m.group_id from public.members m where m.id = public.sp_device_member()));
 
-create policy shares_parent on public.shares for all to authenticated
-  using (family_id = public.sp_parent_family()) with check (family_id = public.sp_parent_family());
-create policy share_groups_parent on public.share_groups for all to authenticated
-  using (exists (select 1 from public.shares s where s.id = share_id and s.family_id = public.sp_parent_family()))
-  with check (exists (select 1 from public.shares s where s.id = share_id and s.family_id = public.sp_parent_family()));
-create policy share_media_parent on public.share_media for all to authenticated
-  using (exists (select 1 from public.shares s where s.id = share_id and s.family_id = public.sp_parent_family()))
-  with check (exists (select 1 from public.shares s where s.id = share_id and s.family_id = public.sp_parent_family()));
+-- 공유 링크는 sp_create_share로만 만든다(코드·시각을 클라이언트가 못 정하게). 부모는 보고 지우기만
+create policy shares_parent_read on public.shares for select to authenticated
+  using (family_id = public.sp_parent_family());
+create policy shares_parent_delete on public.shares for delete to authenticated
+  using (family_id = public.sp_parent_family());
+create policy share_groups_parent_read on public.share_groups for select to authenticated
+  using (family_id = public.sp_parent_family());
+create policy share_media_parent_read on public.share_media for select to authenticated
+  using (family_id = public.sp_parent_family());
 
 -- 구성원 이름은 같은 가족방이면 보인다(댓글·반응 작성자 표시용)
 create policy members_read on public.members for select to authenticated
@@ -383,15 +405,13 @@ create policy media_groups_read on public.media_groups for select to authenticat
   using (public.sp_can_view_media(media_id));
 create policy media_groups_write on public.media_groups for all to authenticated
   using (public.sp_can_edit_media(media_id))
-  with check (public.sp_can_edit_media(media_id)
-              and public.sp_same_family(media_id, group_id, 'group'));
+  with check (public.sp_can_edit_media(media_id));
 
 create policy media_children_read on public.media_children for select to authenticated
   using (public.sp_can_view_media(media_id));
 create policy media_children_write on public.media_children for all to authenticated
   using (public.sp_can_edit_media(media_id))
-  with check (public.sp_can_edit_media(media_id)
-              and public.sp_same_family(media_id, child_id, 'child'));
+  with check (public.sp_can_edit_media(media_id));
 
 create policy reactions_read on public.reactions for select to authenticated
   using (public.sp_can_view_media(media_id));
@@ -407,10 +427,7 @@ create policy comments_insert on public.comments for insert to authenticated
               and deleted_at is null and edited_at is null);
 create policy comments_self_update on public.comments for update to authenticated
   using (member_id = public.sp_device_member()) with check (member_id = public.sp_device_member());
--- 부모는 가족방 사진에 달린 한마디를 지울 수 있다(deleted_at 표시)
-create policy comments_parent_update on public.comments for update to authenticated
-  using (exists (select 1 from public.media x where x.id = media_id and x.family_id = public.sp_parent_family()))
-  with check (exists (select 1 from public.media x where x.id = media_id and x.family_id = public.sp_parent_family()));
+-- 지우기(본인·부모)는 sp_delete_comment로. 지운 행은 읽기 정책에서 빠져서 UPDATE로는 못 한다
 
 create policy entitlements_parent on public.entitlements for select to authenticated
   using (family_id = public.sp_parent_family());
@@ -424,11 +441,21 @@ grant update (name, include_by_default, password_hint, sort_order) on public.gro
 revoke update on public.members from authenticated;
 grant update (display_name, group_id, status, pending_until, text_size) on public.members to authenticated;
 revoke update on public.devices from authenticated;
-grant update (status, can_upload, label, failed_attempts, locked_until) on public.devices to authenticated;
+grant update (status, can_upload, label) on public.devices to authenticated;
+-- 그룹은 켜면 끌 수 없으니 groups_enabled는 sp_add_group만 바꾼다
 revoke update on public.families from authenticated;
-grant update (name, download_allowed, groups_enabled, text_size_mode, delete_after) on public.families to authenticated;
+grant update (name, download_allowed, text_size_mode, delete_after) on public.families to authenticated;
 revoke update on public.comments from authenticated;
-grant update (body, edited_at, deleted_at) on public.comments to authenticated;
+grant update (body) on public.comments to authenticated;
+-- 사진: 상태·저장 키·용량은 서버(service_role)만. 클라이언트는 기본 정보만 넣고 촬영일만 고친다
+revoke insert, update on public.media from authenticated;
+grant insert (family_id, uploaded_by_parent, uploaded_by_member, kind, taken_at, taken_at_source, width, height, duration_sec)
+  on public.media to authenticated;
+grant update (taken_at, taken_at_source) on public.media to authenticated;
+-- 연결 표는 넣고 지우기만
+revoke update on public.media_groups, public.media_children, public.share_groups, public.share_media from authenticated;
+revoke insert on public.shares, public.share_groups, public.share_media from authenticated;
+revoke update on public.shares from authenticated;
 
 -- 구성원 자기 행 수정은 글자 크기만 허용(다른 열은 부모만)
 -- 트리거는 호출자 권한으로 돈다: 클라이언트(authenticated)만 막고 서버(postgres·service_role)는 통과
@@ -449,28 +476,29 @@ end $$;
 create trigger members_guard before update on public.members
   for each row execute function public.sp_members_guard();
 
--- 한마디: 본인은 내용만, 부모는 지우기만
-create function public.sp_comments_guard() returns trigger
+-- 한마디 고치면 고친 시각을 남긴다
+create function public.sp_comments_touch() returns trigger
 language plpgsql set search_path = ''
 as $$
-declare v_parent boolean := exists (
-  select 1 from public.media x where x.id = new.media_id and x.family_id = public.sp_parent_family());
 begin
-  if current_user <> 'authenticated' then return new; end if;
-  if old.member_id = public.sp_device_member() then
-    if new.deleted_at is distinct from old.deleted_at and new.deleted_at is null then
-      raise exception 'cannot_restore' using errcode = '42501';
-    end if;
-    if new.body is distinct from old.body then new.edited_at := now(); end if;
-  elsif v_parent then
-    if new.body is distinct from old.body or new.edited_at is distinct from old.edited_at then
-      raise exception 'parent_delete_only' using errcode = '42501';
-    end if;
+  if new.body is distinct from old.body then new.edited_at := now(); end if;
+  return new;
+end $$;
+create trigger comments_touch before update on public.comments
+  for each row execute function public.sp_comments_touch();
+
+-- 부모가 승인 대기 기기를 승인하면 틀린 기록을 지운다
+create function public.sp_devices_approved() returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if old.status = 'pending' and new.status = 'active' then
+    delete from public.entry_failures where auth_user_id = new.auth_user_id;
   end if;
   return new;
 end $$;
-create trigger comments_guard before update on public.comments
-  for each row execute function public.sp_comments_guard();
+create trigger devices_approved after update of status on public.devices
+  for each row execute function public.sp_devices_approved();
 
 -- ───────────────────────── RPC ─────────────────────────
 
@@ -565,8 +593,8 @@ begin
 end $$;
 
 -- 입장: 이름 고르기(p_member_id) 또는 새 이름(p_new_name + p_group_id) + 그룹 비밀번호
--- 결과: ok | pending(새 이름, 승인 대기) | wrong_password | locked | needs_approval(10번 틀림) |
---       expired(새 입장 72시간 지남) | not_found | closed | revoked | name_taken | bad_request
+-- 결과: ok | pending(새 이름, 승인 대기) | wrong_password | locked | needs_approval(10번 틀림·그룹 경보) |
+--       expired(새 입장 72시간 지남, 쓴 문자 링크) | not_found | closed | revoked | name_taken | bad_request
 create function public.sp_enter(
   p_code text, p_password text,
   p_member_id uuid default null, p_new_name text default null, p_group_id uuid default null
@@ -575,20 +603,23 @@ language plpgsql security definer set search_path = ''
 as $$
 declare
   s public.shares; d public.devices; g public.groups; m public.members;
-  v_group uuid; v_new_open boolean; v_fail int;
+  v_uid uuid := auth.uid();
+  v_group uuid; v_new_open boolean; v_ok boolean;
+  v_dev_fail int; v_last timestamptz; v_group_fail int; v_name text := btrim(p_new_name);
 begin
-  if auth.uid() is null then raise exception 'login_required' using errcode = '42501'; end if;
+  if v_uid is null then raise exception 'login_required' using errcode = '42501'; end if;
   if public.sp_parent_family() is not null then return jsonb_build_object('result', 'bad_request'); end if;
+  -- 비밀번호는 숫자 4자리만. NULL·빈 값은 비교 전에 돌려보낸다(crypt(NULL)은 NULL)
+  if p_password is null or p_password !~ '^[0-9]{4}$' then return jsonb_build_object('result', 'bad_request'); end if;
+  if (p_member_id is null) = (p_new_name is null) then return jsonb_build_object('result', 'bad_request'); end if;
 
-  select * into s from public.shares where code = p_code;
+  -- 문자 링크 동시 사용을 막으려고 행을 잠근다
+  select * into s from public.shares where code = p_code for update;
   if not found then return jsonb_build_object('result', 'not_found'); end if;
   if exists (select 1 from public.families where id = s.family_id and delete_after is not null) then
     return jsonb_build_object('result', 'closed');
   end if;
   v_new_open := s.created_at + interval '72 hours' > now() and s.used_at is null;
-
-  -- 이름 고르기와 새 이름 중 하나만
-  if (p_member_id is null) = (p_new_name is null) then return jsonb_build_object('result', 'bad_request'); end if;
 
   if p_member_id is not null then
     select * into m from public.members
@@ -597,7 +628,6 @@ begin
     if s.target_member_id is not null and s.target_member_id <> m.id then
       return jsonb_build_object('result', 'bad_request');
     end if;
-    -- 문자로 보낸 한 사람용 링크는 한 번만
     if s.target_member_id is not null and s.used_at is not null then
       return jsonb_build_object('result', 'expired');
     end if;
@@ -607,63 +637,82 @@ begin
     if not exists (select 1 from public.share_groups where share_id = s.id and group_id = p_group_id) then
       return jsonb_build_object('result', 'bad_request');
     end if;
-    if char_length(btrim(p_new_name)) not between 1 and 12 then return jsonb_build_object('result', 'bad_request'); end if;
+    if char_length(v_name) not between 1 and 12 then return jsonb_build_object('result', 'bad_request'); end if;
     v_group := p_group_id;
   end if;
 
-  -- 기기 하나 = 익명 사용자 하나. 처음이면 만든다
-  select * into d from public.devices where auth_user_id = auth.uid() for update;
-  if not found then
-    insert into public.devices (auth_user_id, family_id) values (auth.uid(), s.family_id) returning * into d;
-  elsif d.family_id <> s.family_id then
-    return jsonb_build_object('result', 'bad_request');
-  end if;
-  if d.status = 'revoked' then return jsonb_build_object('result', 'revoked'); end if;
-  if d.status = 'pending' then return jsonb_build_object('result', 'needs_approval'); end if;
-  if d.locked_until is not null and d.locked_until > now() then
-    return jsonb_build_object('result', 'locked', 'retry_after', ceil(extract(epoch from d.locked_until - now())));
+  -- 기기는 비밀번호가 맞거나 승인 대기로 넘어갈 때만 만든다(틀린 링크로 가족방에 묶이지 않게)
+  select * into d from public.devices where auth_user_id = v_uid for update;
+  if found then
+    if d.family_id <> s.family_id then return jsonb_build_object('result', 'bad_request'); end if;
+    if d.status = 'revoked' then return jsonb_build_object('result', 'revoked'); end if;
+    if d.status = 'pending' then return jsonb_build_object('result', 'needs_approval'); end if;
   end if;
 
+  select count(*), max(at) into v_dev_fail, v_last
+    from public.entry_failures where auth_user_id = v_uid and group_id = v_group;
+  if v_dev_fail > 0 and v_dev_fail % 3 = 0 and v_last > now() - interval '30 seconds' then
+    return jsonb_build_object('result', 'locked',
+      'retry_after', ceil(extract(epoch from v_last + interval '30 seconds' - now())));
+  end if;
+  select count(*) into v_group_fail
+    from public.entry_failures where group_id = v_group and at > now() - interval '1 hour';
+
   select * into g from public.groups where id = v_group;
-  if extensions.crypt(p_password, g.password_hash) <> g.password_hash then
-    v_fail := d.failed_attempts + 1;
-    if v_fail >= 10 then
-      -- 잠그지 않고 부모 승인 대기로. 새 이름이면 승인 대기 구성원도 만든다
-      if p_new_name is not null then
-        insert into public.members (family_id, group_id, display_name, status, pending_until, entry_share_id)
-          values (s.family_id, v_group, btrim(p_new_name), 'pending', now() + interval '3 days', s.id)
-          on conflict (group_id, display_name) do nothing
-          returning * into m;
-      end if;
-      update public.devices set failed_attempts = v_fail, status = 'pending', member_id = coalesce(m.id, member_id)
-        where id = d.id;
-      return jsonb_build_object('result', 'needs_approval');
+  v_ok := extensions.crypt(p_password, g.password_hash) = g.password_hash;
+
+  if not v_ok then
+    insert into public.entry_failures (family_id, group_id, auth_user_id) values (s.family_id, v_group, v_uid);
+    v_dev_fail := v_dev_fail + 1;
+    v_group_fail := v_group_fail + 1;
+    if v_dev_fail < 10 and v_group_fail < 20 then
+      return jsonb_build_object('result', 'wrong_password', 'hint', g.password_hint, 'attempts', v_dev_fail);
     end if;
-    update public.devices
-      set failed_attempts = v_fail,
-          locked_until = case when v_fail % 3 = 0 then now() + interval '30 seconds' else locked_until end
-      where id = d.id;
-    return jsonb_build_object('result', 'wrong_password', 'hint', g.password_hint, 'attempts', v_fail);
+  end if;
+
+  -- 10번 틀렸거나, 그룹 전체가 1시간에 20번 넘게 틀린 상태(링크 유출 의심)에서 새 기기가 들어오면
+  -- 잠그지 않고 부모 승인 대기로. 이미 이 이름으로 들어와 있던 기기는 그대로 통과
+  if not v_ok or (v_group_fail >= 20 and (d.id is null or d.member_id is distinct from p_member_id or p_member_id is null)) then
+    if p_new_name is not null then
+      insert into public.members (family_id, group_id, display_name, status, pending_until, entry_share_id)
+        values (s.family_id, v_group, v_name, 'pending', now() + interval '3 days', s.id)
+        on conflict (group_id, display_name) do nothing
+        returning * into m;
+    end if;
+    if d.id is null then
+      insert into public.devices (auth_user_id, family_id, member_id, status)
+        values (v_uid, s.family_id, m.id, 'pending');
+    else
+      update public.devices set status = 'pending', member_id = coalesce(m.id, member_id), can_upload = false
+        where id = d.id;
+    end if;
+    return jsonb_build_object('result', 'needs_approval');
   end if;
 
   if p_member_id is null then
     -- 만료된 승인 대기·거절된 같은 이름은 비우고 다시 받는다
     delete from public.members
-      where group_id = v_group and display_name = btrim(p_new_name)
+      where group_id = v_group and display_name = v_name
         and (status = 'rejected' or (status = 'pending' and pending_until <= now()));
-    if exists (select 1 from public.members where group_id = v_group and display_name = btrim(p_new_name)) then
+    if exists (select 1 from public.members where group_id = v_group and display_name = v_name) then
       return jsonb_build_object('result', 'name_taken');
     end if;
     insert into public.members (family_id, group_id, display_name, status, pending_until, entry_share_id)
-      values (s.family_id, v_group, btrim(p_new_name), 'pending', now() + interval '3 days', s.id)
+      values (s.family_id, v_group, v_name, 'pending', now() + interval '3 days', s.id)
       returning * into m;
   end if;
 
-  update public.devices
-    set member_id = m.id, failed_attempts = 0, locked_until = null, last_seen_at = now(),
-        -- 다른 구성원으로 바꿔 들어오면 올리기 권한은 다시 승인
-        can_upload = case when member_id = m.id then can_upload else false end
-    where id = d.id;
+  -- 맞으면 이 그룹에서 틀린 기록만 지운다(다른 그룹 기록은 남겨서 번갈아 맞히며 초기화하는 걸 막는다)
+  delete from public.entry_failures where auth_user_id = v_uid and group_id = v_group;
+  if d.id is null then
+    insert into public.devices (auth_user_id, family_id, member_id) values (v_uid, s.family_id, m.id);
+  else
+    update public.devices
+      set member_id = m.id, last_seen_at = now(),
+          -- 다른 구성원으로 바꿔 들어오면 올리기 권한은 다시 승인
+          can_upload = case when member_id = m.id then can_upload else false end
+      where id = d.id;
+  end if;
   if s.target_member_id is not null then update public.shares set used_at = now() where id = s.id; end if;
 
   return jsonb_build_object('result', case when m.status = 'pending' then 'pending' else 'ok' end, 'member_id', m.id);
@@ -698,17 +747,32 @@ begin
   end loop;
   insert into public.shares (family_id, code, target_member_id) values (v_family, v_code, p_target_member)
     returning id into v_id;
-  insert into public.share_groups (share_id, group_id) select v_id, x from unnest(p_group_ids) x;
-  insert into public.share_media (share_id, media_id) select v_id, x from unnest(p_media_ids) x;
+  insert into public.share_groups (family_id, share_id, group_id) select v_family, v_id, x from unnest(p_group_ids) x;
+  insert into public.share_media (family_id, share_id, media_id) select v_family, v_id, x from unnest(p_media_ids) x;
   return v_code;
+end $$;
+
+-- 한마디 지우기: 쓴 사람 또는 그 가족방 부모
+create function public.sp_delete_comment(p_comment_id uuid) returns void
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  update public.comments c set deleted_at = now()
+    where c.id = p_comment_id and c.deleted_at is null
+      and (c.member_id = public.sp_device_member()
+           or exists (select 1 from public.media x where x.id = c.media_id and x.family_id = public.sp_parent_family()));
+  if not found then raise exception 'not_allowed' using errcode = '42501'; end if;
 end $$;
 
 -- 함수 실행 권한: 기본(public) 회수 후 로그인 사용자(익명 포함)에게만
 revoke execute on all functions in schema public from public, anon;
 grant execute on function public.sp_parent_family(), public.sp_device_member(), public.sp_my_family(),
   public.sp_can_view_media(uuid), public.sp_can_upload(uuid), public.sp_is_anonymous(),
-  public.sp_can_edit_media(uuid), public.sp_same_family(uuid, uuid, text),
+  public.sp_can_edit_media(uuid),
   public.sp_create_family(text, text, text, date, text, text), public.sp_set_group_password(uuid, text, text),
   public.sp_add_group(text, text, text, boolean), public.sp_entry_info(text),
-  public.sp_enter(text, text, uuid, text, uuid), public.sp_create_share(uuid[], uuid[], uuid)
+  public.sp_enter(text, text, uuid, text, uuid), public.sp_create_share(uuid[], uuid[], uuid),
+  public.sp_delete_comment(uuid)
   to authenticated;
+-- 앞으로 만드는 함수도 anon에 열리지 않게(Supabase 기본 권한은 anon에도 실행을 준다)
+alter default privileges in schema public revoke execute on functions from public, anon;
