@@ -186,7 +186,15 @@
 }
 .sp-f__seg-input:checked + .sp-f__seg-text {
   background: var(--bg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  /* 바탕 차이만으론 3:1이 안 나와서 테두리로 고른 칸을 보여 준다 */
+  box-shadow: inset 0 0 0 2px var(--pea), 0 1px 2px rgba(0, 0, 0, 0.12);
+  color: var(--pea-deep);
+}
+@media (forced-colors: active) {
+  .sp-f__seg-input:checked + .sp-f__seg-text {
+    outline: 3px solid Highlight;
+    outline-offset: -3px;
+  }
 }
 .sp-f__seg-input:focus-visible + .sp-f__seg-text {
   outline: 2px solid var(--pea-ink);
