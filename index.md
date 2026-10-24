@@ -4,7 +4,7 @@
 
 ## 현재 상태
 
-- 버전 0.1.0, 기본 설정 완료(`dev`). 실제 화면·데이터 연결은 아직 없다. 다음 이슈는 plan.md 참고.
+- 버전 0.1.0, 기본 설정 완료(`dev`). DB 스키마·권한(Supabase 마이그레이션)은 작성·로컬 검사 완료, 실제 Supabase 프로젝트는 아직 없다. 화면·데이터 연결은 아직. 다음 이슈는 plan.md 참고.
 - 첫 화면(`/`)은 심볼과 이름만 있는 임시 페이지. 클라이언트 JS 0KB.
 - 로컬 Lighthouse(모바일, 기본 스로틀링): LCP 약 0.7초, CLS 0, 접근성 100점.
 
@@ -30,7 +30,16 @@ src/styles/tokens.css   디자인 토큰 (색·글자·간격·모서리·터치
 src/styles/base.css     문서 기본 스타일 (.sp-html, .sp-body, 포커스 링)
 src/layouts/Base.astro  공통 HTML 뼈대 (lang=ko, theme-color)
 src/pages/index.astro   임시 첫 화면
+supabase/migrations/    DB 스키마·RLS·권한 함수(sp_*)·입장 RPC. 실제 Supabase에 그대로 적용
+supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stub.sql: auth 흉내, rls.sql: 시나리오, run.sh)
 ```
+
+## DB 요약
+
+- 부모: Supabase Auth 사용자(가족방당 1명). 가족 기기: 익명 사용자(기기 하나 = 익명 사용자 하나). 배우자는 구성원 + 기기 올리기 권한.
+- 입장은 `sp_entry_info`(누구세요 화면 정보) → `sp_enter`(이름 + 그룹 비밀번호). 새 이름은 링크 72시간 안에만, 승인 대기 3일. 틀린 기록은 기기·그룹별(3번 30초, 10번 승인 대기)과 그룹 전체(1시간 20번·하루 30번이면 새 기기는 승인 대기).
+- 공유 링크는 `sp_create_share`로만(8자 코드). 연결 표는 family_id 복합 FK로 같은 가족방끼리만.
+- 사진 상태·저장 키·용량은 서버(service_role)만 쓴다. 비밀번호 해시는 클라이언트가 못 읽는다.
 
 ## 규칙
 
@@ -46,4 +55,5 @@ src/pages/index.astro   임시 첫 화면
 | `npm run dev` | 개발 서버 |
 | `npm run check` | 타입 검사 |
 | `npm run build` | 빌드 (`dist/`) |
+| `npm run test:db` | 로컬 Postgres 16 임시 클러스터에 마이그레이션 적용 후 권한 시나리오 검사 (`PG_BIN`으로 경로 지정) |
 | `npm run perf` | 빌드 결과로 Lighthouse CI 예산 검사 (Chrome 필요, `CHROME_PATH`로 지정 가능) |
