@@ -28,17 +28,21 @@ insert into public.members (family_id, group_id, display_name) values
 select id as m_gm from public.members where display_name = '외할머니' \gset
 select id as m_gf from public.members where display_name = '외할아버지' \gset
 select id as m_sp from public.members where display_name = '하린 아빠' \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values
-  (:'fam', :'P', 'photo', now(), 'exif', 'ready') returning id as m1 \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values
-  (:'fam', :'P', 'photo', now(), 'exif', 'ready') returning id as m2 \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values
-  (:'fam', :'P', 'video', now(), 'file', 'ready') returning id as m3 \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values
-  (:'fam', :'P', 'photo', now(), 'exif', 'uploading') returning id as m4 \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values
-  (:'fam', :'P', 'photo', now(), 'exif', 'ready') returning id as m5 \gset
-insert into public.media_groups values (:'m1', :'gma'), (:'m2', :'gpa'), (:'m3', :'gma'), (:'m3', :'gpa'), (:'m4', :'gma'), (:'m5', :'gma');
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values
+  (:'fam', :'P', 'photo', now(), 'exif') returning id as m1 \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values
+  (:'fam', :'P', 'photo', now(), 'exif') returning id as m2 \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values
+  (:'fam', :'P', 'video', now(), 'file') returning id as m3 \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values
+  (:'fam', :'P', 'photo', now(), 'exif') returning id as m4 \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values
+  (:'fam', :'P', 'photo', now(), 'exif') returning id as m5 \gset
+insert into public.media_groups (family_id, media_id, group_id) values (:'fam', :'m1', :'gma'), (:'fam', :'m2', :'gpa'), (:'fam', :'m3', :'gma'), (:'fam', :'m3', :'gpa'), (:'fam', :'m4', :'gma'), (:'fam', :'m5', :'gma');
+reset role;
+-- 처리 완료 표시는 서버(postgres)만. m4는 올리는 중으로 둔다
+update public.media set status = 'ready' where id in (:'m1', :'m2', :'m3', :'m5');
+set role authenticated;
 select public.sp_create_share(array[:'gma']::uuid[], array[:'m1', :'m3']::uuid[]) as code1 \gset
 select pg_temp.ok((select count(*) = 5 from public.media), '부모는 자기 가족방 사진 5장 모두');
 reset role;
@@ -53,10 +57,12 @@ select pg_temp.ok(public.sp_enter(:'code1', '0000', :'m_gm') ->> 'hint' = '외�
 select pg_temp.ok(public.sp_enter(:'code1', '0000', :'m_gm') ->> 'result' = 'wrong_password', '3번 틀림');
 select pg_temp.ok(public.sp_enter(:'code1', '1234', :'m_gm') ->> 'result' = 'locked', '3번 틀리면 맞아도 쉬는 중');
 reset role;
-update public.devices set locked_until = now() - interval '1 second' where auth_user_id = :'GM';
+update public.entry_failures set at = at - interval '31 seconds' where auth_user_id = :'GM';
 set role authenticated;
 select pg_temp.ok(public.sp_enter(:'code1', '1234', :'m_gm') ->> 'result' = 'ok', '쉬고 나서 맞으면 입장');
-select pg_temp.ok((select failed_attempts = 0 from public.devices), '맞으면 틀린 횟수 초기화');
+reset role;
+select pg_temp.ok((select count(*) = 0 from public.entry_failures where auth_user_id = :'GM'), '맞으면 이 그룹 틀린 기록 지움');
+set role authenticated;
 select pg_temp.ok((select count(*) = 3 from public.media), '외할머니는 외가 사진 3장(올리는 중 제외)');
 select pg_temp.ok(not exists (select 1 from public.media where id = :'m2'), '친가 전용 사진은 안 보임');
 insert into public.reactions (media_id, member_id, kind) values (:'m1', :'m_gm', 'heart'), (:'m1', :'m_gm', 'sparkle');
@@ -106,7 +112,9 @@ select set_config('request.jwt.claims', json_build_object('sub', :'X', 'is_anony
 set role authenticated;
 select pg_temp.ok(public.sp_enter(:'code1', '9999', null, '모르는사람', :'gma') ->> 'result' = 'wrong_password', '모르는 사람 1번 틀림');
 reset role;
-update public.devices set failed_attempts = 9, locked_until = null where auth_user_id = :'X';
+insert into public.entry_failures (family_id, group_id, auth_user_id, at) select :'fam', :'gma', :'X', now() from generate_series(1, 8);
+-- 그룹 전체 1시간 한도와 30초 쉬기에 안 걸리게 두 시간 전 기록으로 돌린다
+update public.entry_failures set at = now() - interval '2 hours' where auth_user_id = :'X';
 set role authenticated;
 select pg_temp.ok(public.sp_enter(:'code1', '9999', null, '모르는사람', :'gma') ->> 'result' = 'needs_approval', '10번 틀리면 승인 대기');
 select pg_temp.ok(public.sp_enter(:'code1', '1234', null, '모르는사람', :'gma') ->> 'result' = 'needs_approval', '그 뒤엔 맞아도 승인 대기');
@@ -168,7 +176,7 @@ select set_config('request.jwt.claims', json_build_object('sub', :'SP', 'is_anon
 set role authenticated;
 select pg_temp.ok((select count(*) = 4 from public.media), '올리기 권한이면 모든 그룹 사진(올리는 중 제외)');
 insert into public.media (family_id, uploaded_by_member, kind, taken_at, taken_at_source) values (:'fam', :'m_sp', 'photo', now(), 'exif') returning id as m6 \gset
-insert into public.media_groups values (:'m6', :'gpa');
+insert into public.media_groups (family_id, media_id, group_id) values (:'fam', :'m6', :'gpa');
 select pg_temp.ok(length(public.sp_create_share(array[:'gpa']::uuid[], array[:'m6']::uuid[])) = 8, '올리기 권한 가족도 공유 링크 만듦');
 reset role;
 \set ON_ERROR_STOP 0
@@ -179,10 +187,100 @@ reset role;
 \set ON_ERROR_STOP 1
 select pg_temp.ok((select not can_upload from public.devices where auth_user_id = :'GM'), '가족은 스스로 권한을 못 줌');
 
+-- ── 검토에서 나온 구멍들
+\set N1 '00000000-0000-0000-0000-0000000000c1'
+\set N2 '00000000-0000-0000-0000-0000000000c2'
+insert into auth.users (id, is_anonymous) values (:'N1', true), (:'N2', true);
+
+-- 비밀번호 NULL·형식 틀림은 비교 없이 거절
+select set_config('request.jwt.claims', json_build_object('sub', :'N1', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code1', null, :'m_gm') ->> 'result' = 'bad_request', 'NULL 비밀번호 거절');
+select pg_temp.ok(public.sp_enter(:'code1', '', :'m_gm') ->> 'result' = 'bad_request', '빈 비밀번호 거절');
+select pg_temp.ok(not exists (select 1 from public.devices where auth_user_id = :'N1'), '거절된 시도로 기기가 생기지 않음');
+reset role;
+
+-- 다른 그룹 비밀번호를 번갈아 맞히며 횟수를 초기화하지 못한다
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+select id as m_pgm from public.members where display_name = '할머니' \gset
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code1', '0000', :'m_pgm') ->> 'result' = 'wrong_password', '친가 이름으로 틀림');
+select pg_temp.ok(public.sp_enter(:'code1', '0001', :'m_pgm') ->> 'result' = 'wrong_password', '친가 이름으로 또 틀림');
+select pg_temp.ok(public.sp_enter(:'code1', '1234', :'m_gm') ->> 'result' = 'ok', '자기 그룹은 맞음');
+reset role;
+select pg_temp.ok((select count(*) = 2 from public.entry_failures where auth_user_id = :'GM' and group_id = :'gpa'), '친가 틀린 기록은 그대로');
+
+-- 그룹 전체가 1시간에 20번 틀리면, 비밀번호가 맞아도 새 기기는 승인 대기
+insert into public.entry_failures (family_id, group_id, auth_user_id) select :'fam', :'gpa', gen_random_uuid() from generate_series(1, 18);
+select set_config('request.jwt.claims', json_build_object('sub', :'N2', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code1', '5678', :'m_pgm') ->> 'result' = 'needs_approval', '익명 사용자 갈아타기 공격은 승인 대기로');
+select pg_temp.ok((select count(*) = 0 from public.media), '승인 전엔 0장');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.devices set status = 'active' where auth_user_id = :'N2';
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'N2', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 2 from public.media), '부모가 승인하면 친가 사진');
+reset role;
+
+-- 한마디: 고치면 시각 남김, 지우기는 함수로(본인·부모)
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select id as c1 from public.comments limit 1 \gset
+update public.comments set body = '아이고 많이 컸네!' where id = :'c1';
+select pg_temp.ok((select edited_at is not null from public.comments where id = :'c1'), '고친 시각');
+insert into public.comments (media_id, member_id, body) values (:'m3', :'m_gm', '영상 좋다') returning id as c2 \gset
+select public.sp_delete_comment(:'c1');
+select pg_temp.ok(not exists (select 1 from public.comments where id = :'c1'), '본인이 지우면 안 보임');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_delete_comment(:'c2');
+reset role;
+select pg_temp.ok((select deleted_at is not null from public.comments where id = :'c2'), '부모가 지움');
+
+-- 권한 밖 동작
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_create_family('dad', '다른집', '아이', '2025-01-01', '1111') as fam2 \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values (:'fam2', :'P2', 'photo', now(), 'exif') returning id as mx \gset
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.devices set can_upload = false where auth_user_id = :'SP';
+reset role;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 7줄은 의도된 거부'
+select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_delete_comment(:'c2');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'SP', 'is_anonymous', true)::text, false);
+set role authenticated;
+insert into public.media (family_id, uploaded_by_member, kind, taken_at, taken_at_source, status) values (:'fam', :'m_sp', 'photo', now(), 'exif', 'ready');
+insert into public.media_groups (family_id, media_id, group_id) values (:'fam', :'m6', :'gma');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+insert into public.shares (family_id, code, created_at) values (:'fam', 'AAAAAAAA', now() + interval '10 years');
+update public.families set groups_enabled = false;
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+insert into public.media_groups (family_id, media_id, group_id) values (:'fam2', :'mx', :'gma');
+reset role;
+set role anon;
+select public.sp_entry_info(:'code1');
+reset role;
+\set ON_ERROR_STOP 1
+
 -- ── 다른 가족방 부모는 아무것도 못 본다. 익명 기기는 가족방을 못 만든다
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
 set role authenticated;
-select pg_temp.ok((select count(*) = 0 from public.media) and (select count(*) = 0 from public.members), '다른 가족방은 0');
+select pg_temp.ok((select count(*) = 1 from public.media) and (select count(*) = 0 from public.members), '다른 가족방 사진은 안 보이고 자기 것 1장만');
 reset role;
 \set ON_ERROR_STOP 0
 select set_config('request.jwt.claims', json_build_object('sub', :'NEW', 'is_anonymous', true)::text, false);
@@ -191,7 +289,7 @@ set role authenticated;
 select public.sp_create_family('dad', '익명', '아이', '2025-01-01', '1111');
 reset role;
 \set ON_ERROR_STOP 1
-select pg_temp.ok((select count(*) = 1 from public.families), '가족방은 하나뿐');
+select pg_temp.ok((select count(*) = 2 from public.families), '가족방은 부모 둘이 만든 2개뿐');
 
 -- ── 탈퇴 유예: 가족 화면은 바로 닫힘
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
