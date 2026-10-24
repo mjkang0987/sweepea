@@ -53,9 +53,13 @@ const nameError = Astro.url.searchParams.get('e') === 'name' ? '이름을 1~12�
         </div>
         <form class="sp-f__form" method="get" action={`/i/${code}/password`}>
           {/* 이름 칸에서 엔터를 누르면 이름 버튼이 아니라 '들어가기'가 눌리게, 맨 앞에 숨은 기본 버튼 */}
-          {canWrite && (
+          {canWrite ? (
             <button class="sp-vh" type="submit" name="new" value="1" tabindex="-1" aria-hidden="true">
               들어가기
+            </button>
+          ) : (
+            <button class="sp-vh" type="submit" formaction={`/i/${code}`} tabindex="-1" aria-hidden="true">
+              새로 보기
             </button>
           )}
           <fieldset class="sp-f__group">

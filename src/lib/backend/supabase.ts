@@ -19,8 +19,6 @@ export class BackendError extends Error {
   }
 }
 
-// 이 코드들만 '토큰이 영영 무효'로 보고 출입증을 버린다(이미 쓴 토큰은 10초 재사용 창이 지난 경우). 429·5xx·네트워크는 일시 오류
-const DEAD_REFRESH = new Set(['refresh_token_not_found', 'refresh_token_already_used', 'invalid_grant', 'user_not_found', 'session_not_found']);
 
 export function createSupabaseBackend(url: string, anonKey: string): Backend {
   const base = url.replace(/\/$/, '');
@@ -32,8 +30,8 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     headers.set('authorization', `Bearer ${init.token ?? anonKey}`);
     const res = await fetch(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(8000) });
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error_code?: string; code?: string };
-      throw new BackendError(`${path} ${res.status}`, res.status, body.error_code ?? body.code);
+      const body = (await res.json().catch(() => ({}))) as { error_code?: string; code?: string; error?: string };
+      throw new BackendError(`${path} ${res.status}`, res.status, body.error_code ?? body.code ?? body.error);
     }
     return (await res.json()) as T;
   }
@@ -63,7 +61,8 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
           }),
         );
       } catch (e) {
-        if (e instanceof BackendError && e.code && DEAD_REFRESH.has(e.code)) return null;
+        // 4xx(429 제외)는 토큰이 다시 살아날 일이 없다: 출입증을 버린다. 429·5xx·네트워크는 일시 오류라 그대로 던진다
+        if (e instanceof BackendError && e.status >= 400 && e.status < 500 && e.status !== 429) return null;
         throw e;
       }
     },
