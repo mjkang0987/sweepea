@@ -1,0 +1,206 @@
+-- 권한 시나리오 검사. run.sh가 stub.sql + 마이그레이션 뒤에 실행한다.
+-- 사용자 바꾸기: request.jwt.claims 설정 + set role authenticated. 시간 조작·준비 데이터는 postgres로.
+\set ON_ERROR_STOP 1
+\set P   '00000000-0000-0000-0000-0000000000a1'
+\set P2  '00000000-0000-0000-0000-0000000000a2'
+\set GM  '00000000-0000-0000-0000-0000000000b1'
+\set GF  '00000000-0000-0000-0000-0000000000b2'
+\set AU  '00000000-0000-0000-0000-0000000000b3'
+\set X   '00000000-0000-0000-0000-0000000000b4'
+\set NEW '00000000-0000-0000-0000-0000000000b5'
+\set SP  '00000000-0000-0000-0000-0000000000b6'
+
+insert into auth.users (id, is_anonymous) values
+  (:'P', false), (:'P2', false), (:'GM', true), (:'GF', true), (:'AU', true), (:'X', true), (:'NEW', true), (:'SP', true);
+
+create function pg_temp.ok(cond boolean, msg text) returns void language plpgsql as $$
+begin if cond is not true then raise exception '실패: %', msg; end if; end $$;
+
+-- ── 부모: 가족방 만들기, 그룹, 가족 이름 등록, 사진
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_create_family('mom', '지우', '하린', '2025-09-17', '0917', '하린이 생일') as fam \gset
+select public.sp_add_group('외가', '1234', '외가 비밀번호') as gma \gset
+select public.sp_add_group('친가', '5678') as gpa \gset
+select pg_temp.ok((select groups_enabled from public.families) , '그룹 추가하면 그룹 켜짐');
+insert into public.members (family_id, group_id, display_name) values
+  (:'fam', :'gma', '외할머니'), (:'fam', :'gma', '외할아버지'), (:'fam', :'gma', '하린 아빠'), (:'fam', :'gpa', '할머니');
+select id as m_gm from public.members where display_name = '외할머니' \gset
+select id as m_gf from public.members where display_name = '외할아버지' \gset
+select id as m_sp from public.members where display_name = '하린 아빠' \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values
+  (:'fam', :'P', 'photo', now(), 'exif', 'ready') returning id as m1 \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values
+  (:'fam', :'P', 'photo', now(), 'exif', 'ready') returning id as m2 \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values
+  (:'fam', :'P', 'video', now(), 'file', 'ready') returning id as m3 \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values
+  (:'fam', :'P', 'photo', now(), 'exif', 'uploading') returning id as m4 \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values
+  (:'fam', :'P', 'photo', now(), 'exif', 'ready') returning id as m5 \gset
+insert into public.media_groups values (:'m1', :'gma'), (:'m2', :'gpa'), (:'m3', :'gma'), (:'m3', :'gpa'), (:'m4', :'gma'), (:'m5', :'gma');
+select public.sp_create_share(array[:'gma']::uuid[], array[:'m1', :'m3']::uuid[]) as code1 \gset
+select pg_temp.ok((select count(*) = 5 from public.media), '부모는 자기 가족방 사진 5장 모두');
+reset role;
+
+-- ── 외할머니: 이름 고르기 + 비밀번호 3번 틀림 → 30초 쉬기
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_entry_info(:'code1') ->> 'result' = 'ok', '입장 정보');
+select pg_temp.ok(jsonb_array_length(public.sp_entry_info(:'code1') -> 'groups' -> 0 -> 'members') = 3, '외가 이름 3개');
+select pg_temp.ok(public.sp_enter(:'code1', '0000', :'m_gm') ->> 'result' = 'wrong_password', '1번 틀림');
+select pg_temp.ok(public.sp_enter(:'code1', '0000', :'m_gm') ->> 'hint' = '외가 비밀번호', '틀리면 힌트');
+select pg_temp.ok(public.sp_enter(:'code1', '0000', :'m_gm') ->> 'result' = 'wrong_password', '3번 틀림');
+select pg_temp.ok(public.sp_enter(:'code1', '1234', :'m_gm') ->> 'result' = 'locked', '3번 틀리면 맞아도 쉬는 중');
+reset role;
+update public.devices set locked_until = now() - interval '1 second' where auth_user_id = :'GM';
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code1', '1234', :'m_gm') ->> 'result' = 'ok', '쉬고 나서 맞으면 입장');
+select pg_temp.ok((select failed_attempts = 0 from public.devices), '맞으면 틀린 횟수 초기화');
+select pg_temp.ok((select count(*) = 3 from public.media), '외할머니는 외가 사진 3장(올리는 중 제외)');
+select pg_temp.ok(not exists (select 1 from public.media where id = :'m2'), '친가 전용 사진은 안 보임');
+insert into public.reactions (media_id, member_id, kind) values (:'m1', :'m_gm', 'heart'), (:'m1', :'m_gm', 'sparkle');
+insert into public.comments (media_id, member_id, body) values (:'m1', :'m_gm', '아이고 많이 컸네');
+update public.members set text_size = 'large' where id = :'m_gm';
+reset role;
+
+-- 권한 밖 동작은 에러가 나야 한다
+\set ON_ERROR_STOP 0
+set role authenticated;
+\echo '아래 에러 4줄은 의도된 거부'
+insert into public.reactions (media_id, member_id, kind) values (:'m2', :'m_gm', 'heart');
+select password_hash from public.groups;
+update public.members set display_name = '왕할머니' where id = :'m_gm';
+insert into public.reactions (media_id, member_id, kind) values (:'m1', :'m_gf', 'heart');
+reset role;
+\set ON_ERROR_STOP 1
+select pg_temp.ok((select count(*) = 2 from public.reactions), '거부된 반응은 안 들어감');
+select pg_temp.ok((select display_name = '외할머니' and text_size = 'large' from public.members where id = :'m_gm'), '글자 크기만 바뀜');
+
+-- ── 큰이모: 새 이름 → 승인 대기, 받은 공유 묶음만
+select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_enter(:'code1', '1234', null, '큰이모', :'gma') ->> 'result' as r \gset
+select pg_temp.ok(:'r' = 'pending', '새 이름은 승인 대기');
+select pg_temp.ok((select count(*) = 2 from public.media), '승인 전엔 공유 묶음 2장만');
+select pg_temp.ok(not exists (select 1 from public.media where id = :'m5'), '공유 안 한 외가 사진은 안 보임');
+reset role;
+
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.members set status = 'active', pending_until = null where display_name = '큰이모';
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 3 from public.media), '승인 뒤 외가 사진 전부');
+reset role;
+
+-- 승인 대기 3일이 지나면 아무것도 못 본다
+update public.members set status = 'pending', pending_until = now() - interval '1 minute' where display_name = '큰이모';
+set role authenticated;
+select pg_temp.ok((select count(*) = 0 from public.media), '만료된 승인 대기는 0장');
+reset role;
+
+-- ── 모르는 사람: 새 이름으로 10번 틀리면 잠그지 않고 승인 대기
+select set_config('request.jwt.claims', json_build_object('sub', :'X', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code1', '9999', null, '모르는사람', :'gma') ->> 'result' = 'wrong_password', '모르는 사람 1번 틀림');
+reset role;
+update public.devices set failed_attempts = 9, locked_until = null where auth_user_id = :'X';
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code1', '9999', null, '모르는사람', :'gma') ->> 'result' = 'needs_approval', '10번 틀리면 승인 대기');
+select pg_temp.ok(public.sp_enter(:'code1', '1234', null, '모르는사람', :'gma') ->> 'result' = 'needs_approval', '그 뒤엔 맞아도 승인 대기');
+select pg_temp.ok((select count(*) = 0 from public.media), '승인 대기 기기는 0장');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok((select d.status = 'pending' from public.devices d join public.members m on m.id = d.member_id where m.display_name = '모르는사람'), '부모 화면에 승인 대기 기기와 이름이 보임');
+update public.devices set status = 'revoked' where member_id = (select id from public.members where display_name = '모르는사람');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'X', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code1', '1234', :'m_gf') ->> 'result' = 'revoked', '내 가족 아님 처리된 기기는 못 들어옴');
+reset role;
+
+-- ── 링크 72시간이 지나면: 새 이름은 막고, 등록된 이름은 비밀번호로 다시 들어온다
+update public.shares set created_at = now() - interval '73 hours' where code = :'code1';
+select set_config('request.jwt.claims', json_build_object('sub', :'NEW', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((public.sp_entry_info(:'code1') ->> 'new_entry_open')::boolean = false, '새 입장 닫힘 표시');
+select pg_temp.ok(public.sp_enter(:'code1', '1234', null, '사촌', :'gma') ->> 'result' = 'expired', '기간 지난 링크로 새 이름 불가');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code1', '1234', :'m_gf') ->> 'result' = 'ok', '등록된 이름은 기간 지나도 다시 들어옴');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 3 from public.media), '이미 들어온 기기는 계속 봄');
+reset role;
+
+-- ── 하린 아빠: 이름 고르기 → 외가만 → 올리기 권한 받으면 전부 보고 올림
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_create_share(array[:'gma']::uuid[], '{}'::uuid[], :'m_sp') as code_sms \gset
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'SP', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code_sms', '1234', :'m_sp') ->> 'result' = 'ok', '문자 링크로 입장');
+select pg_temp.ok((select count(*) = 3 from public.media), '권한 전엔 외가 사진만');
+reset role;
+\set ON_ERROR_STOP 0
+set role authenticated;
+\echo '아래 에러 2줄은 의도된 거부'
+insert into public.media (family_id, uploaded_by_member, kind, taken_at, taken_at_source) values (:'fam', :'m_sp', 'photo', now(), 'exif');
+select public.sp_create_share(array[:'gma']::uuid[]);
+reset role;
+\set ON_ERROR_STOP 1
+select set_config('request.jwt.claims', json_build_object('sub', :'NEW', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code_sms', '1234', :'m_sp') ->> 'result' = 'expired', '문자 링크는 한 번만');
+select pg_temp.ok(public.sp_enter(:'code_sms', '1234', null, '누군가', :'gma') ->> 'result' = 'expired', '쓴 문자 링크로 새 이름 불가');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.devices set can_upload = true where auth_user_id = :'SP';
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'SP', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 4 from public.media), '올리기 권한이면 모든 그룹 사진(올리는 중 제외)');
+insert into public.media (family_id, uploaded_by_member, kind, taken_at, taken_at_source) values (:'fam', :'m_sp', 'photo', now(), 'exif') returning id as m6 \gset
+insert into public.media_groups values (:'m6', :'gpa');
+select pg_temp.ok(length(public.sp_create_share(array[:'gpa']::uuid[], array[:'m6']::uuid[])) = 8, '올리기 권한 가족도 공유 링크 만듦');
+reset role;
+\set ON_ERROR_STOP 0
+set role authenticated;
+-- 자기 기기 수정 정책이 없어서 에러 없이 0행으로 끝난다
+update public.devices set can_upload = true, status = 'active' where auth_user_id = :'GM';
+reset role;
+\set ON_ERROR_STOP 1
+select pg_temp.ok((select not can_upload from public.devices where auth_user_id = :'GM'), '가족은 스스로 권한을 못 줌');
+
+-- ── 다른 가족방 부모는 아무것도 못 본다. 익명 기기는 가족방을 못 만든다
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 0 from public.media) and (select count(*) = 0 from public.members), '다른 가족방은 0');
+reset role;
+\set ON_ERROR_STOP 0
+select set_config('request.jwt.claims', json_build_object('sub', :'NEW', 'is_anonymous', true)::text, false);
+set role authenticated;
+\echo '아래 에러 1줄은 의도된 거부'
+select public.sp_create_family('dad', '익명', '아이', '2025-01-01', '1111');
+reset role;
+\set ON_ERROR_STOP 1
+select pg_temp.ok((select count(*) = 1 from public.families), '가족방은 하나뿐');
+
+-- ── 탈퇴 유예: 가족 화면은 바로 닫힘
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.families set delete_after = now() + interval '3 days';
+select pg_temp.ok((select count(*) = 6 from public.media), '부모는 유예 중에도 봄(되살리기)');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 0 from public.media), '가족은 바로 0장');
+select pg_temp.ok(public.sp_entry_info(:'code1') ->> 'result' = 'closed', '앨범이 닫혔어요');
+reset role;
