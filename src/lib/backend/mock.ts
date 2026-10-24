@@ -1,0 +1,126 @@
+// 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
+// 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
+// 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
+import type { Backend, EnterResult, EntryInfo, Me, Pass } from './types';
+
+interface Group { id: string; name: string; hint: string; password: string }
+interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected' }
+interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean }
+interface Device { status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]> }
+
+const HOUR = 3600_000;
+const groups: Group[] = [
+  { id: 'g-mat', name: '외가', hint: '외가 비밀번호', password: '1234' },
+  { id: 'g-pat', name: '친가', hint: '할아버지 생신', password: '5678' },
+];
+const members: Member[] = [
+  { id: 'm-gm', groupId: 'g-mat', name: '외할머니', status: 'active' },
+  { id: 'm-gf', groupId: 'g-mat', name: '외할아버지', status: 'active' },
+  { id: 'm-aunt', groupId: 'g-mat', name: '이모', status: 'active' },
+  { id: 'm-pgm', groupId: 'g-pat', name: '할머니', status: 'active' },
+];
+const shares: Share[] = [
+  { code: 'Harin001', groupIds: ['g-mat'], createdAt: Date.now() },
+  { code: 'Harin002', groupIds: ['g-mat'], createdAt: Date.now() - 73 * HOUR },
+  { code: 'Harin003', groupIds: ['g-pat'], createdAt: Date.now() },
+  { code: 'Sms00001', groupIds: ['g-mat'], createdAt: Date.now(), targetMemberId: 'm-gm' },
+  { code: 'Closed01', groupIds: ['g-mat'], createdAt: Date.now(), closed: true },
+];
+const devices = new Map<string, Device>();
+
+const newOpen = (s: Share) => s.createdAt + 72 * HOUR > Date.now() && !s.usedAt;
+
+export function createMockBackend(): Backend {
+  return {
+    async signInAnonymously(): Promise<Pass> {
+      const id = crypto.randomUUID();
+      return { access: id, refresh: id, expiresAt: Math.floor(Date.now() / 1000) + 365 * 24 * 3600 };
+    },
+    async refresh(pass) {
+      return pass;
+    },
+    async entryInfo(_pass, code): Promise<EntryInfo> {
+      const s = shares.find((x) => x.code === code);
+      if (!s) return { result: 'not_found' };
+      if (s.closed) return { result: 'closed' };
+      if (s.targetMemberId && s.usedAt) return { result: 'expired' };
+      return {
+        result: 'ok',
+        child_name: '하린',
+        new_entry_open: newOpen(s),
+        target_member_id: s.targetMemberId ?? null,
+        groups: groups
+          .filter((g) => s.groupIds.includes(g.id))
+          .map((g) => ({
+            id: g.id,
+            name: g.name,
+            hint: g.hint,
+            members: members.filter((m) => m.groupId === g.id && m.status === 'active').map((m) => ({ id: m.id, name: m.name })),
+          })),
+      };
+    },
+    async enter(pass, i): Promise<EnterResult> {
+      if (!/^[0-9]{4}$/.test(i.password) || !i.memberId === !i.newName) return { result: 'bad_request' };
+      const s = shares.find((x) => x.code === i.code);
+      if (!s) return { result: 'not_found' };
+      if (s.closed) return { result: 'closed' };
+      const d = devices.get(pass.access);
+      if (d?.status === 'revoked') return { result: 'revoked' };
+      if (d?.status === 'pending') return { result: 'needs_approval' };
+      let groupId: string;
+      if (i.memberId) {
+        const m = members.find((x) => x.id === i.memberId && x.status === 'active');
+        if (!m || !s.groupIds.includes(m.groupId)) return { result: 'bad_request' };
+        if (s.targetMemberId && (s.targetMemberId !== m.id || s.usedAt)) return { result: s.usedAt ? 'expired' : 'bad_request' };
+        groupId = m.groupId;
+      } else {
+        if (!newOpen(s) || s.targetMemberId) return { result: 'expired' };
+        if (!i.groupId || !s.groupIds.includes(i.groupId)) return { result: 'bad_request' };
+        groupId = i.groupId;
+      }
+      const dev: Device = d ?? { status: 'active', failures: new Map() };
+      const fails = dev.failures.get(groupId) ?? [];
+      const last = fails.at(-1) ?? 0;
+      if (fails.length > 0 && fails.length % 3 === 0 && last > Date.now() - 30_000) {
+        return { result: 'locked', retry_after: Math.ceil((last + 30_000 - Date.now()) / 1000) };
+      }
+      const g = groups.find((x) => x.id === groupId)!;
+      if (i.password !== g.password) {
+        fails.push(Date.now());
+        dev.failures.set(groupId, fails);
+        if (fails.length >= 10) {
+          dev.status = 'pending';
+          dev.requestedName = i.newName ?? members.find((m) => m.id === i.memberId)?.name;
+          devices.set(pass.access, dev);
+          return { result: 'needs_approval' };
+        }
+        devices.set(pass.access, dev);
+        return { result: 'wrong_password', hint: g.hint, attempts: fails.length };
+      }
+      dev.failures.delete(groupId);
+      let member = members.find((m) => m.id === i.memberId);
+      if (!member) {
+        const name = (i.newName ?? '').trim();
+        if (members.some((m) => m.groupId === groupId && m.name === name)) return { result: 'name_taken' };
+        member = { id: crypto.randomUUID(), groupId, name, status: 'pending' };
+        members.push(member);
+      }
+      dev.memberId = member.id;
+      devices.set(pass.access, dev);
+      if (s.targetMemberId) s.usedAt = Date.now();
+      return { result: member.status === 'pending' ? 'pending' : 'ok', member_id: member.id };
+    },
+    async me(pass): Promise<Me> {
+      const d = devices.get(pass.access);
+      if (!d) return { device: null };
+      const m = members.find((x) => x.id === d.memberId);
+      return {
+        device: d.status,
+        member: m?.status ?? null,
+        name: m?.name ?? d.requestedName ?? null,
+        closed: false,
+        child_name: '하린',
+      };
+    },
+  };
+}
