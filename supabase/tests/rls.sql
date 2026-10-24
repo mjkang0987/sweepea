@@ -44,6 +44,7 @@ reset role;
 update public.media set status = 'ready' where id in (:'m1', :'m2', :'m3', :'m5');
 set role authenticated;
 select public.sp_create_share(array[:'gma']::uuid[], array[:'m1', :'m3']::uuid[]) as code1 \gset
+select public.sp_create_share(array[:'gpa']::uuid[], array[:'m2']::uuid[]) as code_pa \gset
 select pg_temp.ok((select count(*) = 5 from public.media), '부모는 자기 가족방 사진 5장 모두');
 reset role;
 
@@ -89,6 +90,7 @@ set role authenticated;
 select public.sp_enter(:'code1', '1234', null, '큰이모', :'gma') ->> 'result' as r \gset
 select pg_temp.ok(:'r' = 'pending', '새 이름은 승인 대기');
 select pg_temp.ok((select count(*) = 2 from public.media), '승인 전엔 공유 묶음 2장만');
+select pg_temp.ok((select count(*) = 1 from public.members), '승인 전엔 가족 명단 대신 자기 이름만');
 select pg_temp.ok(not exists (select 1 from public.media where id = :'m5'), '공유 안 한 외가 사진은 안 보임');
 reset role;
 
@@ -122,8 +124,9 @@ select pg_temp.ok((select count(*) = 0 from public.media), '승인 대기 기기
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
-select pg_temp.ok((select d.status = 'pending' from public.devices d join public.members m on m.id = d.member_id where m.display_name = '모르는사람'), '부모 화면에 승인 대기 기기와 이름이 보임');
-update public.devices set status = 'revoked' where member_id = (select id from public.members where display_name = '모르는사람');
+select pg_temp.ok((select status = 'pending' from public.devices where requested_name = '모르는사람'), '부모 화면에 승인 대기 기기와 들어가려던 이름이 보임');
+select pg_temp.ok(not exists (select 1 from public.members where display_name = '모르는사람'), '틀린 시도로는 구성원이 생기지 않음(이름 선점 방지)');
+update public.devices set status = 'revoked' where requested_name = '모르는사람';
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'X', 'is_anonymous', true)::text, false);
 set role authenticated;
@@ -204,8 +207,9 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
 select id as m_pgm from public.members where display_name = '할머니' \gset
 set role authenticated;
-select pg_temp.ok(public.sp_enter(:'code1', '0000', :'m_pgm') ->> 'result' = 'wrong_password', '친가 이름으로 틀림');
-select pg_temp.ok(public.sp_enter(:'code1', '0001', :'m_pgm') ->> 'result' = 'wrong_password', '친가 이름으로 또 틀림');
+select pg_temp.ok(public.sp_enter(:'code1', '0000', :'m_pgm') ->> 'result' = 'bad_request', '외가 링크로 친가 이름은 시도 불가');
+select pg_temp.ok(public.sp_enter(:'code_pa', '0000', :'m_pgm') ->> 'result' = 'wrong_password', '친가 이름으로 틀림');
+select pg_temp.ok(public.sp_enter(:'code_pa', '0001', :'m_pgm') ->> 'result' = 'wrong_password', '친가 이름으로 또 틀림');
 select pg_temp.ok(public.sp_enter(:'code1', '1234', :'m_gm') ->> 'result' = 'ok', '자기 그룹은 맞음');
 reset role;
 select pg_temp.ok((select count(*) = 2 from public.entry_failures where auth_user_id = :'GM' and group_id = :'gpa'), '친가 틀린 기록은 그대로');
@@ -214,7 +218,7 @@ select pg_temp.ok((select count(*) = 2 from public.entry_failures where auth_use
 insert into public.entry_failures (family_id, group_id, auth_user_id) select :'fam', :'gpa', gen_random_uuid() from generate_series(1, 18);
 select set_config('request.jwt.claims', json_build_object('sub', :'N2', 'is_anonymous', true)::text, false);
 set role authenticated;
-select pg_temp.ok(public.sp_enter(:'code1', '5678', :'m_pgm') ->> 'result' = 'needs_approval', '익명 사용자 갈아타기 공격은 승인 대기로');
+select pg_temp.ok(public.sp_enter(:'code_pa', '5678', :'m_pgm') ->> 'result' = 'needs_approval', '익명 사용자 갈아타기 공격은 승인 대기로');
 select pg_temp.ok((select count(*) = 0 from public.media), '승인 전엔 0장');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
@@ -223,7 +227,9 @@ update public.devices set status = 'active' where auth_user_id = :'N2';
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'N2', 'is_anonymous', true)::text, false);
 set role authenticated;
-select pg_temp.ok((select count(*) = 2 from public.media), '부모가 승인하면 친가 사진');
+select pg_temp.ok((select count(*) = 2 from public.media), '부모가 승인하면 들어가려던 이름(할머니)으로 친가 사진');
+select pg_temp.ok(public.sp_enter(:'code_pa', '0002', :'m_pgm') ->> 'result' = 'wrong_password', '경보 중에도 원래 기기의 오타는 그냥 틀림');
+select pg_temp.ok((select status = 'active' from public.devices), '오타로 승인 대기로 떨어지지 않음');
 reset role;
 
 -- 한마디: 고치면 시각 남김, 지우기는 함수로(본인·부모)
@@ -242,6 +248,21 @@ select public.sp_delete_comment(:'c2');
 reset role;
 select pg_temp.ok((select deleted_at is not null from public.comments where id = :'c2'), '부모가 지움');
 
+-- 거절하면 그 기기도 막힌다
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.members set status = 'rejected' where display_name = '큰이모';
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code1', '1234', null, '큰이모', :'gma') ->> 'result' = 'revoked', '거절된 기기는 같은 이름으로 다시 못 들어옴');
+reset role;
+-- 부모 계정은 기기로 들어오지 못한다
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code1', '1234', :'m_gm') ->> 'result' = 'bad_request', '익명이 아닌 사용자는 입장 함수 불가');
+reset role;
+
 -- 권한 밖 동작
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
 set role authenticated;
@@ -253,7 +274,7 @@ set role authenticated;
 update public.devices set can_upload = false where auth_user_id = :'SP';
 reset role;
 \set ON_ERROR_STOP 0
-\echo '아래 에러 7줄은 의도된 거부'
+\echo '아래 에러 8줄은 의도된 거부'
 select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
 set role authenticated;
 select public.sp_delete_comment(:'c2');
@@ -274,6 +295,10 @@ insert into public.media_groups (family_id, media_id, group_id) values (:'fam2',
 reset role;
 set role anon;
 select public.sp_entry_info(:'code1');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+insert into public.comments (media_id, member_id, body, created_at) values (:'m1', :'m_gm', '옛날 글', now() - interval '1 year');
 reset role;
 \set ON_ERROR_STOP 1
 
