@@ -1,0 +1,21 @@
+---
+// 앨범: 사진 화면은 다음 이슈(조부모 뷰어). 지금은 들어온 것만 확인한다
+import Family from '../layouts/Family.astro';
+import { getBackend } from '../lib/backend';
+import { currentPass } from '../lib/pass';
+import { callName } from '../lib/ko';
+
+const pass = await currentPass(Astro.cookies);
+if (!pass) return Astro.redirect('/');
+const me = await getBackend().me(pass);
+if (!(me.device === 'active' && me.member === 'active' && !me.closed)) return Astro.redirect(me.device ? '/wait' : '/');
+const child = callName(me.child_name ?? '아이');
+---
+
+<Family title={`${child} 사진`}>
+  <div class="sp-f__head">
+    <h1 class="sp-f__title">{child} 사진</h1>
+    <p class="sp-f__lead">{me.name}, 반가워요</p>
+  </div>
+  <p class="sp-f__box">사진 화면은 곧 열려요.</p>
+</Family>
