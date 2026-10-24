@@ -26,3 +26,27 @@
   outline: 2px solid var(--pea-ink);
   outline-offset: 2px;
 }
+
+/* 가족 화면 글자 크기: senior 토큰이 '크게'(100%). 기본은 0.82배, 아주 크게는 1.25배 */
+.sp-size-base {
+  font-size: 82%;
+}
+.sp-size-large {
+  font-size: 100%;
+}
+.sp-size-xlarge {
+  font-size: 125%;
+}
+
+/* 화면에선 숨기고 스크린리더에는 읽힌다 */
+.sp-vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
