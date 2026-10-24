@@ -71,6 +71,24 @@
   - 기기 하나는 가족방 하나에만 들어간다(할머니가 두 자녀 앨범을 한 폰으로 보는 경우는 나중에)
   - 부모 계정을 지우면 가족방에 주인이 없어진다 → 탈퇴 3일 유예 후 삭제 작업(예약 함수)에서 같이 처리
 
+### 6. feature/entry-flow — 가족 입장 웹 화면 (진행 중)
+
+- 요구사항
+  - 공유 링크 `/i/<코드>` → 누구세요?(이름 고르기·직접 쓰기·글자 크기) → 가족 비밀번호 → 결과별 화면(들어감, 승인 기다림, 10번 틀림, 쉬는 중, 주소 기간 지남, 앨범 닫힘, 주소 없음, 내 가족 아님)
+  - 출입증: Supabase 익명 세션을 httpOnly 쿠키(`sp_pass`)에 담는다. 이미 들어온 기기는 링크를 다시 열면 바로 앨범으로
+  - 주소 없이 `sweepea.co.kr`로 오면 "가족에게 받은 주소로 들어와 주세요"
+  - 글자 크기: 기본값 '기본', 할머니·할아버지 이름을 고르면 '크게'(쿠키 `sp_size`로 루트 글자 크기만 바꿈)
+  - 클라이언트 JS 0KB(네이티브 폼 + 서버 렌더링). 카톡 인앱 브라우저·오래된 웹뷰에서도 동작
+- 구현 방식
+  - `src/lib/backend/`: 백엔드 인터페이스. `supabase.ts`(fetch로 Auth·RPC 호출, supabase-js 안 씀: 첫 화면 JS 예산), `mock.ts`(개발·검사용 메모리 구현, 운영에선 쓰지 못하게 막음)
+  - `src/lib/pass.ts`: 출입증 쿠키 읽기·쓰기·토큰 갱신
+  - 새 마이그레이션 `sp_me()`: 지금 기기 상태(승인 대기·차단·가족방 닫힘)와 이름
+  - 화면: `src/pages/i/[code]/index.astro`, `src/pages/i/[code]/password.astro`, `src/pages/wait.astro`, `src/pages/album.astro`(다음 이슈 전까지 자리만), `src/pages/index.astro`(주소 없음), 공통 `src/styles/family.css`
+  - 환경 변수(`astro:env`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SWEEPEA_BACKEND`(supabase·mock)
+- 영향받는 파일: `astro.config.mjs`, `src/**`, `supabase/migrations/*_me.sql`, `supabase/tests/rls.sql`, `index.md`, `plan.md`
+- 예상 결과: mock 백엔드로 브라우저에서 입장 흐름 전체가 동작하고, 빌드·성능 예산·DB 검사 통과
+- 범위 밖: 앨범 화면(이슈 7), 부모 승인 화면(이슈 9), Turnstile(Supabase 연결 때), 실제 Supabase 연결 확인(프로젝트 생성 후)
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
