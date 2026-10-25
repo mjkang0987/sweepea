@@ -5,8 +5,15 @@ export type InstallPlatform = 'inapp' | 'ios' | 'android' | 'other';
  *  단계를 아는 건 아이폰 사파리·안드로이드 크롬뿐: 다른 브라우저(아이폰 크롬·웨일, 삼성 인터넷)는 메뉴 위치가 달라 안내하지 않는다 */
 export function installPlatform(ua: string): InstallPlatform {
   if (/KAKAOTALK|NAVER\(inapp|Line\/|Instagram|FBAN|FBAV|BAND\//i.test(ua)) return 'inapp';
-  if (/iPhone|iPad|iPod/.test(ua)) return /CriOS|FxiOS|EdgiOS|Whale|NAVER/.test(ua) ? 'other' : 'ios';
-  if (/Android/.test(ua)) return /SamsungBrowser|Whale|NAVER|Firefox/.test(ua) ? 'other' : 'android';
+  if (/iPhone|iPad|iPod/.test(ua)) {
+    if (/CriOS|FxiOS|EdgiOS|Whale|NAVER/.test(ua)) return 'other';
+    // 'Safari/'가 없으면 이름 모를 앱 안 브라우저(구글 앱·다음 앱 등)
+    return /Safari\//.test(ua) ? 'ios' : 'inapp';
+  }
+  if (/Android/.test(ua)) {
+    if (/; wv\)/.test(ua)) return 'inapp';
+    return /SamsungBrowser|Whale|NAVER|Firefox/.test(ua) ? 'other' : 'android';
+  }
   return 'other';
 }
 
