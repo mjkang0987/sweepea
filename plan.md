@@ -266,6 +266,21 @@
 - 남은 위험: 아이 추가를 아주 빠르게 두 번 누르면 둘 다 들어갈 수 있음(10명 한도 안). 크기 쿠키는 기기 전체라, 다른 가족방에 이미 들어온 휴대폰은 그 크기를 유지. 네이버(직접 연결 제공자)는 제공자 이름이 '로그인'으로 보일 수 있음(실제 연결 뒤 확인)
 - 범위 밖: 탈퇴하기·되살리기(다음 이슈, 캔버스 AccountDelete·AccountRestore), 접종·검진 일정 보기 체크(아이 정보 카드 이슈 11에서), 아이 지우기(사진 연결이 같이 지워져서 따로 확인 필요), 아이 사진, 가족 플랜, 구성원별 글자 크기 원격 변경
 
+### 17. feature/account-delete — 탈퇴하기·되살리기 (계획)
+
+- 요구사항(캔버스 AccountDelete·AccountDeleteSub·AccountDeleted·AccountRestore, 결정 2026-10-24 '탈퇴')
+  - 계정 > 탈퇴하기 → 확인("정말 탈퇴할까요?", 3일 뒤 사진 N장·가족·아이 정보 삭제 안내, "모두 지워지는 것을 확인했어요" 체크해야 탈퇴하기)
+  - 구독 중이면 탈퇴 대신 "구독 중이에요"(스토어에서 먼저 해지) 안내
+  - 탈퇴하면 가족 화면은 바로 닫히고, 로그아웃 뒤 "그동안 고마웠어요"(지워지는 날짜, 처음으로)
+  - 3일 안에 다시 로그인하면 "탈퇴 신청 중이에요" → 되살리기(그대로 돌아옴) / 그대로 탈퇴하기(로그아웃)
+- 구현 방식
+  - DB: `sp_request_delete()`(부모만, 구독 중이면 거부, `delete_after = now() + 3일`), `sp_restore_family()`(유예 중만 되돌림). 부모가 `delete_after`를 직접 못 고치게 열 권한에서 뺀다(아무 날짜나 넣어 바로 지워지는 걸 막음). 실제 삭제는 `sp_purge_deleted_families()`(service_role, 기한 지난 가족방 지우고 id 반환)
+  - 부모 화면 진입(`loadParent`): 유예 중이면 `/restore`로. 확인 단계는 JS 없이 계정 화면의 확인 카드 + 기본 체크박스 `required`
+  - 화면: `/settings/account`(탈퇴하기·확인), `/goodbye`(그동안 고마웠어요), `/restore`(되살리기)
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/lib/parent.ts`, `src/pages/settings/account.astro`, `src/pages/goodbye.astro`, `src/pages/restore.astro`, `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: mock으로 탈퇴 → 가족 앨범 닫힘·작별 화면, 다시 로그인 → 되살리기 → 앨범 다시 열림(e2e). DB 검사: 다른 부모·가족 기기는 탈퇴 못 함, 구독 중 거부, `delete_after` 직접 수정 불가, 기한 지난 가족방만 지워짐
+- 범위 밖: 기한 지난 가족방을 실제로 지우는 예약 작업(Worker cron)과 R2 파일 삭제는 13번 정리 작업에서 같이(출시 전 필수), 부모 Auth 사용자 삭제, 가족 기기에 탈퇴 알림
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
