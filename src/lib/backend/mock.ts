@@ -1,7 +1,7 @@
 // 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
 // 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
-import type { Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, Pass } from './types';
+import type { Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, Pass, ReactionCount } from './types';
 import { BackendError } from './supabase';
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string }
@@ -44,6 +44,9 @@ const devices = new Map<string, Device>();
 const media: (MediaItem & { status: 'uploading' | 'ready'; uploader: string })[] = [];
 const deviceOf = (pass: Pass, familyId: string) => devices.get(key(pass, familyId));
 const canUpload = (d: Device | undefined) => !!d && d.status === 'active' && !!d.canUpload;
+// 반응: `${사진}|${구성원}|${종류}`, 한마디: 사진·구성원·시각
+const reactions = new Set<string>();
+const comments: { mediaId: string; memberId: string; at: number }[] = [];
 const familyOf = (s: Share) => groups.find((g) => g.id === s.groupIds[0])!.familyId;
 const key = (pass: Pass, familyId: string) => `${pass.access}|${familyId}`;
 function meOf(d: Device | undefined): EntryMe | null {
@@ -53,6 +56,14 @@ function meOf(d: Device | undefined): EntryMe | null {
 }
 
 const newOpen = (s: Share) => s.createdAt + 72 * HOUR > Date.now() && !s.usedAt;
+
+/** 볼 수 있는 사진이면 그 가족방의 내 구성원 id, 아니면 403 */
+function viewer(pass: Pass, mediaId: string): string {
+  const x = media.find((y) => y.id === mediaId && y.status === 'ready');
+  const d = x && deviceOf(pass, x.family_id);
+  if (!x || !d || d.status !== 'active' || !d.memberId) throw new BackendError('not_allowed', 403, '42501');
+  return d.memberId;
+}
 
 export function createMockBackend(): Backend {
   return {
@@ -170,6 +181,38 @@ export function createMockBackend(): Backend {
       if (!x) return false;
       Object.assign(x, { status: 'ready', view_key: keys.view, thumb_key: keys.thumb, poster_key: keys.poster });
       return true;
+    },
+    async react(pass, id, kind, on) {
+      const m = viewer(pass, id);
+      const k = `${id}|${m}|${kind}`;
+      if (on) reactions.add(k);
+      else reactions.delete(k);
+    },
+    async comment(pass, id, body) {
+      const m = viewer(pass, id);
+      const text = body.trim();
+      if (text.length < 1 || text.length > 200) throw new BackendError('bad_request', 400, '22023');
+      if (comments.filter((c) => c.memberId === m && c.at > Date.now() - 86_400_000).length >= 30) {
+        throw new BackendError('too_many_comments', 429, 'PT429');
+      }
+      comments.push({ mediaId: id, memberId: m, at: Date.now() });
+    },
+    async reactionCounts(pass, ids) {
+      const out = new Map<string, ReactionCount>();
+      const mineIds = new Set([...devices].filter(([k]) => k.startsWith(`${pass.access}|`)).map(([, d]) => d.memberId));
+      const add = (mediaId: string, kind: ReactionCount['kind'], member: string) => {
+        const key = `${mediaId}|${kind}`;
+        const c = out.get(key) ?? { media_id: mediaId, kind, n: 0, mine: false };
+        c.n++;
+        c.mine ||= mineIds.has(member);
+        out.set(key, c);
+      };
+      for (const r of reactions) {
+        const [mediaId, member, kind] = r.split('|');
+        if (ids.includes(mediaId)) add(mediaId, kind as ReactionCount['kind'], member);
+      }
+      for (const c of comments) if (ids.includes(c.mediaId)) add(c.mediaId, 'comment', c.memberId);
+      return [...out.values()];
     },
     async listMedia(pass, opts = {}) {
       return media
