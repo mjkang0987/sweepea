@@ -388,6 +388,15 @@
 - 범위 밖: 가족 플랜(유료) 상한, 정리 결과 알림, 실제 Cloudflare 예약 실행 확인(배포 뒤 → 확인 필요)
 - 결과: 검토 두 번 반영. 예약 작업은 끝까지 기다리고 실패가 있으면 예약 기록에 실패로 남김, 앞 단계가 실패해도 R2 정리는 계속, 외부 호출 45개 안에서 쪽마다 멈추고 다 못 지운 폴더는 대기열에 남겨 다음 날 이어서. 미리보기 서버에서 scheduled 핸들러 동작 확인(비밀 값 없음 로그). 단위 검사 6개·DB 검사(의도된 거부 48건)·기존 e2e 통과
 
+### 25. feature/pc-layout — PC 화면 (계획)
+
+- 요구사항(캔버스 GrandListPC·PhotoViewPC·ParentHomePC·ParentUploadPC, 기획 이슈 14)
+  - 넓은 화면(64rem 이상)에서 가족 앨범·크게 보기는 넓게(모아 보기 4·6·8칸), 부모 앨범은 넓게 + 메뉴가 위로(6칸), 올리기는 왼쪽 사진·오른쪽 아이·그룹·보내기 두 칸, 사진을 끌어다 놓아 고르기
+- 구현 방식: CSS 미디어 쿼리만(가족 화면 JS 0KB 유지). 넓힐 화면만 레이아웃에 `wide` 표시. 올리기 끌어다 놓기는 부모 화면이라 작은 스크립트(파일 입력에 넘김)
+- 영향받는 파일: `src/layouts/Family.astro`, `src/layouts/Parent.astro`, `src/pages/album/*.astro`, `src/pages/home.astro`, `src/pages/upload.astro`, `src/styles/family.css`, `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: 1280px에서 화면이 넓게 쓰이고, 390px은 그대로(e2e 스크린샷·기존 e2e). 끌어다 놓기로 사진이 골라짐(e2e)
+- 범위 밖: 부모 앨범 아이별 거르기(시안의 전체·하린·도윤), 크게 보기 양옆 화살표(이전·다음 링크는 아래 그대로), 마우스 오버 효과
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
