@@ -10,6 +10,7 @@
 - 설정 > 가족(`/settings/family` 승인·거절·새 기기·그룹 링크, `/settings/family/sms` 한 사람용 문자 링크) 완료.
 - 설정: 구성원 상세(`/settings/family/member/<id>` 사진 올리기 허용·내보내기), 가족도 사진 저장하기(`/settings`, 켜면 가족 크게 보기에 저장 링크), 저장 용량(`/settings/storage`) 완료.
 - 설정: 아이(`/settings/children` 목록, `/settings/children/<id|new>` 고치기·추가, 가족방당 10명), 가족 화면 글자 크기(`/settings/text-size`, 가족이 처음 들어올 때 크기 `families.text_size_mode`), 계정(`/settings/account` 제공자·로그아웃) 완료.
+- 접종·검진(`/health/<아이 id>`, 앨범 위 아이별 다음 일정, 설정 > 아이에서 켜고 끄기): 일정 표 `src/lib/health.ts`, 완료 기록 `health_done`(부모만) 완료.
 - 부모 최근 반응(`/reactions`, 앨범 위 '최근 반응 새 N'): 승인된 가족의 반응·한마디, 확인할 사람, 열면 읽음 완료.
 - 부모 사진 정보(`/photo/<id>`, 앨범 칸에서): 찍은 날·아이·보여줄 그룹 고치기, 지우기(용량 빼고 R2 정리 대기열 `r2_cleanup.prefix`) 완료.
 - 그룹 관리(`/settings/family/groups` 목록·추가(10개)·상세·비밀번호 바꾸기·주소 다시 만들기) 완료.
@@ -59,7 +60,8 @@ src/lib/album.ts        앨범 쿼리 읽기·링크·목록 불러오기, 반�
 src/components/        ReactRow(반응 5개)·HeartToggle·SayForm(한마디)·Notice
 src/lib/parent.ts       부모 로그인 제공자·PKCE·부모 화면 진입(loadParent)
 src/layouts/Parent.astro 부모 화면 뼈대(아래 탭), 스타일 src/styles/parent.css(.sp-p*)
-src/lib/age.ts          생후 개월·생일 표시(단위 검사)
+src/lib/age.ts          생후 개월·생일·남은 시간·지난 시간 표시(단위 검사)
+src/lib/health.ts       접종·검진 권장 일정 표와 날짜 계산(단위 검사)
 src/lib/emoji.ts        반응 도트 이모지와 페이지당 한 번 넣는 sprite
 supabase/migrations/    DB 스키마·RLS·권한 함수(sp_*)·입장 RPC. 실제 Supabase에 그대로 적용
 supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stub.sql: auth 흉내, rls.sql: 시나리오, run.sh)
