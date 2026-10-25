@@ -4,7 +4,8 @@
 
 ## 현재 상태
 
-- 버전 0.1.0, 기본 설정 완료(`dev`). DB 스키마·권한(Supabase 마이그레이션)은 작성·로컬 검사 완료, 실제 Supabase 프로젝트는 아직 없다. 화면·데이터 연결은 아직. 다음 이슈는 plan.md 참고.
+- 버전 0.1.0. DB 스키마·권한(Supabase 마이그레이션)은 작성·로컬 검사 완료, 실제 Supabase 프로젝트는 아직 없다.
+- 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. mock 백엔드로 동작 확인, 앨범은 자리만. 지금은 기기 하나가 가족방 하나에만 들어간다(이슈 7에서 여러 가족방). 다음 이슈는 plan.md 참고.
 - 첫 화면(`/`)은 심볼과 이름만 있는 임시 페이지. 클라이언트 JS 0KB.
 - 로컬 Lighthouse(모바일, 기본 스로틀링): LCP 약 0.7초, CLS 0, 접근성 100점.
 
@@ -29,7 +30,13 @@ public/favicon.svg      심볼 (시스템 테마에 맞춰 색 바뀜)
 src/styles/tokens.css   디자인 토큰 (색·글자·간격·모서리·터치). 원본은 디자인 시스템 '스위피'
 src/styles/base.css     문서 기본 스타일 (.sp-html, .sp-body, 포커스 링)
 src/layouts/Base.astro  공통 HTML 뼈대 (lang=ko, theme-color)
-src/pages/index.astro   임시 첫 화면
+src/layouts/Family.astro 가족 화면 뼈대 (글자 크기 쿠키 적용)
+src/styles/family.css   가족 화면 공통 (.sp-f*)
+src/lib/backend/        백엔드 계약(types.ts), supabase.ts(fetch로 Auth·RPC), mock.ts(개발용, 운영 금지)
+src/lib/pass.ts         출입증 쿠키(sp_pass, httpOnly)·글자 크기 쿠키(sp_size)
+src/pages/index.astro   주소 없이 온 경우 안내
+src/pages/i/[code]/     누구세요(index) → 비밀번호(password)
+src/pages/wait.astro    승인 기다림 / album.astro 앨범(자리만) / 500.astro
 supabase/migrations/    DB 스키마·RLS·권한 함수(sp_*)·입장 RPC. 실제 Supabase에 그대로 적용
 supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stub.sql: auth 흉내, rls.sql: 시나리오, run.sh)
 ```
@@ -52,7 +59,7 @@ supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stu
 
 | 명령 | 하는 일 |
 | --- | --- |
-| `npm run dev` | 개발 서버 |
+| `npm run dev` | 개발 서버 (`SWEEPEA_BACKEND=mock`이면 메모리 백엔드) |
 | `npm run check` | 타입 검사 |
 | `npm run build` | 빌드 (`dist/`) |
 | `npm run test:db` | 로컬 Postgres 16 임시 클러스터에 마이그레이션 적용 후 권한 시나리오 검사 (`PG_BIN`으로 경로 지정) |
