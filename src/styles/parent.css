@@ -974,3 +974,23 @@
 .sp-p__list--gap {
   margin-bottom: var(--space-2);
 }
+/* 확인 체크(알약 칩이 아닌 기본 체크박스 줄) */
+.sp-p__check--plain,
+.sp-p__check--plain:has(.sp-p__checkbox:checked) {
+  min-height: 2.75rem;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--label);
+  font-weight: 400;
+}
+/* 작별·되살리기: 가운데 안내 + 아래 버튼 */
+.sp-p__farewell {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  text-align: center;
+}

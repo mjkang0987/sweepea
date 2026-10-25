@@ -1,0 +1,40 @@
+---
+// 탈퇴 유예 중 다시 로그인한 부모: 되살리기 / 그대로 탈퇴하기(로그아웃)
+import Parent from '../layouts/Parent.astro';
+import { BackendError, getBackend } from '../lib/backend';
+import { goodbyeHref, loadParent, logoutParent } from '../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies, { needFamily: true, allowClosing: true });
+if ('redirect' in a) return Astro.redirect(a.redirect);
+if (!a.home.closing || !a.home.delete_after) return Astro.redirect('/home');
+const at = a.home.delete_after;
+let failed = false;
+if (Astro.request.method === 'POST') {
+  const action = (await Astro.request.formData()).get('do');
+  if (action === 'leave') {
+    await logoutParent(Astro.cookies);
+    return Astro.redirect(goodbyeHref(at), 303);
+  }
+  try {
+    await getBackend().restoreFamily(a.pass);
+    return Astro.redirect('/home', 303);
+  } catch (err) {
+    if (!(err instanceof BackendError)) throw err;
+    failed = true;
+  }
+}
+const day = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(at));
+---
+
+<Parent title="탈퇴 신청 중이에요 · 스위피">
+  <section class="sp-p__farewell" aria-labelledby="restore-title">
+    <h1 class="sp-p__title" id="restore-title">탈퇴 신청 중이에요</h1>
+    <p class="sp-p__lead">{day}에 모두 지워질 예정이에요.<br />되살리면 사진과 가족이 그대로 돌아오고, 가족 화면도 다시 열려요.</p>
+    {failed && <p class="sp-p__error" role="alert">되살리지 못했어요. 지울 날이 지났을 수 있어요.</p>}
+  </section>
+  <form class="sp-p__bottom" method="post">
+    <button class="sp-p__btn" type="submit" name="do" value="restore">되살리기</button>
+    <button class="sp-p__btn sp-p__btn--text" type="submit" name="do" value="leave">그대로 탈퇴하기</button>
+  </form>
+</Parent>
