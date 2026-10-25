@@ -11,7 +11,7 @@ const msg =
   say === 'sent' ? { cls: 'sp-f__box sp-f__box--pea', text: '보냈어요. 엄마아빠가 볼 수 있어요.' } :
   say === 'limit' ? { cls: 'sp-f__box sp-f__box--danger', text: '오늘은 한마디를 많이 보냈어요. 내일 다시 보내 주세요.' } :
   say === 'empty' ? { cls: 'sp-f__box sp-f__box--danger', text: '한마디를 써 주세요.' } :
-  say === 'error' ? { cls: 'sp-f__box sp-f__box--danger', text: '보내지 못했어요. 엄마아빠가 확인한 뒤에 보낼 수 있어요.' } : null;
+  say === 'error' ? { cls: 'sp-f__box sp-f__box--danger', text: '보내지 못했어요. 잠시 뒤에 다시 보내 주세요.' } : null;
 ---
 
 <form class="sp-say" id="say" method="post" action={`/album/${mediaId}`}>

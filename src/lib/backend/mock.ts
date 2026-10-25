@@ -61,7 +61,8 @@ const newOpen = (s: Share) => s.createdAt + 72 * HOUR > Date.now() && !s.usedAt;
 function viewer(pass: Pass, mediaId: string): string {
   const x = media.find((y) => y.id === mediaId && y.status === 'ready');
   const d = x && deviceOf(pass, x.family_id);
-  if (!x || !d || d.status !== 'active' || !d.memberId) throw new BackendError('not_allowed', 403, '42501');
+  const active = members.find((m) => m.id === d?.memberId)?.status === 'active';
+  if (!x || !d || d.status !== 'active' || !d.memberId || !active) throw new BackendError('not_allowed', 403, '42501');
   return d.memberId;
 }
 
@@ -198,6 +199,15 @@ export function createMockBackend(): Backend {
       comments.push({ mediaId: id, memberId: m, at: Date.now() });
     },
     async reactionCounts(pass, ids) {
+      // 볼 수 있는 사진만(DB의 sp_can_view_media 흉내)
+      ids = ids.filter((id) => {
+        try {
+          viewer(pass, id);
+          return true;
+        } catch {
+          return false;
+        }
+      });
       const out = new Map<string, ReactionCount>();
       const mineIds = new Set([...devices].filter(([k]) => k.startsWith(`${pass.access}|`)).map(([, d]) => d.memberId));
       const add = (mediaId: string, kind: ReactionCount['kind'], member: string) => {
