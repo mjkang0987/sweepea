@@ -23,9 +23,9 @@ export class BackendError extends Error {
 export function createSupabaseBackend(url: string, anonKey: string, serviceKey?: string): Backend {
   const base = url.replace(/\/$/, '');
 
-  async function call<T>(path: string, init: RequestInit & { token?: string | null }): Promise<T> {
+  async function call<T>(path: string, init: RequestInit & { token?: string | null; apikey?: string }): Promise<T> {
     const headers = new Headers(init.headers);
-    headers.set('apikey', anonKey);
+    headers.set('apikey', init.apikey ?? anonKey);
     headers.set('content-type', 'application/json');
     headers.set('authorization', `Bearer ${init.token ?? anonKey}`);
     const res = await fetch(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(8000) });
@@ -94,6 +94,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       return call<boolean>('/rest/v1/rpc/sp_finish_upload', {
         method: 'POST',
         token: serviceKey,
+        // 새 형식 비밀 키(sb_secret_)는 JWT가 아니라 apikey 자리에도 넣어야 한다
+        apikey: serviceKey,
         body: JSON.stringify({ p_media_id: id, p_view_key: keys.view, p_thumb_key: keys.thumb, p_poster_key: keys.poster, p_bytes: bytes }),
       });
     },
@@ -105,7 +107,6 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         limit: String(Math.min(opts.limit ?? 60, 200)),
       });
       if (opts.familyId) q.set('family_id', `eq.${opts.familyId}`);
-      if (opts.before) q.set('taken_at', `lt.${opts.before}`);
       return call<MediaItem[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access });
     },
   };

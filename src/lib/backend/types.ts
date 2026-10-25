@@ -118,5 +118,6 @@ export interface Backend {
   /** 서버 전용(service_role). 이미 완료됐거나 없으면 false */
   finishUpload(mediaId: string, keys: MediaKeys, bytes: number): Promise<boolean>;
   /** 볼 수 있는 사진만(RLS). 최근 찍은 순 */
-  listMedia(pass: Pass, opts?: { familyId?: string; before?: string; limit?: number }): Promise<MediaItem[]>;
+  // shortcut: 다음 쪽 넘기기 없음(최근 limit장만). 뷰어 이슈에서 (taken_at, id) 기준 커서로
+  listMedia(pass: Pass, opts?: { familyId?: string; limit?: number }): Promise<MediaItem[]>;
 }
