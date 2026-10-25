@@ -24,7 +24,7 @@ const who = `${a.home.children?.[0]?.name ?? ''} ${a.home.role === 'dad' ? '아�
 const confirm = Astro.url.searchParams.get('confirm');
 const photos = a.home.photo_count ?? 0;
 const videos = a.home.video_count ?? 0;
-const what = videos ? `사진 ${photos.toLocaleString('ko-KR')}장·영상 ${videos.toLocaleString('ko-KR')}개` : `사진 ${photos.toLocaleString('ko-KR')}장`;
+const what = videos ? `사진 ${photos.toLocaleString('ko-KR')}장·영상 ${videos.toLocaleString('ko-KR')}개와` : `사진 ${photos.toLocaleString('ko-KR')}장과`;
 const agreeError = Astro.url.searchParams.get('e') === 'agree';
 const day = (iso: string) => new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(iso));
 const planUntil = a.home.plan_until ? day(a.home.plan_until) : null;
@@ -43,7 +43,7 @@ const planUntil = a.home.plan_until ? day(a.home.plan_until) : null;
     confirm === 'delete' && !planUntil ? (
       <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
         <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>정말 탈퇴할까요?</h2>
-        <p class="sp-p__lead">가족 화면은 바로 닫히고, <strong>3일 뒤</strong> {what}과 가족·아이 정보가 모두 지워져요. 3일 안에 다시 로그인하면 되살릴 수 있어요.</p>
+        <p class="sp-p__lead">가족 화면은 바로 닫히고, <strong>3일 뒤</strong> {what} 가족·아이 정보가 모두 지워져요. 3일 안에 다시 로그인하면 되살릴 수 있어요.</p>
         <form class="sp-p__form" method="post">
           {agreeError && <p class="sp-p__error" role="alert" id="agree-err">'모두 지워지는 것을 확인했어요'를 체크해야 탈퇴할 수 있어요.</p>}
           <label class="sp-p__check sp-p__check--plain">
