@@ -10,6 +10,7 @@
 - 설정 > 가족(`/settings/family` 승인·거절·새 기기·그룹 링크, `/settings/family/sms` 한 사람용 문자 링크) 완료.
 - 설정: 구성원 상세(`/settings/family/member/<id>` 사진 올리기 허용·내보내기), 가족도 사진 저장하기(`/settings`, 켜면 가족 크게 보기에 저장 링크), 저장 용량(`/settings/storage`) 완료.
 - 설정: 아이(`/settings/children` 목록, `/settings/children/<id|new>` 고치기·추가, 가족방당 10명), 가족 화면 글자 크기(`/settings/text-size`, 가족이 처음 들어올 때 크기 `families.text_size_mode`), 계정(`/settings/account` 제공자·로그아웃) 완료.
+- PC 화면(64rem 이상): 가족 모아 보기·크게 보기 넓게(4·6·8칸), 부모 앨범 넓게·메뉴 위, 올리기 두 칸·끌어다 놓기 완료.
 - 매일 정리 예약 작업(`src/worker.ts` scheduled, 서울 새벽 3:17): 탈퇴 기한 지난 가족방·하루 지난 올리기 지우기, R2 정리 대기열 폴더 지우기(`src/jobs/cleanup.ts`). 무료 가족방 5GB가 차면 새로 올리기만 멈춤 완료.
 - 홈 화면에 두기: `public/manifest.webmanifest`·`public/icons/`(콩이), 가족 앨범 위 안내(`src/components/InstallGuide.astro`, 기기 판별 `src/lib/install.ts`), 앱 안 브라우저는 엄마아빠에게 부탁(`members.install_help_at`) → 부모 최근 반응 '도와줄 사람' 완료.
 - 접종·검진(`/health/<아이 id>`, 앨범 위 아이별 다음 일정, 설정 > 아이에서 켜고 끄기): 일정 표 `src/lib/health.ts`, 완료 기록 `health_done`(부모만) 완료.
