@@ -27,6 +27,7 @@ test('다가오는 일정과 지난 일정', () => {
   const keys = (l: typeof upcoming) => l.map((x) => x.item.key);
   assert.ok(!keys(upcoming).includes('mmr-1') && !keys(past).includes('mmr-1'), '한 것은 빠짐');
   assert.ok(keys(upcoming).includes('dtap-4') && keys(upcoming).includes('je-1'), '곧·지금 가능');
+  assert.ok(keys(past).includes('rv-3'), '로타는 8개월이 지나면 시기 지남');
   assert.ok(!keys(upcoming).includes('dtap-5'), '6개월 넘게 남은 건 아직');
   assert.ok(keys(past).includes('hepb-1') && keys(past).includes('check-2'), '오래된 것·시기 지남은 지난 일정');
   assert.deepEqual(upcoming.map((x) => x.start), [...upcoming.map((x) => x.start)].sort());

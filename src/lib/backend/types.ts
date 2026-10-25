@@ -279,7 +279,8 @@ export interface Backend {
   resetGroupLinks(pass: Pass, groupId: string): Promise<void>;
   /** 가족 화면 처음 글자 크기 */
   setTextSizeMode(pass: Pass, familyId: string, mode: TextSizeMode): Promise<void>;
-  addChild(pass: Pass, familyId: string, name: string, birthDate: string): Promise<void>;
+  /** showHealth: 다른 아이들과 같은 '접종·검진 일정 보기' */
+  addChild(pass: Pass, familyId: string, name: string, birthDate: string, showHealth: boolean): Promise<void>;
   /** 자기 가족방 아이가 아니면 404 */
   updateChild(pass: Pass, childId: string, name: string, birthDate: string): Promise<void>;
   createShare(pass: Pass, groupIds: string[], targetMemberId?: string, mediaIds?: string[]): Promise<string>;

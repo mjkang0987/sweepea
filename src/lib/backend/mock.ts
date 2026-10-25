@@ -362,10 +362,10 @@ export function createMockBackend(): Backend {
       if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('not_found', 404);
       sizeModes[familyId] = mode;
     },
-    async addChild(pass, familyId, name, birthDate) {
+    async addChild(pass, familyId, name, birthDate, showHealth) {
       if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('forbidden', 403, '42501');
       if (kids.filter((k) => k.familyId === familyId).length >= 10) throw new BackendError('children_limit', 400, '22023');
-      kids.push({ id: crypto.randomUUID(), familyId, name, birth_date: birthDate, show_health: kids.find((k) => k.familyId === familyId)?.show_health ?? true });
+      kids.push({ id: crypto.randomUUID(), familyId, name, birth_date: birthDate, show_health: showHealth });
     },
     async updateChild(pass, childId, name, birthDate) {
       const k = kids.find((x) => x.id === childId && x.familyId === parents.get(pass.access)?.familyId);

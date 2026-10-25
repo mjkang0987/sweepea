@@ -247,12 +247,12 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     setDownloadAllowed: (pass, familyId, on) => patchOne(pass, 'families', familyId, { download_allowed: on }),
     setTextSizeMode: (pass, familyId, mode) => patchOne(pass, 'families', familyId, { text_size_mode: mode }),
     updateChild: (pass, childId, name, birthDate) => patchOne(pass, 'children', childId, { name, birth_date: birthDate }),
-    async addChild(pass, familyId, name, birthDate) {
+    async addChild(pass, familyId, name, birthDate, showHealth) {
       await call(`/rest/v1/children`, {
         method: 'POST',
         token: pass.access,
         headers: { prefer: 'return=minimal' },
-        body: JSON.stringify({ family_id: familyId, name, birth_date: birthDate }),
+        body: JSON.stringify({ family_id: familyId, name, birth_date: birthDate, show_health: showHealth }),
       });
     },
     createShare: (pass, groupIds, target, mediaIds) =>
