@@ -504,6 +504,9 @@
   font-size: var(--senior-title-size);
   text-decoration: none;
 }
+.sp-a__zoom-space {
+  height: calc(var(--target-senior) + var(--space-5));
+}
 .sp-a__zoom-btn--off {
   opacity: 0.35;
 }
@@ -547,9 +550,6 @@
   max-height: 70vh;
   object-fit: contain;
   background: var(--surface);
-}
-.sp-v__fig .sp-f__caption {
-  padding: 0 var(--space-5);
 }
 .sp-v__nav {
   display: grid;

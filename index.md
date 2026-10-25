@@ -5,7 +5,8 @@
 ## 현재 상태
 
 - 버전 0.1.0. DB 스키마·권한(Supabase 마이그레이션)은 작성·로컬 검사 완료, 실제 Supabase 프로젝트는 아직 없다.
-- 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 1~2시간 주소) 완료. 올리기 화면·실제 뷰어는 아직.
+- 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 1~2시간 주소) 완료. 올리기 화면은 아직.
+- 조부모 앨범(`/album` 넘겨 보기·모아 보기, `/album/<id>` 크게 보기, 집 고르기) 완료. 하트·한마디는 아직.
 - 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. mock 백엔드로 동작 확인, 앨범은 자리만. 기기 하나로 여러 가족방에 들어간다(가족방마다 승인·차단 따로). 다음 이슈는 plan.md 참고.
 - 첫 화면(`/`)은 심볼과 이름만 있는 임시 페이지. 클라이언트 JS 0KB.
 - 로컬 Lighthouse(모바일, 기본 스로틀링): LCP 약 0.7초, CLS 0, 접근성 100점.
@@ -43,7 +44,9 @@ src/pages/m/            사진·영상 전달(서명 확인 → R2, Range)
 worker-configuration.d.ts  `npm run types`(wrangler types)로 만든 Worker 타입
 src/pages/index.astro   주소 없이 온 경우 안내
 src/pages/i/[code]/     누구세요(index) → 비밀번호(password)
-src/pages/wait.astro    승인 기다림 / album.astro 앨범(자리만) / 500.astro
+src/pages/wait.astro    승인 기다림 / 500.astro
+src/pages/album/        앨범(index: 넘겨 보기·모아 보기, [id]: 크게 보기). 쿼리 f(집)·v(보기)·z(칸)
+src/lib/album.ts        앨범 쿼리 읽기·링크·목록 불러오기
 supabase/migrations/    DB 스키마·RLS·권한 함수(sp_*)·입장 RPC. 실제 Supabase에 그대로 적용
 supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stub.sql: auth 흉내, rls.sql: 시나리오, run.sh)
 ```

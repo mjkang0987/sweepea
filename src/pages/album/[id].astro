@@ -28,7 +28,7 @@ const label = `${dayLabel(m.taken_at)} ${kid}${what}`;
     <span class="sp-v__spacer"></span>
   </nav>
   <h1 class="sp-f__title sp-v__title" id="v-title">{label}</h1>
-  <figure class="sp-v__fig" aria-labelledby="v-title">
+  <figure class="sp-v__fig">
     {
       m.kind === 'video' ? (
         <video class="sp-v__media" src={src} poster={poster} controls playsinline preload="metadata" aria-labelledby="v-title" />

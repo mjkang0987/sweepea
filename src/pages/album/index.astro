@@ -18,8 +18,8 @@ const cards = await Promise.all(
   items.map(async (m, i) => ({
     ...m,
     href: albumHref(q, `/album/${m.id}`),
-    // 목록은 썸네일(큰 파일은 크게 보기에서만). 영상은 포스터가 있으면 포스터
-    src: await signedMediaUrl(q.v === 'swipe' && m.poster_key ? m.poster_key : m.thumb_key),
+    // 넘겨 보기는 큰 카드라 보기용(영상은 포스터, 없으면 썸네일), 모아 보기는 썸네일. 넘겨 보기는 앞 2장 말고는 lazy
+    src: await signedMediaUrl(q.v === 'swipe' ? (m.kind === 'video' ? (m.poster_key ?? m.thumb_key) : m.view_key) : m.thumb_key),
     day: dayLabel(m.taken_at),
     kid: kids.get(m.family_id) ?? '',
     n: i + 1,
@@ -77,7 +77,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
                 <span class="sp-a__card-cap">
                   {showTag && <span class="sp-a__tag">{c.kid}</span>}
                   {c.day}
-                  {c.kind === 'video' && ' · 영상'}
+                  {c.kind === 'video' ? ' · 영상' : <span class="sp-vh"> 사진</span>}
                   <span class="sp-vh"> 크게 보기,</span>
                   <span class="sp-a__count">{c.n} / {cards.length}</span>
                 </span>
@@ -119,6 +119,8 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
             </ul>
           </section>
         ))}
+        {/* 떠 있는 칸 크기 버튼 아래로 마지막 줄이 가리지 않게 */}
+        <div class="sp-a__zoom-space" aria-hidden="true"></div>
       </>
     )
   }
