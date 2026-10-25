@@ -1,19 +1,30 @@
 ---
-// 설정: 지금은 가족과 로그아웃. 나머지 줄(아이·글자 크기·저장하기·계정·용량·플랜)은 다음 이슈
+// 설정: 가족, 가족도 사진 저장하기, 저장 용량, 로그아웃. 아이·글자 크기·계정은 다음 이슈
 import Parent from '../../layouts/Parent.astro';
 import { getBackend } from '../../lib/backend';
-import { summarize } from '../../lib/familyAdmin';
+import { handleFamilyPost, sizeLabel, summarize } from '../../lib/familyAdmin';
 import { loadParent } from '../../lib/parent';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
+if (Astro.request.method === 'POST') return Astro.redirect(await handleFamilyPost(Astro.request, Astro.cookies), 303);
 const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const admin = await getBackend().familyAdmin(a.pass);
 const s = summarize(admin);
+const h = a.home;
+const allowed = !!h.download_allowed;
+const used = sizeLabel(h.storage_used_bytes ?? 0);
+const done = Astro.url.searchParams.get('done');
+const doneText: Record<string, string> = {
+  'download-on': '이제 가족도 사진을 휴대폰에 저장할 수 있어요.',
+  'download-off': '가족 사진 저장을 껐어요.',
+  error: '처리하지 못했어요. 다시 눌러 주세요.',
+};
 ---
 
 <Parent title="설정 · 스위피" tab="settings">
   <h1 class="sp-p__title sp-p__title--large">설정</h1>
+  {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[done]}</p>}
   <section class="sp-p__section" aria-labelledby="sec-family">
     <h2 class="sp-p__section-title" id="sec-family">가족과 아이</h2>
     <ul class="sp-p__list">
@@ -24,6 +35,32 @@ const s = summarize(admin);
             {s.waiting > 0 && <span class="sp-p__badge">승인 {s.waiting}</span>}
             그룹 {admin.groups.length} · 기기 {s.activeDevices}
           </span>
+          <span class="sp-p__chev" aria-hidden="true">›</span>
+        </a>
+      </li>
+    </ul>
+  </section>
+  <section class="sp-p__section" aria-labelledby="sec-share">
+    <h2 class="sp-p__section-title" id="sec-share">보기와 공유</h2>
+    <form class="sp-p__panel" method="post">
+      <div class="sp-p__panel-row sp-p__panel-line">
+        <span>
+          <span class="sp-p__who-name">가족도 사진 저장하기</span>
+          <span class="sp-p__hint sp-p__block">가족이 사진을 휴대폰에 저장할 수 있어요</span>
+        </span>
+        <button class="sp-p__switch" type="submit" name="do" value={`download:${h.family_id}:${allowed ? 'off' : 'on'}`} role="switch" aria-checked={allowed ? 'true' : 'false'}>
+          <span class="sp-vh">가족도 사진 저장하기</span>
+        </button>
+      </div>
+    </form>
+  </section>
+  <section class="sp-p__section" aria-labelledby="sec-account">
+    <h2 class="sp-p__section-title" id="sec-account">계정</h2>
+    <ul class="sp-p__list">
+      <li>
+        <a class="sp-p__row" href="/settings/storage">
+          <span class="sp-p__row-label">저장 용량</span>
+          <span class="sp-p__row-value">{used} / 5GB</span>
           <span class="sp-p__chev" aria-hidden="true">›</span>
         </a>
       </li>

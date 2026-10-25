@@ -820,3 +820,99 @@
   float: left;
   width: 100%;
 }
+
+/* 켜기·끄기 버튼(폼 POST라 JS 없이 바로 저장). role=switch + aria-checked */
+.sp-p__switch {
+  flex: none;
+  position: relative;
+  width: 3.25rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--label-2);
+  cursor: pointer;
+}
+.sp-p__switch::after {
+  content: '';
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.sp-p__switch[aria-checked='true'] {
+  background: var(--pea);
+  box-shadow: none;
+}
+.sp-p__switch[aria-checked='true']::after {
+  left: auto;
+  right: 0.1875rem;
+}
+.sp-p__switch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+@media (forced-colors: active) {
+  .sp-p__switch[aria-checked='true'] {
+    background: Highlight;
+  }
+}
+.sp-p__block {
+  display: block;
+}
+.sp-p__panel-line {
+  gap: var(--space-3);
+}
+.sp-p__group {
+  flex-direction: column;
+  align-items: stretch;
+}
+.sp-p__group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.sp-p__members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sp-p__member {
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--label);
+  text-decoration: none;
+}
+.sp-p__tag {
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-size: var(--footnote-size);
+  font-weight: 700;
+}
+.sp-p__avatar--large {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: var(--title-2-size);
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+}
+.sp-p__btn--danger-text {
+  color: var(--danger);
+}
+.sp-p__big {
+  font-size: var(--title-2-size);
+}
+.sp-p__meter {
+  width: 100%;
+  height: 0.5rem;
+}

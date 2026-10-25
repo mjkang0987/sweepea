@@ -22,7 +22,7 @@ const linkGroup = s.groupName(linkGid ?? null);
 // 되돌릴 수 없는 동작 확인
 const [cKind, cId, cStatus] = (q.get('confirm') ?? '').split(':');
 const cName =
-  cKind === 'member' ? s.pendingMembers.find((m) => m.id === cId)?.display_name :
+  cKind === 'member' ? admin.members.find((m) => m.id === cId && m.status !== 'rejected')?.display_name :
   cKind === 'device' ? (() => { const d = s.pendingDevices.find((x) => x.id === cId); return d && (d.requested_name ?? s.memberName(d.requested_member_id ?? d.member_id) ?? '새 휴대폰'); })() : undefined;
 const confirmAsk = cName && ((cKind === 'member' && cStatus === 'rejected') || (cKind === 'device' && cStatus === 'revoked'));
 // 확인하려던 대상이 그새 처리됐으면 '이미 처리됨'으로
@@ -30,7 +30,7 @@ const done = q.get('done') ?? (q.get('confirm') ? 'pending-check' : null);
 const shownDone = done === 'pending-check' ? (confirmAsk ? null : 'gone') : done;
 const doneText: Record<string, string> = {
   'member-active': '승인했어요. 이제 가족 앨범을 다 볼 수 있어요.',
-  'member-rejected': '거절했어요. 그 휴대폰은 다시 들어올 수 없어요.',
+  'member-rejected': '내보냈어요. 그 사람의 휴대폰은 다시 들어올 수 없어요.',
   'device-active': '승인했어요.',
   'device-revoked': '내 가족이 아니라고 표시했어요. 그 휴대폰은 들어올 수 없어요.',
   gone: '이미 처리됐거나 기간이 지난 요청이에요.',
@@ -38,7 +38,7 @@ const doneText: Record<string, string> = {
   error: '처리하지 못했어요. 다시 눌러 주세요.',
 };
 const when = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
-const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id === gid && m.status === 'active').map((m) => m.display_name);
+const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id === gid && m.status === 'active');
 ---
 
 <Parent title="가족 · 설정" tab="settings">
@@ -130,13 +130,30 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
       {
         admin.groups.map((g) => (
           <li class="sp-p__group">
-            <div class="sp-p__group-text">
+            <div class="sp-p__group-head">
               <h3 class="sp-p__who-name">{g.name}</h3>
-              <p class="sp-p__hint">{groupMembers(g.id).join(', ') || '아직 들어온 사람이 없어요'}</p>
+              <form method="post" action="/settings/family">
+                <button class="sp-p__chip" type="submit" name="do" value={`share:${g.id}`}>링크 만들기<span class="sp-vh"> ({g.name})</span></button>
+              </form>
             </div>
-            <form method="post" action="/settings/family">
-              <button class="sp-p__chip" type="submit" name="do" value={`share:${g.id}`}>링크 만들기<span class="sp-vh"> ({g.name})</span></button>
-            </form>
+            {groupMembers(g.id).length === 0 ? (
+              <p class="sp-p__hint">아직 들어온 사람이 없어요</p>
+            ) : (
+              <ul class="sp-p__members">
+                {groupMembers(g.id).map((m) => {
+                  const up = admin.devices.some((d) => d.member_id === m.id && d.status === 'active' && d.can_upload);
+                  return (
+                    <li>
+                      <a class="sp-p__member" href={`/settings/family/member/${m.id}`}>
+                        <span class="sp-p__row-label">{m.display_name}</span>
+                        {up && <span class="sp-p__tag">올리기</span>}
+                        <span class="sp-p__chev" aria-hidden="true">›</span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </li>
         ))
       }
