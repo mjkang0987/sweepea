@@ -3,7 +3,8 @@
 import Parent from '../layouts/Parent.astro';
 import { getBackend } from '../lib/backend';
 import { callName } from '../lib/ko';
-import { loadParent } from '../lib/parent';
+import { splitSchedule } from '../lib/health';
+import { loadParent, seoulToday } from '../lib/parent';
 import { signedMediaUrl } from '../lib/signed';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
@@ -11,7 +12,20 @@ const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const kid = callName(a.home.children?.[0]?.name ?? '아이');
 // shortcut: 최근 200장까지만. 다음 쪽 넘기기는 가족 앨범과 같이 커서로
-const items = await getBackend().listMedia(a.pass, { limit: 200 });
+const b = getBackend();
+const items = await b.listMedia(a.pass, { limit: 200 });
+// 접종·검진: 일정 보기를 켠 아이마다 다음 일정 하나
+const today = seoulToday();
+const healthRows = await Promise.all(
+  (a.home.children ?? [])
+    .filter((k) => k.show_health)
+    .map(async (k) => {
+      const done = new Set((await b.healthDone(a.pass, k.id)).map((d) => d.item_key));
+      const next = splitSchedule(k.birth_date, today, done).upcoming[0];
+      const [, m, d] = next?.start.split('-').map(Number) ?? [];
+      return { id: k.id, name: k.name, next: next ? `${next.item.name} · ${next.state.kind === 'soon' ? `${m}월 ${d}일부터` : '지금 가능'}` : '6개월 안에는 없어요' };
+    }),
+);
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
 const months: { label: string; cells: { id: string; src: string; video: boolean; day: string }[] }[] = [];
@@ -26,6 +40,17 @@ for (const m of items) {
   <h1 class="sp-p__title sp-p__title--large">앨범</h1>
   {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus>지웠어요.</p>}
   <ul class="sp-p__list sp-p__activity">
+    {healthRows.map((h) => (
+      <li>
+        <a class="sp-p__row sp-p__row--tall" href={`/health/${h.id}`}>
+          <span class="sp-p__row-label sp-p__radio-text">
+            <span>접종·검진 · {h.name}</span>
+            <span class="sp-p__hint">다음: {h.next}</span>
+          </span>
+          <span class="sp-p__chev" aria-hidden="true">›</span>
+        </a>
+      </li>
+    ))}
     <li>
       <a class="sp-p__row" href="/reactions">
         <span class="sp-p__row-label">최근 반응</span>

@@ -1,0 +1,122 @@
+---
+// 접종·검진 일정(부모만): 다가오는 일정·지난 일정·완료. 체크하고 저장하면 완료한 날(오늘)이 기록된다
+import Parent from '../../layouts/Parent.astro';
+import { monthsOld } from '../../lib/age';
+import { BackendError, getBackend } from '../../lib/backend';
+import { HEALTH_ITEMS, splitSchedule, type HealthState } from '../../lib/health';
+import { loadParent, seoulToday } from '../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const kid = a.home.children?.find((k) => k.id === Astro.params.id);
+if (!kid) return Astro.redirect('/home');
+const b = getBackend();
+const today = seoulToday();
+const here = `/health/${kid.id}`;
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const valid = new Set(HEALTH_ITEMS.map((i) => i.key));
+  const shown = new Set(form.getAll('shown').map(String).filter((k) => valid.has(k)));
+  const checked = new Set(form.getAll('done').map(String).filter((k) => shown.has(k)));
+  const before = new Set((await b.healthDone(a.pass, kid.id)).map((d) => d.item_key));
+  try {
+    await b.setHealthDone(a.pass, a.home.family_id!, kid.id, [...checked].filter((k) => !before.has(k)), [...shown].filter((k) => before.has(k) && !checked.has(k)), today);
+    return Astro.redirect(`${here}?done=saved`, 303);
+  } catch (e) {
+    if (!(e instanceof BackendError)) throw e;
+    return Astro.redirect(`${here}?done=error`, 303);
+  }
+}
+const doneRows = await b.healthDone(a.pass, kid.id);
+const doneOn = new Map(doneRows.map((d) => [d.item_key, d.done_on]));
+const { upcoming, past } = splitSchedule(kid.birth_date, today, new Set(doneOn.keys()));
+const doneList = HEALTH_ITEMS.filter((i) => doneOn.has(i.key)).sort((x, y) => (doneOn.get(x.key)! < doneOn.get(y.key)! ? 1 : -1));
+const md = (iso: string) => {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${m}월 ${d}일`;
+};
+const stateText = (s: HealthState) => (s.kind === 'now' ? '지금 가능' : s.kind === 'late' ? '시기 지남' : `${md(s.from)}부터`);
+const KIND = { vaccine: '접종', checkup: '검진' };
+const done = Astro.url.searchParams.get('done');
+---
+
+<Parent title={`접종·검진 · ${kid.name}`} tab="home">
+  <nav class="sp-p__bar" aria-label="뒤로">
+    <a class="sp-p__back" href="/home"><span aria-hidden="true">‹ </span>앨범</a>
+  </nav>
+  <h1 class="sp-p__title">{kid.name} · 생후 {monthsOld(kid.birth_date, today)}개월</h1>
+  <p class="sp-p__lead">한 것을 체크하고 저장하면 완료한 날이 기록돼요. 엄마아빠만 봐요.</p>
+  {done === 'saved' && <p class="sp-p__toast" tabindex="-1" autofocus>저장했어요.</p>}
+  {done === 'error' && <p class="sp-p__toast sp-p__toast--error" role="alert" tabindex="-1" autofocus>저장하지 못했어요. 다시 눌러 주세요.</p>}
+  <form class="sp-p__form" method="post">
+    <section class="sp-p__section" aria-labelledby="sec-next">
+      <h2 class="sp-p__section-title" id="sec-next">다가오는 일정</h2>
+      {upcoming.length === 0 && <p class="sp-p__hint sp-p__empty-note">6개월 안에는 없어요.</p>}
+      <ul class="sp-p__list">
+        {upcoming.map((x) => (
+          <li>
+            <label class="sp-p__health">
+              <input type="hidden" name="shown" value={x.item.key} />
+              <input class="sp-p__checkbox" type="checkbox" name="done" value={x.item.key} />
+              <span class="sp-p__tag">{KIND[x.item.kind]}</span>
+              <span class="sp-p__row-label sp-p__radio-text">
+                <span class="sp-p__who-name">{x.item.name}</span>
+                <span class="sp-p__hint">{x.item.age}</span>
+              </span>
+              <span class:list={['sp-p__health-when', x.state.kind === 'late' && 'sp-p__health-when--late']}>{stateText(x.state)}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </section>
+    {
+      past.length > 0 && (
+        <details class="sp-p__section sp-p__past">
+          <summary class="sp-p__section-title sp-p__past-title">지난 일정 {past.length}개 · 했으면 체크해 주세요</summary>
+          <ul class="sp-p__list">
+            {past.map((x) => (
+              <li>
+                <label class="sp-p__health">
+                  <input type="hidden" name="shown" value={x.item.key} />
+                  <input class="sp-p__checkbox" type="checkbox" name="done" value={x.item.key} />
+                  <span class="sp-p__tag">{KIND[x.item.kind]}</span>
+                  <span class="sp-p__row-label sp-p__radio-text">
+                    <span class="sp-p__who-name">{x.item.name}</span>
+                    <span class="sp-p__hint">{x.item.age}</span>
+                  </span>
+                  <span class:list={['sp-p__health-when', x.state.kind === 'late' && 'sp-p__health-when--late']}>{stateText(x.state)}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )
+    }
+    {
+      doneList.length > 0 && (
+        <section class="sp-p__section" aria-labelledby="sec-done">
+          <h2 class="sp-p__section-title" id="sec-done">완료</h2>
+          <ul class="sp-p__list">
+            {doneList.map((i) => (
+              <li>
+                <label class="sp-p__health">
+                  <input type="hidden" name="shown" value={i.key} />
+                  <input class="sp-p__checkbox" type="checkbox" name="done" value={i.key} checked />
+                  <span class="sp-p__tag">{KIND[i.kind]}</span>
+                  <span class="sp-p__row-label sp-p__radio-text">
+                    <span class="sp-p__who-name">{i.name}</span>
+                    <span class="sp-p__hint">{i.age}</span>
+                  </span>
+                  <span class="sp-p__health-when">{md(doneOn.get(i.key)!)}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+    <button class="sp-p__btn" type="submit">저장</button>
+  </form>
+  <p class="sp-p__hint">국가 권장 시기 기준이에요. 실제 접종 기록은 질병관리청 예방접종도우미에서 확인하세요.</p>
+</Parent>
