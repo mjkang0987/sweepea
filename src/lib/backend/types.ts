@@ -20,10 +20,19 @@ export interface EntryGroup {
   members: EntryMember[];
 }
 
+/** 이 링크의 가족방에서 지금 기기 상태. 처음 온 기기면 null */
+export interface EntryMe {
+  device: 'active' | 'pending' | 'revoked';
+  member: 'active' | 'pending' | 'expired' | 'rejected' | null;
+  name: string | null;
+}
+
 export type EntryInfo =
-  | { result: 'not_found' | 'closed' | 'expired' }
+  | { result: 'not_found' }
+  | { result: 'closed' | 'expired'; me: EntryMe | null }
   | {
       result: 'ok';
+      me: EntryMe | null;
       child_name: string | null;
       new_entry_open: boolean;
       target_member_id: string | null;
@@ -46,12 +55,15 @@ export interface EnterInput {
   groupId?: string;
 }
 
+/** 지금 기기가 들어간 가족방 하나 */
+export interface MeFamily extends EntryMe {
+  family_id: string;
+  closed: boolean;
+  child_name: string | null;
+}
+
 export interface Me {
-  device: 'active' | 'pending' | 'revoked' | null;
-  member?: 'active' | 'pending' | 'expired' | 'rejected' | null;
-  name?: string | null;
-  closed?: boolean;
-  child_name?: string | null;
+  families: MeFamily[];
 }
 
 export interface Backend {
