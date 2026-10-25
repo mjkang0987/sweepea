@@ -19,3 +19,10 @@ export function remainingLabel(untilMs: number, nowMs: number): string {
   const h = hours % 24;
   return `${d ? `${d}일` : ''}${d && h ? ' ' : ''}${h ? `${h}시간` : ''} 남았어요`;
 }
+
+/** 마지막으로 본 때(서울 날짜 기준): "오늘", "어제", "3일 전" */
+export function seenLabel(iso: string, nowMs: number): string {
+  const day = (ms: number) => Date.parse(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(ms)));
+  const days = Math.round((day(nowMs) - day(Date.parse(iso))) / 86_400_000);
+  return days <= 0 ? '오늘' : days === 1 ? '어제' : `${days}일 전`;
+}

@@ -4,7 +4,7 @@
 import type { Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, ParentHome, Pass, ReactionCount, TextSizeMode } from './types';
 import { BackendError } from './supabase';
 
-interface Group { id: string; familyId: string; name: string; hint: string; password: string }
+interface Group { id: string; familyId: string; name: string; hint: string; password: string; exclude?: boolean }
 interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean }
 interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean }
 interface Device { id: string; familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]>; canUpload?: boolean }
@@ -257,13 +257,13 @@ export function createMockBackend(): Backend {
       const gs = groups.filter((g) => g.familyId === fam);
       const now = new Date().toISOString();
       return {
-        groups: gs.map((g) => ({ id: g.id, name: g.name, include_by_default: true })),
+        groups: gs.map((g) => ({ id: g.id, name: g.name, include_by_default: !g.exclude, password_hint: g.hint || null })),
         members: members
           .filter((m) => gs.some((g) => g.id === m.groupId))
           .map((m) => ({ id: m.id, group_id: m.groupId, display_name: m.name, status: m.status, pending_until: m.status === 'pending' ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, created_at: now })),
         devices: [...devices.values()]
           .filter((d) => d.familyId === fam)
-          .map((d) => ({ id: d.id, member_id: d.memberId ?? null, status: d.status, requested_name: d.requestedName ?? null, requested_group_id: null, requested_member_id: null, can_upload: !!d.canUpload, created_at: now })),
+          .map((d) => ({ id: d.id, member_id: d.memberId ?? null, status: d.status, requested_name: d.requestedName ?? null, requested_group_id: null, requested_member_id: null, can_upload: !!d.canUpload, last_seen_at: now, created_at: now })),
       };
     },
     async setMemberStatus(pass, id, status) {
@@ -289,6 +289,35 @@ export function createMockBackend(): Backend {
     async setDownloadAllowed(pass, familyId, on) {
       if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('not_found', 404);
       downloads[familyId] = on;
+    },
+    async addGroup(pass, g) {
+      const fam = parents.get(pass.access)?.familyId;
+      if (!fam) throw new BackendError('not_allowed', 403, '42501');
+      if (!/^[0-9]{4}$/.test(g.password)) throw new BackendError('password_4_digits', 400, '22023');
+      const mine = groups.filter((x) => x.familyId === fam);
+      if (mine.length >= 10) throw new BackendError('group_limit', 409, 'PT409');
+      if (mine.some((x) => x.name === g.name)) throw new BackendError('duplicate', 409, '23505');
+      const id = crypto.randomUUID();
+      groups.push({ id, familyId: fam, name: g.name, hint: g.hint ?? '', password: g.password, exclude: !g.includeByDefault });
+      return id;
+    },
+    async updateGroup(pass, groupId, patch) {
+      const fam = parents.get(pass.access)?.familyId;
+      const g = groups.find((x) => x.id === groupId && x.familyId === fam);
+      if (!g) throw new BackendError('not_found', 404);
+      if (patch.name !== undefined && groups.some((x) => x.familyId === fam && x.id !== groupId && x.name === patch.name)) throw new BackendError('duplicate', 409, '23505');
+      if (patch.name !== undefined) g.name = patch.name;
+      if (patch.include_by_default !== undefined) g.exclude = !patch.include_by_default;
+    },
+    async setGroupPassword(pass, groupId, password, hint) {
+      const g = groups.find((x) => x.id === groupId && x.familyId === parents.get(pass.access)?.familyId);
+      if (!g) throw new BackendError('not_allowed', 403, '42501');
+      if (!/^[0-9]{4}$/.test(password)) throw new BackendError('password_4_digits', 400, '22023');
+      Object.assign(g, { password, hint: hint ?? '' });
+    },
+    async resetGroupLinks(pass, groupId) {
+      if (!groups.some((x) => x.id === groupId && x.familyId === parents.get(pass.access)?.familyId)) throw new BackendError('not_allowed', 403, '42501');
+      for (let i = shares.length - 1; i >= 0; i--) if (shares[i].groupIds.includes(groupId)) shares.splice(i, 1);
     },
     async requestDelete(pass) {
       const fam = parents.get(pass.access)?.familyId;
