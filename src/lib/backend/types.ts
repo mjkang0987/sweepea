@@ -190,6 +190,8 @@ export interface AdminMember {
   display_name: string;
   status: 'active' | 'pending' | 'rejected';
   pending_until: string | null;
+  /** 홈 화면에 두기를 부탁한 때 */
+  install_help_at: string | null;
   created_at: string;
 }
 export interface AdminDevice {
@@ -250,6 +252,8 @@ export interface Backend {
   setUploadAllowed(pass: Pass, memberId: string, on: boolean): Promise<void>;
   /** 가족도 사진 저장하기 */
   setDownloadAllowed(pass: Pass, familyId: string, on: boolean): Promise<void>;
+  /** 홈 화면에 두기를 엄마아빠에게 부탁(가족 기기 본인) */
+  requestInstallHelp(pass: Pass, familyId: string): Promise<void>;
   /** 접종·검진 완료 기록(부모만) */
   healthDone(pass: Pass, childId: string): Promise<{ item_key: string; done_on: string }[]>;
   /** 완료 기록 맞추기: add는 오늘 날짜로 넣고(이미 있으면 그대로), remove는 지운다 */
