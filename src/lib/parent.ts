@@ -2,7 +2,7 @@
 import type { AstroCookies } from 'astro';
 import { PARENT_PROVIDERS, SWEEPEA_BACKEND } from 'astro:env/server';
 import { getBackend, type Pass, type ParentHome } from './backend';
-import { currentParent } from './pass';
+import { currentParent, PARENT } from './pass';
 
 export const PROVIDERS = {
   kakao: { label: '카카오로 계속하기', cls: 'sp-p__login--kakao' },
@@ -48,12 +48,25 @@ export const INTRO_COOKIE = 'sp_intro';
 /** 부모 화면 들어오기: 로그인 안 했으면 소개(처음)·로그인, 설정 전이면 처음 설정으로 */
 export async function loadParent(
   cookies: AstroCookies,
-  opts: { needFamily: boolean } = { needFamily: true },
+  opts: { needFamily: boolean; allowClosing?: boolean } = { needFamily: true },
 ): Promise<{ redirect: string } | { pass: Pass; home: ParentHome }> {
   const pass = await currentParent(cookies);
   if (!pass) return { redirect: cookies.has(INTRO_COOKIE) ? '/login' : '/start' };
   const home = await getBackend().parentHome(pass);
   if (opts.needFamily && !home.family_id) return { redirect: '/setup' };
+  // 탈퇴 유예 중이면 되살리기 화면만
+  if (home.closing && !opts.allowClosing) return { redirect: '/restore' };
   if (!opts.needFamily && home.family_id) return { redirect: '/home' };
   return { pass, home };
 }
+
+/** 부모 세션 끝내기: 갱신 토큰을 끊고(실패해도) 쿠키를 지운다. 가족 기기 출입증은 그대로 */
+export async function logoutParent(cookies: AstroCookies) {
+  const pass = await currentParent(cookies).catch(() => null);
+  if (pass) await getBackend().parentLogout(pass);
+  cookies.delete(PARENT, { path: '/' });
+}
+
+/** 작별 화면 주소: 지울 날(서울 날짜)을 들고 간다 */
+export const goodbyeHref = (deleteAfter: string) =>
+  `/goodbye?on=${new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(deleteAfter))}`;

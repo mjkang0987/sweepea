@@ -486,7 +486,28 @@ reset role;
 -- ── 탈퇴 유예: 가족 화면은 바로 닫힘
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
-update public.families set delete_after = now() + interval '3 days';
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(부모가 탈퇴 날짜를 직접 고침)'
+update public.families set delete_after = now();
+reset role;
+insert into public.entitlements (family_id, platform, product_id, original_transaction_id, expires_at)
+  values (:'fam', 'ios', 'family', 'tx-1', now() + interval '1 month');
+set role authenticated;
+\echo '아래 에러 1줄은 의도된 거부(구독 중 탈퇴)'
+select public.sp_request_delete();
+reset role;
+delete from public.entitlements where family_id = :'fam';
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+\echo '아래 에러 1줄은 의도된 거부(가족 기기가 탈퇴)'
+select public.sp_request_delete();
+\set ON_ERROR_STOP 1
+reset role;
+select pg_temp.ok((select delete_after is null from public.families where id = :'fam'), '거부된 탈퇴는 반영 안 됨');
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_request_delete() between now() + interval '71 hours' and now() + interval '73 hours', '탈퇴하면 3일 뒤 지울 날');
+select pg_temp.ok(public.sp_parent_home() @> '{"closing": true}' and public.sp_parent_home() ? 'delete_after', '부모 첫 화면에 탈퇴 유예');
 select pg_temp.ok((select count(*) = 7 from public.media), '부모는 유예 중에도 봄(되살리기)');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
@@ -564,3 +585,54 @@ insert into public.children (family_id, name, birth_date) values (:'fam', '할�
 reset role;
 select pg_temp.ok((select name = '도윤이' from public.children where id = :'ch2'), '다른 가족방 부모·가족 기기는 아이를 못 바꿈');
 select pg_temp.ok((select text_size_mode = 'xlarge' from public.families where id = :'fam'), '다른 가족방 부모는 글자 크기를 못 바꿈');
+
+-- ── 되살리기·실제 삭제
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_restore_family();
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) > 0 from public.media), '되살리면 가족 화면 다시 열림');
+reset role;
+-- 유예 중엔 부모도 공유 링크·올리기를 멈춘다
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_request_delete();
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(유예 중 부모가 공유 링크 만들기)'
+select public.sp_create_share(array[:'gma']::uuid[]);
+\set ON_ERROR_STOP 1
+reset role;
+update public.families set delete_after = now() - interval '1 minute' where id = :'fam';
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(기한 지난 뒤 되살리기, 부모가 지우기 함수 부름)'
+select public.sp_restore_family();
+select public.sp_purge_deleted_families();
+\set ON_ERROR_STOP 1
+select pg_temp.ok(public.sp_parent_home() ->> 'family_id' is null, '지울 날이 지나면 부모에겐 가족방 없음(처음 설정으로)');
+-- 다른 부모의 기한 지난 가족방은 예약 작업이 지운다
+reset role;
+insert into public.families (delete_after) values (now() - interval '1 hour') returning id as fam_old \gset
+set role service_role;
+select pg_temp.ok((select array_agg(x) = array[:'fam', :'fam_old']::uuid[] or array_agg(x) = array[:'fam_old', :'fam']::uuid[] from public.sp_purge_deleted_families() x), '기한 지난 가족방만 지움');
+reset role;
+select pg_temp.ok(not exists (select 1 from public.families where id = :'fam') and not exists (select 1 from public.media where family_id = :'fam') and not exists (select 1 from public.parents where family_id = :'fam'), '사진·부모 연결까지 같이 지워짐');
+select pg_temp.ok((select count(*) = 2 from public.r2_cleanup where family_id in (:'fam', :'fam_old')), '지운 가족방은 R2 정리 대기열에');
+-- 지운 뒤 같은 부모는 새로 시작할 수 있다
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_create_family('mom', '지우', '하린', '2025-09-17', '0917') is not null, '탈퇴 뒤 새 가족방');
+reset role;
+-- 예약 작업 전에 처음 설정하면 기한 지난 가족방을 먼저 지운다
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_request_delete() is not null;
+select public.sp_parent_home() ->> 'family_id' as fam_new \gset
+reset role;
+update public.families set delete_after = now() - interval '1 minute' where id = :'fam_new';
+set role authenticated;
+select pg_temp.ok(public.sp_create_family('mom', '지우', '하린', '2025-09-17', '0917') <> :'fam_new', '기한 지난 가족방이 있어도 처음 설정이 됨');
+reset role;
+select pg_temp.ok((select count(*) = 1 from public.r2_cleanup where family_id = :'fam_new') and not exists (select 1 from public.families where id = :'fam_new'), '처음 설정 때 지운 가족방도 R2 정리 대기열에');

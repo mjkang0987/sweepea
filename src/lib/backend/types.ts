@@ -130,6 +130,10 @@ export interface ParentHome {
   provider?: string | null;
   text_size_mode?: TextSizeMode;
   closing?: boolean;
+  /** 탈퇴 유예 중이면 지울 시각(ISO) */
+  delete_after?: string | null;
+  /** 스토어 구독이 끝나는 시각(구독 중이면). 그때까지 탈퇴 불가 */
+  plan_until?: string | null;
   download_allowed?: boolean;
   storage_used_bytes?: number;
   photo_count?: number;
@@ -216,6 +220,10 @@ export interface Backend {
   setUploadAllowed(pass: Pass, memberId: string, on: boolean): Promise<void>;
   /** 가족도 사진 저장하기 */
   setDownloadAllowed(pass: Pass, familyId: string, on: boolean): Promise<void>;
+  /** 탈퇴 신청: 가족 화면을 바로 닫고 3일 뒤 지울 시각(ISO). 구독 중이면 BackendError 402 */
+  requestDelete(pass: Pass): Promise<string>;
+  /** 유예 중 되살리기. 유예가 아니거나 기한이 지났으면 400 */
+  restoreFamily(pass: Pass): Promise<void>;
   /** 가족 화면 처음 글자 크기 */
   setTextSizeMode(pass: Pass, familyId: string, mode: TextSizeMode): Promise<void>;
   addChild(pass: Pass, familyId: string, name: string, birthDate: string): Promise<void>;
