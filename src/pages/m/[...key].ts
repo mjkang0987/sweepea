@@ -12,7 +12,14 @@ export const GET: APIRoute = async ({ params, url, request }) => {
   if (!KEY.test(key)) return notFound();
   const left = await verifyMediaUrl(key, url.searchParams.get('e'), url.searchParams.get('s'));
   if (!left) return notFound();
-  const obj = await env.MEDIA.get(key, { range: request.headers, onlyIf: request.headers });
+  let obj: R2Object | R2ObjectBody | null;
+  try {
+    obj = await env.MEDIA.get(key, { range: request.headers, onlyIf: request.headers });
+  } catch {
+    // 못 주는 범위·여러 범위: 범위를 무시하고 파일 전체(200)를 준다
+    obj = await env.MEDIA.get(key);
+    request = new Request(request, { headers: new Headers() });
+  }
   if (!obj) return notFound();
   const headers = new Headers();
   obj.writeHttpMetadata(headers);
@@ -22,13 +29,20 @@ export const GET: APIRoute = async ({ params, url, request }) => {
   // 올린 형식(이미지·영상)으로만 보이게: 다른 형식으로 해석하거나 스크립트로 쓰지 못하게
   headers.set('x-content-type-options', 'nosniff');
   headers.set('content-security-policy', "default-src 'none'; sandbox");
-  if (!('body' in obj)) return new Response(null, { status: 304, headers });
+  if (!('body' in obj)) {
+    const cond = request.headers.has('if-none-match') || request.headers.has('if-modified-since');
+    return new Response(null, { status: cond ? 304 : 412, headers });
+  }
   const r = obj.range as { offset?: number; length?: number; suffix?: number } | undefined;
   if (r && request.headers.has('range')) {
-    const offset = r.suffix !== undefined ? obj.size - r.suffix : (r.offset ?? 0);
-    const length = r.suffix !== undefined ? r.suffix : (r.length ?? obj.size - offset);
-    headers.set('content-range', `bytes ${offset}-${offset + length - 1}/${obj.size}`);
-    headers.set('content-length', String(length));
+    // 파일 크기 안으로 자른다(끝을 넘는 요청·큰 suffix)
+    const start = r.suffix !== undefined ? Math.max(0, obj.size - r.suffix) : (r.offset ?? 0);
+    const end = Math.min(obj.size, r.length !== undefined ? start + r.length : obj.size) - 1;
+    if (start >= obj.size) {
+      return new Response(null, { status: 416, headers: { 'content-range': `bytes */${obj.size}`, 'cache-control': 'no-store' } });
+    }
+    headers.set('content-range', `bytes ${start}-${end}/${obj.size}`);
+    headers.set('content-length', String(end - start + 1));
     return new Response(obj.body, { status: 206, headers });
   }
   headers.set('content-length', String(obj.size));
