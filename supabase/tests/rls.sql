@@ -407,6 +407,28 @@ set role authenticated;
 update public.devices set status = 'active' where id = :'d_n3';
 reset role;
 select pg_temp.ok((select member_id = :'m_gf' from public.devices where id = :'d_n3'), '같은 이름이 있으면 그 구성원으로 승인(이름 중복 오류 없음)');
+-- 같은 이름이 아직 승인 대기면 승인을 막고, 그 이름을 거절하면 요청한 대기 기기도 막힌다
+\set N4 '00000000-0000-0000-0000-0000000000c4'
+\set N5 '00000000-0000-0000-0000-0000000000c5'
+insert into auth.users (id, is_anonymous) values (:'N4', true), (:'N5', true);
+insert into public.members (family_id, group_id, display_name, status, pending_until) values (:'fam', :'gma', '작은이모', 'pending', now() + interval '1 day') returning id as m_small \gset
+insert into public.devices (auth_user_id, family_id, status, requested_group_id, requested_name)
+  values (:'N4', :'fam', 'pending', :'gma', '작은이모') returning id as d_n4 \gset
+insert into public.devices (auth_user_id, family_id, status, requested_member_id)
+  values (:'N5', :'fam', 'pending', :'m_gf') returning id as d_n5 \gset
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(같은 이름이 승인 대기 중인데 기기 승인)'
+update public.devices set status = 'active' where id = :'d_n4';
+\set ON_ERROR_STOP 1
+update public.members set status = 'rejected' where id = :'m_gf';
+reset role;
+select pg_temp.ok((select status = 'revoked' from public.devices where id = :'d_n5'), '거절하면 그 이름을 요청한 대기 기기도 막힘');
+select pg_temp.ok((select status = 'pending' from public.devices where id = :'d_n4'), '막힌 승인은 그대로 대기');
+-- 거절한 외할아버지를 원래대로(뒤 검사용)
+update public.members set status = 'active' where id = :'m_gf';
+update public.devices set status = 'active' where member_id = :'m_gf';
 -- 한 사람용 문자 링크는 72시간이 지나면 못 쓴다
 set role authenticated;
 select public.sp_create_share(array[:'gma']::uuid[], '{}'::uuid[], :'m_gf') as code_old \gset

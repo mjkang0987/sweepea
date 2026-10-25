@@ -25,7 +25,9 @@ const cName =
   cKind === 'member' ? s.pendingMembers.find((m) => m.id === cId)?.display_name :
   cKind === 'device' ? (() => { const d = s.pendingDevices.find((x) => x.id === cId); return d && (d.requested_name ?? s.memberName(d.requested_member_id ?? d.member_id) ?? '새 휴대폰'); })() : undefined;
 const confirmAsk = cName && ((cKind === 'member' && cStatus === 'rejected') || (cKind === 'device' && cStatus === 'revoked'));
-const done = q.get('done');
+// 확인하려던 대상이 그새 처리됐으면 '이미 처리됨'으로
+const done = q.get('done') ?? (q.get('confirm') ? 'pending-check' : null);
+const shownDone = done === 'pending-check' ? (confirmAsk ? null : 'gone') : done;
 const doneText: Record<string, string> = {
   'member-active': '승인했어요. 이제 가족 앨범을 다 볼 수 있어요.',
   'member-rejected': '거절했어요. 그 휴대폰은 다시 들어올 수 없어요.',
@@ -45,7 +47,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
   </nav>
   <h1 class="sp-p__title">가족</h1>
   {/* 결과는 페이지가 열릴 때 바로 읽히게 초점을 옮긴다(JS 없이 autofocus) */}
-  {done && doneText[done] && <p class:list={['sp-p__toast', ['error', 'gone', 'conflict'].includes(done) && 'sp-p__toast--error']} role="status" tabindex="-1" autofocus>{doneText[done]}</p>}
+  {shownDone && doneText[shownDone] && <p class:list={['sp-p__toast', ['error', 'gone', 'conflict'].includes(shownDone) && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[shownDone]}</p>}
   {
     confirmAsk && (
       <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">

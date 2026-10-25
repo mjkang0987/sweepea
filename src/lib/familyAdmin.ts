@@ -46,7 +46,7 @@ export async function handleFamilyPost(request: Request, cookies: AstroCookies):
   } catch (e) {
     if (!(e instanceof BackendError) || e.status >= 500) throw e;
     // 404: 이미 처리됐거나 기간 지남, 22023: 같은 이름 승인 대기 중·이름이 없어짐(DB 트리거)
-    return `/settings/family?done=${e.status === 404 ? 'gone' : e.code === '22023' ? 'conflict' : 'error'}`;
+    return `/settings/family?done=${e.status === 404 ? 'gone' : e.code === '22023' || e.code === '23505' ? 'conflict' : 'error'}`;
   }
 }
 

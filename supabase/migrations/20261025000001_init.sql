@@ -537,6 +537,9 @@ begin
           returning id into v_member;
       end if;
       new.member_id := v_member;
+    elsif new.member_id is null then
+      -- 들어가려던 이름이 지워져 요청이 비었다: 붙일 사람이 없으니 승인하지 않는다
+      raise exception 'member_gone' using errcode = '22023';
     end if;
     new.requested_member_id := null; new.requested_group_id := null; new.requested_name := null;
   end if;

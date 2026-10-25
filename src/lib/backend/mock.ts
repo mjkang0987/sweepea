@@ -83,7 +83,7 @@ export function createMockBackend(): Backend {
       if (!s) return { result: 'not_found' };
       const me = pass ? meOf(devices.get(key(pass, familyOf(s)))) : null;
       if (s.closed) return { result: 'closed', me };
-      if (s.targetMemberId && s.usedAt) return { result: 'expired', me };
+      if (s.targetMemberId && (s.usedAt || s.createdAt + 72 * HOUR <= Date.now())) return { result: 'expired', me };
       return {
         result: 'ok',
         me,
@@ -118,7 +118,8 @@ export function createMockBackend(): Backend {
       if (i.memberId) {
         const m = members.find((x) => x.id === i.memberId && x.status === 'active');
         if (!m || !s.groupIds.includes(m.groupId)) return { result: 'bad_request' };
-        if (s.targetMemberId && (s.targetMemberId !== m.id || s.usedAt)) return { result: s.usedAt ? 'expired' : 'bad_request' };
+        const old = s.createdAt + 72 * HOUR <= Date.now();
+        if (s.targetMemberId && (s.targetMemberId !== m.id || s.usedAt || old)) return { result: s.usedAt || old ? 'expired' : 'bad_request' };
         groupId = m.groupId;
       } else {
         if (!newOpen(s) || s.targetMemberId) return { result: 'expired' };
