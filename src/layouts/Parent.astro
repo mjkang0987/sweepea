@@ -6,12 +6,14 @@ interface Props {
   title: string;
   /** 아래 탭(앨범·설정)을 보일 화면이면 지금 탭 */
   tab?: 'home' | 'settings';
+  /** 넓은 화면에서 넓게 쓸 화면(앨범·올리기) */
+  wide?: boolean;
 }
-const { title, tab } = Astro.props;
+const { title, tab, wide } = Astro.props;
 ---
 
 <Base title={title}>
-  <main class:list={['sp-p', tab && 'sp-p--tabbed']}>
+  <main class:list={['sp-p', tab && 'sp-p--tabbed', wide && 'sp-p--wide']}>
     <slot />
   </main>
   {

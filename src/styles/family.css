@@ -911,3 +911,19 @@
 .sp-f__install-done {
   margin: 0 0 var(--space-4);
 }
+
+/* 넓은 화면(PC·태블릿 가로): 앨범·크게 보기만 넓게, 모아 보기 칸을 늘린다 */
+@media (min-width: 64rem) {
+  .sp-f--wide {
+    max-width: 72rem;
+  }
+  .sp-f--wide .sp-a__grid--2 {
+    columns: 4;
+  }
+  .sp-f--wide .sp-a__grid--3 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .sp-f--wide .sp-a__grid--5 {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}

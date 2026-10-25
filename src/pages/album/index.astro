@@ -49,7 +49,7 @@ const fewer = zi < ZOOMS.length - 1 ? albumHref({ ...q, z: ZOOMS[zi + 1] }) : nu
 const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 ---
 
-<Family title={title}>
+<Family title={title} wide={q.v !== 'swipe'}>
   <Fragment set:html={EMOJI_SPRITE} />
   <header class="sp-a__head">
     <div class="sp-a__head-text">

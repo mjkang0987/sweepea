@@ -39,7 +39,7 @@ const canSave = open.find((f) => f.family_id === m.family_id)?.download_allowed 
 const saveName = `sweepea-${m.taken_at.slice(0, 10)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`;
 ---
 
-<Family title={`${label} · ${i + 1} / ${items.length}`}>
+<Family title={`${label} · ${i + 1} / ${items.length}`} wide>
   <Fragment set:html={EMOJI_SPRITE} />
   <nav class="sp-v__bar" aria-label="사진 이동">
     <a class="sp-v__link" href={albumHref(q)}><span aria-hidden="true">‹ </span>닫기</a>

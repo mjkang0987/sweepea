@@ -1064,3 +1064,65 @@
 .sp-p__past-h {
   display: inline;
 }
+
+/* 넓은 화면(PC): 앨범·올리기는 넓게, 메뉴는 위로 */
+@media (min-width: 64rem) {
+  .sp-p--wide {
+    max-width: 72rem;
+  }
+  .sp-p--wide .sp-p__grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .sp-p--tabbed {
+    padding-top: calc(var(--space-6) + 3.5rem);
+  }
+  /* 위 메뉴 밑으로 포커스된 칸이 숨지 않게 */
+  .sp-html {
+    scroll-padding-top: 4.5rem;
+  }
+  .sp-p__tabs {
+    top: 0;
+    bottom: auto;
+    justify-content: center;
+    gap: var(--space-2);
+    padding-bottom: 0;
+    border-top: 0;
+    border-bottom: 1px solid var(--separator);
+  }
+  .sp-p__tab {
+    flex: none;
+    flex-direction: row;
+    min-height: 3.5rem;
+    padding: 0 var(--space-4);
+    gap: var(--space-2);
+    font-size: var(--subhead-size);
+  }
+  /* 올리기: 왼쪽 사진, 오른쪽 아이·그룹·보내기 */
+  .sp-p--wide .sp-p__form:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+  .sp-p--wide .sp-p__bar--title {
+    grid-column: 1 / -1;
+  }
+  .sp-p--wide .sp-p__upgrid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+/* 올리기 두 칸(좁은 화면에선 위아래로 그대로) */
+.sp-p__up-main,
+.sp-p__up-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+/* 끌어다 놓는 중(안쪽 글자에서 dragleave가 나지 않게) */
+.sp-p__pick-text {
+  pointer-events: none;
+}
+.sp-p__pick--over {
+  outline: 3px dashed var(--pea);
+  outline-offset: 2px;
+}
