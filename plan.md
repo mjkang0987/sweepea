@@ -198,7 +198,7 @@
 - 결과: 검토 반영(없는 날짜·서울 날짜 기준, 비밀번호·힌트 검사, 로그아웃 때 Supabase 세션 끊기, 탭바·떠 있는 버튼 아래 여백, 오류 연결). 부모 e2e 16개·입장·올리기 e2e, 타입 검사·빌드 통과
 - Supabase 연결 때 할 일: Additional Redirect URLs에 `https://sweepea.co.kr/auth/callback`(미리보기 주소도) 추가, 켤 제공자를 `PARENT_PROVIDERS`에. 네이버는 기본 제공자가 아니라 별도 확인
 
-### 13. feature/family-settings — 설정 > 가족: 승인·링크 (계획)
+### 13. feature/family-settings — 설정 > 가족: 승인·링크 (완료, dev 머지)
 
 - 요구사항(캔버스 Settings·Family·SendSetup)
   - 설정: '가족' 줄(승인 n · 그룹 n · 기기 n)과 로그아웃. 나머지 줄(아이·글자 크기·저장하기·계정·용량·플랜)은 다음 이슈
@@ -212,6 +212,8 @@
 - 영향받는 파일: `src/lib/backend/*`, `src/pages/settings*`, `src/styles/parent.css`, `supabase/tests/rls.sql`(부모 PATCH 확인), `index.md`, `plan.md`
 - 예상 결과: mock으로 부모가 링크를 만들고 → 가족이 새 이름으로 들어와 승인 대기 → 부모가 승인 → 가족 앨범이 열리는 e2e
 - 범위 밖: 구성원 상세(올리기 허용·내보내기), 그룹 추가·이름·비밀번호 바꾸기, 기기 이름, 카톡 공유
+- 결과: 검토 반영(승인 대기 기기 승인 때 같은 이름이면 그 사람으로 붙임·이름이 없어졌으면 막음, 거절하면 그 이름을 요청한 대기 기기도 막음, 한 사람용 문자 링크 72시간, 승인 대기인 것만 바꾸고 이미 처리·기간 지남은 안내, 거절·내 가족 아님은 한 번 더 확인, 만든 링크는 잠깐 쓰는 쿠키로(주소로 가짜 카드 금지), 공유 주소는 `SITE_ORIGIN`). 가족 e2e 11개와 기존 e2e 모두 통과
+- 남은 일: 승인된 기기의 올리기 허용(구성원 상세 화면), 배포 때 `SITE_ORIGIN=https://sweepea.co.kr`
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 

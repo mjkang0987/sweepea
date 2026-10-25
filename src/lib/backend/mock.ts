@@ -252,15 +252,15 @@ export function createMockBackend(): Backend {
     },
     async setMemberStatus(pass, id, status) {
       const fam = parents.get(pass.access)?.familyId;
-      const m = members.find((x) => x.id === id && groups.find((g) => g.id === x.groupId)?.familyId === fam);
-      if (!m) return;
+      const m = members.find((x) => x.id === id && x.status === 'pending' && groups.find((g) => g.id === x.groupId)?.familyId === fam);
+      if (!m) throw new BackendError('not_found', 404);
       m.status = status;
       if (status === 'rejected') for (const d of devices.values()) if (d.memberId === id) d.status = 'revoked';
     },
     async setDeviceStatus(pass, id, status) {
       const fam = parents.get(pass.access)?.familyId;
-      const d = [...devices.values()].find((x) => x.id === id && x.familyId === fam);
-      if (!d) return;
+      const d = [...devices.values()].find((x) => x.id === id && x.familyId === fam && x.status === 'pending');
+      if (!d) throw new BackendError('not_found', 404);
       d.status = status;
       if (status === 'active') d.failures.clear();
     },

@@ -2,7 +2,7 @@
 // 설정 > 가족: 승인 기다리는 사람·새 기기, 가족 그룹과 링크 만들기. JS 없이 폼 POST(PRG)
 import Parent from '../../../layouts/Parent.astro';
 import { getBackend } from '../../../lib/backend';
-import { handleFamilyPost, shareUrl, smsHref, summarize } from '../../../lib/familyAdmin';
+import { handleFamilyPost, LINK_COOKIE, shareUrl, smsHref, summarize } from '../../../lib/familyAdmin';
 import { callName } from '../../../lib/ko';
 import { loadParent } from '../../../lib/parent';
 
@@ -14,14 +14,25 @@ const admin = await getBackend().familyAdmin(a.pass);
 const s = summarize(admin);
 const kid = callName(a.home.children?.[0]?.name ?? '아이');
 const q = Astro.url.searchParams;
-const link = /^[A-Za-z0-9]{8}$/.test(q.get('link') ?? '') ? shareUrl(Astro.url.origin, q.get('link')!) : null;
-const linkGroup = s.groupName(q.get('g'));
+// 방금 만든 링크(잠깐 쓰는 쿠키, 한 번 보여 주고 지움)
+const [linkCode, linkGid] = (Astro.cookies.get(LINK_COOKIE)?.value ?? '').split(':');
+Astro.cookies.delete(LINK_COOKIE, { path: '/settings' });
+const link = /^[A-Za-z0-9]{8}$/.test(linkCode ?? '') ? shareUrl(Astro.url.origin, linkCode) : null;
+const linkGroup = s.groupName(linkGid ?? null);
+// 되돌릴 수 없는 동작 확인
+const [cKind, cId, cStatus] = (q.get('confirm') ?? '').split(':');
+const cName =
+  cKind === 'member' ? s.pendingMembers.find((m) => m.id === cId)?.display_name :
+  cKind === 'device' ? (() => { const d = s.pendingDevices.find((x) => x.id === cId); return d && (d.requested_name ?? s.memberName(d.requested_member_id ?? d.member_id) ?? '새 휴대폰'); })() : undefined;
+const confirmAsk = cName && ((cKind === 'member' && cStatus === 'rejected') || (cKind === 'device' && cStatus === 'revoked'));
 const done = q.get('done');
 const doneText: Record<string, string> = {
   'member-active': '승인했어요. 이제 가족 앨범을 다 볼 수 있어요.',
   'member-rejected': '거절했어요. 그 휴대폰은 다시 들어올 수 없어요.',
   'device-active': '승인했어요.',
   'device-revoked': '내 가족이 아니라고 표시했어요. 그 휴대폰은 들어올 수 없어요.',
+  gone: '이미 처리됐거나 기간이 지난 요청이에요.',
+  conflict: '같은 이름이 승인을 기다리고 있거나 그 이름이 없어졌어요. 먼저 그 이름을 정리해 주세요.',
   error: '처리하지 못했어요. 다시 눌러 주세요.',
 };
 const when = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
@@ -33,7 +44,21 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
     <a class="sp-p__back" href="/settings"><span aria-hidden="true">‹ </span>설정</a>
   </nav>
   <h1 class="sp-p__title">가족</h1>
-  {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} role="status">{doneText[done]}</p>}
+  {/* 결과는 페이지가 열릴 때 바로 읽히게 초점을 옮긴다(JS 없이 autofocus) */}
+  {done && doneText[done] && <p class:list={['sp-p__toast', ['error', 'gone', 'conflict'].includes(done) && 'sp-p__toast--error']} role="status" tabindex="-1" autofocus>{doneText[done]}</p>}
+  {
+    confirmAsk && (
+      <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
+        <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>{cKind === 'member' ? `${cName} 거절할까요?` : `${cName} 휴대폰을 내 가족 아님으로 할까요?`}</h2>
+        <p class="sp-p__lead">그 휴대폰은 다시 들어올 수 없어요. 되돌릴 수 없어요.</p>
+        <form class="sp-p__pair" method="post" action="/settings/family">
+          <a class="sp-p__btn sp-p__btn--quiet" href="/settings/family">취소</a>
+          <input type="hidden" name="confirm" value="1" />
+          <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value={q.get('confirm')}>{cKind === 'member' ? '거절' : '내 가족 아님'}</button>
+        </form>
+      </section>
+    )
+  }
 
   <a class="sp-p__cta" href="/settings/family/sms">
     <span class="sp-p__cta-title">문자로 공유하기</span>
@@ -67,7 +92,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
             </div>
           </div>
           <p class="sp-p__lead">승인 전에는 받은 사진만 볼 수 있어요. 3일 안에 승인하지 않으면 자동으로 취소돼요.</p>
-          <form class="sp-p__pair" method="post">
+          <form class="sp-p__pair" method="post" action="/settings/family">
             <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value={`member:${m.id}:rejected`}>거절<span class="sp-vh"> {m.display_name}</span></button>
             <button class="sp-p__btn" type="submit" name="do" value={`member:${m.id}:active`}>{s.groupName(m.group_id) === '가족' ? '' : `${s.groupName(m.group_id)} 가족으로 `}승인<span class="sp-vh"> {m.display_name}</span></button>
           </form>
@@ -85,8 +110,8 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
           return (
             <article class="sp-p__card" aria-labelledby={`pd-${d.id}`}>
               <h3 class="sp-p__who-name" id={`pd-${d.id}`}>{name} · 새 휴대폰</h3>
-              <p class="sp-p__hint">비밀번호를 여러 번 틀려서 확인을 기다려요 · {when.format(new Date(d.created_at))}</p>
-              <form class="sp-p__pair" method="post">
+              <p class="sp-p__hint">확인을 기다리는 새 휴대폰이에요 · {when.format(new Date(d.created_at))}</p>
+              <form class="sp-p__pair" method="post" action="/settings/family">
                 <button class="sp-p__btn sp-p__btn--danger" type="submit" name="do" value={`device:${d.id}:revoked`}>내 가족 아님<span class="sp-vh"> {name}</span></button>
                 <button class="sp-p__btn" type="submit" name="do" value={`device:${d.id}:active`}>승인<span class="sp-vh"> {name}</span></button>
               </form>
@@ -107,7 +132,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
               <h3 class="sp-p__who-name">{g.name}</h3>
               <p class="sp-p__hint">{groupMembers(g.id).join(', ') || '아직 들어온 사람이 없어요'}</p>
             </div>
-            <form method="post">
+            <form method="post" action="/settings/family">
               <button class="sp-p__chip" type="submit" name="do" value={`share:${g.id}`}>링크 만들기<span class="sp-vh"> ({g.name})</span></button>
             </form>
           </li>

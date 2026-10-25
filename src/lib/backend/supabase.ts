@@ -151,21 +151,27 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       ]);
       return { groups, members, devices };
     },
+    // 승인 대기인 것만 바꾼다(기간 지남·이미 처리됨·다른 가족방이면 0행 → 404). 열을 적어야 devices 열 권한에 걸리지 않는다
     async setMemberStatus(pass, id, status) {
-      await call(`/rest/v1/members?id=eq.${encodeURIComponent(id)}`, {
+      const q = new URLSearchParams({ id: `eq.${id}`, status: 'eq.pending', select: 'id' });
+      if (status === 'active') q.set('pending_until', `gt.${new Date().toISOString()}`);
+      const rows = await call<{ id: string }[]>(`/rest/v1/members?${q}`, {
         method: 'PATCH',
         token: pass.access,
-        headers: { prefer: 'return=minimal' },
+        headers: { prefer: 'return=representation' },
         body: JSON.stringify(status === 'active' ? { status, pending_until: null } : { status }),
       });
+      if (!rows.length) throw new BackendError('not_found', 404);
     },
     async setDeviceStatus(pass, id, status) {
-      await call(`/rest/v1/devices?id=eq.${encodeURIComponent(id)}`, {
+      const q = new URLSearchParams({ id: `eq.${id}`, status: 'eq.pending', select: 'id' });
+      const rows = await call<{ id: string }[]>(`/rest/v1/devices?${q}`, {
         method: 'PATCH',
         token: pass.access,
-        headers: { prefer: 'return=minimal' },
+        headers: { prefer: 'return=representation' },
         body: JSON.stringify(status === 'revoked' ? { status, can_upload: false } : { status }),
       });
+      if (!rows.length) throw new BackendError('not_found', 404);
     },
     createShare: (pass, groupIds, target) =>
       rpc<string>(pass, 'sp_create_share', { p_group_ids: groupIds, p_media_ids: [], p_target_member: target ?? null }),

@@ -516,14 +516,26 @@ begin
   if old.status = 'pending' and new.status = 'active' then
     delete from public.entry_failures where auth_user_id = new.auth_user_id and family_id = new.family_id;
     if new.requested_member_id is not null then
+      -- 들어가려던 이름이 그새 거절·삭제됐으면 승인하지 않는다(승인해도 볼 수 없는 기기가 된다)
+      if not exists (select 1 from public.members where id = new.requested_member_id and status = 'active') then
+        raise exception 'member_gone' using errcode = '22023';
+      end if;
       new.member_id := new.requested_member_id;
     elsif new.requested_name is not null and new.requested_group_id is not null then
       delete from public.members
         where group_id = new.requested_group_id and display_name = new.requested_name
           and (status = 'rejected' or (status = 'pending' and pending_until <= now()));
-      insert into public.members (family_id, group_id, display_name)
-        values (new.family_id, new.requested_group_id, new.requested_name)
-        returning id into v_member;
+      -- 그 사이 같은 이름이 생겼으면: 승인된 이름이면 그 사람으로 붙이고, 아직 승인 대기면 막는다
+      select id into v_member from public.members
+        where group_id = new.requested_group_id and display_name = new.requested_name and status = 'active';
+      if v_member is null then
+        if exists (select 1 from public.members where group_id = new.requested_group_id and display_name = new.requested_name) then
+          raise exception 'name_taken' using errcode = '22023';
+        end if;
+        insert into public.members (family_id, group_id, display_name)
+          values (new.family_id, new.requested_group_id, new.requested_name)
+          returning id into v_member;
+      end if;
       new.member_id := v_member;
     end if;
     new.requested_member_id := null; new.requested_group_id := null; new.requested_name := null;
@@ -539,7 +551,8 @@ language plpgsql security definer set search_path = ''
 as $$
 begin
   if new.status = 'rejected' and old.status is distinct from 'rejected' then
-    update public.devices set status = 'revoked', can_upload = false where member_id = new.id;
+    update public.devices set status = 'revoked', can_upload = false
+      where member_id = new.id or (requested_member_id = new.id and status = 'pending');
   end if;
   return new;
 end $$;
@@ -631,7 +644,10 @@ begin
     from public.devices d left join public.members m on m.id = d.member_id
     where d.auth_user_id = auth.uid() and d.family_id = s.family_id;
   if f.delete_after is not null then return jsonb_build_object('result', 'closed', 'me', v_me); end if;
-  if s.target_member_id is not null and s.used_at is not null then return jsonb_build_object('result', 'expired', 'me', v_me); end if;
+  -- 한 사람용 문자 링크는 한 번, 72시간 안에만
+  if s.target_member_id is not null and (s.used_at is not null or s.created_at + interval '72 hours' <= now()) then
+    return jsonb_build_object('result', 'expired', 'me', v_me);
+  end if;
   select c.name into v_child from public.children c where c.family_id = f.id order by c.sort_order, c.created_at limit 1;
   return jsonb_build_object(
     'result', 'ok',
@@ -705,7 +721,7 @@ begin
     if s.target_member_id is not null and s.target_member_id <> m.id then
       return jsonb_build_object('result', 'bad_request');
     end if;
-    if s.target_member_id is not null and s.used_at is not null then
+    if s.target_member_id is not null and (s.used_at is not null or s.created_at + interval '72 hours' <= now()) then
       return jsonb_build_object('result', 'expired');
     end if;
     -- 링크를 보낸 그룹의 이름만(외가 링크로 친가 비밀번호를 시도하지 못하게)
