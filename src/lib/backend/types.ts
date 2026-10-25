@@ -136,6 +136,7 @@ export interface NewFamily {
 export interface AdminGroup {
   id: string;
   name: string;
+  include_by_default: boolean;
 }
 export interface AdminMember {
   id: string;
@@ -197,5 +198,5 @@ export interface Backend {
   /** 승인 대기 기기 승인(active, 들어가려던 이름을 붙임)·내 가족 아님(revoked) */
   setDeviceStatus(pass: Pass, deviceId: string, status: 'active' | 'revoked'): Promise<void>;
   /** 공유 링크 코드(8자). targetMemberId를 주면 그 사람 전용 한 번 쓰는 링크 */
-  createShare(pass: Pass, groupIds: string[], targetMemberId?: string): Promise<string>;
+  createShare(pass: Pass, groupIds: string[], targetMemberId?: string, mediaIds?: string[]): Promise<string>;
 }

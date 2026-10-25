@@ -2,15 +2,14 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { getBackend } from '../../../../lib/backend';
-import { currentPass } from '../../../../lib/pass';
-import { PARTS, UUID, backendErrorResponse, json, newMediaKey } from '../../../../lib/media';
+import { PARTS, UUID, backendErrorResponse, json, newMediaKey, uploaderPass } from '../../../../lib/media';
 
 export const PUT: APIRoute = async ({ params, request, cookies }) => {
   const id = params.id ?? '';
   const part = params.part ?? '';
   if (!UUID.test(id)) return json(404, { error: 'not_found' });
   try {
-    const pass = await currentPass(cookies);
+    const pass = await uploaderPass(cookies);
     if (!pass) return json(401, { error: 'login_required' });
     const target = await getBackend().uploadTarget(pass, id);
     const spec = target && Object.hasOwn(PARTS[target.kind], part) ? PARTS[target.kind][part] : null;

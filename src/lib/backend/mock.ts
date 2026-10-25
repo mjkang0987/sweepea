@@ -169,7 +169,8 @@ export function createMockBackend(): Backend {
       return { families };
     },
     async createMedia(pass, m) {
-      if (!canUpload(deviceOf(pass, m.familyId))) throw new BackendError('not_allowed', 403, '42501');
+      const parentOwns = parents.get(pass.access)?.familyId === m.familyId;
+      if (!parentOwns && !canUpload(deviceOf(pass, m.familyId))) throw new BackendError('not_allowed', 403, '42501');
       const id = crypto.randomUUID();
       media.push({
         id, family_id: m.familyId, kind: m.kind, taken_at: m.takenAt, width: m.width ?? null, height: m.height ?? null,
@@ -179,7 +180,8 @@ export function createMockBackend(): Backend {
     },
     async uploadTarget(pass, id) {
       const x = media.find((y) => y.id === id && y.status === 'uploading' && y.uploader === pass.access);
-      return x && canUpload(deviceOf(pass, x.family_id)) ? { family_id: x.family_id, kind: x.kind } : null;
+      const ok = x && (parents.get(pass.access)?.familyId === x.family_id || canUpload(deviceOf(pass, x.family_id)));
+      return x && ok ? { family_id: x.family_id, kind: x.kind } : null;
     },
     async finishUpload(id, keys) {
       const x = media.find((y) => y.id === id && y.status === 'uploading');
@@ -242,7 +244,7 @@ export function createMockBackend(): Backend {
       const gs = groups.filter((g) => g.familyId === fam);
       const now = new Date().toISOString();
       return {
-        groups: gs.map((g) => ({ id: g.id, name: g.name })),
+        groups: gs.map((g) => ({ id: g.id, name: g.name, include_by_default: true })),
         members: members
           .filter((m) => gs.some((g) => g.id === m.groupId))
           .map((m) => ({ id: m.id, group_id: m.groupId, display_name: m.name, status: m.status, pending_until: m.status === 'pending' ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, created_at: now })),

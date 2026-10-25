@@ -1,8 +1,7 @@
 // 사진 행 만들기. 파일은 PUT /api/media/<id>/<부분>, 끝나면 POST /api/media/<id>/done
 import type { APIRoute } from 'astro';
 import { getBackend, type NewMedia } from '../../../lib/backend';
-import { currentPass } from '../../../lib/pass';
-import { UUID, backendErrorResponse, json } from '../../../lib/media';
+import { UUID, backendErrorResponse, json, uploaderPass } from '../../../lib/media';
 
 const SOURCES = ['exif', 'file', 'upload', 'manual'];
 const posInt = (v: unknown) => v === undefined || (Number.isInteger(v) && (v as number) > 0 && (v as number) < 100_000);
@@ -38,7 +37,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const input = body && typeof body === 'object' ? parseNewMedia(body as Record<string, unknown>) : null;
   if (!input) return json(400, { error: 'bad_request' });
   try {
-    const pass = await currentPass(cookies);
+    const pass = await uploaderPass(cookies);
     if (!pass) return json(401, { error: 'login_required' });
     return json(201, { id: await getBackend().createMedia(pass, input) });
   } catch (e) {

@@ -1,5 +1,10 @@
 // 사진 파일 규칙: 종류별로 넣을 수 있는 파일(부분)과 형식·크기. 기기에서 압축해서 올린다(기획서)
+import type { AstroCookies } from 'astro';
 import { BackendError, type MediaKind } from './backend';
+import { currentParent, currentPass } from './pass';
+
+/** 올리는 사람: 부모 세션이 있으면 부모, 없으면 올리기 권한 가족 기기 출입증 */
+export const uploaderPass = async (cookies: AstroCookies) => (await currentParent(cookies)) ?? (await currentPass(cookies));
 
 const MB = 1024 * 1024;
 const IMAGE = { types: ['image/jpeg', 'image/webp', 'image/png'], max: 15 * MB };
