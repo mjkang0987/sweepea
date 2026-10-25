@@ -373,6 +373,20 @@
 - 결과: 검토 두 번 반영. 안내는 떠 있는 판 대신 앨범 위 판(앨범·초점을 가리지 않게), 앱 안 브라우저(카톡·네이버·라인·인스타·페이스북·밴드·이름 모를 웹뷰)는 부탁하기, 단계를 모르는 브라우저(아이폰 크롬·웨일, 삼성 인터넷)는 안내 안 함, 부탁은 승인된 가족만. 단위 검사·DB 검사·e2e 10개·기존 e2e 통과. 가족 화면 JS 0KB 유지
 - 범위 밖: 카톡에서 외부 브라우저로 넘기기(`kakaotalk://web/openExternal`은 실기기 확인 필요, 넘어가면 출입증 쿠키가 없어 다시 들어와야 함 → 확인 필요), 설치 여부 서버 기록
 
+### 24. feature/cleanup-jobs — 정리 예약 작업·5GB 상한 (계획, 출시 전 필수)
+
+- 요구사항(이슈 13, 결정 '탈퇴 3일 뒤 삭제', 저장 용량 5GB)
+  - 매일 한 번(서울 새벽 3시대) 예약 작업: 탈퇴 기한 지난 가족방 지우기, 하루 지난 '올리는 중' 사진 지우기, R2 정리 대기열의 폴더 파일 지우기
+  - 올리기를 끝낼 때 같은 사진 폴더에 남은 예전 파일(PUT마다 새 키) 바로 지우기
+  - 무료 가족방은 저장 용량 5GB가 차면 새로 올리기만 멈춤(가족은 계속 봄), 올리기 화면에 안내
+- 구현 방식
+  - Worker 진입점을 `src/worker.ts`로(어댑터의 `@astrojs/cloudflare/handler`로 화면은 그대로, `scheduled`만 추가). `wrangler.jsonc`에 `main`·`triggers.crons`
+  - DB(service_role만): `sp_cleanup_stale_uploads()`, `sp_r2_cleanup_take(개수)`, `sp_r2_cleanup_done(폴더)`. `sp_create_media`에 5GB 상한(PT507 → HTTP 507)
+  - 작업 본체는 `src/jobs/cleanup.ts`(백엔드·버킷을 받아서), 가짜 버킷으로 단위 검사
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/worker.ts`, `src/jobs/cleanup.ts`, `tests/cleanup.test.ts`, `wrangler.jsonc`, `worker-configuration.d.ts`, `src/lib/backend/*`, `src/lib/media.ts`, `src/pages/api/media/[id]/done.ts`, `src/pages/upload.astro`, `index.md`, `plan.md`
+- 예상 결과: 단위 검사(대기열 폴더의 파일을 지우고 끝 표시, 실패한 폴더는 남김), DB 검사(기한·하루 기준, service_role만, 5GB 거절), 빌드 결과에 scheduled 핸들러
+- 범위 밖: 가족 플랜(유료) 상한, 정리 결과 알림, 실제 Cloudflare 예약 실행 확인(배포 뒤 → 확인 필요)
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
