@@ -26,6 +26,8 @@ create table public.parents (
   family_id uuid not null unique references public.families (id) on delete cascade,
   role text not null check (role in ('mom', 'dad')),
   display_name text not null check (char_length(display_name) between 1 and 20),
+  -- 최근 반응을 마지막으로 연 때('새 반응' 수 기준)
+  activity_seen_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
 
