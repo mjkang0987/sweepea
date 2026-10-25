@@ -6,6 +6,7 @@
 
 - 버전 0.1.0. DB 스키마·권한(Supabase 마이그레이션)은 작성·로컬 검사 완료, 실제 Supabase 프로젝트는 아직 없다.
 - 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 1~2시간 주소) 완료. 올리기 화면은 아직.
+- 부모 올리기(`/upload`: 기기에서 줄이기·EXIF 찍은 날·대표 사진·아이·그룹, 올린 뒤 공유 링크 `POST /api/shares`) 완료. 부모 화면은 JS 사용, 가족 화면은 0KB 유지.
 - 설정 > 가족(`/settings/family` 승인·거절·새 기기·그룹 링크, `/settings/family/sms` 한 사람용 문자 링크) 완료.
 - 부모 시작(`/start` 소개, `/login`·`/auth/callback` OAuth PKCE, `/setup` 처음 설정, `/home` 앨범, `/settings` 자리) 완료. 부모 세션은 쿠키 `sp_parent`(가족 기기 `sp_pass`와 따로).
 - 조부모 앨범(`/album` 넘겨 보기·모아 보기, `/album/<id>` 크게 보기, 집 고르기)과 하트·반응·한마디(폼 POST, `sp_react`·`sp_comment`) 완료.
@@ -79,6 +80,7 @@ supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stu
 | --- | --- |
 | `npm run dev` | 개발 서버 (`SWEEPEA_BACKEND=mock`이면 메모리 백엔드) |
 | `npm run check` | 타입 검사 |
+| `npm run test:unit` | 순수 함수 단위 검사(`tests/*.test.ts`, Node 24 타입 제거 실행) |
 | `npm run types` | wrangler.jsonc 바인딩이 바뀌면 Worker 타입 다시 만들기 |
 | `npm run build` | 빌드 (`dist/`) |
 | `npm run test:db` | 로컬 Postgres 16 임시 클러스터에 마이그레이션 적용 후 권한 시나리오 검사 (`PG_BIN`으로 경로 지정) |

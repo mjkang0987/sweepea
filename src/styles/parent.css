@@ -674,3 +674,149 @@
   /* 라이트는 흰 글자, 다크(밝은 빨강)는 검은 글자라야 4.5:1 */
   color: var(--bg);
 }
+
+/* 올리기 */
+.sp-p__bar--title {
+  justify-content: space-between;
+}
+.sp-p__bar-title {
+  margin: 0;
+  font-size: var(--headline-size);
+  font-weight: 700;
+}
+.sp-p__bar-space {
+  width: 2.5rem;
+}
+.sp-p__pick {
+  min-height: 3.25rem;
+  border: 1.5px dashed var(--label-2);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pea-ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+.sp-p__pick:focus-within {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+.sp-p__upgrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+.sp-p__upcell {
+  aspect-ratio: 1;
+}
+.sp-p__upbtn {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--fill);
+  cursor: pointer;
+}
+.sp-p__upbtn[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 3px var(--pea);
+}
+.sp-p__upimg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sp-p__upbtn[aria-pressed='true'] .sp-p__upimg {
+  /* 테두리가 사진에 가리지 않게 */
+  padding: 3px;
+  box-sizing: border-box;
+  border-radius: var(--radius-sm);
+}
+.sp-p__panel {
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.sp-p__panel-row {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+}
+.sp-p__panel-row + .sp-p__panel-row {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__panel-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sp-p__panel-label {
+  padding: 0;
+  font-weight: 500;
+}
+.sp-p__checks {
+  clear: both;
+  margin-top: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.sp-p__check {
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: 999px;
+  background: var(--fill);
+  font-weight: 600;
+  cursor: pointer;
+}
+.sp-p__check:has(.sp-p__checkbox:checked) {
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+}
+.sp-p__checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--pea);
+}
+.sp-p__btn--kakao {
+  background: var(--kakao);
+  color: var(--kakao-ink);
+}
+.sp-p__btn--text {
+  background: transparent;
+  color: var(--pea-ink);
+}
+.sp-p__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* 상태 칸: 비었을 때는 화면에서만 숨긴다(화면 읽기용 알림 영역은 늘 있게) */
+.sp-p__toast--live:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+/* display를 준 클래스는 hidden 속성을 이겨서 다시 숨긴다 */
+.sp-p__card[hidden],
+.sp-p__form[hidden],
+.sp-p__upgrid[hidden],
+.sp-p__toast[hidden],
+.sp-p__hint[hidden] {
+  display: none;
+}
+/* fieldset 테두리 위에 legend가 걸치지 않게 */
+.sp-p__panel-legend {
+  float: left;
+  width: 100%;
+}

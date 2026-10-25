@@ -61,6 +61,8 @@ create table public.shares (
   -- 문자로 공유하기: 한 사람용 설치 링크. 값이 있으면 그 사람만, 한 번만 쓴다
   target_member_id uuid,
   used_at timestamptz,
+  -- 카톡 카드 대표 사진(올리기 화면에서 고른 첫 장)
+  cover_media_id uuid,
   created_at timestamptz not null default now(),
   unique (family_id, id)
 );
@@ -149,6 +151,7 @@ create table public.media (
   foreign key (family_id, uploaded_by_member) references public.members (family_id, id) on delete set null (uploaded_by_member),
   check (num_nonnulls(uploaded_by_parent, uploaded_by_member) <= 1)
 );
+alter table public.shares add foreign key (cover_media_id) references public.media (id) on delete set null;
 
 -- 연결 표는 family_id를 같이 들고 복합 FK로 같은 가족방끼리만 잇는다
 create table public.media_groups (
@@ -842,7 +845,7 @@ begin
       from generate_series(0, 7) i;
     exit when not exists (select 1 from public.shares where code = v_code);
   end loop;
-  insert into public.shares (family_id, code, target_member_id) values (v_family, v_code, p_target_member)
+  insert into public.shares (family_id, code, target_member_id, cover_media_id) values (v_family, v_code, p_target_member, p_media_ids[1])
     returning id into v_id;
   insert into public.share_groups (family_id, share_id, group_id) select v_family, v_id, x from unnest(p_group_ids) x;
   insert into public.share_media (family_id, share_id, media_id) select v_family, v_id, x from unnest(p_media_ids) x;

@@ -145,7 +145,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       const get = <T>(path: string) => call<T>(path, { method: 'GET', token: pass.access });
       // 부모 RLS로 자기 가족방 것만. devices는 열 권한이라 열을 적는다
       const [groups, members, devices] = await Promise.all([
-        get<AdminGroup[]>('/rest/v1/groups?select=id,name&order=sort_order,created_at'),
+        get<AdminGroup[]>('/rest/v1/groups?select=id,name,include_by_default&order=sort_order,created_at'),
         get<AdminMember[]>('/rest/v1/members?select=id,group_id,display_name,status,pending_until,created_at&order=created_at'),
         get<AdminDevice[]>('/rest/v1/devices?select=id,member_id,status,requested_name,requested_group_id,requested_member_id,created_at&order=created_at.desc'),
       ]);
@@ -173,8 +173,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       });
       if (!rows.length) throw new BackendError('not_found', 404);
     },
-    createShare: (pass, groupIds, target) =>
-      rpc<string>(pass, 'sp_create_share', { p_group_ids: groupIds, p_media_ids: [], p_target_member: target ?? null }),
+    createShare: (pass, groupIds, target, mediaIds) =>
+      rpc<string>(pass, 'sp_create_share', { p_group_ids: groupIds, p_media_ids: mediaIds ?? [], p_target_member: target ?? null }),
     parentHome: (pass) => rpc<ParentHome>(pass, 'sp_parent_home', {}),
     createFamily: (pass, f) =>
       rpc<string>(pass, 'sp_create_family', {
