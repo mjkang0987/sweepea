@@ -349,6 +349,10 @@
 }
 .sp-a__slide {
   position: relative;
+  /* 카드 안 요소들(하트·반응 줄)도 카드 위치 기준으로 움직이게 이름 붙인 타임라인 */
+  view-timeline: --slide inline;
+  /* 반응 뒤 #p-<id>로 돌아올 때 머리말·탭이 화면에 남게 */
+  scroll-margin-top: 14rem;
   flex: 0 0 var(--card-w);
   scroll-snap-align: center;
   display: flex;
@@ -421,16 +425,12 @@
     .sp-a__card,
     .sp-a__pos {
       animation: sp-a-tilt linear both;
-      animation-timeline: view(inline);
+      animation-timeline: --slide;
     }
     .sp-a__pos {
       animation-name: sp-a-fade;
     }
-    /* 반응 줄은 가운데 카드 것만 보이고 눌린다(visibility는 클릭도 막음) */
-    .sp-a__slide-react {
-      animation: sp-a-only linear both;
-      animation-timeline: view(inline);
-    }
+
   }
 }
 /* 0%: 오른쪽(다음) 카드, 100%: 왼쪽(이전) 카드. 안쪽 모서리를 축으로 기울여 가운데 카드에 붙게 */
@@ -454,17 +454,32 @@
     z-index: 1;
   }
 }
+/* 반응 줄·하트는 가운데 카드 것만 보이고 눌린다(visibility는 클릭·탭 이동도 막음). 움직임이 아니라 동작 줄이기와 무관 */
+@supports (animation-timeline: view(inline)) {
+  .sp-a__slide-react,
+  .sp-a__card-cap .sp-h {
+    animation: sp-a-only linear both;
+    animation-timeline: --slide;
+  }
+}
+/* 지원 안 하는 브라우저: 카드마다 줄이 겹치므로 숨기고, 크게 보기에서 보낸다 */
+@supports not (animation-timeline: view(inline)) {
+  .sp-a__slide-react {
+    display: none;
+  }
+}
 @keyframes sp-a-only {
   0%,
-  42% {
+  46% {
     visibility: hidden;
     opacity: 0;
   }
-  50% {
+  48%,
+  52% {
     visibility: visible;
     opacity: 1;
   }
-  58%,
+  54%,
   100% {
     visibility: hidden;
     opacity: 0;

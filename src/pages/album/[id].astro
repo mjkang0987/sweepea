@@ -4,6 +4,7 @@ import Family from '../../layouts/Family.astro';
 import HeartToggle from '../../components/HeartToggle.astro';
 import ReactRow from '../../components/ReactRow.astro';
 import SayForm from '../../components/SayForm.astro';
+import { EMOJI_SPRITE } from '../../lib/emoji';
 import { albumHref, dayLabel, handleReactPost, loadAlbum, loadReacts } from '../../lib/album';
 import { UUID } from '../../lib/media';
 import { signedMediaUrl } from '../../lib/signed';
@@ -36,6 +37,7 @@ const say = Astro.url.searchParams.get('say');
 ---
 
 <Family title={`${label} · ${i + 1} / ${items.length}`}>
+  <Fragment set:html={EMOJI_SPRITE} />
   <nav class="sp-v__bar" aria-label="사진 이동">
     <a class="sp-v__link" href={albumHref(q)}><span aria-hidden="true">‹ </span>닫기</a>
     <p class="sp-v__pos">{i + 1} / {items.length}</p>

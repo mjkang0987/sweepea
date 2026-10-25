@@ -104,9 +104,12 @@ export async function handleReactPost(request: Request, mediaId: string, cookies
     }
   } catch (e) {
     if (!(e instanceof BackendError)) throw e;
-    if (e.status === 429) to.searchParams.set('say', 'limit');
-    else if (e.status === 401) return '/';
-    // 403(볼 수 없는 사진)·400은 조용히 돌아간다
+    if (e.status === 401) return '/';
+    // 반응 실패는 조용히, 한마디 실패는 알려 준다(429 하루 한도, 그 밖은 승인 대기·볼 수 없는 사진 등)
+    if (form.get('body') !== null) {
+      to.searchParams.set('say', e.status === 429 ? 'limit' : 'error');
+      to.hash = 'say';
+    }
   }
   return to.pathname + to.search + to.hash;
 }

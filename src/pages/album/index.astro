@@ -3,6 +3,7 @@
 import Family from '../../layouts/Family.astro';
 import HeartToggle from '../../components/HeartToggle.astro';
 import ReactRow from '../../components/ReactRow.astro';
+import { EMOJI_SPRITE } from '../../lib/emoji';
 import { albumHref, dayLabel, loadAlbum, loadReacts, ZOOMS } from '../../lib/album';
 import { signedMediaUrl } from '../../lib/signed';
 
@@ -42,6 +43,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 ---
 
 <Family title={title}>
+  <Fragment set:html={EMOJI_SPRITE} />
   <header class="sp-a__head">
     <div class="sp-a__head-text">
       <h1 class="sp-f__title">{title} {items.length >= 200 ? '200장 넘게' : `${items.length}장`}</h1>
@@ -129,7 +131,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
                     {(reacts.get(c.id)?.counts.heart || reacts.get(c.id)?.counts.comment) && q.z <= 3 && (
                       <span class="sp-a__badge">
                         {reacts.get(c.id)?.counts.heart ? <span><svg class="sp-a__badge-heart" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.2 5 6.7 5c2.1 0 3.6 1.2 4.3 2.4h2C13.7 6.2 15.2 5 17.3 5c3.5 0 5.5 3.6 4.2 6.8C19.5 16.4 12 21 12 21z"></path></svg><span class="sp-vh">하트 </span>{reacts.get(c.id)?.counts.heart}</span> : null}
-                        {reacts.get(c.id)?.counts.comment ? <span>한마디 {reacts.get(c.id)?.counts.comment}</span> : null}
+                        {reacts.get(c.id)?.counts.comment ? <span><span class="sp-vh">, </span>한마디 {reacts.get(c.id)?.counts.comment}</span> : null}
                       </span>
                     )}
                   </a>
