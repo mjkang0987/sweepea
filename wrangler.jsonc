@@ -2,6 +2,10 @@
   "name": "sweepea",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
+  // 화면(Astro) + 매일 정리 예약 작업(src/jobs/cleanup.ts)
+  "main": "./src/worker.ts",
+  // 매일 18:17 UTC = 서울 새벽 3:17
+  "triggers": { "crons": ["17 18 * * *"] },
   // 사진·영상 파일. 키: <가족방 id>/<사진 id>/<view|thumb|poster>
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "sweepea-media" }]
 }

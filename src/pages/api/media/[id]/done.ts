@@ -22,7 +22,13 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
     const bytes = heads.reduce((n, h) => n + h!.size, 0);
     const k = (p: string) => keys[parts.indexOf(p)] as string;
     const ok = await backend.finishUpload(id, { view: k('view'), thumb: k('thumb'), poster: target.kind === 'video' ? k('poster') : null }, bytes);
-    return ok ? json(200, { id, bytes }) : json(409, { error: 'already_done' });
+    if (!ok) return json(409, { error: 'already_done' });
+    // 다시 올리느라 남은 예전 파일(PUT마다 새 키)은 바로 지운다. 실패해도 완료는 그대로(남은 건 용량에 안 잡힌다)
+    const keep = new Set(keys.filter(Boolean) as string[]);
+    const folder = await env.MEDIA.list({ prefix: `${target.family_id}/${id}/` }).catch(() => null);
+    const stale = folder?.objects.map((o) => o.key).filter((k) => !keep.has(k)) ?? [];
+    if (stale.length) await env.MEDIA.delete(stale).catch(() => undefined);
+    return json(200, { id, bytes });
   } catch (e) {
     return backendErrorResponse(e);
   }

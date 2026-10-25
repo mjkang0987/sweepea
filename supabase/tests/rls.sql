@@ -787,3 +787,29 @@ select public.sp_request_install_help(:'fam');
 \set ON_ERROR_STOP 1
 reset role;
 select pg_temp.ok((select install_help_at is not null from public.members where id = :'mem_a'), '부탁하면 그 사람에게 기록');
+
+-- ── 정리 작업(service_role)·5GB 상한
+insert into public.media (family_id, kind, taken_at, taken_at_source, status, created_at) values
+  (:'fam3', 'photo', now(), 'exif', 'uploading', now() - interval '2 days'),
+  (:'fam3', 'photo', now(), 'exif', 'uploading', now() - interval '1 hour');
+set role service_role;
+select pg_temp.ok(public.sp_cleanup_stale_uploads() = 1, '하루 지난 올리는 중 사진만 지움');
+select pg_temp.ok((select count(*) >= 1 from public.sp_r2_cleanup_take(500) p where p like :'fam3' || '/%/'), '그 사진 폴더는 대기열에');
+select public.sp_r2_cleanup_done(p) from public.sp_r2_cleanup_take(500) p;
+select pg_temp.ok((select count(*) = 0 from public.r2_cleanup), '지운 폴더는 대기열에서 빠짐');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(부모가 정리 함수 부름)'
+select public.sp_cleanup_stale_uploads();
+\set ON_ERROR_STOP 1
+reset role;
+update public.families set storage_used_bytes = 5368709120 where id = :'fam3';
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(5GB 다 참)'
+select public.sp_create_media(:'fam3', 'photo', now(), 'exif');
+\set ON_ERROR_STOP 1
+reset role;
+update public.families set storage_used_bytes = 0 where id = :'fam3';

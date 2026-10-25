@@ -328,6 +328,8 @@ const kid = callName(kids[0]?.name ?? '아이');
       return say(
         err instanceof HttpError && err.status === 401
           ? '로그인이 끝났어요. 다시 로그인한 뒤 올려 주세요.'
+          : err instanceof HttpError && err.status === 507
+          ? `저장 용량 5GB가 다 찼어요. ${n}장까지 올렸어요. 가족은 지금까지 올린 사진을 계속 볼 수 있어요.`
           : `${n}장까지 올렸어요. 다시 누르면 나머지를 이어서 올려요.`,
       );
     }
