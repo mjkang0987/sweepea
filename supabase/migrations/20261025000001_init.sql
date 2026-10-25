@@ -672,6 +672,11 @@ declare v_family uuid := public.sp_parent_family(); v_id uuid;
 begin
   if v_family is null then raise exception 'not_allowed' using errcode = '42501'; end if;
   if p_password !~ '^[0-9]{4}$' then raise exception 'password_4_digits' using errcode = '22023'; end if;
+  -- 그룹은 가족방당 10개까지(동시에 추가해도 넘지 않게 가족방 단위로 잠근다)
+  perform pg_advisory_xact_lock(hashtext('groups:' || v_family::text));
+  if (select count(*) from public.groups where family_id = v_family) >= 10 then
+    raise exception 'group_limit' using errcode = 'PT409';
+  end if;
   insert into public.groups (family_id, name, password_hash, password_hint, include_by_default)
     values (v_family, p_name, extensions.crypt(p_password, extensions.gen_salt('bf')), p_hint, p_include_by_default)
     returning id into v_id;

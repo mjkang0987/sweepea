@@ -636,3 +636,30 @@ set role authenticated;
 select pg_temp.ok(public.sp_create_family('mom', '지우', '하린', '2025-09-17', '0917') <> :'fam_new', '기한 지난 가족방이 있어도 처음 설정이 됨');
 reset role;
 select pg_temp.ok((select count(*) = 1 from public.r2_cleanup where family_id = :'fam_new') and not exists (select 1 from public.families where id = :'fam_new'), '처음 설정 때 지운 가족방도 R2 정리 대기열에');
+
+-- ── 그룹 관리: 10개 한도, 이름·기본 포함 바꾸기, 주소 다시 만들기
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select id as g_home from public.groups where name = '가족' \gset
+select public.sp_add_group('그룹' || g, '1111') from generate_series(1, 9) g;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(그룹 11개)'
+select public.sp_add_group('그룹10', '1111');
+\set ON_ERROR_STOP 1
+select pg_temp.ok((select count(*) = 10 from public.groups), '그룹은 10개까지');
+update public.groups set name = '우리집', include_by_default = false where id = :'g_home';
+select public.sp_create_share(array[:'g_home']::uuid[]) as code_g \gset
+select pg_temp.ok(public.sp_reset_group_links(:'g_home') = 1, '주소 다시 만들기는 그 그룹 링크를 지움');
+select pg_temp.ok(public.sp_entry_info(:'code_g') ->> 'result' = 'not_found', '예전 주소는 바로 막힘');
+reset role;
+select pg_temp.ok((select name = '우리집' and not include_by_default from public.groups where id = :'g_home'), '이름·기본 포함 바꾸기');
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.groups set name = '남의집' where id = :'g_home';
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(다른 가족방 그룹 주소 다시 만들기·비밀번호 바꾸기)'
+select public.sp_reset_group_links(:'g_home');
+select public.sp_set_group_password(:'g_home', '0000', null);
+\set ON_ERROR_STOP 1
+reset role;
+select pg_temp.ok((select name = '우리집' from public.groups where id = :'g_home'), '다른 가족방 부모는 그룹 이름 못 바꿈');
