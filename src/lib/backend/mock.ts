@@ -156,7 +156,7 @@ export function createMockBackend(): Backend {
       const id = crypto.randomUUID();
       media.push({
         id, family_id: m.familyId, kind: m.kind, taken_at: m.takenAt, width: m.width ?? null, height: m.height ?? null,
-        duration_sec: m.durationSec ?? null, status: 'uploading', uploader: pass.access,
+        duration_sec: m.durationSec ?? null, status: 'uploading', uploader: pass.access, view_key: '', thumb_key: '', poster_key: null,
       });
       return id;
     },
@@ -164,10 +164,10 @@ export function createMockBackend(): Backend {
       const x = media.find((y) => y.id === id && y.status === 'uploading' && y.uploader === pass.access);
       return x && canUpload(deviceOf(pass, x.family_id)) ? { family_id: x.family_id, kind: x.kind } : null;
     },
-    async finishUpload(id) {
+    async finishUpload(id, keys) {
       const x = media.find((y) => y.id === id && y.status === 'uploading');
       if (!x) return false;
-      x.status = 'ready';
+      Object.assign(x, { status: 'ready', view_key: keys.view, thumb_key: keys.thumb, poster_key: keys.poster });
       return true;
     },
     async listMedia(pass, opts = {}) {
