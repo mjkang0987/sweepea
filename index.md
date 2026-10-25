@@ -10,6 +10,7 @@
 - 설정 > 가족(`/settings/family` 승인·거절·새 기기·그룹 링크, `/settings/family/sms` 한 사람용 문자 링크) 완료.
 - 설정: 구성원 상세(`/settings/family/member/<id>` 사진 올리기 허용·내보내기), 가족도 사진 저장하기(`/settings`, 켜면 가족 크게 보기에 저장 링크), 저장 용량(`/settings/storage`) 완료.
 - 설정: 아이(`/settings/children` 목록, `/settings/children/<id|new>` 고치기·추가, 가족방당 10명), 가족 화면 글자 크기(`/settings/text-size`, 가족이 처음 들어올 때 크기 `families.text_size_mode`), 계정(`/settings/account` 제공자·로그아웃) 완료.
+- 부모 최근 반응(`/reactions`, 앨범 위 '최근 반응 새 N'): 승인된 가족의 반응·한마디, 확인할 사람, 열면 읽음 완료.
 - 부모 사진 정보(`/photo/<id>`, 앨범 칸에서): 찍은 날·아이·보여줄 그룹 고치기, 지우기(용량 빼고 R2 정리 대기열 `r2_cleanup.prefix`) 완료.
 - 그룹 관리(`/settings/family/groups` 목록·추가(10개)·상세·비밀번호 바꾸기·주소 다시 만들기) 완료.
 - 탈퇴하기(`/settings/account` 확인 체크, 구독 중이면 막음)·작별(`/goodbye`)·되살리기(`/restore`, 유예 중 부모 화면은 여기로, 남은 시간 안내) 완료. 3일 유예 뒤 실제 삭제는 예약 작업(13번, 출시 전 필수).
