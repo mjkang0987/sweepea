@@ -426,16 +426,14 @@ create policy media_children_write on public.media_children for all to authentic
 
 create policy reactions_read on public.reactions for select to authenticated
   using (public.sp_can_view_media(media_id));
-create policy reactions_insert on public.reactions for insert to authenticated
-  with check (member_id = public.sp_media_member(media_id) and public.sp_can_view_media(media_id));
 create policy reactions_delete on public.reactions for delete to authenticated
   using (member_id in (select public.sp_device_members()));
 
+-- 한마디 글은 그 가족방 부모와 쓴 사람만(가족 화면엔 수만 보인다, sp_reaction_counts)
 create policy comments_read on public.comments for select to authenticated
-  using (deleted_at is null and public.sp_can_view_media(media_id));
-create policy comments_insert on public.comments for insert to authenticated
-  with check (member_id = public.sp_media_member(media_id) and public.sp_can_view_media(media_id)
-              and deleted_at is null and edited_at is null);
+  using (deleted_at is null
+         and (member_id in (select public.sp_device_members())
+              or exists (select 1 from public.media x where x.id = comments.media_id and x.family_id = public.sp_parent_family())));
 create policy comments_self_update on public.comments for update to authenticated
   using (member_id in (select public.sp_device_members())) with check (member_id in (select public.sp_device_members()));
 -- 지우기(본인·부모)는 sp_delete_comment로. 지운 행은 읽기 정책에서 빠져서 UPDATE로는 못 한다
@@ -462,8 +460,7 @@ grant select (id, family_id, member_id, status, can_upload, requested_member_id,
 revoke update on public.families from authenticated;
 grant update (name, download_allowed, text_size_mode, delete_after) on public.families to authenticated;
 revoke insert on public.comments, public.reactions from authenticated;
-grant insert (media_id, member_id, body) on public.comments to authenticated;
-grant insert (media_id, member_id, kind) on public.reactions to authenticated;
+-- 반응·한마디 넣기는 sp_react·sp_comment로만(하루 한도·공백 정리·구성원 확인)
 revoke truncate, references, trigger on all tables in schema public from anon, authenticated;
 revoke update on public.comments from authenticated;
 grant update (body) on public.comments to authenticated;
