@@ -11,6 +11,8 @@ as $$
       'text_size_mode', f.text_size_mode,
       'closing', f.delete_after is not null,
       'delete_after', f.delete_after,
+      -- 스토어 구독이 끝나는 날(구독 중이면). 해지해도 이 날까지는 탈퇴를 막는다
+      'plan_until', (select max(e.expires_at) from public.entitlements e where e.family_id = f.id and e.expires_at > now()),
       'download_allowed', f.download_allowed,
       'storage_used_bytes', f.storage_used_bytes,
       'photo_count', (select count(*) from public.media x where x.family_id = f.id and x.status = 'ready' and x.kind = 'photo'),
@@ -21,7 +23,8 @@ as $$
       ), '[]'::jsonb)
     )
     from public.parents p join public.families f on f.id = p.family_id
-    where p.user_id = auth.uid()
+    -- 지울 날이 지난 가족방은 없는 것으로(처음 설정부터, sp_create_family가 먼저 지운다)
+    where p.user_id = auth.uid() and (f.delete_after is null or f.delete_after > now())
   ), jsonb_build_object('family_id', null))
 $$;
 

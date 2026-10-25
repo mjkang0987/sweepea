@@ -27,12 +27,17 @@ begin
   if not found then raise exception 'not_closing' using errcode = '22023'; end if;
 end $$;
 
--- 예약 작업(service_role)이 부른다. 지운 가족방 id를 돌려주면 그 R2 폴더(<가족방 id>/)를 지운다
+-- 예약 작업(service_role)이 부른다. 지운 가족방은 r2_cleanup에 남아 그 R2 폴더를 지운다
 create function public.sp_purge_deleted_families() returns setof uuid
-language sql security definer set search_path = ''
+language plpgsql security definer set search_path = ''
 as $$
-  delete from public.families where delete_after <= now() returning id
-$$;
+declare v_id uuid;
+begin
+  for v_id in select id from public.families where delete_after <= now() loop
+    perform public.sp_purge_family(v_id);
+    return next v_id;
+  end loop;
+end $$;
 
 revoke execute on function public.sp_request_delete(), public.sp_restore_family(), public.sp_purge_deleted_families()
   from public, anon, authenticated;

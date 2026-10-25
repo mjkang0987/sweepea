@@ -305,13 +305,15 @@ $$;
 create function public.sp_can_upload(p_family_id uuid) returns boolean
 language sql stable security definer set search_path = ''
 as $$
-  select coalesce(p_family_id = public.sp_parent_family(), false)
+  -- 탈퇴 유예 중인 가족방은 부모도 올리기·공유·고치기를 멈춘다
+  select not exists (select 1 from public.families where id = p_family_id and delete_after is not null)
+  and (coalesce(p_family_id = public.sp_parent_family(), false)
     or exists (
       select 1 from public.devices d join public.members m on m.id = d.member_id
       where d.auth_user_id = auth.uid() and d.status = 'active' and d.can_upload
         and m.status = 'active' and m.family_id = p_family_id
         and m.id = public.sp_device_member(p_family_id)
-    )
+    ))
 $$;
 
 -- 사진의 공개 그룹·아이 태그를 바꿀 수 있는가: 부모 또는 그 사진을 올린 가족
@@ -600,6 +602,22 @@ language sql stable set search_path = ''
 as $$ select coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) $$;
 
 -- 부모 처음 설정: 가족방 + 부모 + 기본 그룹("가족") + 첫 아이
+-- 가족방 지우기(탈퇴 기한 지남). R2 폴더(<가족방 id>/)는 예약 작업이 r2_cleanup을 보고 지운다
+create table public.r2_cleanup (
+  family_id uuid primary key,
+  queued_at timestamptz not null default now()
+);
+alter table public.r2_cleanup enable row level security;
+revoke all on public.r2_cleanup from anon, authenticated;
+
+create function public.sp_purge_family(p_family uuid) returns void
+language sql security definer set search_path = ''
+as $$
+  insert into public.r2_cleanup (family_id) values (p_family) on conflict do nothing;
+  delete from public.families where id = p_family;
+$$;
+revoke execute on function public.sp_purge_family(uuid) from public, anon, authenticated;
+
 create function public.sp_create_family(
   p_role text, p_display_name text, p_child_name text, p_birth_date date,
   p_password text, p_hint text default null
@@ -611,6 +629,9 @@ begin
   if auth.uid() is null or public.sp_is_anonymous() then
     raise exception 'parent_login_required' using errcode = '42501';
   end if;
+  -- 지울 날이 지난 내 가족방은(지우는 작업이 아직 안 돌았어도) 먼저 지우고 새로 만든다
+  perform public.sp_purge_family(p.family_id) from public.parents p join public.families f on f.id = p.family_id
+    where p.user_id = auth.uid() and f.delete_after <= now();
   if exists (select 1 from public.parents where user_id = auth.uid()) then
     raise exception 'family_exists' using errcode = '23505';
   end if;
