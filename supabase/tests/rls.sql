@@ -174,7 +174,13 @@ select set_config('request.jwt.claims', json_build_object('sub', :'SP', 'is_anon
 set role authenticated;
 select pg_temp.ok((select count(*) = 4 from public.media), '올리기 권한이면 모든 그룹 사진(올리는 중 제외)');
 select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, array[:'gpa']::uuid[]) as m6 \gset
+reset role;
 select pg_temp.ok((select uploaded_by_member = :'m_sp' and uploaded_by_parent is null from public.media where id = :'m6'), '가족 기기가 올리면 올린 사람은 그 구성원');
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(가족이 부모 사용자 id 열 읽기)'
+select uploaded_by_parent from public.media;
+\set ON_ERROR_STOP 1
 select pg_temp.ok(public.sp_upload_target(:'m6') ->> 'kind' = 'photo', '가족 기기도 자기 사진에 파일을 넣을 수 있음');
 select pg_temp.ok(length(public.sp_create_share(array[:'gpa']::uuid[], array[:'m6']::uuid[])) = 8, '올리기 권한 가족도 공유 링크 만듦');
 reset role;

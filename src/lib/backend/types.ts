@@ -101,6 +101,9 @@ export interface MediaItem {
   width: number | null;
   height: number | null;
   duration_sec: number | null;
+  view_key: string;
+  thumb_key: string;
+  poster_key: string | null;
 }
 
 export interface Backend {

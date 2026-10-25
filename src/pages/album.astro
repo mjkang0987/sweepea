@@ -6,6 +6,7 @@ import { getBackend } from '../lib/backend';
 import { currentPass } from '../lib/pass';
 import { callName } from '../lib/ko';
 import { isOpen } from '../lib/families';
+import { signedMediaUrl } from '../lib/signed';
 
 const pass = await currentPass(Astro.cookies);
 if (!pass) return Astro.redirect('/');
@@ -14,6 +15,10 @@ const open = families.filter(isOpen);
 if (open.length === 0) return Astro.redirect(families.length ? '/wait' : '/');
 const title = `${open.map((f) => callName(f.child_name ?? '아이')).join('·')} 사진`;
 const items = await getBackend().listMedia(pass);
+const day = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
+const thumbs = await Promise.all(
+  items.map(async (m) => ({ id: m.id, src: await signedMediaUrl(m.thumb_key), alt: `${day.format(new Date(m.taken_at))} ${m.kind === 'video' ? '영상' : '사진'}` })),
+);
 ---
 
 <Family title={title}>
@@ -22,4 +27,15 @@ const items = await getBackend().listMedia(pass);
     <p class="sp-f__lead">{open[0].name}, 반가워요</p>
   </div>
   <p class="sp-f__box">사진 {items.length}{items.length >= 60 ? '장 넘게' : '장'} 올라와 있어요. 사진 화면은 곧 열려요.</p>
+  {
+    thumbs.length > 0 && (
+      <ul class="sp-f__grid" aria-label="최근 사진">
+        {thumbs.map((t) => (
+          <li class="sp-f__cell">
+            <img class="sp-f__thumb" src={t.src} alt={t.alt} loading="lazy" decoding="async" />
+          </li>
+        ))}
+      </ul>
+    )
+  }
 </Family>

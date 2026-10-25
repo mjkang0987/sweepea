@@ -101,7 +101,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     },
     listMedia(pass, opts = {}) {
       const q = new URLSearchParams({
-        select: 'id,family_id,kind,taken_at,width,height,duration_sec',
+        select: 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key',
         status: 'eq.ready',
         order: 'taken_at.desc,id.desc',
         limit: String(Math.min(opts.limit ?? 60, 200)),
