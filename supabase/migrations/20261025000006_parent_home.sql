@@ -7,6 +7,10 @@ as $$
       'family_id', p.family_id,
       'role', p.role,
       'closing', f.delete_after is not null,
+      'download_allowed', f.download_allowed,
+      'storage_used_bytes', f.storage_used_bytes,
+      'photo_count', (select count(*) from public.media x where x.family_id = f.id and x.status = 'ready' and x.kind = 'photo'),
+      'video_count', (select count(*) from public.media x where x.family_id = f.id and x.status = 'ready' and x.kind = 'video'),
       'children', coalesce((
         select jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name, 'birth_date', c.birth_date) order by c.sort_order, c.created_at)
         from public.children c where c.family_id = p.family_id

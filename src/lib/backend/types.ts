@@ -59,6 +59,8 @@ export interface EnterInput {
 export interface MeFamily extends EntryMe {
   family_id: string;
   closed: boolean;
+  /** 부모가 '가족도 사진 저장하기'를 켰는지 */
+  download_allowed?: boolean;
   child_name: string | null;
 }
 
@@ -121,6 +123,10 @@ export interface ParentHome {
   family_id: string | null;
   role?: 'mom' | 'dad';
   closing?: boolean;
+  download_allowed?: boolean;
+  storage_used_bytes?: number;
+  photo_count?: number;
+  video_count?: number;
   children?: { id: string; name: string; birth_date: string }[];
 }
 
@@ -153,6 +159,7 @@ export interface AdminDevice {
   requested_name: string | null;
   requested_group_id: string | null;
   requested_member_id: string | null;
+  can_upload: boolean;
   created_at: string;
 }
 export interface FamilyAdmin {
@@ -193,10 +200,14 @@ export interface Backend {
   /** 로그아웃: 이 세션의 갱신 토큰을 무효로(실패해도 쿠키는 지운다) */
   parentLogout(pass: Pass): Promise<void>;
   familyAdmin(pass: Pass): Promise<FamilyAdmin>;
-  /** 새 이름 승인(active)·거절(rejected). 거절하면 그 이름으로 들어온 기기도 막힌다(DB 트리거) */
+  /** 새 이름 승인(active, 승인 대기만)·거절(rejected, 승인 대기·승인된 사람 모두 = 내보내기). 거절하면 그 사람 기기도 막힌다(DB 트리거) */
   setMemberStatus(pass: Pass, memberId: string, status: 'active' | 'rejected'): Promise<void>;
   /** 승인 대기 기기 승인(active, 들어가려던 이름을 붙임)·내 가족 아님(revoked) */
   setDeviceStatus(pass: Pass, deviceId: string, status: 'active' | 'revoked'): Promise<void>;
   /** 공유 링크 코드(8자). targetMemberId를 주면 그 사람 전용 한 번 쓰는 링크 */
+  /** 그 사람의 승인된 기기들에 사진 올리기 허용·해제 */
+  setUploadAllowed(pass: Pass, memberId: string, on: boolean): Promise<void>;
+  /** 가족도 사진 저장하기 */
+  setDownloadAllowed(pass: Pass, familyId: string, on: boolean): Promise<void>;
   createShare(pass: Pass, groupIds: string[], targetMemberId?: string, mediaIds?: string[]): Promise<string>;
 }

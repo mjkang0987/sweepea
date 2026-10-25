@@ -23,7 +23,7 @@ select public.sp_create_family('mom', '지우', '하린', '2025-09-17', '0917', 
 select public.sp_add_group('외가', '1234', '외가 비밀번호') as gma \gset
 select public.sp_add_group('친가', '5678') as gpa \gset
 select pg_temp.ok((select groups_enabled from public.families) , '그룹 추가하면 그룹 켜짐');
-select pg_temp.ok(public.sp_parent_home() @> '{"role": "mom", "children": [{"name": "하린"}]}', '부모 첫 화면 정보');
+select pg_temp.ok(public.sp_parent_home() @> '{"role": "mom", "children": [{"name": "하린"}], "download_allowed": false, "photo_count": 0}', '부모 첫 화면 정보');
 insert into public.members (family_id, group_id, display_name) values
   (:'fam', :'gma', '외할머니'), (:'fam', :'gma', '외할아버지'), (:'fam', :'gma', '하린 아빠'), (:'fam', :'gpa', '할머니');
 select id as m_gm from public.members where display_name = '외할머니' \gset
