@@ -1075,7 +1075,10 @@
   }
   .sp-p--tabbed {
     padding-top: calc(var(--space-6) + 3.5rem);
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+  /* 위 메뉴 밑으로 포커스된 칸이 숨지 않게 */
+  .sp-html {
+    scroll-padding-top: 4.5rem;
   }
   .sp-p__tabs {
     top: 0;
@@ -1095,7 +1098,7 @@
     font-size: var(--subhead-size);
   }
   /* 올리기: 왼쪽 사진, 오른쪽 아이·그룹·보내기 */
-  .sp-p--wide .sp-p__form {
+  .sp-p--wide .sp-p__form:not([hidden]) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 22rem;
     column-gap: var(--space-6);
@@ -1115,7 +1118,10 @@
   flex-direction: column;
   gap: var(--space-5);
 }
-/* 끌어다 놓는 중 */
+/* 끌어다 놓는 중(안쪽 글자에서 dragleave가 나지 않게) */
+.sp-p__pick-text {
+  pointer-events: none;
+}
 .sp-p__pick--over {
   outline: 3px dashed var(--pea);
   outline-offset: 2px;

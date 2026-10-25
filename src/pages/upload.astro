@@ -252,15 +252,19 @@ const kid = callName(kids[0]?.name ?? '아이');
 
   // PC: 사진을 고르기 칸에 끌어다 놓아도 고른 것과 같게
   const pick = $<HTMLLabelElement>('up-pick');
+  // 고르기 칸 밖에 떨어뜨려도 브라우저가 파일을 열고 이 화면을 떠나지 않게
+  for (const t of ['dragover', 'drop']) window.addEventListener(t, (e) => e.preventDefault());
+  const canDrop = () => !busy && !input.disabled;
   pick.addEventListener('dragover', (e) => {
     e.preventDefault();
-    pick.classList.add('sp-p__pick--over');
+    if (e.dataTransfer) e.dataTransfer.dropEffect = canDrop() ? 'copy' : 'none';
+    pick.classList.toggle('sp-p__pick--over', canDrop());
   });
   pick.addEventListener('dragleave', () => pick.classList.remove('sp-p__pick--over'));
   pick.addEventListener('drop', (e) => {
     e.preventDefault();
     pick.classList.remove('sp-p__pick--over');
-    if (!e.dataTransfer?.files.length || busy) return;
+    if (!e.dataTransfer?.files.length || !canDrop()) return;
     input.files = e.dataTransfer.files;
     input.dispatchEvent(new Event('change'));
   });
