@@ -292,6 +292,22 @@
 - 예상 결과: 탈퇴 직후 다시 로그인하면 "2일 23시간 남았어요"(e2e), 경계값 단위 검사
 - 결과: 빨간 굵은 글씨로 남은 시간, 아래에 지울 시각(예: 10월 29일 오전 1:46). 검토 반영(마지막 1시간·알 수 없는 값은 '곧 지워져요'). 단위 검사·탈퇴 e2e 통과. 화면을 연 시각 기준이라 열어 둔 채로는 줄지 않음
 
+### 19. feature/group-settings — 그룹 관리: 그룹 목록·추가·상세·비밀번호 바꾸기·주소 다시 만들기 (계획)
+
+- 요구사항(캔버스 GroupSettings·GroupDetail·PasswordChange)
+  - 그룹 목록(`/settings/family/groups`): 그룹마다 이름·구성원 이름·인원·'기본 포함' 표시, 그룹 추가(10개까지)
+  - 그룹 추가(`/settings/family/groups/new`): 이름·비밀번호 4자리·힌트·새 사진에 기본으로 포함
+  - 그룹 상세(`/settings/family/groups/<id>`): 이름 바꾸기, 새 사진에 기본으로 포함(체크), 비밀번호(힌트)·바꾸기, 주소 카톡으로 보내기(기존 링크 만들기), 구성원(마지막으로 본 때·올리기·확인 기다림 남은 날), 주소 다시 만들기(예전 주소는 바로 막힘, 한 번 더 확인)
+  - 비밀번호 바꾸기(`/settings/family/groups/<id>/password`): 새 비밀번호·힌트, "이미 들어온 기기는 그대로" 안내
+  - 설정 > 가족에서 그룹 관리로 가는 줄
+- 구현 방식
+  - DB: `sp_add_group`에 10개 한도, `sp_reset_group_links(group)`(그 그룹이 들어간 공유 링크를 지워 예전 주소를 막음). 이름·기본 포함은 기존 열 권한으로 PATCH, 비밀번호는 기존 `sp_set_group_password`
+  - 백엔드: `familyAdmin`에 그룹 힌트·기기 마지막으로 본 때, `addGroup`·`updateGroup`·`setGroupPassword`·`resetGroupLinks`
+  - 폼 POST + PRG, 주소 다시 만들기는 설정 > 가족의 확인 카드·링크 카드 재사용
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/lib/familyAdmin.ts`, `src/pages/settings/family/index.astro`, `src/pages/settings/family/groups/*`, `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: mock으로 그룹 추가 → 목록·올리기 화면에 보임, 이름·기본 포함 바꾸기, 비밀번호 바꾸면 새 비밀번호로만 입장, 주소 다시 만들면 예전 링크는 없는 주소(e2e). DB 검사: 다른 가족방 그룹 못 바꿈, 11번째 그룹 거부, 다시 만들면 예전 코드 막힘
+- 범위 밖: 그룹 지우기·순서 바꾸기, '홈 화면에 있음' 표시(설치 여부를 서버가 모름)
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
