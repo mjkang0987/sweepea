@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { Backend, EnterInput, EnterResult, EntryInfo, MediaItem, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
+import type { AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, MediaItem, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -33,6 +33,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       const body = (await res.json().catch(() => ({}))) as { error_code?: string; code?: string; error?: string };
       throw new BackendError(`${path} ${res.status}`, res.status, body.error_code ?? body.code ?? body.error);
     }
+    // PATCH 등 return=minimal은 본문이 없다
+    if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
   }
 
@@ -139,6 +141,34 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         signal: AbortSignal.timeout(8000),
       }).catch(() => undefined);
     },
+    async familyAdmin(pass) {
+      const get = <T>(path: string) => call<T>(path, { method: 'GET', token: pass.access });
+      // 부모 RLS로 자기 가족방 것만. devices는 열 권한이라 열을 적는다
+      const [groups, members, devices] = await Promise.all([
+        get<AdminGroup[]>('/rest/v1/groups?select=id,name&order=sort_order,created_at'),
+        get<AdminMember[]>('/rest/v1/members?select=id,group_id,display_name,status,pending_until,created_at&order=created_at'),
+        get<AdminDevice[]>('/rest/v1/devices?select=id,member_id,status,requested_name,requested_group_id,requested_member_id,created_at&order=created_at.desc'),
+      ]);
+      return { groups, members, devices };
+    },
+    async setMemberStatus(pass, id, status) {
+      await call(`/rest/v1/members?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        token: pass.access,
+        headers: { prefer: 'return=minimal' },
+        body: JSON.stringify(status === 'active' ? { status, pending_until: null } : { status }),
+      });
+    },
+    async setDeviceStatus(pass, id, status) {
+      await call(`/rest/v1/devices?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        token: pass.access,
+        headers: { prefer: 'return=minimal' },
+        body: JSON.stringify(status === 'revoked' ? { status, can_upload: false } : { status }),
+      });
+    },
+    createShare: (pass, groupIds, target) =>
+      rpc<string>(pass, 'sp_create_share', { p_group_ids: groupIds, p_media_ids: [], p_target_member: target ?? null }),
     parentHome: (pass) => rpc<ParentHome>(pass, 'sp_parent_home', {}),
     createFamily: (pass, f) =>
       rpc<string>(pass, 'sp_create_family', {

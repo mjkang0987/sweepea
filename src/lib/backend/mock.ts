@@ -7,7 +7,7 @@ import { BackendError } from './supabase';
 interface Group { id: string; familyId: string; name: string; hint: string; password: string }
 interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean }
 interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean }
-interface Device { familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]>; canUpload?: boolean }
+interface Device { id: string; familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]>; canUpload?: boolean }
 
 const HOUR = 3600_000;
 // 하린이네(외가·친가)와 도윤이네(외할머니의 다른 손주). 외할머니 한 기기로 두 가족방에 들어가는 흐름을 본다
@@ -125,7 +125,7 @@ export function createMockBackend(): Backend {
         if (!i.groupId || !s.groupIds.includes(i.groupId)) return { result: 'bad_request' };
         groupId = i.groupId;
       }
-      const dev: Device = d ?? { familyId: familyOf(s), status: 'active', failures: new Map() };
+      const dev: Device = d ?? { id: crypto.randomUUID(), familyId: familyOf(s), status: 'active', failures: new Map() };
       const fails = dev.failures.get(groupId) ?? [];
       const last = fails.at(-1) ?? 0;
       if (fails.length > 0 && fails.length % 3 === 0 && last > Date.now() - 30_000) {
@@ -236,6 +236,44 @@ export function createMockBackend(): Backend {
       return { access: `parent-${code}`, refresh: `parent-${code}`, expiresAt: Math.floor(Date.now() / 1000) + 365 * 24 * 3600 };
     },
     async parentLogout() {},
+    async familyAdmin(pass) {
+      const fam = parents.get(pass.access)?.familyId;
+      const gs = groups.filter((g) => g.familyId === fam);
+      const now = new Date().toISOString();
+      return {
+        groups: gs.map((g) => ({ id: g.id, name: g.name })),
+        members: members
+          .filter((m) => gs.some((g) => g.id === m.groupId))
+          .map((m) => ({ id: m.id, group_id: m.groupId, display_name: m.name, status: m.status, pending_until: m.status === 'pending' ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, created_at: now })),
+        devices: [...devices.values()]
+          .filter((d) => d.familyId === fam)
+          .map((d) => ({ id: d.id, member_id: d.memberId ?? null, status: d.status, requested_name: d.requestedName ?? null, requested_group_id: null, requested_member_id: null, created_at: now })),
+      };
+    },
+    async setMemberStatus(pass, id, status) {
+      const fam = parents.get(pass.access)?.familyId;
+      const m = members.find((x) => x.id === id && groups.find((g) => g.id === x.groupId)?.familyId === fam);
+      if (!m) return;
+      m.status = status;
+      if (status === 'rejected') for (const d of devices.values()) if (d.memberId === id) d.status = 'revoked';
+    },
+    async setDeviceStatus(pass, id, status) {
+      const fam = parents.get(pass.access)?.familyId;
+      const d = [...devices.values()].find((x) => x.id === id && x.familyId === fam);
+      if (!d) return;
+      d.status = status;
+      if (status === 'active') d.failures.clear();
+    },
+    async createShare(pass, groupIds, target) {
+      const fam = parents.get(pass.access)?.familyId;
+      if (!fam || !groupIds.length || groupIds.some((id) => groups.find((g) => g.id === id)?.familyId !== fam)) {
+        throw new BackendError('bad_request', 400, '22023');
+      }
+      const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+      const code = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => abc[b % abc.length]).join('');
+      shares.push({ code, groupIds, createdAt: Date.now(), targetMemberId: target });
+      return code;
+    },
     async parentHome(pass): Promise<ParentHome> {
       const p = parents.get(pass.access);
       if (!p) return { family_id: null };
