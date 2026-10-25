@@ -23,7 +23,7 @@ const [items, healthRows] = await Promise.all([
     .map(async (k) => {
       const rows = await b.healthDone(a.pass, k.id).catch(() => null);
       if (!rows) return null;
-      const done = new Set(rows.map((d) => d.item_key));
+      const done = new Map(rows.map((d) => [d.item_key, d.done_on]));
       const next = splitSchedule(k.birth_date, today, done).upcoming[0];
       const [, m, d] = next?.start.split('-').map(Number) ?? [];
       return { id: k.id, name: k.name, next: next ? `${next.item.name} · ${next.state.kind === 'soon' ? `${m}월 ${d}일부터` : '지금 가능'}` : '6개월 안에는 없어요' };

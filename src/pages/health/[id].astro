@@ -32,7 +32,7 @@ if (Astro.request.method === 'POST') {
 }
 const doneRows = await b.healthDone(a.pass, kid.id);
 const doneOn = new Map(doneRows.map((d) => [d.item_key, d.done_on]));
-const { upcoming, past } = splitSchedule(kid.birth_date, today, new Set(doneOn.keys()));
+const { upcoming, past } = splitSchedule(kid.birth_date, today, doneOn);
 const doneList = HEALTH_ITEMS.filter((i) => doneOn.has(i.key)).sort((x, y) => (doneOn.get(x.key)! < doneOn.get(y.key)! ? 1 : -1));
 const md = (iso: string) => {
   const [, m, d] = iso.split('-').map(Number);

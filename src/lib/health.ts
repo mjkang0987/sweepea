@@ -13,6 +13,8 @@ export interface HealthItem {
   from: Age;
   /** 이날부터는 시기 지남(없으면 지나지 않음) */
   until?: Age;
+  /** 앞 접종을 한 날부터 센다(그 전엔 보이지 않음) */
+  after?: { key: string; gap: Age };
 }
 
 const v = (key: string, name: string, age: string, from: Age, until?: Age): HealthItem => ({ key, kind: 'vaccine', name, age, from, until });
@@ -40,8 +42,8 @@ export const HEALTH_ITEMS: HealthItem[] = [
   v('mmr-1', 'MMR 1차', '12~15개월', range(12, 15).from, range(12, 15).until),
   v('var', '수두', '12~15개월', range(12, 15).from, range(12, 15).until),
   v('hepa-1', 'A형간염 1차', '12~23개월', range(12, 23).from, range(12, 23).until),
-  // 2차 간격은 제품마다 달라(확인 필요) 끝 없이 1차 6개월 뒤부터로 둔다
-  v('hepa-2', 'A형간염 2차', '1차 6개월 뒤부터', { m: 18 }),
+  // 2차 간격은 제품마다 달라(확인 필요) 1차를 체크한 날 6개월 뒤부터, 끝 없이
+  { ...v('hepa-2', 'A형간염 2차', '1차 6개월 뒤부터', { m: 18 }), after: { key: 'hepa-1', gap: { m: 6 } } },
   v('je-1', '일본뇌염 1차', '12~23개월', range(12, 23).from, range(12, 23).until),
   v('je-2', '일본뇌염 2차(불활성화)', '12~23개월', range(12, 23).from, range(12, 23).until),
   v('dtap-4', 'DTaP 4차', '15~18개월', range(15, 18).from, range(15, 18).until),
@@ -85,13 +87,20 @@ export function healthState(item: HealthItem, birth: string, today: string): Hea
 
 /** 안 한 일정을 둘로: 다가오는 것(6개월 안에 시작, 지금 가능한 것 포함)과 지난 것(시기 지남, 또는 끝이 없는데 시작한 지 2개월 넘음).
  *  처음 쓰는 부모가 이미 한 접종을 다 체크하지 않아도 다가오는 일정이 지난 것에 묻히지 않게 한다. 시작일 순 */
-export function splitSchedule(birth: string, today: string, done: Set<string>) {
+export function splitSchedule(birth: string, today: string, done: Map<string, string>) {
   const horizon = addAge(today, { m: 6 });
   const stale = addAge(today, { m: -2 });
-  const rows = HEALTH_ITEMS.filter((i) => !done.has(i.key))
-    .map((i) => ({ item: i, start: addAge(birth, i.from), state: healthState(i, birth, today) }))
+  const rows = HEALTH_ITEMS.filter((i) => !done.has(i.key) && (!i.after || done.has(i.after.key)))
+    .map((i) => {
+      if (!i.after) return { item: i, start: addAge(birth, i.from), state: healthState(i, birth, today) };
+      // 앞 접종 날부터 센다: 그 날을 생일 자리에 넣어 계산
+      const base = done.get(i.after.key)!;
+      const item = { ...i, from: i.after.gap };
+      return { item: i, start: addAge(base, i.after.gap), state: healthState(item, base, today) };
+    })
     .filter((x) => x.start <= horizon)
     .sort((a, b) => (a.start === b.start ? 0 : a.start < b.start ? -1 : 1));
-  const isPast = (x: (typeof rows)[number]) => x.state.kind === 'late' || (x.state.kind === 'now' && !x.item.until && x.start < stale);
+  // 앞 접종에 맞춘 항목은 오래돼도 다가오는 일정에 둔다
+  const isPast = (x: (typeof rows)[number]) => x.state.kind === 'late' || (x.state.kind === 'now' && !x.item.until && !x.item.after && x.start < stale);
   return { upcoming: rows.filter((x) => !isPast(x)), past: rows.filter(isPast) };
 }
