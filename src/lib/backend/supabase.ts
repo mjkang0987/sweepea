@@ -33,9 +33,21 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       const body = (await res.json().catch(() => ({}))) as { error_code?: string; code?: string; error?: string };
       throw new BackendError(`${path} ${res.status}`, res.status, body.error_code ?? body.code ?? body.error);
     }
-    // PATCH 등 return=minimal은 본문이 없다
-    if (res.status === 204) return undefined as T;
-    return (await res.json()) as T;
+    // return=minimal은 본문이 없다(PATCH 204, POST 201)
+    const text = await res.text();
+    return (text ? JSON.parse(text) : undefined) as T;
+  }
+
+  /** 한 행 PATCH. RLS로 남의 가족방 행이면 0행이라 404로 */
+  async function patchOne(pass: Pass, table: string, id: string, body: object) {
+    const q = new URLSearchParams({ id: `eq.${id}`, select: 'id' });
+    const rows = await call<{ id: string }[]>(`/rest/v1/${table}?${q}`, {
+      method: 'PATCH',
+      token: pass.access,
+      headers: { prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    if (!rows.length) throw new BackendError('not_found', 404);
   }
 
   function toPass(t: TokenResponse): Pass {
@@ -184,15 +196,16 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       });
       if (!rows.length) throw new BackendError('not_found', 404);
     },
-    async setDownloadAllowed(pass, familyId, on) {
-      const q = new URLSearchParams({ id: `eq.${familyId}`, select: 'id' });
-      const rows = await call<{ id: string }[]>(`/rest/v1/families?${q}`, {
-        method: 'PATCH',
+    setDownloadAllowed: (pass, familyId, on) => patchOne(pass, 'families', familyId, { download_allowed: on }),
+    setTextSizeMode: (pass, familyId, mode) => patchOne(pass, 'families', familyId, { text_size_mode: mode }),
+    updateChild: (pass, childId, name, birthDate) => patchOne(pass, 'children', childId, { name, birth_date: birthDate }),
+    async addChild(pass, familyId, name, birthDate) {
+      await call(`/rest/v1/children`, {
+        method: 'POST',
         token: pass.access,
-        headers: { prefer: 'return=representation' },
-        body: JSON.stringify({ download_allowed: on }),
+        headers: { prefer: 'return=minimal' },
+        body: JSON.stringify({ family_id: familyId, name, birth_date: birthDate }),
       });
-      if (!rows.length) throw new BackendError('not_found', 404);
     },
     createShare: (pass, groupIds, target, mediaIds) =>
       rpc<string>(pass, 'sp_create_share', { p_group_ids: groupIds, p_media_ids: mediaIds ?? [], p_target_member: target ?? null }),

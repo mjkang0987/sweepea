@@ -34,6 +34,7 @@ export type EntryInfo =
       result: 'ok';
       me: EntryMe | null;
       child_name: string | null;
+      text_size_mode: TextSizeMode;
       new_entry_open: boolean;
       target_member_id: string | null;
       groups: EntryGroup[];
@@ -119,9 +120,15 @@ export interface ReactionCount {
   mine: boolean;
 }
 
+/** 가족 화면 글자 크기 기본값. relation: 할머니·할아버지 호칭이면 크게, 나머지 기본 */
+export type TextSizeMode = 'relation' | 'base' | 'large' | 'xlarge';
+
 export interface ParentHome {
   family_id: string | null;
   role?: 'mom' | 'dad';
+  /** 로그인 제공자(kakao·naver·google·apple). 모르면 null */
+  provider?: string | null;
+  text_size_mode?: TextSizeMode;
   closing?: boolean;
   download_allowed?: boolean;
   storage_used_bytes?: number;
@@ -209,5 +216,10 @@ export interface Backend {
   setUploadAllowed(pass: Pass, memberId: string, on: boolean): Promise<void>;
   /** 가족도 사진 저장하기 */
   setDownloadAllowed(pass: Pass, familyId: string, on: boolean): Promise<void>;
+  /** 가족 화면 처음 글자 크기 */
+  setTextSizeMode(pass: Pass, familyId: string, mode: TextSizeMode): Promise<void>;
+  addChild(pass: Pass, familyId: string, name: string, birthDate: string): Promise<void>;
+  /** 자기 가족방 아이가 아니면 404 */
+  updateChild(pass: Pass, childId: string, name: string, birthDate: string): Promise<void>;
   createShare(pass: Pass, groupIds: string[], targetMemberId?: string, mediaIds?: string[]): Promise<string>;
 }
