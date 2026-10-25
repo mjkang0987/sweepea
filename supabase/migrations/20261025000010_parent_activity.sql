@@ -18,14 +18,23 @@ as $$
   )
   select jsonb_build_object(
     'seen_at', (select activity_seen_at from p),
+    -- 이 목록을 읽은 시각. 읽음 표시는 이 시각까지만(그 사이 온 반응은 다음에 새 반응으로)
+    'read_at', now(),
     'items', coalesce((select jsonb_agg(to_jsonb(i) order by i.at desc) from items i), '[]'::jsonb)
   )
   where exists (select 1 from p)
 $$;
 
-create function public.sp_mark_activity_seen() returns void
+create function public.sp_mark_activity_seen(p_read_at timestamptz) returns void
 language sql security definer set search_path = ''
-as $$ update public.parents set activity_seen_at = now() where user_id = auth.uid() $$;
+as $$
+  update public.parents set activity_seen_at = greatest(activity_seen_at, least(p_read_at, now()))
+    where user_id = auth.uid()
+$$;
 
-revoke execute on function public.sp_parent_activity(), public.sp_mark_activity_seen() from public, anon, authenticated;
-grant execute on function public.sp_parent_activity(), public.sp_mark_activity_seen() to authenticated;
+-- 새 반응 수·목록은 시각으로 거른다(사진이 많아도 최근 것만 본다)
+create index reactions_recent on public.reactions (created_at);
+create index comments_recent on public.comments (created_at);
+
+revoke execute on function public.sp_parent_activity(), public.sp_mark_activity_seen(timestamptz) from public, anon, authenticated;
+grant execute on function public.sp_parent_activity(), public.sp_mark_activity_seen(timestamptz) to authenticated;

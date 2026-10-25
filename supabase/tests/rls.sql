@@ -743,7 +743,7 @@ set role authenticated;
 select pg_temp.ok((public.sp_parent_home() ->> 'new_activity')::int = 2, '새 반응 수(내보낸 사람 빼고)');
 select pg_temp.ok(jsonb_array_length(public.sp_parent_activity() -> 'items') = 2, '최근 반응 목록');
 select pg_temp.ok(public.sp_parent_activity() -> 'items' @> '[{"type": "comment", "who": "외할머니", "body": "아이고 많이 컸네"}, {"type": "reaction", "kind": "heart"}]', '반응·한마디 내용');
-select public.sp_mark_activity_seen();
+select public.sp_mark_activity_seen((public.sp_parent_activity() ->> 'read_at')::timestamptz);
 select pg_temp.ok((public.sp_parent_home() ->> 'new_activity')::int = 0, '열면 새 반응 0');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
