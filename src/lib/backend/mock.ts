@@ -50,7 +50,7 @@ const shares: Share[] = [
 // 기기(출입증) × 가족방마다 하나
 const devices = new Map<string, Device>();
 // shortcut: 그룹별 공개 범위는 흉내 내지 않고 가족방 단위로만 보여 준다. 실제 규칙은 DB 검사(rls.sql)가 맡는다
-const media: (MediaItem & { status: 'uploading' | 'ready'; uploader: string })[] = [];
+const media: (MediaItem & { status: 'uploading' | 'ready'; uploader: string; groupIds: string[]; childIds: string[]; bytes: number })[] = [];
 const deviceOf = (pass: Pass, familyId: string) => devices.get(key(pass, familyId));
 const canUpload = (d: Device | undefined) => !!d && d.status === 'active' && !!d.canUpload;
 // 반응: `${사진}|${구성원}|${종류}`, 한마디: 사진·구성원·시각
@@ -60,7 +60,7 @@ const parents = new Map<string, { familyId: string; role: 'mom' | 'dad' }>();
 // 가족도 사진 저장하기(가족방별)
 const downloads: Record<string, boolean> = {};
 const used: Record<string, number> = {};
-const comments: { mediaId: string; memberId: string; at: number }[] = [];
+const comments: { mediaId: string; memberId: string; at: number; body: string }[] = [];
 const familyOf = (s: Share) => groups.find((g) => g.id === s.groupIds[0])!.familyId;
 const key = (pass: Pass, familyId: string) => `${pass.access}|${familyId}`;
 function meOf(d: Device | undefined): EntryMe | null {
@@ -187,6 +187,8 @@ export function createMockBackend(): Backend {
       media.push({
         id, family_id: m.familyId, kind: m.kind, taken_at: m.takenAt, width: m.width ?? null, height: m.height ?? null,
         duration_sec: m.durationSec ?? null, status: 'uploading', uploader: pass.access, view_key: '', thumb_key: '', poster_key: null,
+        groupIds: m.groupIds?.length ? m.groupIds : groups.filter((g) => g.familyId === m.familyId && !g.exclude).map((g) => g.id),
+        childIds: m.childIds ?? [], bytes: 0,
       });
       return id;
     },
@@ -198,7 +200,7 @@ export function createMockBackend(): Backend {
     async finishUpload(id, keys, bytes) {
       const x = media.find((y) => y.id === id && y.status === 'uploading');
       if (!x) return false;
-      Object.assign(x, { status: 'ready', view_key: keys.view, thumb_key: keys.thumb, poster_key: keys.poster });
+      Object.assign(x, { status: 'ready', view_key: keys.view, thumb_key: keys.thumb, poster_key: keys.poster, bytes });
       used[x.family_id] = (used[x.family_id] ?? 0) + bytes;
       return true;
     },
@@ -215,7 +217,7 @@ export function createMockBackend(): Backend {
       if (comments.filter((c) => c.memberId === m && c.at > Date.now() - 86_400_000).length >= 30) {
         throw new BackendError('too_many_comments', 429, 'PT429');
       }
-      comments.push({ mediaId: id, memberId: m, at: Date.now() });
+      comments.push({ mediaId: id, memberId: m, at: Date.now(), body: text });
     },
     async reactionCounts(pass, ids) {
       // 볼 수 있는 사진만(DB의 sp_can_view_media 흉내)
@@ -384,11 +386,36 @@ export function createMockBackend(): Backend {
           if (parent) return x.family_id === parent.familyId;
           if (isClosing(x.family_id)) return false;
           const d = deviceOf(pass, x.family_id);
-          return d?.status === 'active' && members.find((m) => m.id === d.memberId)?.status === 'active';
+          const mem = members.find((m) => m.id === d?.memberId);
+          return d?.status === 'active' && mem?.status === 'active' && x.groupIds.includes(mem.groupId);
         })
         .sort((a, b) => (a.taken_at === b.taken_at ? (a.id < b.id ? 1 : -1) : a.taken_at < b.taken_at ? 1 : -1))
         .slice(0, opts.limit ?? 60)
-        .map(({ status: _s, uploader: _u, ...rest }) => rest);
+        .map(({ status: _s, uploader: _u, groupIds: _g, childIds: _c, bytes: _b, ...rest }) => rest);
+    },
+    async mediaInfo(pass, id) {
+      const fam = parents.get(pass.access)?.familyId;
+      const x = media.find((y) => y.id === id && y.status === 'ready' && y.family_id === fam);
+      if (!x) return null;
+      const { status: _s, uploader: _u, groupIds, childIds, bytes: _b, ...item } = x;
+      const last = comments.filter((c) => c.mediaId === id).at(-1);
+      return { item, group_ids: [...groupIds], child_ids: [...childIds], latest: last ? { name: members.find((m) => m.id === last.memberId)?.name ?? '가족', body: last.body } : null };
+    },
+    async updateMedia(pass, id, u) {
+      const fam = parents.get(pass.access)?.familyId;
+      const x = media.find((y) => y.id === id && y.status === 'ready' && y.family_id === fam);
+      if (!x) throw new BackendError('not_allowed', 403, '42501');
+      const okGroups = u.groupIds.length > 0 && u.groupIds.every((g) => groups.some((y) => y.id === g && y.familyId === fam));
+      const okKids = u.childIds.every((c) => kids.some((k) => k.id === c && k.familyId === fam));
+      if (!okGroups || !okKids) throw new BackendError('bad_request', 400, '22023');
+      Object.assign(x, { taken_at: u.takenAt, groupIds: [...u.groupIds], childIds: [...u.childIds] });
+    },
+    async deleteMedia(pass, id) {
+      const fam = parents.get(pass.access)?.familyId;
+      const i = media.findIndex((y) => y.id === id && y.family_id === fam);
+      if (i < 0) throw new BackendError('not_allowed', 403, '42501');
+      if (media[i].status === 'ready') used[fam!] = Math.max(0, (used[fam!] ?? 0) - media[i].bytes);
+      media.splice(i, 1);
     },
   };
 }
