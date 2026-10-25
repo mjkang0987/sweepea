@@ -38,7 +38,7 @@ test('대기열 폴더의 파일을 지우고 끝 표시, 다른 폴더는 그�
   const bucket = fakeBucket([`${F}/${M}/view-1`, `${F}/${M}/thumb-1`, `${F}/b/view-1`, `${other}/x/view-1`]);
   const backend = fakeBackend([`${F}/${M}/`]);
   const r = await runCleanup(backend, bucket);
-  assert.deepEqual(r, { families: 1, stale: 2, folders: 1, files: 2, failed: [] });
+  assert.deepEqual({ ...r, calls: undefined }, { families: 1, stale: 2, folders: 1, files: 2, failed: [], errors: [], calls: undefined });
   assert.deepEqual([...bucket.keys].sort(), [`${F}/b/view-1`, `${other}/x/view-1`]);
   assert.deepEqual(backend.done, [`${F}/${M}/`]);
 });
@@ -52,12 +52,31 @@ test('가족방 폴더는 여러 쪽에 걸쳐도 다 지운다', async () => {
 });
 
 test('실패한 폴더·이상한 접두사는 대기열에 남긴다', async () => {
-  const bucket = fakeBucket([`${F}/${M}/view-1`]);
   const backend = fakeBackend([`${F}/${M}/`, '', '../']);
   const failing = fakeBucket([`${F}/${M}/view-1`], `${F}/${M}/`);
   const r = await runCleanup(backend, failing);
   assert.deepEqual(r.failed, [`${F}/${M}/`, '', '../']);
   assert.deepEqual(backend.done, []);
   assert.equal(failing.keys.size, 1);
-  void bucket;
+  assert.equal(r.errors.length, 3);
+});
+
+test('앞 단계가 실패해도 R2 정리는 하고, 실패는 모은다', async () => {
+  const bucket = fakeBucket([`${F}/${M}/view-1`]);
+  const backend = { ...fakeBackend([`${F}/${M}/`]), purgeDeletedFamilies: async () => { throw new Error('시간 초과'); } };
+  const r = await runCleanup(backend, bucket);
+  assert.equal(r.folders, 1);
+  assert.equal(bucket.keys.size, 0);
+  assert.deepEqual(r.errors, ['가족방: 시간 초과']);
+});
+
+test('호출 수가 모자라면 남은 폴더는 다음에', async () => {
+  const queue = Array.from({ length: 30 }, (_, i) => `${F}/00000000-0000-4000-8000-${String(i).padStart(12, '0')}/`);
+  const backend = fakeBackend(queue);
+  let asked = 0;
+  backend.r2CleanupTake = async () => { asked++; return [...queue]; };
+  const r = await runCleanup(backend, fakeBucket([]), 20);
+  assert.ok(r.calls <= 20, `호출 ${r.calls}`);
+  assert.ok(r.folders < 30 && r.folders > 0);
+  assert.equal(asked, 1);
 });

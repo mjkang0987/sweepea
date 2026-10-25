@@ -8,13 +8,16 @@ type Secrets = { SUPABASE_URL?: string; SUPABASE_ANON_KEY?: string; SUPABASE_SER
 
 export default {
   fetch: handle,
-  async scheduled(_controller, env, ctx) {
+  async scheduled(_controller, env) {
     const s = env as Env & Secrets;
     if (!s.SUPABASE_URL || !s.SUPABASE_ANON_KEY || !s.SUPABASE_SERVICE_ROLE_KEY) {
       console.error('정리 작업: Supabase 비밀 값이 없다');
       return;
     }
     const backend = createSupabaseBackend(s.SUPABASE_URL, s.SUPABASE_ANON_KEY, s.SUPABASE_SERVICE_ROLE_KEY);
-    ctx.waitUntil(runCleanup(backend, env.MEDIA).then((r) => console.log('정리 작업', JSON.stringify(r))));
+    const r = await runCleanup(backend, env.MEDIA);
+    console.log('정리 작업', JSON.stringify(r));
+    // 실패가 있으면 예약 작업 기록에 실패로 남긴다(못 지운 폴더는 대기열에 남아 내일 다시)
+    if (r.errors.length) throw new Error(`정리 작업 실패 ${r.errors.length}건: ${r.errors.slice(0, 3).join(' / ')}`);
   },
 } satisfies ExportedHandler<Env>;
