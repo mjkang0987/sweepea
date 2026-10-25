@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { Backend, EnterInput, EnterResult, EntryInfo, MediaItem, Me, Pass, ReactionCount, UploadTarget } from './types';
+import type { Backend, EnterInput, EnterResult, EntryInfo, MediaItem, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -115,6 +115,33 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     async comment(pass, id, body) {
       await rpc(pass, 'sp_comment', { p_media_id: id, p_body: body });
     },
+    parentAuthorizeUrl(provider, redirectTo, codeChallenge) {
+      const q = new URLSearchParams({ provider, redirect_to: redirectTo, code_challenge: codeChallenge, code_challenge_method: 's256' });
+      return `${base}/auth/v1/authorize?${q}`;
+    },
+    async parentExchange(code, codeVerifier) {
+      try {
+        return toPass(
+          await call<TokenResponse>('/auth/v1/token?grant_type=pkce', {
+            method: 'POST',
+            body: JSON.stringify({ auth_code: code, code_verifier: codeVerifier }),
+          }),
+        );
+      } catch (e) {
+        if (e instanceof BackendError && e.status >= 400 && e.status < 500) return null;
+        throw e;
+      }
+    },
+    parentHome: (pass) => rpc<ParentHome>(pass, 'sp_parent_home', {}),
+    createFamily: (pass, f) =>
+      rpc<string>(pass, 'sp_create_family', {
+        p_role: f.role,
+        p_display_name: f.role === 'mom' ? '엄마' : '아빠',
+        p_child_name: f.childName,
+        p_birth_date: f.birthDate,
+        p_password: f.password,
+        p_hint: f.hint ?? null,
+      }),
     reactionCounts: (pass, ids) => (ids.length ? rpc<ReactionCount[]>(pass, 'sp_reaction_counts', { p_media_ids: ids }) : Promise.resolve([])),
   };
 }

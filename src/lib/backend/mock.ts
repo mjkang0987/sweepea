@@ -1,7 +1,7 @@
 // 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
 // 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
-import type { Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, Pass, ReactionCount } from './types';
+import type { Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, ParentHome, Pass, ReactionCount } from './types';
 import { BackendError } from './supabase';
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string }
@@ -46,6 +46,9 @@ const deviceOf = (pass: Pass, familyId: string) => devices.get(key(pass, familyI
 const canUpload = (d: Device | undefined) => !!d && d.status === 'active' && !!d.canUpload;
 // 반응: `${사진}|${구성원}|${종류}`, 한마디: 사진·구성원·시각
 const reactions = new Set<string>();
+// 부모: 세션(access) → 가족방·역할, 아이 생일
+const parents = new Map<string, { familyId: string; role: 'mom' | 'dad' }>();
+const births: Record<string, string> = {};
 const comments: { mediaId: string; memberId: string; at: number }[] = [];
 const familyOf = (s: Share) => groups.find((g) => g.id === s.groupIds[0])!.familyId;
 const key = (pass: Pass, familyId: string) => `${pass.access}|${familyId}`;
@@ -224,10 +227,36 @@ export function createMockBackend(): Backend {
       for (const c of comments) if (ids.includes(c.mediaId)) add(c.mediaId, 'comment', c.memberId);
       return [...out.values()];
     },
+    parentAuthorizeUrl(_provider, redirectTo) {
+      // 개발용: 제공자 화면 없이 바로 돌아온다
+      return `${redirectTo}?code=dev-${crypto.randomUUID()}`;
+    },
+    async parentExchange(code) {
+      if (!code.startsWith('dev-')) return null;
+      return { access: `parent-${code}`, refresh: `parent-${code}`, expiresAt: Math.floor(Date.now() / 1000) + 365 * 24 * 3600 };
+    },
+    async parentHome(pass): Promise<ParentHome> {
+      const p = parents.get(pass.access);
+      if (!p) return { family_id: null };
+      return { family_id: p.familyId, role: p.role, closing: false, children: [{ id: p.familyId, name: children[p.familyId], birth_date: births[p.familyId] }] };
+    },
+    async createFamily(pass, f) {
+      if (!pass.access.startsWith('parent-')) throw new BackendError('parent_login_required', 403, '42501');
+      if (parents.has(pass.access)) throw new BackendError('family_exists', 409, '23505');
+      if (!/^[0-9]{4}$/.test(f.password)) throw new BackendError('password_4_digits', 400, '22023');
+      const id = crypto.randomUUID();
+      children[id] = f.childName;
+      births[id] = f.birthDate;
+      groups.push({ id: crypto.randomUUID(), familyId: id, name: '가족', hint: f.hint ?? '', password: f.password });
+      parents.set(pass.access, { familyId: id, role: f.role });
+      return id;
+    },
     async listMedia(pass, opts = {}) {
+      const parent = parents.get(pass.access);
       return media
         .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId))
         .filter((x) => {
+          if (parent) return x.family_id === parent.familyId;
           const d = deviceOf(pass, x.family_id);
           return d?.status === 'active' && members.find((m) => m.id === d.memberId)?.status === 'active';
         })

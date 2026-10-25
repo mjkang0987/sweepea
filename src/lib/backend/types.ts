@@ -117,6 +117,21 @@ export interface ReactionCount {
   mine: boolean;
 }
 
+export interface ParentHome {
+  family_id: string | null;
+  role?: 'mom' | 'dad';
+  closing?: boolean;
+  children?: { id: string; name: string; birth_date: string }[];
+}
+
+export interface NewFamily {
+  role: 'mom' | 'dad';
+  childName: string;
+  birthDate: string;
+  password: string;
+  hint?: string;
+}
+
 export interface Backend {
   /** 처음 오는 기기에 익명 출입증을 만든다 */
   signInAnonymously(): Promise<Pass>;
@@ -139,4 +154,11 @@ export interface Backend {
   /** 한마디(1~200자). 하루 30개 넘으면 BackendError 429 */
   comment(pass: Pass, mediaId: string, body: string): Promise<void>;
   reactionCounts(pass: Pass, mediaIds: string[]): Promise<ReactionCount[]>;
+  /** 부모 로그인 시작 주소(Supabase OAuth, PKCE) */
+  parentAuthorizeUrl(provider: string, redirectTo: string, codeChallenge: string): string;
+  /** 로그인 뒤 돌아온 코드를 세션으로 바꾼다. 실패하면 null */
+  parentExchange(code: string, codeVerifier: string): Promise<Pass | null>;
+  parentHome(pass: Pass): Promise<ParentHome>;
+  /** 처음 설정: 가족방 + 기본 그룹(가족) + 첫 아이. 가족방 id */
+  createFamily(pass: Pass, input: NewFamily): Promise<string>;
 }
