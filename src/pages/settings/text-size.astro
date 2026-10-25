@@ -1,0 +1,74 @@
+---
+// 가족 화면 글자 크기: 가족이 처음 들어올 때 크기. 가족이 자기 화면에서 고른 크기가 먼저다
+import Parent from '../../layouts/Parent.astro';
+import { BackendError, getBackend, type TextSizeMode } from '../../lib/backend';
+import { callName } from '../../lib/ko';
+import { loadParent } from '../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const MODES: { value: TextSizeMode; label: string; hint?: string }[] = [
+  { value: 'relation', label: '관계에 맞춰', hint: '할머니·할아버지는 크게, 나머지는 기본' },
+  { value: 'base', label: '모두 기본' },
+  { value: 'large', label: '모두 크게' },
+  { value: 'xlarge', label: '모두 아주 크게' },
+];
+if (Astro.request.method === 'POST') {
+  const mode = String((await Astro.request.formData()).get('mode') ?? '') as TextSizeMode;
+  let done = 'error';
+  if (MODES.some((m) => m.value === mode)) {
+    try {
+      await getBackend().setTextSizeMode(a.pass, a.home.family_id!, mode);
+      done = 'saved';
+    } catch (err) {
+      if (!(err instanceof BackendError)) throw err;
+    }
+  }
+  return Astro.redirect(`/settings/text-size?done=${done}`, 303);
+}
+const current = a.home.text_size_mode ?? 'relation';
+const child = callName(a.home.children?.[0]?.name ?? '아이');
+const who = a.home.role === 'dad' ? '아빠' : '엄마';
+const done = Astro.url.searchParams.get('done');
+const doneText: Record<string, string> = { saved: '저장했어요. 다음에 처음 들어오는 가족부터 적용돼요.', error: '저장하지 못했어요. 다시 눌러 주세요.' };
+---
+
+<Parent title="가족 화면 글자 크기 · 설정" tab="settings">
+  <nav class="sp-p__bar" aria-label="뒤로">
+    <a class="sp-p__back" href="/settings"><span aria-hidden="true">‹ </span>설정</a>
+  </nav>
+  <h1 class="sp-p__title">가족 화면 글자 크기</h1>
+  {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[done]}</p>}
+  <form class="sp-p__form sp-p__sizes" method="post">
+    <fieldset class="sp-p__fieldset sp-p__field">
+      <legend class="sp-p__label">처음 들어올 때 크기</legend>
+      <div class="sp-p__radios">
+        {
+          MODES.map((m) => (
+            <label class="sp-p__radio-row">
+              <input class:list={['sp-p__radio', `sp-p__size-${m.value}`]} type="radio" name="mode" value={m.value} checked={m.value === current} />
+              <span class="sp-p__radio-text">
+                <span class="sp-p__who-name">{m.label}</span>
+                {m.hint && <span class="sp-p__hint">{m.hint}</span>}
+              </span>
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
+    {/* 고른 라디오에 맞춰 CSS로 바뀐다(JS 없음). 외할머니라 '관계에 맞춰'면 크게 */}
+    {/* 고른 라디오를 눈으로 보여 주는 장식이라 화면 읽기에서는 통째로 뺀다 */}
+    <div class="sp-p__field" aria-hidden="true">
+      <p class="sp-p__label">외할머니 화면 미리보기</p>
+      <div class="sp-p__card sp-p__preview">
+        <p class="sp-p__preview-title">{child} 새 사진 12장</p>
+        <p class="sp-p__preview-body">오늘 {who}가 올렸어요</p>
+      </div>
+    </div>
+    <p class="sp-p__hint">가족이 자기 화면에서 직접 바꾼 크기가 있으면 그게 먼저예요. 이미 들어와 있는 가족의 크기는 바뀌지 않아요.</p>
+    <div class="sp-p__bottom">
+      <button class="sp-p__btn" type="submit">저장</button>
+    </div>
+  </form>
+</Parent>

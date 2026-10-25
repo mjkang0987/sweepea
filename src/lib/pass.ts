@@ -1,6 +1,6 @@
 // 출입증: 이 기기의 익명 세션을 httpOnly 쿠키에 담는다. 브라우저 JS는 읽지 못한다.
 import type { AstroCookies } from 'astro';
-import { getBackend, type Pass } from './backend';
+import { getBackend, type Pass, type TextSizeMode } from './backend';
 
 const PASS = 'sp_pass';
 /** 부모 로그인 세션. 가족 기기 출입증과 같은 모양, 쿠키만 따로 */
@@ -70,7 +70,7 @@ export function writeTextSize(cookies: AstroCookies, size: TextSize) {
   cookies.set(SIZE, size, { path: '/', sameSite: 'lax', secure: import.meta.env.PROD, maxAge: MAX_AGE });
 }
 
-/** 고른 크기가 없으면 호칭으로 정한다: 할머니·할아버지는 '크게', 나머지는 '기본' */
-export function sizeForName(name: string, chosen: TextSize | undefined): TextSize {
-  return chosen ?? (/할머니|할아버지/.test(name) ? 'large' : 'base');
+/** 고른 크기가 없으면 가족방 설정으로. '관계에 맞춰'면 할머니·할아버지는 '크게', 나머지는 '기본' */
+export function sizeForName(name: string, chosen: TextSize | undefined, mode: TextSizeMode = 'relation'): TextSize {
+  return chosen ?? (mode !== 'relation' ? mode : /할머니|할아버지/.test(name) ? 'large' : 'base');
 }

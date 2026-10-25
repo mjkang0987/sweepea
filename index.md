@@ -8,7 +8,8 @@
 - 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 1~2시간 주소) 완료. 올리기 화면은 아직.
 - 부모 올리기(`/upload`: 기기에서 줄이기·EXIF 찍은 날·대표 사진·아이·그룹, 올린 뒤 공유 링크 `POST /api/shares`) 완료. 부모 화면은 JS 사용, 가족 화면은 0KB 유지.
 - 설정 > 가족(`/settings/family` 승인·거절·새 기기·그룹 링크, `/settings/family/sms` 한 사람용 문자 링크) 완료.
-- 설정: 구성원 상세(`/settings/family/member/<id>` 사진 올리기 허용·내보내기), 가족도 사진 저장하기(`/settings`, 켜면 가족 크게 보기에 저장 링크), 저장 용량(`/settings/storage`) 완료. 다음은 아이·글자 크기·계정.
+- 설정: 구성원 상세(`/settings/family/member/<id>` 사진 올리기 허용·내보내기), 가족도 사진 저장하기(`/settings`, 켜면 가족 크게 보기에 저장 링크), 저장 용량(`/settings/storage`) 완료.
+- 설정: 아이(`/settings/children` 목록, `/settings/children/<id|new>` 고치기·추가, 가족방당 10명), 가족 화면 글자 크기(`/settings/text-size`, 가족이 처음 들어올 때 크기 `families.text_size_mode`), 계정(`/settings/account` 제공자·로그아웃) 완료. 다음은 탈퇴·되살리기.
 - 부모 시작(`/start` 소개, `/login`·`/auth/callback` OAuth PKCE, `/setup` 처음 설정, `/home` 앨범, `/settings` 자리) 완료. 부모 세션은 쿠키 `sp_parent`(가족 기기 `sp_pass`와 따로).
 - 조부모 앨범(`/album` 넘겨 보기·모아 보기, `/album/<id>` 크게 보기, 집 고르기)과 하트·반응·한마디(폼 POST, `sp_react`·`sp_comment`) 완료.
 - 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. mock 백엔드로 동작 확인, 앨범은 자리만. 기기 하나로 여러 가족방에 들어간다(가족방마다 승인·차단 따로). 다음 이슈는 plan.md 참고.
@@ -54,6 +55,7 @@ src/lib/album.ts        앨범 쿼리 읽기·링크·목록 불러오기, 반�
 src/components/        ReactRow(반응 5개)·HeartToggle·SayForm(한마디)·Notice
 src/lib/parent.ts       부모 로그인 제공자·PKCE·부모 화면 진입(loadParent)
 src/layouts/Parent.astro 부모 화면 뼈대(아래 탭), 스타일 src/styles/parent.css(.sp-p*)
+src/lib/age.ts          생후 개월·생일 표시(단위 검사)
 src/lib/emoji.ts        반응 도트 이모지와 페이지당 한 번 넣는 sprite
 supabase/migrations/    DB 스키마·RLS·권한 함수(sp_*)·입장 RPC. 실제 Supabase에 그대로 적용
 supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stub.sql: auth 흉내, rls.sql: 시나리오, run.sh)

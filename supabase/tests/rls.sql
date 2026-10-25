@@ -527,3 +527,40 @@ set role authenticated;
 update public.families set download_allowed = true where id = :'fam';
 select pg_temp.ok(public.sp_parent_home() @> '{"download_allowed": true}', '부모는 저장 허용을 켬');
 reset role;
+
+-- ── 아이·가족 화면 글자 크기·계정: 자기 가족방 부모만
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false, 'app_metadata', json_build_object('provider', 'kakao'))::text, false);
+set role authenticated;
+insert into public.children (family_id, name, birth_date) values (:'fam', '도윤', '2026-08-30') returning id as ch2 \gset
+update public.children set name = '도윤이' where id = :'ch2';
+update public.families set text_size_mode = 'xlarge' where id = :'fam';
+select pg_temp.ok(public.sp_parent_home() @> '{"provider": "kakao", "text_size_mode": "xlarge"}', '부모 계정 정보·글자 크기');
+select pg_temp.ok(public.sp_parent_home() -> 'children' @> '[{"name": "도윤이"}]', '아이 추가·고치기');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(부모가 아이 지우기·순서 바꾸기는 아직 막음)'
+delete from public.children where id = :'ch2';
+update public.children set sort_order = -1 where id = :'ch2';
+\echo '아래 에러 1줄은 의도된 거부(아이 10명 넘게)'
+insert into public.children (family_id, name, birth_date) select :'fam', '아이' || g, '2026-01-01' from generate_series(1, 9) g;
+\set ON_ERROR_STOP 1
+select pg_temp.ok((select count(*) = 2 from public.children where family_id = :'fam'), '지우기·한도 초과는 반영 안 됨');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.children set name = '남의아이' where id = :'ch2';
+update public.families set text_size_mode = 'base' where id = :'fam';
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(다른 가족방에 아이 넣기)'
+insert into public.children (family_id, name, birth_date) values (:'fam', '남의아이', '2026-01-01');
+\set ON_ERROR_STOP 1
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+update public.children set name = '할머니가' where id = :'ch2';
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(가족 기기가 아이 넣기)'
+insert into public.children (family_id, name, birth_date) values (:'fam', '할머니가', '2026-01-01');
+\set ON_ERROR_STOP 1
+reset role;
+select pg_temp.ok((select name = '도윤이' from public.children where id = :'ch2'), '다른 가족방 부모·가족 기기는 아이를 못 바꿈');
+select pg_temp.ok((select text_size_mode = 'xlarge' from public.families where id = :'fam'), '다른 가족방 부모는 글자 크기를 못 바꿈');

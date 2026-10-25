@@ -1,7 +1,7 @@
 // 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
 // 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
-import type { Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, ParentHome, Pass, ReactionCount } from './types';
+import type { Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, ParentHome, Pass, ReactionCount, TextSizeMode } from './types';
 import { BackendError } from './supabase';
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string }
@@ -14,7 +14,12 @@ const HOUR = 3600_000;
 // 가족방 id는 실제처럼 uuid(API가 형식을 검사한다)
 const HARIN = '00000000-0000-4000-8000-00000000f001';
 const DOYUN = '00000000-0000-4000-8000-00000000f002';
-const children: Record<string, string> = { [HARIN]: '하린', [DOYUN]: '도윤' };
+const kids = [
+  { id: crypto.randomUUID(), familyId: HARIN, name: '하린', birth_date: '2025-09-17' },
+  { id: crypto.randomUUID(), familyId: DOYUN, name: '도윤', birth_date: '2026-08-30' },
+];
+const firstChild = (familyId: string) => kids.find((k) => k.familyId === familyId)?.name ?? null;
+const sizeModes: Record<string, TextSizeMode> = {};
 const groups: Group[] = [
   { id: 'g-mat', familyId: HARIN, name: '외가', hint: '외가 비밀번호', password: '1234' },
   { id: 'g-pat', familyId: HARIN, name: '친가', hint: '할아버지 생신', password: '5678' },
@@ -46,9 +51,8 @@ const deviceOf = (pass: Pass, familyId: string) => devices.get(key(pass, familyI
 const canUpload = (d: Device | undefined) => !!d && d.status === 'active' && !!d.canUpload;
 // 반응: `${사진}|${구성원}|${종류}`, 한마디: 사진·구성원·시각
 const reactions = new Set<string>();
-// 부모: 세션(access) → 가족방·역할, 아이 생일
+// 부모: 세션(access) → 가족방·역할
 const parents = new Map<string, { familyId: string; role: 'mom' | 'dad' }>();
-const births: Record<string, string> = {};
 // 가족도 사진 저장하기(가족방별)
 const downloads: Record<string, boolean> = {};
 const used: Record<string, number> = {};
@@ -90,7 +94,8 @@ export function createMockBackend(): Backend {
       return {
         result: 'ok',
         me,
-        child_name: children[familyOf(s)],
+        child_name: firstChild(familyOf(s)),
+        text_size_mode: sizeModes[familyOf(s)] ?? 'relation',
         new_entry_open: newOpen(s),
         target_member_id: s.targetMemberId ?? null,
         groups: groups
@@ -166,7 +171,7 @@ export function createMockBackend(): Backend {
       const families: MeFamily[] = [];
       for (const [k, d] of devices) {
         if (k.startsWith(`${pass.access}|`)) {
-          families.push({ ...meOf(d)!, family_id: d.familyId, closed: false, child_name: children[d.familyId], download_allowed: !!downloads[d.familyId] });
+          families.push({ ...meOf(d)!, family_id: d.familyId, closed: false, child_name: firstChild(d.familyId), download_allowed: !!downloads[d.familyId] });
         }
       }
       return { families };
@@ -281,6 +286,20 @@ export function createMockBackend(): Backend {
       if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('not_found', 404);
       downloads[familyId] = on;
     },
+    async setTextSizeMode(pass, familyId, mode) {
+      if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('not_found', 404);
+      sizeModes[familyId] = mode;
+    },
+    async addChild(pass, familyId, name, birthDate) {
+      if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('forbidden', 403, '42501');
+      if (kids.filter((k) => k.familyId === familyId).length >= 10) throw new BackendError('children_limit', 400, '22023');
+      kids.push({ id: crypto.randomUUID(), familyId, name, birth_date: birthDate });
+    },
+    async updateChild(pass, childId, name, birthDate) {
+      const k = kids.find((x) => x.id === childId && x.familyId === parents.get(pass.access)?.familyId);
+      if (!k) throw new BackendError('not_found', 404);
+      Object.assign(k, { name, birth_date: birthDate });
+    },
     async createShare(pass, groupIds, target) {
       const fam = parents.get(pass.access)?.familyId;
       if (!fam || !groupIds.length || groupIds.some((id) => groups.find((g) => g.id === id)?.familyId !== fam)) {
@@ -298,7 +317,8 @@ export function createMockBackend(): Backend {
       return {
         family_id: p.familyId, role: p.role, closing: false, download_allowed: !!downloads[p.familyId],
         storage_used_bytes: used[p.familyId] ?? 0, photo_count: ready.filter((x) => x.kind === 'photo').length, video_count: ready.filter((x) => x.kind === 'video').length,
-        children: [{ id: p.familyId, name: children[p.familyId], birth_date: births[p.familyId] }],
+        provider: null, text_size_mode: sizeModes[p.familyId] ?? 'relation',
+        children: kids.filter((k) => k.familyId === p.familyId).map(({ id, name, birth_date }) => ({ id, name, birth_date })),
       };
     },
     async createFamily(pass, f) {
@@ -306,8 +326,7 @@ export function createMockBackend(): Backend {
       if (parents.has(pass.access)) throw new BackendError('family_exists', 409, '23505');
       if (!/^[0-9]{4}$/.test(f.password)) throw new BackendError('password_4_digits', 400, '22023');
       const id = crypto.randomUUID();
-      children[id] = f.childName;
-      births[id] = f.birthDate;
+      kids.push({ id: crypto.randomUUID(), familyId: id, name: f.childName, birth_date: f.birthDate });
       groups.push({ id: crypto.randomUUID(), familyId: id, name: '가족', hint: f.hint ?? '', password: f.password });
       parents.set(pass.access, { familyId: id, role: f.role });
       return id;

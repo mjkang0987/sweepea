@@ -6,6 +6,9 @@ as $$
     select jsonb_build_object(
       'family_id', p.family_id,
       'role', p.role,
+      -- 로그인 제공자(kakao·google 등). Supabase가 액세스 토큰 app_metadata에 넣는다
+      'provider', auth.jwt() -> 'app_metadata' ->> 'provider',
+      'text_size_mode', f.text_size_mode,
       'closing', f.delete_after is not null,
       'download_allowed', f.download_allowed,
       'storage_used_bytes', f.storage_used_bytes,

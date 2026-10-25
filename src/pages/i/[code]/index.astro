@@ -36,11 +36,12 @@ const canWrite = !!info?.new_entry_open && !info.target_member_id;
 if (info && groups.every((g) => g.members.length === 0) && !canWrite) notice = 'expired';
 const child = callName(info?.child_name ?? '아이');
 const showGroups = groups.length > 1;
-const size = chosenTextSize(Astro.cookies);
+// 고른 적 없으면 가족방 설정(관계에 맞춰면 이름을 고른 뒤에 정한다)
+const size = chosenTextSize(Astro.cookies) ?? (info && info.text_size_mode !== 'relation' ? info.text_size_mode : undefined);
 const nameError = Astro.url.searchParams.get('e') === 'name' ? '이름을 1~12자로 써 주세요.' : null;
 ---
 
-<Family title={notice ? NOTICES[notice].title : nameError ? '다시 써 주세요 · 누구세요?' : '누구세요?'}>
+<Family title={notice ? NOTICES[notice].title : nameError ? '다시 써 주세요 · 누구세요?' : '누구세요?'} size={size}>
   {
     notice ? (
       <Notice {...NOTICES[notice]} />
