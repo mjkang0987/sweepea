@@ -6,10 +6,17 @@ import { currentParent, currentPass } from './pass';
 /** 올릴 수 있는 출입증들: 부모 세션, 가족 기기 출입증 순. 한쪽 갱신이 일시적으로 실패해도 다른 쪽은 쓴다 */
 async function uploaderPasses(cookies: AstroCookies): Promise<Pass[]> {
   const out: Pass[] = [];
+  let failed: unknown = null;
   for (const get of [currentParent, currentPass]) {
-    const p = await get(cookies).catch(() => null);
-    if (p) out.push(p);
+    try {
+      const p = await get(cookies);
+      if (p) out.push(p);
+    } catch (e) {
+      failed = e;
+    }
   }
+  // 둘 다 일시 오류면 '로그인 끝남'(401)이 아니라 오류로(다시 누르면 이어 올리게)
+  if (!out.length && failed) throw failed;
   return out;
 }
 

@@ -75,6 +75,7 @@ const kid = callName(kids[0]?.name ?? '아이');
 
   <section class="sp-p__card" id="up-done" aria-labelledby="up-done-title" hidden>
     <h2 class="sp-p__card-title" id="up-done-title" tabindex="-1">다 올렸어요</h2>
+    <p class="sp-p__toast sp-p__toast--live" id="up-done-status" role="status"></p>
     <label class="sp-p__label" for="up-link">보낼 주소</label>
     <input class="sp-p__input" id="up-link" type="url" readonly />
     <button class="sp-p__btn sp-p__btn--kakao" type="button" id="up-share">카톡으로 보내기</button>
@@ -119,6 +120,9 @@ const kid = callName(kids[0]?.name ?? '아이');
   let cover = 0;
   let busy = false;
   let lastMode = 'share';
+  // 한 번 올리기 시작하면 아이·그룹을 고정(이어 올릴 때 묶음 안에서 공개 범위가 섞이지 않게)
+  let locked: { groupIds: string[]; childIds: string[] } | null = null;
+  const choices = [...form.querySelectorAll<HTMLInputElement>('.sp-p__checkbox')];
 
   // 상태 칸은 늘 있고(화면 읽기가 바로 읽게) 비었을 때만 CSS로 숨긴다
   const say = (text: string) => (status.textContent = text);
@@ -138,12 +142,16 @@ const kid = callName(kids[0]?.name ?? '아이');
   }
   /** 보기용을 그린 뒤 그 결과로 썸네일(원본을 두 번 그리지 않게) */
   async function viewAndThumb(src: CanvasImageSource, w: number, h: number, viewMax: number) {
-    const view = await draw(src, w, h, viewMax, 0.85);
-    const small = await createImageBitmap(view.blob);
-    const thumb = await draw(small, small.width, small.height, 480, 0.8);
-    small.close();
-    canvas.width = canvas.height = 0;
-    return { view, thumb };
+    let small: ImageBitmap | undefined;
+    try {
+      const view = await draw(src, w, h, viewMax, 0.85);
+      small = await createImageBitmap(view.blob);
+      const thumb = await draw(small, small.width, small.height, 480, 0.8);
+      return { view, thumb };
+    } finally {
+      small?.close();
+      canvas.width = canvas.height = 0;
+    }
   }
 
   async function photo(file: File): Promise<Item> {
@@ -166,9 +174,12 @@ const kid = callName(kids[0]?.name ?? '아이');
   /** 이벤트를 기다리되 오래 걸리면 포기(아이폰은 화면 밖 영상 이벤트가 안 올 때가 있다) */
   const wait = (el: HTMLVideoElement, ev: string, ms = 8000) =>
     new Promise<void>((ok, no) => {
-      const timer = setTimeout(() => no(new Error('timeout')), ms);
-      el.addEventListener(ev, () => (clearTimeout(timer), ok()), { once: true });
-      el.addEventListener('error', () => (clearTimeout(timer), no(new Error('media'))), { once: true });
+      const done = () => (clearTimeout(timer), el.removeEventListener(ev, onOk), el.removeEventListener('error', onErr));
+      const onOk = () => (done(), ok());
+      const onErr = () => (done(), no(new Error('media')));
+      const timer = setTimeout(() => (done(), no(new Error('timeout'))), ms);
+      el.addEventListener(ev, onOk);
+      el.addEventListener('error', onErr);
     });
 
   async function video(file: File): Promise<Item> {
@@ -177,11 +188,12 @@ const kid = callName(kids[0]?.name ?? '아이');
     const v = document.createElement('video');
     v.muted = true;
     v.playsInline = true;
-    v.preload = 'metadata';
+    // 첫 장면이 실제로 디코딩돼야 그릴 수 있다(아이폰은 metadata만으론 검은 화면)
+    v.preload = 'auto';
     const src = URL.createObjectURL(file);
     try {
       v.src = src;
-      await wait(v, 'loadedmetadata');
+      await wait(v, 'loadeddata');
       v.currentTime = Math.min(0.1, v.duration / 2 || 0);
       await wait(v, 'seeked');
       const { view: poster, thumb } = await viewAndThumb(v, v.videoWidth, v.videoHeight, 1280);
@@ -229,7 +241,8 @@ const kid = callName(kids[0]?.name ?? '아이');
     const bytes = items.reduce((n, it) => n + it.view.size + it.thumb.size + (it.poster?.size ?? 0), 0);
     $('up-size').textContent = items.length ? `보기 좋은 크기 · ${(bytes / MB).toFixed(1)}MB` : '고르면 보여요';
     buttons.forEach((b) => (b.disabled = busy || items.length === 0));
-    input.disabled = busy;
+    input.disabled = busy || !!locked;
+    choices.forEach((c) => (c.disabled = busy || !!locked));
   }
 
   input.addEventListener('change', async () => {
@@ -273,9 +286,12 @@ const kid = callName(kids[0]?.name ?? '아이');
     e.preventDefault();
     if (busy) return;
     const mode = (e.submitter as HTMLButtonElement | null)?.value ?? lastMode;
-    const groupIds = [...form.querySelectorAll<HTMLInputElement>('input[name=group]:checked')].map((x) => x.value);
-    const childIds = [...form.querySelectorAll<HTMLInputElement>('input[name=child]:checked')].map((x) => x.value);
+    const { groupIds, childIds } = locked ?? {
+      groupIds: choices.filter((x) => x.name === 'group' && x.checked).map((x) => x.value),
+      childIds: choices.filter((x) => x.name === 'child' && x.checked).map((x) => x.value),
+    };
     if (!groupIds.length) return say('보여줄 그룹을 하나 이상 골라 주세요.');
+    locked = { groupIds, childIds };
     busy = true;
     render();
     // 대표 사진을 맨 앞에(공유 묶음 첫 장 = 카톡 카드 대표)
@@ -295,9 +311,14 @@ const kid = callName(kids[0]?.name ?? '아이');
             }),
           })
         ).id;
-        const keys: Record<string, string> = { view: await put(it.id, 'view', it.view), thumb: await put(it.id, 'thumb', it.thumb) };
-        if (it.poster) keys.poster = await put(it.id, 'poster', it.poster);
-        await api(`/api/media/${it.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(keys) });
+        try {
+          const keys: Record<string, string> = { view: await put(it.id, 'view', it.view), thumb: await put(it.id, 'thumb', it.thumb) };
+          if (it.poster) keys.poster = await put(it.id, 'poster', it.poster);
+          await api(`/api/media/${it.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(keys) });
+        } catch (err) {
+          // 지난번에 완료까지 됐는데 응답만 못 받았으면: 이제 '올리는 중'이 아니라 404·409. 끝난 것으로 본다
+          if (!(err instanceof HttpError && (err.status === 404 || err.status === 409))) throw err;
+        }
         it.done = true;
       }
     } catch (err) {
@@ -312,22 +333,24 @@ const kid = callName(kids[0]?.name ?? '아이');
     }
     if (mode !== 'share') return location.assign('/home');
     const ids = order.map((i) => items[i].id!);
-    form.hidden = true;
+    say('보낼 주소를 만드는 중…');
     try {
       const { url } = await api<{ url: string }>('/api/shares', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ groupIds, mediaIds: ids }),
       });
+      form.hidden = true;
       const done = $('up-done');
       done.hidden = false;
       $<HTMLInputElement>('up-link').value = url;
       $('up-done-title').focus();
       const text = `${form.dataset.kid} 새 사진 ${ids.length}장이에요. 누르면 바로 볼 수 있어요.`;
+      const tell = (t: string) => ($('up-done-status').textContent = t);
       const copy = (what: string, ok: string) =>
         navigator.clipboard
-          ? navigator.clipboard.writeText(what).then(() => say(ok), () => say('복사하지 못했어요. 주소 칸을 길게 눌러 복사해 주세요.'))
-          : say('주소 칸을 길게 눌러 복사해 주세요.');
+          ? navigator.clipboard.writeText(what).then(() => tell(ok), () => tell('복사하지 못했어요. 주소 칸을 길게 눌러 복사해 주세요.'))
+          : tell('주소 칸을 길게 눌러 복사해 주세요.');
       $('up-share').addEventListener('click', () => {
         // 휴대폰 공유 창(카톡 포함). 카카오 카드 공유는 앱 키를 받은 뒤
         if (navigator.share) navigator.share({ text, url }).catch(() => undefined);
@@ -335,6 +358,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       });
       $('up-copy').addEventListener('click', () => copy(url, '주소를 복사했어요.'));
     } catch {
+      form.hidden = true;
       $('up-noshare').hidden = false;
       $('up-noshare-title').focus();
     }
