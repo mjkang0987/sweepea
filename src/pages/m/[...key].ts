@@ -16,7 +16,7 @@ export const GET: APIRoute = async ({ params, url, request }) => {
   try {
     obj = await env.MEDIA.get(key, { range: request.headers, onlyIf: request.headers });
   } catch {
-    // 못 주는 범위·여러 범위: 범위를 무시하고 파일 전체(200)를 준다
+    // 못 주는 범위·여러 범위(또는 R2 일시 오류): 범위·조건을 무시하고 파일 전체(200)를 한 번 더 시도
     obj = await env.MEDIA.get(key);
     request = new Request(request, { headers: new Headers() });
   }
@@ -30,8 +30,9 @@ export const GET: APIRoute = async ({ params, url, request }) => {
   headers.set('x-content-type-options', 'nosniff');
   headers.set('content-security-policy', "default-src 'none'; sandbox");
   if (!('body' in obj)) {
-    const cond = request.headers.has('if-none-match') || request.headers.has('if-modified-since');
-    return new Response(null, { status: cond ? 304 : 412, headers });
+    // If-Match·If-Unmodified-Since가 먼저(RFC 9110)
+    const pre = request.headers.has('if-match') || request.headers.has('if-unmodified-since');
+    return new Response(null, { status: pre ? 412 : 304, headers });
   }
   const r = obj.range as { offset?: number; length?: number; suffix?: number } | undefined;
   if (r && request.headers.has('range')) {
@@ -39,6 +40,7 @@ export const GET: APIRoute = async ({ params, url, request }) => {
     const start = r.suffix !== undefined ? Math.max(0, obj.size - r.suffix) : (r.offset ?? 0);
     const end = Math.min(obj.size, r.length !== undefined ? start + r.length : obj.size) - 1;
     if (start >= obj.size) {
+      await obj.body.cancel();
       return new Response(null, { status: 416, headers: { 'content-range': `bytes */${obj.size}`, 'cache-control': 'no-store' } });
     }
     headers.set('content-range', `bytes ${start}-${end}/${obj.size}`);
