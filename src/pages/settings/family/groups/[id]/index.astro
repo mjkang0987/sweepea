@@ -14,14 +14,16 @@ const g = admin.groups.find((x) => x.id === Astro.params.id);
 if (!g) return Astro.redirect('/settings/family/groups');
 const here = `/settings/family/groups/${g.id}`;
 let name = g.name;
+let include = g.include_by_default;
 let error: string | null = null;
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   name = String(form.get('name') ?? '').trim();
+  include = form.get('include') === '1';
   if (name.length < 1 || name.length > 12) error = '그룹 이름을 1~12자로 써 주세요.';
   else {
     try {
-      await b.updateGroup(a.pass, g.id, { name, include_by_default: form.get('include') === '1' });
+      await b.updateGroup(a.pass, g.id, { name, include_by_default: include });
       return Astro.redirect(`${here}?done=saved`, 303);
     } catch (e) {
       if (!(e instanceof BackendError)) throw e;
@@ -59,7 +61,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
       <input class="sp-p__input" id="name" name="name" type="text" required maxlength="12" autocomplete="off" value={name} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? 'g-err' : undefined} />
     </div>
     <label class="sp-p__check sp-p__check--plain">
-      <input class="sp-p__checkbox" type="checkbox" name="include" value="1" checked={g.include_by_default} aria-describedby="include-note" />
+      <input class="sp-p__checkbox" type="checkbox" name="include" value="1" checked={include} aria-describedby="include-note" />
       새 사진에 기본으로 포함
     </label>
     <p class="sp-p__hint" id="include-note">사진 올릴 때 이 그룹이 미리 체크돼요.</p>

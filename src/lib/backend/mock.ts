@@ -6,7 +6,7 @@ import { BackendError } from './supabase';
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string; exclude?: boolean }
 interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean }
-interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean }
+interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean; revoked?: boolean }
 interface Device { id: string; familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]>; canUpload?: boolean }
 
 const HOUR = 3600_000;
@@ -90,7 +90,7 @@ export function createMockBackend(): Backend {
       return pass;
     },
     async entryInfo(pass, code): Promise<EntryInfo> {
-      const s = shares.find((x) => x.code === code);
+      const s = shares.find((x) => x.code === code && !x.revoked);
       if (!s) return { result: 'not_found' };
       const me = pass ? meOf(devices.get(key(pass, familyOf(s)))) : null;
       if (s.closed || isClosing(familyOf(s))) return { result: 'closed', me };
@@ -114,7 +114,7 @@ export function createMockBackend(): Backend {
     },
     async enter(pass, i): Promise<EnterResult> {
       if (!/^[0-9]{4}$/.test(i.password) || !i.memberId === !i.newName) return { result: 'bad_request' };
-      const s = shares.find((x) => x.code === i.code);
+      const s = shares.find((x) => x.code === i.code && !x.revoked);
       if (!s) return { result: 'not_found' };
       if (s.closed || isClosing(familyOf(s))) return { result: 'closed' };
       const k = key(pass, familyOf(s));
@@ -317,7 +317,7 @@ export function createMockBackend(): Backend {
     },
     async resetGroupLinks(pass, groupId) {
       if (!groups.some((x) => x.id === groupId && x.familyId === parents.get(pass.access)?.familyId)) throw new BackendError('not_allowed', 403, '42501');
-      for (let i = shares.length - 1; i >= 0; i--) if (shares[i].groupIds.includes(groupId)) shares.splice(i, 1);
+      for (const s of shares) if (s.groupIds.includes(groupId)) s.revoked = true;
     },
     async requestDelete(pass) {
       const fam = parents.get(pass.access)?.familyId;
