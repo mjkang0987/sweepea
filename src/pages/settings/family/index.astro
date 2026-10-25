@@ -24,13 +24,14 @@ const [cKind, cId, cStatus] = (q.get('confirm') ?? '').split(':');
 const cName =
   cKind === 'member' ? admin.members.find((m) => m.id === cId && m.status !== 'rejected')?.display_name :
   cKind === 'device' ? (() => { const d = s.pendingDevices.find((x) => x.id === cId); return d && (d.requested_name ?? s.memberName(d.requested_member_id ?? d.member_id) ?? '새 휴대폰'); })() : undefined;
+const cActive = cKind === 'member' && admin.members.some((m) => m.id === cId && m.status === 'active');
 const confirmAsk = cName && ((cKind === 'member' && cStatus === 'rejected') || (cKind === 'device' && cStatus === 'revoked'));
 // 확인하려던 대상이 그새 처리됐으면 '이미 처리됨'으로
 const done = q.get('done') ?? (q.get('confirm') ? 'pending-check' : null);
 const shownDone = done === 'pending-check' ? (confirmAsk ? null : 'gone') : done;
 const doneText: Record<string, string> = {
   'member-active': '승인했어요. 이제 가족 앨범을 다 볼 수 있어요.',
-  'member-rejected': '내보냈어요. 그 사람의 휴대폰은 다시 들어올 수 없어요.',
+  'member-rejected': '처리했어요. 그 사람의 휴대폰은 이제 들어올 수 없어요.',
   'device-active': '승인했어요.',
   'device-revoked': '내 가족이 아니라고 표시했어요. 그 휴대폰은 들어올 수 없어요.',
   gone: '이미 처리됐거나 기간이 지난 요청이에요.',
@@ -51,12 +52,12 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
   {
     confirmAsk && (
       <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
-        <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>{cKind === 'member' ? `${cName} 거절할까요?` : `${cName} 휴대폰을 내 가족 아님으로 할까요?`}</h2>
-        <p class="sp-p__lead">그 휴대폰은 다시 들어올 수 없어요. 되돌릴 수 없어요.</p>
+        <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>{cKind === 'member' ? `${cName} ${cActive ? '내보낼까요' : '거절할까요'}?` : `${cName} 휴대폰을 내 가족 아님으로 할까요?`}</h2>
+        <p class="sp-p__lead">{cActive ? '이 사람의 휴대폰은 더 이상 들어올 수 없고, 남긴 반응과 한마디는 가족 화면에서 빠져요. 그룹 비밀번호를 아는 사람이면 다른 휴대폰으로 다시 요청할 수 있지만 승인해야 들어와요.' : '그 휴대폰은 다시 들어올 수 없어요. 되돌릴 수 없어요.'}</p>
         <form class="sp-p__pair" method="post" action="/settings/family">
-          <a class="sp-p__btn sp-p__btn--quiet" href="/settings/family">취소</a>
+          <a class="sp-p__btn sp-p__btn--quiet" href={cActive ? `/settings/family/member/${cId}` : '/settings/family'}>취소</a>
           <input type="hidden" name="confirm" value="1" />
-          <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value={q.get('confirm')}>{cKind === 'member' ? '거절' : '내 가족 아님'}</button>
+          <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value={q.get('confirm')}>{cKind === 'member' ? (cActive ? '내보내기' : '거절') : '내 가족 아님'}</button>
         </form>
       </section>
     )
@@ -141,7 +142,8 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
             ) : (
               <ul class="sp-p__members">
                 {groupMembers(g.id).map((m) => {
-                  const up = admin.devices.some((d) => d.member_id === m.id && d.status === 'active' && d.can_upload);
+                  const mine = admin.devices.filter((d) => d.member_id === m.id && d.status === 'active');
+                  const up = mine.length > 0 && mine.every((d) => d.can_upload);
                   return (
                     <li>
                       <a class="sp-p__member" href={`/settings/family/member/${m.id}`}>

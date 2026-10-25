@@ -858,6 +858,12 @@
   cursor: not-allowed;
 }
 @media (forced-colors: active) {
+  .sp-p__switch {
+    border: 2px solid ButtonText;
+  }
+  .sp-p__switch::after {
+    background: ButtonText;
+  }
   .sp-p__switch[aria-checked='true'] {
     background: Highlight;
   }

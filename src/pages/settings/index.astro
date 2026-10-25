@@ -16,15 +16,16 @@ const allowed = !!h.download_allowed;
 const used = sizeLabel(h.storage_used_bytes ?? 0);
 const done = Astro.url.searchParams.get('done');
 const doneText: Record<string, string> = {
-  'download-on': '이제 가족도 사진을 휴대폰에 저장할 수 있어요.',
+  'download-on': '이제 가족 화면에 저장 버튼이 보여요.',
   'download-off': '가족 사진 저장을 껐어요.',
+  gone: '가족방을 찾지 못했어요. 새로 고친 뒤 다시 눌러 주세요.',
   error: '처리하지 못했어요. 다시 눌러 주세요.',
 };
 ---
 
 <Parent title="설정 · 스위피" tab="settings">
   <h1 class="sp-p__title sp-p__title--large">설정</h1>
-  {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[done]}</p>}
+  {done && doneText[done] && <p class:list={['sp-p__toast', ['error', 'gone'].includes(done) && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[done]}</p>}
   <section class="sp-p__section" aria-labelledby="sec-family">
     <h2 class="sp-p__section-title" id="sec-family">가족과 아이</h2>
     <ul class="sp-p__list">
@@ -45,12 +46,10 @@ const doneText: Record<string, string> = {
     <form class="sp-p__panel" method="post">
       <div class="sp-p__panel-row sp-p__panel-line">
         <span>
-          <span class="sp-p__who-name">가족도 사진 저장하기</span>
-          <span class="sp-p__hint sp-p__block">가족이 사진을 휴대폰에 저장할 수 있어요</span>
+          <span class="sp-p__who-name" id="dl-label">가족도 사진 저장하기</span>
+          <span class="sp-p__hint sp-p__block" id="dl-what">크게 보기 화면에 저장 버튼이 생겨요. 끄면 버튼만 사라지고, 화면에 보이는 사진을 길게 눌러 저장하는 건 막지 못해요.</span>
         </span>
-        <button class="sp-p__switch" type="submit" name="do" value={`download:${h.family_id}:${allowed ? 'off' : 'on'}`} role="switch" aria-checked={allowed ? 'true' : 'false'}>
-          <span class="sp-vh">가족도 사진 저장하기</span>
-        </button>
+        <button class="sp-p__switch" type="submit" name="do" value={`download:${h.family_id}:${allowed ? 'off' : 'on'}`} role="switch" aria-checked={allowed ? 'true' : 'false'} aria-labelledby="dl-label" aria-describedby="dl-what"></button>
       </div>
     </form>
   </section>
