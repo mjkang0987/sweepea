@@ -25,6 +25,6 @@ if ! "${PSQL[@]}" -d sweepea -f "$ROOT/supabase/tests/rls.sql" >"$WORK/out" 2>&1
 [ -n "${SHOW_OUT:-}" ] && grep -E "^psql.*ERROR|아래 에러" "$WORK/out"
 n=$(grep -c '^psql.*ERROR' "$WORK/out" || true)
 # rls.sql에 적은 의도된 거부(에러) 개수와 같아야 한다
-if [ "$n" -ne 38 ]; then echo "의도된 거부가 38건이어야 하는데 ${n}건"; grep -E '^psql.*ERROR|아래 에러' "$WORK/out"; exit 1; fi
+if [ "$n" -ne 44 ]; then echo "의도된 거부가 44건이어야 하는데 ${n}건"; grep -E '^psql.*ERROR|아래 에러' "$WORK/out"; exit 1; fi
 echo "의도된 거부 ${n}건 확인"
 echo "DB 검사 통과"

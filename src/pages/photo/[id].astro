@@ -1,0 +1,134 @@
+---
+// 부모 사진 정보: 큰 사진·최근 한마디, 찍은 날·아이·보여줄 그룹 고치기, 사진 지우기(한 번 더 확인)
+import Parent from '../../layouts/Parent.astro';
+import { BackendError, getBackend } from '../../lib/backend';
+import { loadParent, seoulToday } from '../../lib/parent';
+import { signedMediaUrl } from '../../lib/signed';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const b = getBackend();
+const id = Astro.params.id ?? '';
+const info = /^[0-9a-f-]{36}$/.test(id) ? await b.mediaInfo(a.pass, id) : null;
+if (!info) return Astro.redirect('/home');
+const groups = (await b.familyAdmin(a.pass)).groups;
+const kids = a.home.children ?? [];
+const seoul = (iso: string) => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}:${p.second}` };
+};
+const taken = seoul(info.item.taken_at);
+let date = taken.date;
+let groupIds = info.group_ids;
+let childIds = info.child_ids;
+let error: { field: 'date' | 'group' | 'save'; text: string } | null = null;
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (form.get('do') === 'delete') {
+    try {
+      await b.deleteMedia(a.pass, id);
+      return Astro.redirect('/home?done=deleted', 303);
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+      return Astro.redirect(`/photo/${id}?done=error`, 303);
+    }
+  }
+  date = String(form.get('date') ?? '');
+  groupIds = form.getAll('group').map(String).filter((g) => groups.some((x) => x.id === g));
+  childIds = form.getAll('child').map(String).filter((c) => kids.some((k) => k.id === c));
+  const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= '2000-01-01' && date <= seoulToday();
+  if (!validDate) error = { field: 'date', text: '찍은 날을 골라 주세요.' };
+  else if (groupIds.length === 0) error = { field: 'group', text: '보여줄 그룹을 하나 이상 골라 주세요.' };
+  else {
+    try {
+      // 날짜만 바꾸고 시각(서울)은 그대로. 오늘로 바꿔 미래 시각이 되면 지금으로
+      const at = new Date(Math.min(Date.parse(`${date}T${taken.time}+09:00`), Date.now())).toISOString();
+      await b.updateMedia(a.pass, id, { takenAt: at, childIds, groupIds });
+      return Astro.redirect(`/photo/${id}?done=saved`, 303);
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+      error = { field: 'save', text: '저장하지 못했어요. 다시 눌러 주세요.' };
+    }
+  }
+}
+const isVideo = info.item.kind === 'video';
+const src = await signedMediaUrl(info.item.view_key);
+const poster = info.item.poster_key ? await signedMediaUrl(info.item.poster_key) : undefined;
+const label = `${new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(info.item.taken_at))} ${isVideo ? '영상' : '사진'}`;
+const q = Astro.url.searchParams;
+const confirmDelete = q.get('confirm') === 'delete';
+const done = q.get('done');
+const doneText: Record<string, string> = { saved: '저장했어요.', error: '처리하지 못했어요. 다시 눌러 주세요.' };
+---
+
+<Parent title={error ? '다시 확인해 주세요 · 사진 정보' : '사진 정보 · 스위피'} tab="home">
+  <nav class="sp-p__bar" aria-label="뒤로">
+    <a class="sp-p__back" href="/home"><span aria-hidden="true">‹ </span>앨범</a>
+  </nav>
+  <h1 class="sp-p__title">사진 정보</h1>
+  {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} role={done === 'error' ? 'alert' : undefined} tabindex="-1" autofocus>{doneText[done]}</p>}
+  <figure class="sp-p__field">
+    {isVideo ? <video class="sp-p__photo" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} /> : <img class="sp-p__photo" src={src} alt={label} />}
+    {
+      info.latest && (
+        <figcaption class="sp-p__card sp-p__say">
+          <span class="sp-p__say-who"><span class="sp-vh">최근 한마디, </span>{info.latest.name}</span>
+          {info.latest.body}
+        </figcaption>
+      )
+    }
+  </figure>
+
+  {
+    confirmDelete ? (
+      <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
+        <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>이 {isVideo ? '영상' : '사진'}을 지울까요?</h2>
+        <p class="sp-p__lead">가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요.</p>
+        <form class="sp-p__pair" method="post">
+          <a class="sp-p__btn sp-p__btn--quiet" href={`/photo/${id}`}>취소</a>
+          <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value="delete">지우기</button>
+        </form>
+      </section>
+    ) : (
+      <>
+        <form class="sp-p__form" method="post">
+          {error && <p class="sp-p__error" role="alert" id="p-err">{error.text}</p>}
+          <div class="sp-p__field">
+            <label class="sp-p__label" for="date">찍은 날</label>
+            <input class="sp-p__input" id="date" name="date" type="date" required min="2000-01-01" max={seoulToday()} value={date} aria-invalid={error?.field === 'date' ? 'true' : undefined} aria-describedby={error?.field === 'date' ? 'p-err' : undefined} />
+          </div>
+          {
+            kids.length > 0 && (
+              <fieldset class="sp-p__fieldset sp-p__field">
+                <legend class="sp-p__label">아이</legend>
+                <div class="sp-p__checks">
+                  {kids.map((k) => (
+                    <label class="sp-p__check">
+                      <input class="sp-p__checkbox" type="checkbox" name="child" value={k.id} checked={childIds.includes(k.id)} />
+                      {k.name}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )
+          }
+          <fieldset class="sp-p__fieldset sp-p__field" aria-describedby={error?.field === 'group' ? 'group-note p-err' : 'group-note'}>
+            <legend class="sp-p__label">보여줄 그룹</legend>
+            <div class="sp-p__checks">
+              {groups.map((g) => (
+                <label class="sp-p__check">
+                  <input class="sp-p__checkbox" type="checkbox" name="group" value={g.id} checked={groupIds.includes(g.id)} />
+                  {g.name}
+                </label>
+              ))}
+            </div>
+            <p class="sp-p__hint" id="group-note">그룹을 빼면 그 가족 화면에서 바로 사라져요.</p>
+          </fieldset>
+          <button class="sp-p__btn" type="submit" name="do" value="save">저장</button>
+        </form>
+        <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text sp-p__add" href={`/photo/${id}?confirm=delete#confirm`}>{isVideo ? '영상' : '사진'} 지우기</a>
+      </>
+    )
+  }
+</Parent>

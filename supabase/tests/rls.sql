@@ -619,7 +619,7 @@ set role service_role;
 select pg_temp.ok((select array_agg(x) = array[:'fam', :'fam_old']::uuid[] or array_agg(x) = array[:'fam_old', :'fam']::uuid[] from public.sp_purge_deleted_families() x), '기한 지난 가족방만 지움');
 reset role;
 select pg_temp.ok(not exists (select 1 from public.families where id = :'fam') and not exists (select 1 from public.media where family_id = :'fam') and not exists (select 1 from public.parents where family_id = :'fam'), '사진·부모 연결까지 같이 지워짐');
-select pg_temp.ok((select count(*) = 2 from public.r2_cleanup where family_id in (:'fam', :'fam_old')), '지운 가족방은 R2 정리 대기열에');
+select pg_temp.ok((select count(*) = 2 from public.r2_cleanup where prefix in (:'fam' || '/', :'fam_old' || '/')), '지운 가족방은 R2 정리 대기열에');
 -- 지운 뒤 같은 부모는 새로 시작할 수 있다
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
@@ -635,7 +635,7 @@ update public.families set delete_after = now() - interval '1 minute' where id =
 set role authenticated;
 select pg_temp.ok(public.sp_create_family('mom', '지우', '하린', '2025-09-17', '0917') <> :'fam_new', '기한 지난 가족방이 있어도 처음 설정이 됨');
 reset role;
-select pg_temp.ok((select count(*) = 1 from public.r2_cleanup where family_id = :'fam_new') and not exists (select 1 from public.families where id = :'fam_new'), '처음 설정 때 지운 가족방도 R2 정리 대기열에');
+select pg_temp.ok((select count(*) = 1 from public.r2_cleanup where prefix = :'fam_new' || '/') and not exists (select 1 from public.families where id = :'fam_new'), '처음 설정 때 지운 가족방도 R2 정리 대기열에');
 
 -- ── 그룹 관리: 10개 한도, 이름·기본 포함 바꾸기, 주소 다시 만들기
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
@@ -686,3 +686,47 @@ select public.sp_set_group_password(:'g_home', '0000', null);
 \set ON_ERROR_STOP 1
 reset role;
 select pg_temp.ok((select name = '우리집' from public.groups where id = :'g_home'), '다른 가족방 부모는 그룹 이름 못 바꿈');
+
+-- ── 사진 정보: 찍은 날·아이·그룹 고치기, 지우기
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select id as g_other from public.groups where name = '그룹1' \gset
+select (public.sp_parent_home() -> 'children' -> 0 ->> 'id') as kid1 \gset
+select public.sp_update_media(:'mg', '2026-01-02T03:04:05+09', array[:'kid1']::uuid[], array[:'g_other']::uuid[]);
+select pg_temp.ok((select taken_at = '2026-01-02T03:04:05+09' and taken_at_source = 'manual' from public.media where id = :'mg'), '찍은 날 고치기');
+select pg_temp.ok((select array_agg(group_id) = array[:'g_other']::uuid[] from public.media_groups where media_id = :'mg'), '보여줄 그룹 바꾸기');
+select pg_temp.ok((select array_agg(child_id) = array[:'kid1']::uuid[] from public.media_children where media_id = :'mg'), '아이 태그');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(그룹 없이 저장, 남의 가족방 그룹)'
+select public.sp_update_media(:'mg', now(), '{}', '{}');
+select public.sp_update_media(:'mg', now(), '{}', array[:'gma']::uuid[]);
+\set ON_ERROR_STOP 1
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(남의 사진 고치기·지우기)'
+select public.sp_update_media(:'mg', now(), '{}', array[:'g_other']::uuid[]);
+select public.sp_delete_media(:'mg');
+\set ON_ERROR_STOP 1
+reset role;
+-- 탈퇴 유예 중엔 부모도 고치기·지우기 못 함
+update public.families set delete_after = now() + interval '3 days' where id = :'fam3';
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(탈퇴 유예 중 사진 고치기·지우기)'
+select public.sp_update_media(:'mg', now(), '{}', array[:'g_other']::uuid[]);
+select public.sp_delete_media(:'mg');
+\set ON_ERROR_STOP 1
+reset role;
+update public.families set delete_after = null where id = :'fam3';
+update public.media set bytes = 1000 where id = :'mg';
+update public.families set storage_used_bytes = 5000 where id = :'fam3';
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_delete_media(:'mg');
+select pg_temp.ok(not exists (select 1 from public.media where id = :'mg'), '사진 지우기');
+reset role;
+select pg_temp.ok((select storage_used_bytes = 4000 from public.families where id = :'fam3'), '지우면 저장 용량에서 빠짐');
+select pg_temp.ok(exists (select 1 from public.r2_cleanup where prefix = :'fam3' || '/' || :'mg' || '/'), '지운 사진 폴더는 R2 정리 대기열에');

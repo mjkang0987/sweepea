@@ -109,6 +109,15 @@ export interface MediaItem {
   poster_key: string | null;
 }
 
+/** 부모 사진 정보 화면 */
+export interface MediaInfo {
+  item: MediaItem;
+  group_ids: string[];
+  child_ids: string[];
+  /** 가장 최근 한마디(지운 것 제외) */
+  latest: { name: string; body: string } | null;
+}
+
 export const REACTION_KINDS = ['heart', 'best', 'good', 'moved', 'sparkle'] as const;
 export type ReactionKind = (typeof REACTION_KINDS)[number];
 
@@ -228,6 +237,12 @@ export interface Backend {
   setUploadAllowed(pass: Pass, memberId: string, on: boolean): Promise<void>;
   /** 가족도 사진 저장하기 */
   setDownloadAllowed(pass: Pass, familyId: string, on: boolean): Promise<void>;
+  /** 부모 사진 정보. 내 가족방 사진이 아니거나 없으면 null */
+  mediaInfo(pass: Pass, mediaId: string): Promise<MediaInfo | null>;
+  /** 찍은 날·아이·보여줄 그룹(하나 이상)을 한 번에 */
+  updateMedia(pass: Pass, mediaId: string, u: { takenAt: string; childIds: string[]; groupIds: string[] }): Promise<void>;
+  /** 사진 지우기(부모만): 용량에서 빼고 R2 정리 대기열에 */
+  deleteMedia(pass: Pass, mediaId: string): Promise<void>;
   /** 탈퇴 신청: 가족 화면을 바로 닫고 3일 뒤 지울 시각(ISO). 구독 중이면 BackendError 402 */
   requestDelete(pass: Pass): Promise<string>;
   /** 유예 중 되살리기. 유예가 아니거나 기한이 지났으면 400 */
