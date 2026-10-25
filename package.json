@@ -12,7 +12,8 @@
     "preview": "astro preview",
     "check": "astro check",
     "perf": "npx -y @lhci/cli@0.15.1 autorun",
-    "test:db": "bash supabase/tests/run.sh"
+    "test:db": "bash supabase/tests/run.sh",
+    "types": "wrangler types"
   },
   "dependencies": {
     "@astrojs/cloudflare": "14.4.2",
