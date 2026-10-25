@@ -1,0 +1,109 @@
+---
+// 그룹 상세: 이름·새 사진 기본 포함, 비밀번호(힌트)·바꾸기, 주소 보내기, 구성원, 주소 다시 만들기
+import Parent from '../../../../../layouts/Parent.astro';
+import { seenLabel } from '../../../../../lib/age';
+import { BackendError, getBackend } from '../../../../../lib/backend';
+import { loadParent } from '../../../../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const b = getBackend();
+const admin = await b.familyAdmin(a.pass);
+const g = admin.groups.find((x) => x.id === Astro.params.id);
+if (!g) return Astro.redirect('/settings/family/groups');
+const here = `/settings/family/groups/${g.id}`;
+let name = g.name;
+let error: string | null = null;
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  name = String(form.get('name') ?? '').trim();
+  if (name.length < 1 || name.length > 12) error = '그룹 이름을 1~12자로 써 주세요.';
+  else {
+    try {
+      await b.updateGroup(a.pass, g.id, { name, include_by_default: form.get('include') === '1' });
+      return Astro.redirect(`${here}?done=saved`, 303);
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+      error = e.status === 409 ? '같은 이름의 그룹이 있어요. 다른 이름을 써 주세요.' : '저장하지 못했어요. 다시 눌러 주세요.';
+    }
+  }
+}
+const now = Date.now();
+const people = admin.members
+  .filter((m) => m.group_id === g.id && (m.status === 'active' || (m.status === 'pending' && m.pending_until && Date.parse(m.pending_until) > now)))
+  .map((m) => {
+    const ds = admin.devices.filter((d) => d.member_id === m.id && d.status === 'active');
+    const last = ds.map((d) => d.last_seen_at).sort().at(-1);
+    const daysLeft = m.pending_until ? Math.max(1, Math.ceil((Date.parse(m.pending_until) - now) / 86_400_000)) : 0;
+    return {
+      ...m,
+      up: ds.length > 0 && ds.every((d) => d.can_upload),
+      note: m.status === 'pending' ? `확인 기다림 · ${daysLeft}일 남음` : last ? seenLabel(last, now) : '아직 안 들어옴',
+    };
+  });
+const done = Astro.url.searchParams.get('done');
+const doneText: Record<string, string> = { saved: '저장했어요.', password: '비밀번호를 바꿨어요. 이미 들어온 휴대폰은 그대로 봐요.' };
+---
+
+<Parent title={error ? `다시 확인해 주세요 · ${g.name}` : `${g.name} · 그룹`} tab="settings">
+  <nav class="sp-p__bar" aria-label="뒤로">
+    <a class="sp-p__back" href="/settings/family/groups"><span aria-hidden="true">‹ </span>그룹</a>
+  </nav>
+  <h1 class="sp-p__title">{g.name}</h1>
+  {done && doneText[done] && <p class="sp-p__toast" tabindex="-1" autofocus>{doneText[done]}</p>}
+  <form class="sp-p__form" method="post">
+    {error && <p class="sp-p__error" role="alert" id="g-err">{error}</p>}
+    <div class="sp-p__field">
+      <label class="sp-p__label" for="name">그룹 이름</label>
+      <input class="sp-p__input" id="name" name="name" type="text" required maxlength="12" autocomplete="off" value={name} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? 'g-err' : undefined} />
+    </div>
+    <label class="sp-p__check sp-p__check--plain">
+      <input class="sp-p__checkbox" type="checkbox" name="include" value="1" checked={g.include_by_default} aria-describedby="include-note" />
+      새 사진에 기본으로 포함
+    </label>
+    <p class="sp-p__hint" id="include-note">사진 올릴 때 이 그룹이 미리 체크돼요.</p>
+    <button class="sp-p__btn sp-p__btn--quiet" type="submit">저장</button>
+  </form>
+
+  <ul class="sp-p__list sp-p__list--gap">
+    <li>
+      <a class="sp-p__row sp-p__row--tall" href={`${here}/password`}>
+        <span class="sp-p__row-label sp-p__radio-text">
+          <span class="sp-p__who-name">비밀번호 <span aria-hidden="true">••••</span></span>
+          <span class="sp-p__hint">{g.password_hint ? `힌트 · ${g.password_hint}` : '힌트 없음'}</span>
+        </span>
+        <span class="sp-p__row-action">바꾸기</span>
+      </a>
+    </li>
+  </ul>
+  <form method="post" action="/settings/family">
+    <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value={`share:${g.id}`}>{g.name} 주소 보내기</button>
+  </form>
+  <p class="sp-p__hint">새로 들어오는 사람은 보낸 뒤 3일 안에 들어와야 해요.</p>
+
+  <section class="sp-p__section" aria-labelledby="sec-people">
+    <h2 class="sp-p__section-title" id="sec-people">구성원 · {people.length}명</h2>
+    {people.length === 0 && <p class="sp-p__hint sp-p__empty-note">아직 들어온 사람이 없어요.</p>}
+    {
+      people.length > 0 && (
+        <ul class="sp-p__list">
+          {people.map((m) => (
+            <li>
+              <a class="sp-p__row" href={m.status === 'active' ? `/settings/family/member/${m.id}` : '/settings/family'}>
+                <span class="sp-p__row-label">{m.display_name}</span>
+                {m.up && <span class="sp-p__tag">올리기</span>}
+                <span class="sp-p__row-value">{m.note}</span>
+                <span class="sp-p__chev" aria-hidden="true">›</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+
+  <form class="sp-p__account-out" method="post" action="/settings/family">
+    <button class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" type="submit" name="do" value={`reset:${g.id}`}>주소 다시 만들기 (예전 주소는 바로 막혀요)</button>
+  </form>
+</Parent>
