@@ -179,6 +179,23 @@
 - 결과: 검토 2회 반영(반응·한마디는 함수로만, 한마디 글은 부모·쓴 사람만, 승인 대기는 반응 불가, 이모지 한 번만 그리기, 옆 카드 반응 숨김, 지원 안 하는 브라우저는 반응 줄 숨김). DB 검사(의도된 거부 23건), 반응 e2e 13개, 타입 검사·빌드 통과
 - 남은 일: 부모는 구성원 행이 없어 반응·한마디 함수가 막힘 → 부모 화면에서 반응하려면 함수에 부모 분기 필요(이슈 9·12). 키 작은 화면에서 반응 뒤 돌아올 때 반응 줄이 아래로 밀릴 수 있음(실기기 확인)
 
+### 12. feature/parent-start — 부모 시작: 소개·로그인·처음 설정·앨범 (계획)
+
+- 요구사항(캔버스 ParentIntro1~3·ParentLogin·ParentOnboard·ParentOnboard2·ParentEmpty·ParentHome)
+  - 소개 3장(처음 한 번, 건너뛰기) → 로그인(카카오·네이버·Google·Apple, 구현 안 된 제공자는 버튼 숨김) → 처음 설정 1/2 아이(이름·생일·엄마/아빠) → 2/2 가족 비밀번호(숫자 4자리·힌트) → 앨범
+  - 앨범: 사진이 없으면 "하린이 첫 사진을 올려 주세요", 있으면 월별 모아 보기. 아래 탭(앨범·설정), "사진 추가하기"(올리기 화면은 이슈 14)
+  - 이미 설정한 부모는 로그인하면 바로 앨범, 로그인 안 했으면 소개/로그인으로
+- 구현 방식
+  - 로그인: Supabase Auth OAuth(PKCE). `/login/<제공자>` → Supabase 인증 → `/auth/callback`에서 코드 교환 → httpOnly 쿠키 `sp_parent`(가족 기기 출입증 `sp_pass`와 따로). 출입증 읽기·갱신은 `pass.ts`를 쿠키 이름만 바꿔 같이 쓴다
+  - 켤 제공자는 환경 변수 `PARENT_PROVIDERS`(예: `kakao,google`). 네이버는 Supabase 기본 제공자가 아니라 따로 확인 필요(확인 전엔 숨김)
+  - 개발용: mock 백엔드에서 `/login/dev`로 가짜 부모 로그인(운영 금지)
+  - 처음 설정은 JS 없이 2단계 폼(1단계 값을 2단계에 숨은 칸으로), 마지막에 `sp_create_family`
+  - 새 DB 함수 `sp_parent_home()`: 내 가족방·아이들·역할(없으면 null)
+  - 부모 화면 스타일은 `parent.css`(.sp-p*), 높이 기준 52/40/56
+- 영향받는 파일: `supabase/migrations/`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/lib/pass.ts`, `src/pages/{start,login,auth,setup,home}*`, `src/layouts/Parent.astro`, `src/styles/parent.css`, `astro.config.mjs`, `index.md`, `plan.md`
+- 예상 결과: mock으로 소개 → 로그인 → 처음 설정 → 빈 앨범, 사진이 있으면 앨범까지 e2e 통과. 실제 OAuth는 Supabase 연결 때 확인
+- 범위 밖: 설정 > 가족(승인·구성원·링크, 다음 이슈), 올리기 화면, 위 띠(승인 요청·접종 일정), 최근 반응, 아이 여러 명 전환, 이용약관·개인정보 처리방침 본문
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
