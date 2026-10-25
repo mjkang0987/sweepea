@@ -648,9 +648,32 @@ select public.sp_add_group('그룹10', '1111');
 \set ON_ERROR_STOP 1
 select pg_temp.ok((select count(*) = 10 from public.groups), '그룹은 10개까지');
 update public.groups set name = '우리집', include_by_default = false where id = :'g_home';
-select public.sp_create_share(array[:'g_home']::uuid[]) as code_g \gset
-select pg_temp.ok(public.sp_reset_group_links(:'g_home') = 1, '주소 다시 만들기는 그 그룹 링크를 지움');
+select public.sp_parent_home() ->> 'family_id' as fam3 \gset
+select public.sp_create_media(:'fam3', 'photo', now(), 'exif', null, null, null, array[:'g_home']::uuid[]) as mg \gset
+reset role;
+update public.media set status = 'ready' where id = :'mg';
+set role authenticated;
+select public.sp_create_share(array[:'g_home']::uuid[], array[:'mg']::uuid[]) as code_g \gset
+-- 이 링크로 새 이름이 들어와 승인을 기다린다
+\set N7 '00000000-0000-0000-0000-0000000000c7'
+reset role;
+insert into auth.users (id, is_anonymous) values (:'N7', true);
+select set_config('request.jwt.claims', json_build_object('sub', :'N7', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code_g', '0917', null, '사촌', :'g_home') ->> 'result' = 'pending', '새 이름은 승인 대기');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_reset_group_links(:'g_home') = 1, '주소 다시 만들기는 그 그룹 링크를 막음');
 select pg_temp.ok(public.sp_entry_info(:'code_g') ->> 'result' = 'not_found', '예전 주소는 바로 막힘');
+select pg_temp.ok(public.sp_reset_group_links(:'g_home') = 0, '이미 막힌 링크는 다시 세지 않음');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'N7', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 1 from public.media), '주소를 다시 만들어도 승인 기다리는 사람은 링크 사진을 봄');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
 reset role;
 select pg_temp.ok((select name = '우리집' and not include_by_default from public.groups where id = :'g_home'), '이름·기본 포함 바꾸기');
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
