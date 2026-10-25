@@ -251,8 +251,9 @@ export interface Backend {
   /** 가족도 사진 저장하기 */
   setDownloadAllowed(pass: Pass, familyId: string, on: boolean): Promise<void>;
   /** 부모 최근 반응(최근 30일, 50개). 부모가 아니면 null */
-  parentActivity(pass: Pass): Promise<{ seen_at: string; items: ActivityItem[] } | null>;
-  markActivitySeen(pass: Pass): Promise<void>;
+  parentActivity(pass: Pass): Promise<{ seen_at: string; read_at: string; items: ActivityItem[] } | null>;
+  /** 읽음 표시(목록을 읽은 시각까지만) */
+  markActivitySeen(pass: Pass, readAt: string): Promise<void>;
   /** 부모 사진 정보. 내 가족방 사진이 아니거나 없으면 null */
   mediaInfo(pass: Pass, mediaId: string): Promise<MediaInfo | null>;
   /** 찍은 날·아이·보여줄 그룹(하나 이상)을 한 번에 */

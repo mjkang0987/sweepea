@@ -14,17 +14,18 @@ const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const b = getBackend();
 const [act, admin] = await Promise.all([b.parentActivity(a.pass), b.familyAdmin(a.pass)]);
-await b.markActivitySeen(a.pass);
 const now = Date.now();
 const s = summarize(admin);
 const rows = await Promise.all(
   (act?.items ?? []).map(async (x) => ({
     ...x,
-    isNew: act ? x.at > act.seen_at : false,
+    isNew: act ? Date.parse(x.at) > Date.parse(act.seen_at) : false,
     thumb: x.thumb_key ? await signedMediaUrl(x.thumb_key) : null,
     text: x.type === 'comment' ? `"${x.body}"` : (() => { const l = x.kind ? EMOJI[x.kind].label : '반응'; return `${l}${hasBatchim(l) ? '을' : '를'} 보냈어요`; })(),
   })),
 );
+// 다 그린 뒤에 읽음 표시(읽은 시각까지만)
+if (act) await b.markActivitySeen(a.pass, act.read_at);
 const fresh = rows.filter((r) => r.isNew);
 const old = rows.filter((r) => !r.isNew);
 ---

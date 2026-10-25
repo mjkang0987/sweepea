@@ -203,8 +203,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     resetGroupLinks: async (pass, groupId) => {
       await rpc<number>(pass, 'sp_reset_group_links', { p_group_id: groupId });
     },
-    parentActivity: (pass) => rpc<{ seen_at: string; items: ActivityItem[] } | null>(pass, 'sp_parent_activity', {}),
-    markActivitySeen: (pass) => rpc<void>(pass, 'sp_mark_activity_seen', {}),
+    parentActivity: (pass) => rpc<{ seen_at: string; read_at: string; items: ActivityItem[] } | null>(pass, 'sp_parent_activity', {}),
+    markActivitySeen: (pass, readAt) => rpc<void>(pass, 'sp_mark_activity_seen', { p_read_at: readAt }),
     async mediaInfo(pass, id) {
       const cols = 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key';
       const q = new URLSearchParams({ id: `eq.${id}`, status: 'eq.ready', select: `${cols},media_groups(group_id),media_children(child_id)` });

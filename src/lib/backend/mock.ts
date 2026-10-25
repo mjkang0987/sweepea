@@ -420,10 +420,10 @@ export function createMockBackend(): Backend {
     async parentActivity(pass) {
       const fam = parents.get(pass.access)?.familyId;
       if (!fam) return null;
-      return { seen_at: new Date(seenAt.get(pass.access) ?? 0).toISOString(), items: activityOf(fam).slice(0, 50) };
+      return { seen_at: new Date(seenAt.get(pass.access) ?? 0).toISOString(), read_at: new Date().toISOString(), items: activityOf(fam).slice(0, 50) };
     },
-    async markActivitySeen(pass) {
-      seenAt.set(pass.access, Date.now());
+    async markActivitySeen(pass, readAt) {
+      seenAt.set(pass.access, Math.max(seenAt.get(pass.access) ?? 0, Math.min(Date.parse(readAt), Date.now())));
     },
     async mediaInfo(pass, id) {
       const fam = parents.get(pass.access)?.familyId;
