@@ -317,9 +317,9 @@
   text-decoration: none;
 }
 .sp-a__tab[aria-current='page'] {
-  background: var(--bg);
-  box-shadow: inset 0 0 0 2px var(--pea), 0 1px 2px rgba(0, 0, 0, 0.12);
-  color: var(--pea-deep);
+  background: var(--seg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  font-weight: 700;
 }
 @media (forced-colors: active) {
   .sp-a__chip[aria-current='true'],
@@ -329,53 +329,121 @@
   }
 }
 
-/* 넘겨 보기: 가로 스크롤 + 칸 맞춤(scroll-snap). JS 없이 손가락으로 넘긴다 */
+/* 넘겨 보기(시안 GrandHome): 290×360 카드가 가운데, 양옆 카드는 비스듬히·반투명. JS 없이 scroll-snap */
 .sp-a__swipe {
+  --card-w: 18.125rem;
   list-style: none;
   margin: 0 calc(-1 * var(--space-5));
-  padding: 4px var(--space-5) var(--space-5);
+  /* 첫·마지막 카드도 가운데에 오게(%는 바깥 칸 기준이라 음수 여백만큼 더함) */
+  padding: var(--space-2) calc(50% + var(--space-5) - var(--card-w) / 2) var(--space-2);
   display: flex;
-  gap: var(--space-3);
+  /* 양옆 카드가 가운데 카드 옆에 붙어 보이게(시안) */
+  gap: 0;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scroll-padding: 0 var(--space-5);
   overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.sp-a__swipe::-webkit-scrollbar {
+  display: none;
 }
 .sp-a__slide {
-  flex: 0 0 86%;
+  flex: 0 0 var(--card-w);
   scroll-snap-align: center;
-}
-.sp-a__card {
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-xl);
+  gap: var(--space-3);
+}
+.sp-a__card {
+  height: 22.5rem;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
   overflow: hidden;
   background: var(--surface);
   color: var(--label);
   text-decoration: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 .sp-a__card-img {
+  flex: 1;
+  min-height: 0;
   display: block;
   width: 100%;
-  aspect-ratio: 3 / 4;
   object-fit: cover;
-  background: var(--fill);
+  background: var(--ph-1);
 }
 .sp-a__card-cap {
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  min-height: var(--target-senior);
+  padding: var(--space-1) var(--space-4);
+  box-sizing: border-box;
   font-size: var(--senior-caption-size);
   line-height: var(--senior-caption-line);
+  font-weight: 500;
   color: var(--label-2);
 }
-.sp-a__count {
-  margin-left: auto;
-  font-weight: 700;
+.sp-a__pos {
+  margin: 0;
+  /* 카드 폭보다 넓게: 안내 글이 한 줄로 */
+  margin-inline: -3rem;
+  text-align: center;
+  font-size: var(--senior-caption-size);
+  line-height: var(--senior-caption-line);
+  font-weight: 500;
+  color: var(--label-2);
+}
+.sp-a__pos-n {
   color: var(--label);
+  font-weight: 700;
+}
+/* 스크롤 위치에 따라 양옆 카드를 기울이고 흐리게(지원하는 브라우저만, 아니면 평평하게 보임) */
+@supports (animation-timeline: view(inline)) {
+  @media (prefers-reduced-motion: no-preference) {
+    .sp-a__card,
+    .sp-a__pos {
+      animation: sp-a-tilt linear both;
+      animation-timeline: view(inline);
+    }
+    .sp-a__pos {
+      animation-name: sp-a-fade;
+    }
+  }
+}
+/* 0%: 오른쪽(다음) 카드, 100%: 왼쪽(이전) 카드. 안쪽 모서리를 축으로 기울여 가운데 카드에 붙게 */
+@keyframes sp-a-tilt {
+  0% {
+    transform: perspective(900px) rotateY(-18deg) scale(0.86);
+    transform-origin: left center;
+    opacity: 0.5;
+  }
+  50% {
+    transform: none;
+    transform-origin: center;
+    opacity: 1;
+  }
+  100% {
+    transform: perspective(900px) rotateY(18deg) scale(0.86);
+    transform-origin: right center;
+    opacity: 0.5;
+  }
+}
+@keyframes sp-a-fade {
+  0%,
+  35% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  65%,
+  100% {
+    opacity: 0;
+  }
 }
 .sp-a__tag {
   padding: 0 0.625rem;
