@@ -10,6 +10,7 @@
 - 설정 > 가족(`/settings/family` 승인·거절·새 기기·그룹 링크, `/settings/family/sms` 한 사람용 문자 링크) 완료.
 - 설정: 구성원 상세(`/settings/family/member/<id>` 사진 올리기 허용·내보내기), 가족도 사진 저장하기(`/settings`, 켜면 가족 크게 보기에 저장 링크), 저장 용량(`/settings/storage`) 완료.
 - 설정: 아이(`/settings/children` 목록, `/settings/children/<id|new>` 고치기·추가, 가족방당 10명), 가족 화면 글자 크기(`/settings/text-size`, 가족이 처음 들어올 때 크기 `families.text_size_mode`), 계정(`/settings/account` 제공자·로그아웃) 완료.
+- 매일 정리 예약 작업(`src/worker.ts` scheduled, 서울 새벽 3:17): 탈퇴 기한 지난 가족방·하루 지난 올리기 지우기, R2 정리 대기열 폴더 지우기(`src/jobs/cleanup.ts`). 무료 가족방 5GB가 차면 새로 올리기만 멈춤 완료.
 - 홈 화면에 두기: `public/manifest.webmanifest`·`public/icons/`(콩이), 가족 앨범 위 안내(`src/components/InstallGuide.astro`, 기기 판별 `src/lib/install.ts`), 앱 안 브라우저는 엄마아빠에게 부탁(`members.install_help_at`) → 부모 최근 반응 '도와줄 사람' 완료.
 - 접종·검진(`/health/<아이 id>`, 앨범 위 아이별 다음 일정, 설정 > 아이에서 켜고 끄기): 일정 표 `src/lib/health.ts`, 완료 기록 `health_done`(부모만) 완료.
 - 부모 최근 반응(`/reactions`, 앨범 위 '최근 반응 새 N'): 승인된 가족의 반응·한마디, 확인할 사람, 열면 읽음 완료.
@@ -36,7 +37,9 @@
 
 ```
 astro.config.mjs        Astro + Cloudflare 어댑터 (Images 바인딩·세션 KV 안 씀)
-wrangler.jsonc          Worker 이름·호환 날짜
+wrangler.jsonc          Worker 이름·호환 날짜·진입점(src/worker.ts)·매일 예약(crons)
+src/worker.ts           Worker 진입점: 화면은 Astro 어댑터, scheduled는 정리 작업
+src/jobs/cleanup.ts     매일 정리(가족방·올리는 중 사진·R2 폴더), 외부 호출 한도 안에서
 lighthouserc.json       성능 예산 (LCP 1.8초, CLS 0.05, JS 비압축 50KB, 접근성 100점)
 .github/workflows/      perf.yml: 타입 검사 → 빌드 → 성능 예산 (PR, dev 푸시)
 public/favicon.svg      심볼 (시스템 테마에 맞춰 색 바뀜)
