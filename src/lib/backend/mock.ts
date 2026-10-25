@@ -14,9 +14,10 @@ const HOUR = 3600_000;
 // 가족방 id는 실제처럼 uuid(API가 형식을 검사한다)
 const HARIN = '00000000-0000-4000-8000-00000000f001';
 const DOYUN = '00000000-0000-4000-8000-00000000f002';
+// Workers는 모듈 맨 위에서 난수를 못 만든다(crypto.randomUUID 금지) — 고정 id
 const kids = [
-  { id: crypto.randomUUID(), familyId: HARIN, name: '하린', birth_date: '2025-09-17' },
-  { id: crypto.randomUUID(), familyId: DOYUN, name: '도윤', birth_date: '2026-08-30' },
+  { id: '00000000-0000-4000-8000-00000000c001', familyId: HARIN, name: '하린', birth_date: '2025-09-17' },
+  { id: '00000000-0000-4000-8000-00000000c002', familyId: DOYUN, name: '도윤', birth_date: '2026-08-30' },
 ];
 const firstChild = (familyId: string) => kids.find((k) => k.familyId === familyId)?.name ?? null;
 const sizeModes: Record<string, TextSizeMode> = {};
