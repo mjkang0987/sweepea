@@ -19,9 +19,11 @@ if (Astro.request.method === 'POST') {
   const valid = new Set(HEALTH_ITEMS.map((i) => i.key));
   const shown = new Set(form.getAll('shown').map(String).filter((k) => valid.has(k)));
   const checked = new Set(form.getAll('done').map(String).filter((k) => shown.has(k)));
+  // 화면을 그릴 때 체크돼 있던 것만 풀 수 있다(그 사이 다른 쪽에서 체크한 기록은 지우지 않게)
+  const was = new Set(form.getAll('was').map(String).filter((k) => shown.has(k)));
   const before = new Set((await b.healthDone(a.pass, kid.id)).map((d) => d.item_key));
   try {
-    await b.setHealthDone(a.pass, a.home.family_id!, kid.id, [...checked].filter((k) => !before.has(k)), [...shown].filter((k) => before.has(k) && !checked.has(k)), today);
+    await b.setHealthDone(a.pass, a.home.family_id!, kid.id, [...checked].filter((k) => !before.has(k)), [...was].filter((k) => before.has(k) && !checked.has(k)), today);
     return Astro.redirect(`${here}?done=saved`, 303);
   } catch (e) {
     if (!(e instanceof BackendError)) throw e;
@@ -73,7 +75,7 @@ const done = Astro.url.searchParams.get('done');
     {
       past.length > 0 && (
         <details class="sp-p__section sp-p__past">
-          <summary class="sp-p__section-title sp-p__past-title">지난 일정 {past.length}개 · 했으면 체크해 주세요</summary>
+          <summary class="sp-p__past-title"><h2 class="sp-p__section-title sp-p__past-h">지난 일정 {past.length}개 · 했으면 체크해 주세요</h2></summary>
           <ul class="sp-p__list">
             {past.map((x) => (
               <li>
@@ -85,7 +87,7 @@ const done = Astro.url.searchParams.get('done');
                     <span class="sp-p__who-name">{x.item.name}</span>
                     <span class="sp-p__hint">{x.item.age}</span>
                   </span>
-                  <span class:list={['sp-p__health-when', x.state.kind === 'late' && 'sp-p__health-when--late']}>{stateText(x.state)}</span>
+                  <span class="sp-p__health-when sp-p__health-when--late">{x.state.kind === 'late' ? '시기 지남' : '권장 시기 지남'}</span>
                 </label>
               </li>
             ))}
@@ -102,6 +104,7 @@ const done = Astro.url.searchParams.get('done');
               <li>
                 <label class="sp-p__health">
                   <input type="hidden" name="shown" value={i.key} />
+                  <input type="hidden" name="was" value={i.key} />
                   <input class="sp-p__checkbox" type="checkbox" name="done" value={i.key} checked />
                   <span class="sp-p__tag">{KIND[i.kind]}</span>
                   <span class="sp-p__row-label sp-p__radio-text">

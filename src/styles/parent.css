@@ -1061,3 +1061,6 @@
   cursor: pointer;
   padding-block: var(--space-3);
 }
+.sp-p__past-h {
+  display: inline;
+}

@@ -13,19 +13,23 @@ if ('redirect' in a) return Astro.redirect(a.redirect);
 const kid = callName(a.home.children?.[0]?.name ?? '아이');
 // shortcut: 최근 200장까지만. 다음 쪽 넘기기는 가족 앨범과 같이 커서로
 const b = getBackend();
-const items = await b.listMedia(a.pass, { limit: 200 });
-// 접종·검진: 일정 보기를 켠 아이마다 다음 일정 하나
+// 접종·검진: 일정 보기를 켠 아이마다 다음 일정 하나. 옆 기능이라 실패하면 줄만 빼고 앨범은 보인다
 const today = seoulToday();
-const healthRows = await Promise.all(
+const [items, healthRows] = await Promise.all([
+  b.listMedia(a.pass, { limit: 200 }),
+  Promise.all(
   (a.home.children ?? [])
     .filter((k) => k.show_health)
     .map(async (k) => {
-      const done = new Set((await b.healthDone(a.pass, k.id)).map((d) => d.item_key));
+      const rows = await b.healthDone(a.pass, k.id).catch(() => null);
+      if (!rows) return null;
+      const done = new Set(rows.map((d) => d.item_key));
       const next = splitSchedule(k.birth_date, today, done).upcoming[0];
       const [, m, d] = next?.start.split('-').map(Number) ?? [];
       return { id: k.id, name: k.name, next: next ? `${next.item.name} · ${next.state.kind === 'soon' ? `${m}월 ${d}일부터` : '지금 가능'}` : '6개월 안에는 없어요' };
     }),
-);
+  ).then((r) => r.filter((x) => x !== null)),
+]);
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
 const months: { label: string; cells: { id: string; src: string; video: boolean; day: string }[] }[] = [];
