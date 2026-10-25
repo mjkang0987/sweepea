@@ -21,6 +21,9 @@ const kids = [
 ];
 const firstChild = (familyId: string) => kids.find((k) => k.familyId === familyId)?.name ?? null;
 const sizeModes: Record<string, TextSizeMode> = {};
+// 탈퇴 유예: 가족방 → 지울 시각(ms). 있으면 가족 화면은 닫힌다
+const closingAt: Record<string, number> = {};
+const isClosing = (familyId: string) => closingAt[familyId] !== undefined;
 const groups: Group[] = [
   { id: 'g-mat', familyId: HARIN, name: '외가', hint: '외가 비밀번호', password: '1234' },
   { id: 'g-pat', familyId: HARIN, name: '친가', hint: '할아버지 생신', password: '5678' },
@@ -90,7 +93,7 @@ export function createMockBackend(): Backend {
       const s = shares.find((x) => x.code === code);
       if (!s) return { result: 'not_found' };
       const me = pass ? meOf(devices.get(key(pass, familyOf(s)))) : null;
-      if (s.closed) return { result: 'closed', me };
+      if (s.closed || isClosing(familyOf(s))) return { result: 'closed', me };
       if (s.targetMemberId && (s.usedAt || s.createdAt + 72 * HOUR <= Date.now())) return { result: 'expired', me };
       return {
         result: 'ok',
@@ -113,7 +116,7 @@ export function createMockBackend(): Backend {
       if (!/^[0-9]{4}$/.test(i.password) || !i.memberId === !i.newName) return { result: 'bad_request' };
       const s = shares.find((x) => x.code === i.code);
       if (!s) return { result: 'not_found' };
-      if (s.closed) return { result: 'closed' };
+      if (s.closed || isClosing(familyOf(s))) return { result: 'closed' };
       const k = key(pass, familyOf(s));
       const d = devices.get(k);
       // 마지막으로 들어가려던 가족방이 목록 끝에 오게(DB의 last_seen_at 순서와 같게)
@@ -172,14 +175,14 @@ export function createMockBackend(): Backend {
       const families: MeFamily[] = [];
       for (const [k, d] of devices) {
         if (k.startsWith(`${pass.access}|`)) {
-          families.push({ ...meOf(d)!, family_id: d.familyId, closed: false, child_name: firstChild(d.familyId), download_allowed: !!downloads[d.familyId] });
+          families.push({ ...meOf(d)!, family_id: d.familyId, closed: isClosing(d.familyId), child_name: firstChild(d.familyId), download_allowed: !!downloads[d.familyId] });
         }
       }
       return { families };
     },
     async createMedia(pass, m) {
       const parentOwns = parents.get(pass.access)?.familyId === m.familyId;
-      if (!parentOwns && !canUpload(deviceOf(pass, m.familyId))) throw new BackendError('not_allowed', 403, '42501');
+      if (isClosing(m.familyId) || (!parentOwns && !canUpload(deviceOf(pass, m.familyId)))) throw new BackendError('not_allowed', 403, '42501');
       const id = crypto.randomUUID();
       media.push({
         id, family_id: m.familyId, kind: m.kind, taken_at: m.takenAt, width: m.width ?? null, height: m.height ?? null,
@@ -287,6 +290,17 @@ export function createMockBackend(): Backend {
       if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('not_found', 404);
       downloads[familyId] = on;
     },
+    async requestDelete(pass) {
+      const fam = parents.get(pass.access)?.familyId;
+      if (!fam) throw new BackendError('parent_only', 403, '42501');
+      closingAt[fam] ??= Date.now() + 72 * HOUR;
+      return new Date(closingAt[fam]).toISOString();
+    },
+    async restoreFamily(pass) {
+      const fam = parents.get(pass.access)?.familyId;
+      if (!fam || !(closingAt[fam] > Date.now())) throw new BackendError('not_closing', 400, '22023');
+      delete closingAt[fam];
+    },
     async setTextSizeMode(pass, familyId, mode) {
       if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('not_found', 404);
       sizeModes[familyId] = mode;
@@ -316,7 +330,7 @@ export function createMockBackend(): Backend {
       if (!p) return { family_id: null };
       const ready = media.filter((x) => x.family_id === p.familyId && x.status === 'ready');
       return {
-        family_id: p.familyId, role: p.role, closing: false, download_allowed: !!downloads[p.familyId],
+        family_id: p.familyId, role: p.role, closing: isClosing(p.familyId), delete_after: isClosing(p.familyId) ? new Date(closingAt[p.familyId]).toISOString() : null, download_allowed: !!downloads[p.familyId],
         storage_used_bytes: used[p.familyId] ?? 0, photo_count: ready.filter((x) => x.kind === 'photo').length, video_count: ready.filter((x) => x.kind === 'video').length,
         provider: null, text_size_mode: sizeModes[p.familyId] ?? 'relation',
         children: kids.filter((k) => k.familyId === p.familyId).map(({ id, name, birth_date }) => ({ id, name, birth_date })),
@@ -338,6 +352,7 @@ export function createMockBackend(): Backend {
         .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId))
         .filter((x) => {
           if (parent) return x.family_id === parent.familyId;
+          if (isClosing(x.family_id)) return false;
           const d = deviceOf(pass, x.family_id);
           return d?.status === 'active' && members.find((m) => m.id === d.memberId)?.status === 'active';
         })

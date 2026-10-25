@@ -196,6 +196,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       });
       if (!rows.length) throw new BackendError('not_found', 404);
     },
+    requestDelete: (pass) => rpc<string>(pass, 'sp_request_delete', {}),
+    restoreFamily: (pass) => rpc<void>(pass, 'sp_restore_family', {}),
     setDownloadAllowed: (pass, familyId, on) => patchOne(pass, 'families', familyId, { download_allowed: on }),
     setTextSizeMode: (pass, familyId, mode) => patchOne(pass, 'families', familyId, { text_size_mode: mode }),
     updateChild: (pass, childId, name, birthDate) => patchOne(pass, 'children', childId, { name, birth_date: birthDate }),
