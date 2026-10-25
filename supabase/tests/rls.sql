@@ -365,11 +365,44 @@ select pg_temp.ok((select count(*) = 3 from public.media), '한 가족방에서 
 select pg_temp.ok(public.sp_entry_info(:'code2') -> 'me' ->> 'device' = 'revoked', '막힌 가족방 링크에선 차단 상태');
 reset role;
 
+-- ── 사진 올리기: 행 만들기(부모) → 완료(서버) → 가족에게 보임
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_create_media(:'fam', 'photo', now(), 'exif', 4032, 3024) as u1 \gset
+select pg_temp.ok(public.sp_upload_target(:'u1') ->> 'family_id' = :'fam', '올린 부모는 파일을 넣을 수 있음');
+select pg_temp.ok((select count(*) = 3 from public.media_groups where media_id = :'u1'), '그룹을 안 고르면 기본 포함 그룹 전부');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_upload_target(:'u1') is null, '올린 사람이 아니면 파일을 못 넣음');
+select pg_temp.ok(not exists (select 1 from public.media where id = :'u1'), '올리는 중인 사진은 가족에게 안 보임');
+reset role;
+set role service_role;
+select pg_temp.ok(public.sp_finish_upload(:'u1', 'f/u1/view', 'f/u1/thumb', null, 1000), '서버가 완료 처리');
+select pg_temp.ok(not public.sp_finish_upload(:'u1', 'f/u1/view', 'f/u1/thumb', null, 1000), '완료는 한 번만');
+reset role;
+select pg_temp.ok((select storage_used_bytes = 1000 from public.families where id = :'fam'), '가족방 사용량에 더함');
+set role authenticated;
+select pg_temp.ok(exists (select 1 from public.media where id = :'u1'), '완료되면 외할머니에게 보임');
+select pg_temp.ok(public.sp_upload_target(:'u1') is null, '완료된 사진엔 파일을 더 못 넣음');
+reset role;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 3줄은 의도된 거부(권한 없는 올리기, 클라이언트 완료 처리, 다른 가족방 그룹)'
+set role authenticated;
+select public.sp_create_media(:'fam', 'photo', now(), 'exif');
+select public.sp_finish_upload(:'u1', 'x', 'x', null, 0);
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, array[:'g2']::uuid[]);
+reset role;
+\set ON_ERROR_STOP 1
+
 -- ── 탈퇴 유예: 가족 화면은 바로 닫힘
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
 update public.families set delete_after = now() + interval '3 days';
-select pg_temp.ok((select count(*) = 6 from public.media), '부모는 유예 중에도 봄(되살리기)');
+select pg_temp.ok((select count(*) = 7 from public.media), '부모는 유예 중에도 봄(되살리기)');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
 set role authenticated;
