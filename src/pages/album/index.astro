@@ -1,0 +1,121 @@
+---
+// 앨범: 넘겨 보기(기본)·모아 보기. 여러 가족방이면 모두 섞어 보는 게 기본, 집 고르기는 링크(JS 없음)
+import Family from '../../layouts/Family.astro';
+import { albumHref, dayLabel, loadAlbum, ZOOMS } from '../../lib/album';
+import { signedMediaUrl } from '../../lib/signed';
+
+const a = await loadAlbum(Astro.cookies, Astro.url);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const { open, kids, q, items, name } = a;
+const many = open.length > 1;
+const kidTitle = q.f ? kids.get(q.f)! : [...kids.values()].join('·');
+const title = `${kidTitle} 사진`;
+const showTag = many && !q.f;
+
+const cards = await Promise.all(
+  items.map(async (m, i) => ({
+    ...m,
+    href: albumHref(q, `/album/${m.id}`),
+    // 넘겨 보기는 크게(영상은 포스터), 모아 보기는 썸네일
+    src: await signedMediaUrl(q.v === 'swipe' ? (m.kind === 'video' ? m.poster_key! : m.view_key) : m.thumb_key),
+    day: dayLabel(m.taken_at),
+    kid: kids.get(m.family_id) ?? '',
+    n: i + 1,
+    what: m.kind === 'video' ? '영상' : '사진',
+  })),
+);
+const days: { day: string; cards: typeof cards }[] = [];
+for (const c of cards) {
+  if (days.at(-1)?.day !== c.day) days.push({ day: c.day, cards: [] });
+  days.at(-1)!.cards.push(c);
+}
+const zi = ZOOMS.indexOf(q.z);
+const fewer = zi < ZOOMS.length - 1 ? albumHref({ ...q, z: ZOOMS[zi + 1] }) : null;
+const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
+---
+
+<Family title={title}>
+  <header class="sp-a__head">
+    <div class="sp-a__head-text">
+      <h1 class="sp-f__title">{title}</h1>
+      <p class="sp-f__lead">{name ? `${name}, ` : ''}{items.length >= 200 ? '최근 200장' : `${items.length}장`}</p>
+    </div>
+    <img class="sp-a__kongi" src="/favicon.svg" width="64" height="64" alt="" />
+  </header>
+
+  {
+    many && (
+      <nav class="sp-a__chips" aria-label="어느 집 사진">
+        <a class="sp-a__chip" href={albumHref({ ...q, f: undefined })} aria-current={!q.f ? 'page' : undefined}>모두</a>
+        {open.map((f) => (
+          <a class="sp-a__chip" href={albumHref({ ...q, f: f.family_id })} aria-current={q.f === f.family_id ? 'page' : undefined}>
+            {kids.get(f.family_id)}네
+          </a>
+        ))}
+      </nav>
+    )
+  }
+
+  <nav class="sp-a__tabs" aria-label="보기 방식">
+    <a class="sp-a__tab" href={albumHref({ ...q, v: 'swipe' })} aria-current={q.v === 'swipe' ? 'page' : undefined}>넘겨 보기</a>
+    <a class="sp-a__tab" href={albumHref({ ...q, v: 'list' })} aria-current={q.v === 'list' ? 'page' : undefined}>모아 보기</a>
+  </nav>
+
+  {
+    items.length === 0 ? (
+      <p class="sp-f__box">아직 올라온 사진이 없어요. 엄마아빠가 올리면 여기에 보여요.</p>
+    ) : q.v === 'swipe' ? (
+      <>
+        <ul class="sp-a__swipe" aria-label="사진, 옆으로 밀어서 넘겨 보기">
+          {cards.map((c) => (
+            <li class="sp-a__slide">
+              <a class="sp-a__card" href={c.href}>
+                <img class="sp-a__card-img" src={c.src} alt={`${c.day} ${c.what}${showTag ? `, ${c.kid}` : ''} 크게 보기`} loading={c.n > 2 ? 'lazy' : 'eager'} decoding="async" />
+                <span class="sp-a__card-cap">
+                  {showTag && <span class="sp-a__tag">{c.kid}</span>}
+                  {c.day}
+                  {c.kind === 'video' && ' · 영상'}
+                  <span class="sp-a__count">{c.n} / {cards.length}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p class="sp-f__caption">옆으로 밀면 다음 사진, 누르면 크게 보여요</p>
+      </>
+    ) : (
+      <>
+        {days.map((d) => (
+          <section class="sp-a__day" aria-label={`${d.day} ${d.cards.length}장`}>
+            <h2 class="sp-a__day-title">
+              {d.day} <span class="sp-a__day-count">· {d.cards.length}장</span>
+            </h2>
+            <ul class={`sp-a__grid sp-a__grid--${q.z}`}>
+              {d.cards.map((c) => (
+                <li class="sp-a__cell">
+                  <a class="sp-a__cell-link" href={c.href}>
+                    <img
+                      class="sp-a__cell-img"
+                      src={c.src}
+                      width={c.width ?? undefined}
+                      height={c.height ?? undefined}
+                      alt={`${c.day} ${c.what}${showTag ? `, ${c.kid}` : ''} 크게 보기`}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    {showTag && q.z <= 2 && <span class="sp-a__tag sp-a__tag--on">{c.kid}</span>}
+                    {c.kind === 'video' && <span class="sp-a__play" aria-hidden="true">▶</span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+        <nav class="sp-a__zoom" aria-label="사진 크기">
+          {fewer ? <a class="sp-a__zoom-btn" href={fewer} aria-label="작게(한 줄에 더 많이)">−</a> : <span class="sp-a__zoom-btn sp-a__zoom-btn--off" aria-hidden="true">−</span>}
+          {more ? <a class="sp-a__zoom-btn" href={more} aria-label="크게(한 줄에 더 적게)">+</a> : <span class="sp-a__zoom-btn sp-a__zoom-btn--off" aria-hidden="true">+</span>}
+        </nav>
+      </>
+    )
+  }
+</Family>
