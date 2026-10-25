@@ -1,14 +1,276 @@
 ---
-// 올리기 화면 자리(이슈 14). 지금은 안내만
+// 올리기(부모): 고르기 → 기기에서 줄이기 → 아이·그룹 → 올리고 카톡으로 보내기. 부모 화면이라 JS를 쓴다
 import Parent from '../layouts/Parent.astro';
+import { getBackend } from '../lib/backend';
+import { callName } from '../lib/ko';
 import { loadParent } from '../lib/parent';
 
+Astro.response.headers.set('cache-control', 'private, no-store');
 const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
+const { groups } = await getBackend().familyAdmin(a.pass);
+const kids = a.home.children ?? [];
+const kid = callName(kids[0]?.name ?? '아이');
 ---
 
-<Parent title="사진 올리기 · 스위피" tab="home">
-  <h1 class="sp-p__title">사진 올리기</h1>
-  <p class="sp-p__lead">올리기 화면은 곧 열려요.</p>
-  <a class="sp-p__btn sp-p__btn--quiet" href="/home">앨범으로</a>
+<Parent title="사진 올리기 · 스위피">
+  <form class="sp-p__form" id="up-form" data-family={a.home.family_id} data-kid={kid} novalidate>
+    <nav class="sp-p__bar sp-p__bar--title" aria-label="올리기">
+      <a class="sp-p__back" href="/home">취소</a>
+      <h1 class="sp-p__bar-title" id="up-title">사진 올리기</h1>
+      <span class="sp-p__bar-space"></span>
+    </nav>
+
+    <noscript><p class="sp-p__error">올리기는 자바스크립트를 켜야 쓸 수 있어요.</p></noscript>
+
+    <label class="sp-p__pick" id="up-pick">
+      <input class="sp-vh sp-p__pick-input" id="up-files" type="file" multiple accept="image/*,video/*" />
+      <span class="sp-p__pick-text">사진·영상 고르기</span>
+    </label>
+    <ul class="sp-p__upgrid" id="up-grid" aria-label="고른 사진" hidden></ul>
+    <p class="sp-p__hint" id="up-cover-hint" hidden>테두리가 있는 사진이 카톡 카드 대표 사진이 돼요. 다른 사진을 눌러 바꿀 수 있어요.</p>
+
+    <div class="sp-p__panel">
+      {
+        kids.length > 0 && (
+          <fieldset class="sp-p__fieldset sp-p__panel-row">
+            <legend class="sp-p__panel-label sp-p__panel-legend">아이</legend>
+            <div class="sp-p__checks">
+              {kids.map((c) => (
+                <label class="sp-p__check">
+                  <input class="sp-p__checkbox" type="checkbox" name="child" value={c.id} checked={kids.length === 1} />
+                  {c.name}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )
+      }
+      <fieldset class="sp-p__fieldset sp-p__panel-row">
+        <legend class="sp-p__panel-label sp-p__panel-legend">보여줄 그룹</legend>
+        <div class="sp-p__checks">
+          {
+            groups.map((g) => (
+              <label class="sp-p__check">
+                <input class="sp-p__checkbox" type="checkbox" name="group" value={g.id} checked={g.include_by_default} />
+                {g.name}
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+      <p class="sp-p__panel-row sp-p__panel-line">
+        <span class="sp-p__panel-label">크기</span>
+        <span class="sp-p__row-value" id="up-size">고르면 보여요</span>
+      </p>
+    </div>
+
+    <p class="sp-p__toast" id="up-status" role="status" hidden></p>
+
+    <div class="sp-p__bottom" id="up-actions">
+      <button class="sp-p__btn sp-p__btn--kakao" type="submit" value="share" disabled>올리고 카톡으로 보내기</button>
+      <button class="sp-p__btn sp-p__btn--text" type="submit" value="only" disabled>보내지 않고 올리기만</button>
+    </div>
+  </form>
+
+  <section class="sp-p__card" id="up-done" aria-labelledby="up-done-title" hidden>
+    <h2 class="sp-p__card-title" id="up-done-title" tabindex="-1">다 올렸어요</h2>
+    <label class="sp-p__label" for="up-link">보낼 주소</label>
+    <input class="sp-p__input" id="up-link" type="url" readonly />
+    <button class="sp-p__btn sp-p__btn--kakao" type="button" id="up-share">카톡으로 보내기</button>
+    <button class="sp-p__btn sp-p__btn--quiet" type="button" id="up-copy">주소 복사</button>
+    <a class="sp-p__btn sp-p__btn--text" href="/home">앨범으로</a>
+  </section>
 </Parent>
+
+<script>
+  import { exifTakenAt, fitSize } from '../lib/exif';
+
+  type Item = {
+    kind: 'photo' | 'video';
+    view: Blob;
+    thumb: Blob;
+    poster?: Blob;
+    width: number;
+    height: number;
+    durationSec?: number;
+    takenAt: string;
+    takenAtSource: 'exif' | 'file';
+    url: string;
+  };
+  const MB = 1024 * 1024;
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const form = $<HTMLFormElement>('up-form');
+  const input = $<HTMLInputElement>('up-files');
+  const grid = $<HTMLUListElement>('up-grid');
+  const status = $<HTMLParagraphElement>('up-status');
+  const buttons = [...form.querySelectorAll<HTMLButtonElement>('#up-actions .sp-p__btn')];
+  let items: Item[] = [];
+  let cover = 0;
+  let busy = false;
+
+  const say = (text: string) => {
+    status.hidden = false;
+    status.textContent = text;
+  };
+  const toBlob = (c: HTMLCanvasElement, q: number) =>
+    new Promise<Blob>((ok, no) => c.toBlob((b) => (b ? ok(b) : no(new Error('encode'))), 'image/jpeg', q));
+  function draw(src: CanvasImageSource, w: number, h: number, max: number, q: number) {
+    const s = fitSize(w, h, max);
+    const c = document.createElement('canvas');
+    c.width = s.width;
+    c.height = s.height;
+    c.getContext('2d')!.drawImage(src, 0, 0, s.width, s.height);
+    return toBlob(c, q).then((b) => ({ blob: b, ...s }));
+  }
+
+  async function photo(file: File): Promise<Item> {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const view = await draw(bmp, bmp.width, bmp.height, 2048, 0.85);
+    const thumb = await draw(bmp, bmp.width, bmp.height, 480, 0.8);
+    bmp.close();
+    const exif = file.type === 'image/jpeg' ? exifTakenAt(await file.slice(0, 128 * 1024).arrayBuffer()) : null;
+    return {
+      kind: 'photo', view: view.blob, thumb: thumb.blob, width: view.width, height: view.height,
+      takenAt: exif ?? new Date(file.lastModified).toISOString(), takenAtSource: exif ? 'exif' : 'file',
+      url: URL.createObjectURL(thumb.blob),
+    };
+  }
+
+  async function video(file: File): Promise<Item> {
+    if (file.size > 100 * MB) throw new Error('too_large');
+    const v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = 'auto';
+    v.src = URL.createObjectURL(file);
+    await new Promise((ok, no) => ((v.onloadeddata = ok), (v.onerror = no)));
+    v.currentTime = Math.min(0.1, v.duration / 2 || 0);
+    await new Promise((ok) => (v.onseeked = ok));
+    const poster = await draw(v, v.videoWidth, v.videoHeight, 1280, 0.85);
+    const thumb = await draw(v, v.videoWidth, v.videoHeight, 480, 0.8);
+    URL.revokeObjectURL(v.src);
+    return {
+      kind: 'video', view: file, poster: poster.blob, thumb: thumb.blob, width: v.videoWidth, height: v.videoHeight,
+      durationSec: Math.round(v.duration * 100) / 100, takenAt: new Date(file.lastModified).toISOString(), takenAtSource: 'file',
+      url: URL.createObjectURL(thumb.blob),
+    };
+  }
+
+  function render() {
+    grid.hidden = items.length === 0;
+    $('up-cover-hint').hidden = items.length < 2;
+    $('up-title').textContent = items.length ? `${items.some((i) => i.kind === 'video') ? '사진·영상' : '사진'} ${items.length}장` : '사진 올리기';
+    grid.replaceChildren(
+      ...items.map((it, i) => {
+        const li = document.createElement('li');
+        li.className = 'sp-p__upcell';
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'sp-p__upbtn';
+        b.setAttribute('aria-pressed', String(i === cover));
+        b.setAttribute('aria-label', `${i + 1}번째 ${it.kind === 'video' ? '영상' : '사진'}${i === cover ? ', 대표' : ', 대표로 하기'}`);
+        b.addEventListener('click', () => {
+          cover = i;
+          render();
+        });
+        const img = document.createElement('img');
+        img.className = 'sp-p__upimg';
+        img.src = it.url;
+        img.alt = '';
+        b.appendChild(img);
+        li.appendChild(b);
+        return li;
+      }),
+    );
+    const bytes = items.reduce((n, it) => n + it.view.size + it.thumb.size + (it.poster?.size ?? 0), 0);
+    $('up-size').textContent = items.length ? `보기 좋은 크기 · ${(bytes / MB).toFixed(1)}MB` : '고르면 보여요';
+    buttons.forEach((b) => (b.disabled = busy || items.length === 0));
+  }
+
+  input.addEventListener('change', async () => {
+    const files = [...(input.files ?? [])];
+    if (!files.length) return;
+    busy = true;
+    render();
+    let skipped = 0;
+    for (const [i, f] of files.entries()) {
+      say(`줄이는 중… ${i + 1} / ${files.length}`);
+      try {
+        items.push(await (f.type.startsWith('video/') ? video(f) : photo(f)));
+      } catch {
+        skipped++;
+      }
+    }
+    busy = false;
+    status.hidden = skipped === 0;
+    if (skipped) say(`${skipped}개는 올릴 수 없어요(지원하지 않는 형식이거나 100MB 넘는 영상).`);
+    input.value = '';
+    render();
+  });
+
+  async function api<T>(url: string, init: RequestInit): Promise<T> {
+    const r = await fetch(url, init);
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json() as Promise<T>;
+  }
+  const put = async (id: string, part: string, blob: Blob) =>
+    (await api<{ key: string }>(`/api/media/${id}/${part}`, { method: 'PUT', body: blob, headers: { 'content-type': blob.type || 'application/octet-stream' } })).key;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const mode = (e.submitter as HTMLButtonElement | null)?.value;
+    const groupIds = [...form.querySelectorAll<HTMLInputElement>('input[name=group]:checked')].map((x) => x.value);
+    const childIds = [...form.querySelectorAll<HTMLInputElement>('input[name=child]:checked')].map((x) => x.value);
+    if (!groupIds.length) return say('보여줄 그룹을 하나 이상 골라 주세요.');
+    busy = true;
+    render();
+    // 대표 사진을 맨 앞에(공유 묶음 첫 장)
+    const order = [cover, ...items.keys()].filter((v, i, arr) => arr.indexOf(v) === i);
+    const ids: string[] = [];
+    try {
+      for (const [n, i] of order.entries()) {
+        const it = items[i];
+        say(`올리는 중… ${n + 1} / ${order.length}`);
+        const { id } = await api<{ id: string }>('/api/media', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            familyId: form.dataset.family, kind: it.kind, takenAt: it.takenAt, takenAtSource: it.takenAtSource,
+            width: it.width, height: it.height, durationSec: it.durationSec, groupIds, childIds,
+          }),
+        });
+        const keys: Record<string, string> = { view: await put(id, 'view', it.view), thumb: await put(id, 'thumb', it.thumb) };
+        if (it.poster) keys.poster = await put(id, 'poster', it.poster);
+        await api(`/api/media/${id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(keys) });
+        ids.push(id);
+      }
+    } catch {
+      busy = false;
+      render();
+      return say(`${ids.length}장까지 올렸어요. 나머지는 다시 눌러 올려 주세요.`);
+    }
+    if (mode !== 'share') return location.assign('/home');
+    try {
+      const { url } = await api<{ url: string }>('/api/shares', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ groupIds, mediaIds: ids }),
+      });
+      form.hidden = true;
+      const done = $('up-done');
+      done.hidden = false;
+      $<HTMLInputElement>('up-link').value = url;
+      $('up-done-title').focus();
+      const text = `${form.dataset.kid} 새 사진 ${ids.length}장이에요. 누르면 바로 볼 수 있어요.`;
+      $('up-share').addEventListener('click', () => {
+        // 휴대폰 공유 창(카톡 포함). 카카오 카드 공유는 앱 키를 받은 뒤
+        if (navigator.share) navigator.share({ text, url }).catch(() => undefined);
+        else navigator.clipboard?.writeText(`${text}\n${url}`).then(() => say('주소를 복사했어요. 카톡에 붙여 넣어 주세요.'));
+      });
+      $('up-copy').addEventListener('click', () => navigator.clipboard?.writeText(url).then(() => say('주소를 복사했어요.')));
+    } catch {
+      location.assign('/home');
+    }
+  });
+</script>
