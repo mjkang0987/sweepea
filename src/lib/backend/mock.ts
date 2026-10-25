@@ -1,7 +1,7 @@
 // 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
 // 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
-import type { Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, ParentHome, Pass, ReactionCount, TextSizeMode } from './types';
+import type { ActivityItem, Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, ParentHome, Pass, ReactionCount, ReactionKind, TextSizeMode } from './types';
 import { BackendError } from './supabase';
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string; exclude?: boolean }
@@ -55,6 +55,10 @@ const deviceOf = (pass: Pass, familyId: string) => devices.get(key(pass, familyI
 const canUpload = (d: Device | undefined) => !!d && d.status === 'active' && !!d.canUpload;
 // 반응: `${사진}|${구성원}|${종류}`, 한마디: 사진·구성원·시각
 const reactions = new Set<string>();
+// 반응 키 → 남긴 시각(최근 반응 목록용)
+const reactedAt = new Map<string, number>();
+// 부모 → 최근 반응을 마지막으로 연 때
+const seenAt = new Map<string, number>();
 // 부모: 세션(access) → 가족방·역할
 const parents = new Map<string, { familyId: string; role: 'mom' | 'dad' }>();
 // 가족도 사진 저장하기(가족방별)
@@ -72,6 +76,23 @@ function meOf(d: Device | undefined): EntryMe | null {
 const newOpen = (s: Share) => s.createdAt + 72 * HOUR > Date.now() && !s.usedAt;
 
 /** 볼 수 있는 사진이면 그 가족방의 내 구성원 id, 아니면 403 */
+/** 가족방의 반응·한마디(승인된 가족만, 최근 것부터) */
+function activityOf(familyId: string): ActivityItem[] {
+  const name = (id: string) => members.find((m) => m.id === id && m.status === 'active')?.name;
+  const thumb = (id: string) => media.find((x) => x.id === id && x.family_id === familyId && x.status === 'ready')?.thumb_key;
+  const out: ActivityItem[] = [];
+  for (const k of reactions) {
+    const [mediaId, memberId, kind] = k.split('|');
+    const who = name(memberId), t = thumb(mediaId);
+    if (who && t !== undefined) out.push({ type: 'reaction', kind: kind as ReactionKind, body: null, at: new Date(reactedAt.get(k) ?? 0).toISOString(), who, media_id: mediaId, thumb_key: t });
+  }
+  for (const c of comments) {
+    const who = name(c.memberId), t = thumb(c.mediaId);
+    if (who && t !== undefined) out.push({ type: 'comment', kind: null, body: c.body, at: new Date(c.at).toISOString(), who, media_id: c.mediaId, thumb_key: t });
+  }
+  return out.sort((a, b) => (a.at < b.at ? 1 : -1));
+}
+
 function viewer(pass: Pass, mediaId: string): string {
   const x = media.find((y) => y.id === mediaId && y.status === 'ready');
   const d = x && deviceOf(pass, x.family_id);
@@ -207,8 +228,10 @@ export function createMockBackend(): Backend {
     async react(pass, id, kind, on) {
       const m = viewer(pass, id);
       const k = `${id}|${m}|${kind}`;
-      if (on) reactions.add(k);
-      else reactions.delete(k);
+      if (on) {
+        if (!reactions.has(k)) reactedAt.set(k, Date.now());
+        reactions.add(k);
+      } else reactions.delete(k);
     },
     async comment(pass, id, body) {
       const m = viewer(pass, id);
@@ -362,7 +385,7 @@ export function createMockBackend(): Backend {
       if (!p) return { family_id: null };
       const ready = media.filter((x) => x.family_id === p.familyId && x.status === 'ready');
       return {
-        family_id: p.familyId, role: p.role, closing: isClosing(p.familyId), delete_after: isClosing(p.familyId) ? new Date(closingAt[p.familyId]).toISOString() : null, download_allowed: !!downloads[p.familyId],
+        family_id: p.familyId, role: p.role, closing: isClosing(p.familyId), new_activity: activityOf(p.familyId).filter((x) => Date.parse(x.at) > (seenAt.get(pass.access) ?? 0)).length, delete_after: isClosing(p.familyId) ? new Date(closingAt[p.familyId]).toISOString() : null, download_allowed: !!downloads[p.familyId],
         storage_used_bytes: used[p.familyId] ?? 0, photo_count: ready.filter((x) => x.kind === 'photo').length, video_count: ready.filter((x) => x.kind === 'video').length,
         provider: null, text_size_mode: sizeModes[p.familyId] ?? 'relation',
         children: kids.filter((k) => k.familyId === p.familyId).map(({ id, name, birth_date }) => ({ id, name, birth_date })),
@@ -393,6 +416,14 @@ export function createMockBackend(): Backend {
         .sort((a, b) => (a.taken_at === b.taken_at ? (a.id < b.id ? 1 : -1) : a.taken_at < b.taken_at ? 1 : -1))
         .slice(0, opts.limit ?? 60)
         .map(({ status: _s, uploader: _u, groupIds: _g, childIds: _c, bytes: _b, ...rest }) => rest);
+    },
+    async parentActivity(pass) {
+      const fam = parents.get(pass.access)?.familyId;
+      if (!fam) return null;
+      return { seen_at: new Date(seenAt.get(pass.access) ?? 0).toISOString(), read_at: new Date().toISOString(), items: activityOf(fam).slice(0, 50) };
+    },
+    async markActivitySeen(pass, readAt) {
+      seenAt.set(pass.access, Math.max(seenAt.get(pass.access) ?? 0, Math.min(Date.parse(readAt), Date.now())));
     },
     async mediaInfo(pass, id) {
       const fam = parents.get(pass.access)?.familyId;

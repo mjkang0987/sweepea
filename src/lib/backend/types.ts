@@ -109,6 +109,17 @@ export interface MediaItem {
   poster_key: string | null;
 }
 
+/** 부모 최근 반응 한 줄 */
+export interface ActivityItem {
+  type: 'reaction' | 'comment';
+  kind: ReactionKind | null;
+  body: string | null;
+  at: string;
+  who: string;
+  media_id: string;
+  thumb_key: string | null;
+}
+
 /** 부모 사진 정보 화면 */
 export interface MediaInfo {
   item: MediaItem;
@@ -141,6 +152,8 @@ export interface ParentHome {
   closing?: boolean;
   /** 탈퇴 유예 중이면 지울 시각(ISO) */
   delete_after?: string | null;
+  /** 최근 반응을 마지막으로 연 뒤 새로 온 반응·한마디 수 */
+  new_activity?: number;
   /** 스토어 구독이 끝나는 시각(구독 중이면). 그때까지 탈퇴 불가 */
   plan_until?: string | null;
   download_allowed?: boolean;
@@ -237,6 +250,10 @@ export interface Backend {
   setUploadAllowed(pass: Pass, memberId: string, on: boolean): Promise<void>;
   /** 가족도 사진 저장하기 */
   setDownloadAllowed(pass: Pass, familyId: string, on: boolean): Promise<void>;
+  /** 부모 최근 반응(최근 30일, 50개). 부모가 아니면 null */
+  parentActivity(pass: Pass): Promise<{ seen_at: string; read_at: string; items: ActivityItem[] } | null>;
+  /** 읽음 표시(목록을 읽은 시각까지만) */
+  markActivitySeen(pass: Pass, readAt: string): Promise<void>;
   /** 부모 사진 정보. 내 가족방 사진이 아니거나 없으면 null */
   mediaInfo(pass: Pass, mediaId: string): Promise<MediaInfo | null>;
   /** 찍은 날·아이·보여줄 그룹(하나 이상)을 한 번에 */

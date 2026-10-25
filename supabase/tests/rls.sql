@@ -730,3 +730,27 @@ select pg_temp.ok(not exists (select 1 from public.media where id = :'mg'), '사
 reset role;
 select pg_temp.ok((select storage_used_bytes = 4000 from public.families where id = :'fam3'), '지우면 저장 용량에서 빠짐');
 select pg_temp.ok(exists (select 1 from public.r2_cleanup where prefix = :'fam3' || '/' || :'mg' || '/'), '지운 사진 폴더는 R2 정리 대기열에');
+
+-- ── 부모 최근 반응
+insert into public.media (family_id, kind, taken_at, taken_at_source, status, thumb_key) values (:'fam3', 'photo', now(), 'exif', 'ready', 'k') returning id as ma \gset
+insert into public.members (family_id, group_id, display_name) values (:'fam3', :'g_home', '외할머니') returning id as mem_a \gset
+insert into public.members (family_id, group_id, display_name, status) values (:'fam3', :'g_home', '모르는이', 'rejected') returning id as mem_r \gset
+insert into public.reactions (media_id, member_id, kind) values (:'ma', :'mem_a', 'heart'), (:'ma', :'mem_r', 'best');
+insert into public.comments (media_id, member_id, body) values (:'ma', :'mem_a', '아이고 많이 컸네');
+update public.parents set activity_seen_at = now() - interval '1 hour' where family_id = :'fam3';
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok((public.sp_parent_home() ->> 'new_activity')::int = 2, '새 반응 수(내보낸 사람 빼고)');
+select pg_temp.ok(jsonb_array_length(public.sp_parent_activity() -> 'items') = 2, '최근 반응 목록');
+select pg_temp.ok(public.sp_parent_activity() -> 'items' @> '[{"type": "comment", "who": "외할머니", "body": "아이고 많이 컸네"}, {"type": "reaction", "kind": "heart"}]', '반응·한마디 내용');
+select public.sp_mark_activity_seen((public.sp_parent_activity() ->> 'read_at')::timestamptz);
+select pg_temp.ok((public.sp_parent_home() ->> 'new_activity')::int = 0, '열면 새 반응 0');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok(not (coalesce(public.sp_parent_activity() -> 'items', '[]') @> '[{"body": "아이고 많이 컸네"}]'), '다른 가족방 부모는 못 봄');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_parent_activity() is null, '가족 기기는 못 봄');
+reset role;

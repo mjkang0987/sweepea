@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { birthLabel, monthsOld, remainingLabel, seenLabel } from '../src/lib/age.ts';
+import { agoLabel, birthLabel, monthsOld, remainingLabel, seenLabel } from '../src/lib/age.ts';
 
 test('생후 개월은 생일 날짜가 지나야 한 달 늘어난다', () => {
   assert.equal(monthsOld('2025-09-17', '2026-10-16'), 12);
@@ -31,4 +31,13 @@ test('마지막으로 본 때는 서울 날짜로', () => {
   assert.equal(seenLabel('2026-10-26T00:10:00+09:00', now), '오늘');
   assert.equal(seenLabel('2026-10-25T23:50:00+09:00', now), '어제');
   assert.equal(seenLabel('2026-10-23T12:00:00+09:00', now), '3일 전');
+});
+
+test('지난 시간', () => {
+  const now = Date.parse('2026-10-26T12:00:00+09:00');
+  assert.equal(agoLabel('2026-10-26T11:59:30+09:00', now), '방금');
+  assert.equal(agoLabel('2026-10-26T11:50:00+09:00', now), '10분 전');
+  assert.equal(agoLabel('2026-10-26T09:00:00+09:00', now), '3시간 전');
+  assert.equal(agoLabel('2026-10-25T09:00:00+09:00', now), '어제');
+  assert.equal(agoLabel('2026-10-22T09:00:00+09:00', now), '4일 전');
 });

@@ -26,3 +26,12 @@ export function seenLabel(iso: string, nowMs: number): string {
   const days = Math.round((day(nowMs) - day(Date.parse(iso))) / 86_400_000);
   return days <= 0 ? '오늘' : days === 1 ? '어제' : `${days}일 전`;
 }
+
+/** 지난 시간: "방금", "10분 전", "3시간 전", 하루 넘으면 seenLabel("어제", "3일 전") */
+export function agoLabel(iso: string, nowMs: number): string {
+  const min = Math.floor((nowMs - Date.parse(iso)) / 60_000);
+  if (min < 1) return '방금';
+  if (min < 60) return `${min}분 전`;
+  if (min < 24 * 60) return `${Math.floor(min / 60)}시간 전`;
+  return seenLabel(iso, nowMs);
+}

@@ -12,6 +12,14 @@ as $$
       'closing', f.delete_after is not null,
       'delete_after', f.delete_after,
       -- 스토어 구독이 끝나는 날(구독 중이면). 해지해도 이 날까지는 탈퇴를 막는다
+      -- 마지막으로 최근 반응을 연 뒤 승인된 가족이 남긴 반응·한마디 수
+      -- 목록(sp_parent_activity)과 같은 규칙: 최근 30일, 다 올라간 사진
+      'new_activity', (select count(*) from public.reactions r join public.media x on x.id = r.media_id and x.status = 'ready'
+                         join public.members m on m.id = r.member_id and m.status = 'active'
+                         where x.family_id = f.id and r.created_at > greatest(p.activity_seen_at, now() - interval '30 days'))
+                    + (select count(*) from public.comments c join public.media x on x.id = c.media_id and x.status = 'ready'
+                         join public.members m on m.id = c.member_id and m.status = 'active'
+                         where x.family_id = f.id and c.deleted_at is null and c.created_at > greatest(p.activity_seen_at, now() - interval '30 days')),
       'plan_until', (select max(e.expires_at) from public.entitlements e where e.family_id = f.id and e.expires_at > now()),
       'download_allowed', f.download_allowed,
       'storage_used_bytes', f.storage_used_bytes,

@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, MediaItem, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
+import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, MediaItem, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -203,6 +203,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     resetGroupLinks: async (pass, groupId) => {
       await rpc<number>(pass, 'sp_reset_group_links', { p_group_id: groupId });
     },
+    parentActivity: (pass) => rpc<{ seen_at: string; read_at: string; items: ActivityItem[] } | null>(pass, 'sp_parent_activity', {}),
+    markActivitySeen: (pass, readAt) => rpc<void>(pass, 'sp_mark_activity_seen', { p_read_at: readAt }),
     async mediaInfo(pass, id) {
       const cols = 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key';
       const q = new URLSearchParams({ id: `eq.${id}`, status: 'eq.ready', select: `${cols},media_groups(group_id),media_children(child_id)` });

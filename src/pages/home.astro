@@ -25,6 +25,15 @@ for (const m of items) {
 <Parent title="앨범 · 스위피" tab="home">
   <h1 class="sp-p__title sp-p__title--large">앨범</h1>
   {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus>지웠어요.</p>}
+  <ul class="sp-p__list sp-p__activity">
+    <li>
+      <a class="sp-p__row" href="/reactions">
+        <span class="sp-p__row-label">최근 반응</span>
+        {(a.home.new_activity ?? 0) > 0 && <span class="sp-p__badge">새 {a.home.new_activity}</span>}
+        <span class="sp-p__chev" aria-hidden="true">›</span>
+      </a>
+    </li>
+  </ul>
   {
     items.length === 0 ? (
       <section class="sp-p__empty" aria-labelledby="empty-title">

@@ -1,0 +1,86 @@
+---
+// 부모 최근 반응: 승인된 가족이 남긴 반응·한마디(새 것 먼저 표시), 승인 기다리는 사람. 열면 '새 반응'을 읽음으로
+import Parent from '../layouts/Parent.astro';
+import { agoLabel } from '../lib/age';
+import { getBackend } from '../lib/backend';
+import { EMOJI } from '../lib/emoji';
+import { summarize } from '../lib/familyAdmin';
+import { hasBatchim } from '../lib/ko';
+import { loadParent } from '../lib/parent';
+import { signedMediaUrl } from '../lib/signed';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const b = getBackend();
+const [act, admin] = await Promise.all([b.parentActivity(a.pass), b.familyAdmin(a.pass)]);
+const now = Date.now();
+const s = summarize(admin);
+const rows = await Promise.all(
+  (act?.items ?? []).map(async (x) => ({
+    ...x,
+    isNew: act ? Date.parse(x.at) > Date.parse(act.seen_at) : false,
+    thumb: x.thumb_key ? await signedMediaUrl(x.thumb_key) : null,
+    text: x.type === 'comment' ? `"${x.body}"` : (() => { const l = x.kind ? EMOJI[x.kind].label : '반응'; return `${l}${hasBatchim(l) ? '을' : '를'} 보냈어요`; })(),
+  })),
+);
+// 다 그린 뒤에 읽음 표시(읽은 시각까지만)
+if (act) await b.markActivitySeen(a.pass, act.read_at);
+const fresh = rows.filter((r) => r.isNew);
+const old = rows.filter((r) => !r.isNew);
+---
+
+<Parent title="최근 반응 · 스위피" tab="home">
+  <nav class="sp-p__bar" aria-label="뒤로">
+    <a class="sp-p__back" href="/home"><span aria-hidden="true">‹ </span>앨범</a>
+  </nav>
+  <h1 class="sp-p__title">최근 반응</h1>
+  <p class="sp-p__lead">가족이 남긴 하트와 말이에요. 앱이 나오면 알림으로도 알려 드릴게요.</p>
+  {
+    s.pendingMembers.length > 0 && (
+      <section class="sp-p__section" aria-labelledby="sec-wait">
+        <h2 class="sp-p__section-title" id="sec-wait">확인할 사람 · {s.pendingMembers.length}</h2>
+        <ul class="sp-p__list">
+          {s.pendingMembers.map((m) => (
+            <li>
+              <a class="sp-p__row sp-p__row--tall" href="/settings/family">
+                <span class="sp-p__avatar" aria-hidden="true">{m.display_name.slice(0, 1)}</span>
+                <span class="sp-p__row-label sp-p__radio-text">
+                  <span><strong>{m.display_name}</strong> {s.groupName(m.group_id)} 앨범에 들어오려고 해요</span>
+                  <span class="sp-p__hint">{agoLabel(m.created_at, now)}</span>
+                </span>
+                <span class="sp-p__row-action">확인<span aria-hidden="true"> ›</span></span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+  {
+    [
+      { id: 'sec-new', title: `새 반응 · ${fresh.length}`, list: fresh },
+      { id: 'sec-old', title: '지난 반응', list: old },
+    ]
+      .filter((g) => g.list.length > 0)
+      .map((g) => (
+        <section class="sp-p__section" aria-labelledby={g.id}>
+          <h2 class="sp-p__section-title" id={g.id}>{g.title}</h2>
+          <ul class="sp-p__list">
+            {g.list.map((r) => (
+              <li>
+                <a class="sp-p__row sp-p__row--tall" href={`/photo/${r.media_id}`}>
+                  {r.thumb ? <img class="sp-p__thumb" src={r.thumb} alt="" width="48" height="48" loading="lazy" /> : <span class="sp-p__thumb" aria-hidden="true"></span>}
+                  <span class="sp-p__row-label sp-p__radio-text">
+                    <span><strong>{r.who}</strong> {r.text}</span>
+                    <span class="sp-p__hint">{agoLabel(r.at, now)}</span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+  }
+  {rows.length === 0 && s.pendingMembers.length === 0 && <p class="sp-p__note">아직 반응이 없어요. 사진을 올리고 카톡으로 보내 보세요.</p>}
+</Parent>
