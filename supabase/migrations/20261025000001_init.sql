@@ -604,9 +604,10 @@ language sql stable set search_path = ''
 as $$ select coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) $$;
 
 -- 부모 처음 설정: 가족방 + 부모 + 기본 그룹("가족") + 첫 아이
--- 가족방 지우기(탈퇴 기한 지남). R2 폴더(<가족방 id>/)는 예약 작업이 r2_cleanup을 보고 지운다
+-- 가족방 지우기(탈퇴 기한 지남). R2 폴더는 예약 작업이 r2_cleanup을 보고 지운다.
+-- prefix: 가족방 '<가족방 id>/' 또는 사진 하나 '<가족방 id>/<사진 id>/'
 create table public.r2_cleanup (
-  family_id uuid primary key,
+  prefix text primary key check (prefix ~ '^[0-9a-f-]{36}/([0-9a-f-]{36}/)?$'),
   queued_at timestamptz not null default now()
 );
 alter table public.r2_cleanup enable row level security;
@@ -615,7 +616,7 @@ revoke all on public.r2_cleanup from anon, authenticated;
 create function public.sp_purge_family(p_family uuid) returns void
 language sql security definer set search_path = ''
 as $$
-  insert into public.r2_cleanup (family_id) values (p_family) on conflict do nothing;
+  insert into public.r2_cleanup (prefix) values (p_family::text || '/') on conflict do nothing;
   delete from public.families where id = p_family;
 $$;
 revoke execute on function public.sp_purge_family(uuid) from public, anon, authenticated;
