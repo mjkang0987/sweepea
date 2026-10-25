@@ -357,7 +357,7 @@
 - 결과: 검토 두 번 반영. 일본뇌염 차수 나눔(1·2차 12~23개월, 3차·생백신 2차 24~35개월), 로타 접종 끝 시기(1차 14주 6일, 2·3차 8개월 전), A형간염 2차는 1차를 체크한 날 6개월 뒤부터, 처음 쓰는 부모를 위해 오래된 항목은 '지난 일정'으로 접기, 화면을 그릴 때 체크돼 있던 것만 풀기, 일정 오류가 나도 앨범은 보이기. 단위 검사 14개·DB 검사·e2e 5개·기존 e2e 통과
 - 남은 위험: 일정 데이터는 보건소 게시본 기준(원문 대조는 확인 필요). 체크를 풀면 완료한 날이 지워짐
 
-### 23. feature/install-guide — 홈 화면에 두기 (계획)
+### 23. feature/install-guide — 홈 화면에 두기 (완료, dev 머지)
 
 - 요구사항(캔버스 GrandInstall·InstallGuide, 결정 '가족 화면 홈 화면에 두기 버튼은 채운 버튼')
   - 가족 앨범 아래에 "홈 화면에 두세요" 안내(아이폰: 공유 → 홈 화면에 추가 → 추가 / 안드로이드: 메뉴 ⋮ → 홈 화면에 추가 → 추가), 알겠어요·다음에 할게요
@@ -370,6 +370,7 @@
   - DB: `members.install_help_at`, `sp_request_install_help()`(가족 기기 본인만), 부모 최근 반응에 7일 동안 표시
 - 영향받는 파일: `public/manifest.webmanifest`, `public/icons/*`, `src/layouts/Base.astro`, `src/pages/index.astro`, `src/pages/album/index.astro`, `src/components/InstallGuide.astro`, `src/lib/install.ts`, `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/pages/reactions.astro`, `src/styles/family.css`, `index.md`, `plan.md`
 - 예상 결과: 아이폰·안드로이드·카톡 UA마다 맞는 안내(e2e), 다음에 할게요 누르면 숨김, 부탁하기 → 부모 최근 반응에 보임. 성능 예산(가족 화면 JS 0KB) 유지
+- 결과: 검토 두 번 반영. 안내는 떠 있는 판 대신 앨범 위 판(앨범·초점을 가리지 않게), 앱 안 브라우저(카톡·네이버·라인·인스타·페이스북·밴드·이름 모를 웹뷰)는 부탁하기, 단계를 모르는 브라우저(아이폰 크롬·웨일, 삼성 인터넷)는 안내 안 함, 부탁은 승인된 가족만. 단위 검사·DB 검사·e2e 10개·기존 e2e 통과. 가족 화면 JS 0KB 유지
 - 범위 밖: 카톡에서 외부 브라우저로 넘기기(`kakaotalk://web/openExternal`은 실기기 확인 필요, 넘어가면 출입증 쿠키가 없어 다시 들어와야 함 → 확인 필요), 설치 여부 서버 기록
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
