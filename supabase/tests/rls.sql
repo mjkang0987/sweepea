@@ -536,6 +536,14 @@ update public.children set name = '도윤이' where id = :'ch2';
 update public.families set text_size_mode = 'xlarge' where id = :'fam';
 select pg_temp.ok(public.sp_parent_home() @> '{"provider": "kakao", "text_size_mode": "xlarge"}', '부모 계정 정보·글자 크기');
 select pg_temp.ok(public.sp_parent_home() -> 'children' @> '[{"name": "도윤이"}]', '아이 추가·고치기');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(부모가 아이 지우기·순서 바꾸기는 아직 막음)'
+delete from public.children where id = :'ch2';
+update public.children set sort_order = -1 where id = :'ch2';
+\echo '아래 에러 1줄은 의도된 거부(아이 10명 넘게)'
+insert into public.children (family_id, name, birth_date) select :'fam', '아이' || g, '2026-01-01' from generate_series(1, 9) g;
+\set ON_ERROR_STOP 1
+select pg_temp.ok((select count(*) = 2 from public.children where family_id = :'fam'), '지우기·한도 초과는 반영 안 됨');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
 set role authenticated;

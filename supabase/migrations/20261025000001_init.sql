@@ -460,6 +460,10 @@ revoke select on public.devices from authenticated;
 grant select (id, family_id, member_id, status, can_upload, requested_member_id, requested_group_id, requested_name, label, last_seen_at, created_at)
   on public.devices to authenticated;
 -- 그룹은 켜면 끌 수 없으니 groups_enabled는 sp_add_group만 바꾼다
+-- 아이: 부모는 이름·생일만 넣고 고친다. 지우기(사진 연결이 같이 지워짐)·순서는 아직 클라이언트에 열지 않는다
+revoke insert, update, delete on public.children from authenticated;
+grant insert (family_id, name, birth_date) on public.children to authenticated;
+grant update (name, birth_date) on public.children to authenticated;
 revoke update on public.families from authenticated;
 grant update (name, download_allowed, text_size_mode, delete_after) on public.families to authenticated;
 revoke insert on public.comments, public.reactions from authenticated;
@@ -509,6 +513,20 @@ begin
 end $$;
 create trigger comments_touch before update on public.comments
   for each row execute function public.sp_comments_touch();
+
+-- 아이는 가족방당 10명까지(부모 화면이 매번 다 읽는다)
+create function public.sp_children_cap() returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  perform pg_advisory_xact_lock(hashtext('children:' || new.family_id::text));
+  if (select count(*) from public.children where family_id = new.family_id) >= 10 then
+    raise exception 'children_limit' using errcode = '22023';
+  end if;
+  return new;
+end $$;
+create trigger children_cap before insert on public.children
+  for each row execute function public.sp_children_cap();
 
 -- 반응·한마디를 남긴 적 있는 구성원인가(내보낸 사람의 기록은 같은 이름 재사용으로 지우지 않는다)
 create function public.sp_member_has_history(p_member uuid) returns boolean
