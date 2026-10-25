@@ -16,9 +16,11 @@ const HARIN = '00000000-0000-4000-8000-00000000f001';
 const DOYUN = '00000000-0000-4000-8000-00000000f002';
 // Workers는 모듈 맨 위에서 난수를 못 만든다(crypto.randomUUID 금지) — 고정 id
 const kids = [
-  { id: '00000000-0000-4000-8000-00000000c001', familyId: HARIN, name: '하린', birth_date: '2025-09-17' },
-  { id: '00000000-0000-4000-8000-00000000c002', familyId: DOYUN, name: '도윤', birth_date: '2026-08-30' },
+  { id: '00000000-0000-4000-8000-00000000c001', familyId: HARIN, name: '하린', birth_date: '2025-09-17', show_health: true },
+  { id: '00000000-0000-4000-8000-00000000c002', familyId: DOYUN, name: '도윤', birth_date: '2026-08-30', show_health: true },
 ];
+// 접종·검진 완료: 아이 id → 항목 → 날짜
+const healthDone = new Map<string, Map<string, string>>();
 const firstChild = (familyId: string) => kids.find((k) => k.familyId === familyId)?.name ?? null;
 const sizeModes: Record<string, TextSizeMode> = {};
 // 탈퇴 유예: 가족방 → 지울 시각(ms). 있으면 가족 화면은 닫힌다
@@ -363,7 +365,7 @@ export function createMockBackend(): Backend {
     async addChild(pass, familyId, name, birthDate) {
       if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('forbidden', 403, '42501');
       if (kids.filter((k) => k.familyId === familyId).length >= 10) throw new BackendError('children_limit', 400, '22023');
-      kids.push({ id: crypto.randomUUID(), familyId, name, birth_date: birthDate });
+      kids.push({ id: crypto.randomUUID(), familyId, name, birth_date: birthDate, show_health: kids.find((k) => k.familyId === familyId)?.show_health ?? true });
     },
     async updateChild(pass, childId, name, birthDate) {
       const k = kids.find((x) => x.id === childId && x.familyId === parents.get(pass.access)?.familyId);
@@ -388,7 +390,7 @@ export function createMockBackend(): Backend {
         family_id: p.familyId, role: p.role, closing: isClosing(p.familyId), new_activity: activityOf(p.familyId).filter((x) => Date.parse(x.at) > (seenAt.get(pass.access) ?? 0)).length, delete_after: isClosing(p.familyId) ? new Date(closingAt[p.familyId]).toISOString() : null, download_allowed: !!downloads[p.familyId],
         storage_used_bytes: used[p.familyId] ?? 0, photo_count: ready.filter((x) => x.kind === 'photo').length, video_count: ready.filter((x) => x.kind === 'video').length,
         provider: null, text_size_mode: sizeModes[p.familyId] ?? 'relation',
-        children: kids.filter((k) => k.familyId === p.familyId).map(({ id, name, birth_date }) => ({ id, name, birth_date })),
+        children: kids.filter((k) => k.familyId === p.familyId).map(({ id, name, birth_date, show_health }) => ({ id, name, birth_date, show_health })),
       };
     },
     async createFamily(pass, f) {
@@ -396,7 +398,7 @@ export function createMockBackend(): Backend {
       if (parents.has(pass.access)) throw new BackendError('family_exists', 409, '23505');
       if (!/^[0-9]{4}$/.test(f.password)) throw new BackendError('password_4_digits', 400, '22023');
       const id = crypto.randomUUID();
-      kids.push({ id: crypto.randomUUID(), familyId: id, name: f.childName, birth_date: f.birthDate });
+      kids.push({ id: crypto.randomUUID(), familyId: id, name: f.childName, birth_date: f.birthDate, show_health: true });
       groups.push({ id: crypto.randomUUID(), familyId: id, name: '가족', hint: f.hint ?? '', password: f.password });
       parents.set(pass.access, { familyId: id, role: f.role });
       return id;
@@ -416,6 +418,21 @@ export function createMockBackend(): Backend {
         .sort((a, b) => (a.taken_at === b.taken_at ? (a.id < b.id ? 1 : -1) : a.taken_at < b.taken_at ? 1 : -1))
         .slice(0, opts.limit ?? 60)
         .map(({ status: _s, uploader: _u, groupIds: _g, childIds: _c, bytes: _b, ...rest }) => rest);
+    },
+    async healthDone(pass, childId) {
+      const k = kids.find((x) => x.id === childId && x.familyId === parents.get(pass.access)?.familyId);
+      return k ? [...(healthDone.get(childId) ?? new Map())].map(([item_key, done_on]) => ({ item_key, done_on })) : [];
+    },
+    async setHealthDone(pass, familyId, childId, add, remove, today) {
+      if (!kids.some((x) => x.id === childId && x.familyId === familyId && familyId === parents.get(pass.access)?.familyId)) throw new BackendError('not_allowed', 403, '42501');
+      const m = healthDone.get(childId) ?? new Map<string, string>();
+      for (const k of add) if (!m.has(k)) m.set(k, today);
+      for (const k of remove) m.delete(k);
+      healthDone.set(childId, m);
+    },
+    async setShowHealth(pass, childIds, on) {
+      const fam = parents.get(pass.access)?.familyId;
+      for (const k of kids) if (k.familyId === fam && childIds.includes(k.id)) k.show_health = on;
     },
     async parentActivity(pass) {
       const fam = parents.get(pass.access)?.familyId;
