@@ -51,7 +51,7 @@ export async function handleFamilyPost(request: Request, cookies: AstroCookies):
     if (kind === 'member' && (status === 'active' || status === 'rejected')) await b.setMemberStatus(pass, id, status);
     else if (kind === 'device' && (status === 'active' || status === 'revoked')) await b.setDeviceStatus(pass, id, status);
     else if (kind === 'share' || kind === 'reset') {
-      // 주소 다시 만들기: 예전 링크를 지우고 새 링크를 바로 만든다
+      // 주소 다시 만들기: 예전 링크를 막고 새 링크를 바로 만든다
       if (kind === 'reset') await b.resetGroupLinks(pass, id);
       // 만든 링크는 주소가 아니라 잠깐 쓰는 쿠키로 넘긴다(주소로 가짜 '링크를 만들었어요' 카드를 못 띄우게)
       cookies.set(LINK_COOKIE, `${await b.createShare(pass, [id])}:${id}`, { path: '/settings', httpOnly: true, sameSite: 'lax', secure: import.meta.env.PROD, maxAge: 300 });

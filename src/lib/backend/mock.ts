@@ -316,7 +316,8 @@ export function createMockBackend(): Backend {
       Object.assign(g, { password, hint: hint ?? '' });
     },
     async resetGroupLinks(pass, groupId) {
-      if (!groups.some((x) => x.id === groupId && x.familyId === parents.get(pass.access)?.familyId)) throw new BackendError('not_allowed', 403, '42501');
+      const fam = parents.get(pass.access)?.familyId;
+      if (!fam || isClosing(fam) || !groups.some((x) => x.id === groupId && x.familyId === fam)) throw new BackendError('not_allowed', 403, '42501');
       for (const s of shares) if (s.groupIds.includes(groupId)) s.revoked = true;
     },
     async requestDelete(pass) {
@@ -346,7 +347,7 @@ export function createMockBackend(): Backend {
     },
     async createShare(pass, groupIds, target) {
       const fam = parents.get(pass.access)?.familyId;
-      if (!fam || !groupIds.length || groupIds.some((id) => groups.find((g) => g.id === id)?.familyId !== fam)) {
+      if (!fam || isClosing(fam) || !groupIds.length || groupIds.some((id) => groups.find((g) => g.id === id)?.familyId !== fam)) {
         throw new BackendError('bad_request', 400, '22023');
       }
       const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
