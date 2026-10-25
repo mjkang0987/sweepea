@@ -319,6 +319,41 @@ reset role;
 \set ON_ERROR_STOP 1
 select pg_temp.ok((select count(*) = 2 from public.families), '가족방은 부모 둘이 만든 2개뿐');
 
+-- ── 여러 가족방: 외할머니 기기 하나로 다른 가족방(P2네)에도 들어간다
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+select id as g2 from public.groups where family_id = :'fam2' \gset
+insert into public.members (family_id, group_id, display_name) values (:'fam2', :'g2', '할머니') returning id as m_h2 \gset
+insert into public.media_groups (family_id, media_id, group_id) values (:'fam2', :'mx', :'g2');
+select public.sp_create_share(array[:'g2']::uuid[]) as code2 \gset
+reset role;
+update public.media set status = 'ready' where id = :'mx';
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_entry_info(:'code2') -> 'me' = 'null'::jsonb, '다른 가족방에선 처음 기기');
+select pg_temp.ok(public.sp_entry_info(:'code1') -> 'me' @> '{"device": "active", "member": "active", "name": "외할머니"}', '들어간 가족방에선 내 상태가 보임');
+select pg_temp.ok(public.sp_enter(:'code2', '1111', :'m_h2') ->> 'result' = 'ok', '같은 기기로 다른 가족방 입장');
+select pg_temp.ok((select count(*) = 4 from public.media), '두 가족방 사진을 같이 봄(3 + 1)');
+select pg_temp.ok(jsonb_array_length(public.sp_me() -> 'families') = 2, 'sp_me 가족방 2개');
+insert into public.reactions (media_id, member_id, kind) values (:'mx', :'m_h2', 'heart');
+reset role;
+\set ON_ERROR_STOP 0
+set role authenticated;
+\echo '아래 에러 1줄은 의도된 거부(다른 가족방 이름으로 반응)'
+insert into public.reactions (media_id, member_id, kind) values (:'mx', :'m_gm', 'heart');
+reset role;
+\set ON_ERROR_STOP 1
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 1 from public.devices) and (select count(*) = 1 from public.members), 'P2는 자기 가족방 기기·이름만(외할머니의 다른 가족방은 모름)');
+update public.devices set status = 'revoked' where family_id = :'fam2';
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 3 from public.media), '한 가족방에서 막혀도 다른 가족방은 그대로');
+select pg_temp.ok(public.sp_entry_info(:'code2') -> 'me' ->> 'device' = 'revoked', '막힌 가족방 링크에선 차단 상태');
+reset role;
+
 -- ── 탈퇴 유예: 가족 화면은 바로 닫힘
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
@@ -334,13 +369,14 @@ reset role;
 -- ── sp_me: 가족 화면이 어디로 보낼지
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
 set role authenticated;
-select pg_temp.ok(public.sp_me() @> '{"device": "active", "member": "active", "name": "외할머니", "closed": true, "child_name": "하린"}', 'sp_me 외할머니(앨범 닫힘)');
+select pg_temp.ok(public.sp_me() -> 'families' @> '[{"device": "active", "member": "active", "name": "외할머니", "closed": true, "child_name": "하린"}]', 'sp_me 외할머니(앨범 닫힘)');
+select pg_temp.ok(public.sp_me() -> 'families' @> '[{"device": "revoked", "name": "할머니", "closed": false}]', 'sp_me 다른 가족방은 따로');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'X', 'is_anonymous', true)::text, false);
 set role authenticated;
-select pg_temp.ok(public.sp_me() @> '{"device": "revoked", "name": "모르는사람"}', 'sp_me 차단된 기기');
+select pg_temp.ok(public.sp_me() -> 'families' @> '[{"device": "revoked", "name": "모르는사람"}]', 'sp_me 차단된 기기');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'N1', 'is_anonymous', true)::text, false);
 set role authenticated;
-select pg_temp.ok(public.sp_me() = '{"device": null}', 'sp_me 처음 기기');
+select pg_temp.ok(public.sp_me() = '{"families": []}', 'sp_me 처음 기기');
 reset role;

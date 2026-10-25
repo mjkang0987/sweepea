@@ -98,7 +98,8 @@ create table public.share_groups (
 
 create table public.devices (
   id uuid primary key default gen_random_uuid(),
-  auth_user_id uuid not null unique references auth.users (id) on delete cascade,
+  -- 기기(익명 사용자) 하나가 가족방마다 한 행. 할머니 폰 하나로 딸네·아들네 둘 다 들어간다
+  auth_user_id uuid not null references auth.users (id) on delete cascade,
   family_id uuid not null references public.families (id) on delete cascade,
   member_id uuid,
   -- pending: 비밀번호 10번 틀려서 부모 승인 대기. revoked: 부모가 "내 가족 아님"
@@ -112,6 +113,7 @@ create table public.devices (
   label text check (char_length(label) <= 30),
   last_seen_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
+  unique (auth_user_id, family_id),
   foreign key (family_id, member_id) references public.members (family_id, id) on delete set null (member_id)
 );
 
@@ -229,8 +231,8 @@ create function public.sp_parent_family() returns uuid
 language sql stable security definer set search_path = ''
 as $$ select p.family_id from public.parents p where p.user_id = auth.uid() $$;
 
--- 지금 기기의 구성원(열람 가능한 상태일 때만). 가족방이 탈퇴 유예 중이면 없음
-create function public.sp_device_member() returns uuid
+-- 지금 기기의 구성원들(가족방마다 하나, 열람 가능한 상태일 때만). 가족방이 탈퇴 유예 중이면 빠진다
+create function public.sp_device_members() returns setof uuid
 language sql stable security definer set search_path = ''
 as $$
   select m.id
@@ -243,19 +245,25 @@ as $$
     and (m.status = 'active' or (m.status = 'pending' and m.pending_until > now()))
 $$;
 
--- 지금 기기의 구성원이 승인된 상태인가(승인 대기는 가족 명단을 못 본다)
-create function public.sp_device_active() returns boolean
+-- 그 가족방에서 지금 기기의 구성원
+create function public.sp_device_member(p_family_id uuid) returns uuid
 language sql stable security definer set search_path = ''
-as $$ select exists (select 1 from public.members m where m.id = public.sp_device_member() and m.status = 'active') $$;
+as $$ select m.id from public.members m where m.family_id = p_family_id and m.id in (select public.sp_device_members()) $$;
 
-create function public.sp_my_family() returns uuid
+-- 그 가족방에서 지금 기기의 구성원이 승인된 상태인가(승인 대기는 가족 명단을 못 본다)
+create function public.sp_device_active(p_family_id uuid) returns boolean
 language sql stable security definer set search_path = ''
-as $$
-  select coalesce(
-    public.sp_parent_family(),
-    (select m.family_id from public.members m where m.id = public.sp_device_member())
-  )
-$$;
+as $$ select exists (select 1 from public.members m where m.id = public.sp_device_member(p_family_id) and m.status = 'active') $$;
+
+-- 그 가족방의 부모이거나 구성원인가
+create function public.sp_in_family(p_family_id uuid) returns boolean
+language sql stable security definer set search_path = ''
+as $$ select coalesce(p_family_id = public.sp_parent_family(), false) or public.sp_device_member(p_family_id) is not null $$;
+
+-- 사진이 속한 가족방에서 지금 기기의 구성원(반응·한마디를 다른 가족방 이름으로 달지 못하게)
+create function public.sp_media_member(p_media_id uuid) returns uuid
+language sql stable security definer set search_path = ''
+as $$ select public.sp_device_member((select x.family_id from public.media x where x.id = p_media_id)) $$;
 
 create function public.sp_can_view_media(p_media_id uuid) returns boolean
 language sql stable security definer set search_path = ''
@@ -264,7 +272,7 @@ as $$
     select m.id, m.group_id, m.status, m.entry_share_id, m.family_id, d.can_upload
     from public.members m
     join public.devices d on d.member_id = m.id and d.auth_user_id = auth.uid()
-    where m.id = public.sp_device_member()
+    where m.id in (select public.sp_device_members())
   )
   select exists (
     select 1 from public.media x
@@ -299,7 +307,7 @@ as $$
       select 1 from public.devices d join public.members m on m.id = d.member_id
       where d.auth_user_id = auth.uid() and d.status = 'active' and d.can_upload
         and m.status = 'active' and m.family_id = p_family_id
-        and m.id = public.sp_device_member()
+        and m.id = public.sp_device_member(p_family_id)
     )
 $$;
 
@@ -311,7 +319,7 @@ as $$
     select 1 from public.media x
     where x.id = p_media_id
       and (x.family_id = public.sp_parent_family()
-           or (x.uploaded_by_member is not null and x.uploaded_by_member = public.sp_device_member()
+           or (x.uploaded_by_member is not null and x.uploaded_by_member = public.sp_device_member(x.family_id)
                and public.sp_can_upload(x.family_id)))
   )
 $$;
@@ -337,7 +345,7 @@ alter table public.entitlements enable row level security;
 alter table public.entry_failures enable row level security;
 
 create policy families_read on public.families for select to authenticated
-  using (id = public.sp_my_family());
+  using (public.sp_in_family(id));
 create policy families_parent_update on public.families for update to authenticated
   using (id = public.sp_parent_family()) with check (id = public.sp_parent_family());
 
@@ -345,7 +353,7 @@ create policy parents_self on public.parents for select to authenticated
   using (user_id = auth.uid());
 
 create policy children_read on public.children for select to authenticated
-  using (family_id = public.sp_my_family());
+  using (public.sp_in_family(family_id));
 create policy children_parent_write on public.children for all to authenticated
   using (family_id = public.sp_parent_family()) with check (family_id = public.sp_parent_family());
 
@@ -357,7 +365,7 @@ create policy groups_parent_update on public.groups for update to authenticated
 create policy groups_parent_delete on public.groups for delete to authenticated
   using (family_id = public.sp_parent_family());
 create policy groups_member_own on public.groups for select to authenticated
-  using (id = (select m.group_id from public.members m where m.id = public.sp_device_member()));
+  using (id = (select m.group_id from public.members m where m.id = public.sp_device_member(groups.family_id)));
 
 -- 공유 링크는 sp_create_share로만 만든다(코드·시각을 클라이언트가 못 정하게). 부모는 보고 지우기만
 create policy shares_parent_read on public.shares for select to authenticated
@@ -371,10 +379,9 @@ create policy share_media_parent_read on public.share_media for select to authen
 
 -- 구성원 이름은 같은 가족방이면 보인다(댓글·반응 작성자 표시용)
 create policy members_read on public.members for select to authenticated
-  using (family_id = public.sp_my_family()
-         and (public.sp_parent_family() is not null
-              or id = public.sp_device_member()
-              or public.sp_device_active()));
+  using (family_id = public.sp_parent_family()
+         or id = public.sp_device_member(family_id)
+         or public.sp_device_active(family_id));
 -- 부모가 가족 이름을 미리 등록해 두면 가족은 "이름 고르기"로 바로 들어온다
 create policy members_parent_insert on public.members for insert to authenticated
   with check (family_id = public.sp_parent_family()
@@ -384,7 +391,7 @@ create policy members_parent_write on public.members for update to authenticated
 create policy members_parent_delete on public.members for delete to authenticated
   using (family_id = public.sp_parent_family());
 create policy members_self_update on public.members for update to authenticated
-  using (id = public.sp_device_member()) with check (id = public.sp_device_member());
+  using (id in (select public.sp_device_members())) with check (id in (select public.sp_device_members()));
 
 create policy devices_parent on public.devices for select to authenticated
   using (family_id = public.sp_parent_family());
@@ -397,7 +404,7 @@ create policy devices_self on public.devices for select to authenticated
 create policy media_parent_read on public.media for select to authenticated
   using (family_id = public.sp_parent_family());
 create policy media_uploader_read on public.media for select to authenticated
-  using (uploaded_by_member is not null and uploaded_by_member = public.sp_device_member() and status <> 'deleted');
+  using (uploaded_by_member is not null and uploaded_by_member = public.sp_device_member(family_id) and status <> 'deleted');
 create policy media_read on public.media for select to authenticated
   using (public.sp_can_view_media(id));
 create policy media_insert on public.media for insert to authenticated
@@ -405,7 +412,7 @@ create policy media_insert on public.media for insert to authenticated
     public.sp_can_upload(family_id)
     and (
       (uploaded_by_parent = auth.uid() and uploaded_by_member is null and family_id = public.sp_parent_family())
-      or (uploaded_by_member = public.sp_device_member() and uploaded_by_parent is null)
+      or (uploaded_by_member = public.sp_device_member(family_id) and uploaded_by_parent is null)
     )
   );
 create policy media_parent_update on public.media for update to authenticated
@@ -428,17 +435,17 @@ create policy media_children_write on public.media_children for all to authentic
 create policy reactions_read on public.reactions for select to authenticated
   using (public.sp_can_view_media(media_id));
 create policy reactions_insert on public.reactions for insert to authenticated
-  with check (member_id = public.sp_device_member() and public.sp_can_view_media(media_id));
+  with check (member_id = public.sp_media_member(media_id) and public.sp_can_view_media(media_id));
 create policy reactions_delete on public.reactions for delete to authenticated
-  using (member_id = public.sp_device_member());
+  using (member_id in (select public.sp_device_members()));
 
 create policy comments_read on public.comments for select to authenticated
   using (deleted_at is null and public.sp_can_view_media(media_id));
 create policy comments_insert on public.comments for insert to authenticated
-  with check (member_id = public.sp_device_member() and public.sp_can_view_media(media_id)
+  with check (member_id = public.sp_media_member(media_id) and public.sp_can_view_media(media_id)
               and deleted_at is null and edited_at is null);
 create policy comments_self_update on public.comments for update to authenticated
-  using (member_id = public.sp_device_member()) with check (member_id = public.sp_device_member());
+  using (member_id in (select public.sp_device_members())) with check (member_id in (select public.sp_device_members()));
 -- 지우기(본인·부모)는 sp_delete_comment로. 지운 행은 읽기 정책에서 빠져서 UPDATE로는 못 한다
 
 create policy entitlements_parent on public.entitlements for select to authenticated
@@ -510,7 +517,7 @@ as $$
 declare v_member uuid;
 begin
   if old.status = 'pending' and new.status = 'active' then
-    delete from public.entry_failures where auth_user_id = new.auth_user_id;
+    delete from public.entry_failures where auth_user_id = new.auth_user_id and family_id = new.family_id;
     if new.requested_member_id is not null then
       new.member_id := new.requested_member_id;
     elsif new.requested_name is not null and new.requested_group_id is not null then
@@ -612,16 +619,26 @@ end $$;
 create function public.sp_entry_info(p_code text) returns jsonb
 language plpgsql stable security definer set search_path = ''
 as $$
-declare s public.shares; f public.families; v_child text;
+declare s public.shares; f public.families; v_child text; v_me jsonb;
 begin
   select * into s from public.shares where code = p_code;
   if not found then return jsonb_build_object('result', 'not_found'); end if;
   select * into f from public.families where id = s.family_id;
-  if f.delete_after is not null then return jsonb_build_object('result', 'closed'); end if;
-  if s.target_member_id is not null and s.used_at is not null then return jsonb_build_object('result', 'expired'); end if;
+  -- 이 가족방에서 지금 기기 상태(처음이면 null). 이미 들어온 기기는 바로 앨범으로 보낸다
+  select jsonb_build_object(
+      'device', d.status,
+      'member', case when m.id is null then null
+                     when m.status = 'pending' and m.pending_until <= now() then 'expired' else m.status end,
+      'name', coalesce(m.display_name, d.requested_name))
+    into v_me
+    from public.devices d left join public.members m on m.id = d.member_id
+    where d.auth_user_id = auth.uid() and d.family_id = s.family_id;
+  if f.delete_after is not null then return jsonb_build_object('result', 'closed', 'me', v_me); end if;
+  if s.target_member_id is not null and s.used_at is not null then return jsonb_build_object('result', 'expired', 'me', v_me); end if;
   select c.name into v_child from public.children c where c.family_id = f.id order by c.sort_order, c.created_at limit 1;
   return jsonb_build_object(
     'result', 'ok',
+    'me', v_me,
     'child_name', v_child,
     'new_entry_open', s.created_at + interval '72 hours' > now() and s.used_at is null,
     'target_member_id', s.target_member_id,
@@ -676,9 +693,8 @@ begin
   v_new_open := s.created_at + interval '72 hours' > now() and s.used_at is null;
 
   -- 기기는 비밀번호가 맞거나 승인 대기로 넘어갈 때만 만든다(틀린 링크로 가족방에 묶이지 않게)
-  select * into d from public.devices where auth_user_id = v_uid for update;
+  select * into d from public.devices where auth_user_id = v_uid and family_id = s.family_id for update;
   if found then
-    if d.family_id <> s.family_id then return jsonb_build_object('result', 'bad_request'); end if;
     if d.status = 'revoked' then return jsonb_build_object('result', 'revoked'); end if;
     if d.status = 'pending' then return jsonb_build_object('result', 'needs_approval'); end if;
   end if;
@@ -786,7 +802,8 @@ returns text
 language plpgsql security definer set search_path = ''
 as $$
 declare
-  v_family uuid := public.sp_my_family();
+  -- 가족방은 첫 그룹으로 정한다(기기가 여러 가족방에 있을 수 있어서). 나머지 그룹도 같은 가족방이어야 한다
+  v_family uuid := (select g.family_id from public.groups g where g.id = p_group_ids[1]);
   v_alpha constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
   v_code text; v_id uuid; b bytea;
 begin
@@ -821,14 +838,15 @@ as $$
 begin
   update public.comments c set deleted_at = now()
     where c.id = p_comment_id and c.deleted_at is null
-      and (c.member_id = public.sp_device_member()
+      and (c.member_id in (select public.sp_device_members())
            or exists (select 1 from public.media x where x.id = c.media_id and x.family_id = public.sp_parent_family()));
   if not found then raise exception 'not_allowed' using errcode = '42501'; end if;
 end $$;
 
 -- 함수 실행 권한: 기본(public) 회수 후 로그인 사용자(익명 포함)에게만
 revoke execute on all functions in schema public from public, anon, authenticated;
-grant execute on function public.sp_parent_family(), public.sp_device_member(), public.sp_device_active(), public.sp_my_family(),
+grant execute on function public.sp_parent_family(), public.sp_device_members(), public.sp_device_member(uuid),
+  public.sp_device_active(uuid), public.sp_in_family(uuid), public.sp_media_member(uuid),
   public.sp_can_view_media(uuid), public.sp_can_upload(uuid), public.sp_is_anonymous(),
   public.sp_can_edit_media(uuid),
   public.sp_create_family(text, text, text, date, text, text), public.sp_set_group_password(uuid, text, text),
