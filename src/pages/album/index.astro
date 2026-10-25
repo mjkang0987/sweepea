@@ -8,10 +8,11 @@ import { signedMediaUrl } from '../../lib/signed';
 Astro.response.headers.set('cache-control', 'private, no-store');
 const a = await loadAlbum(Astro.cookies, Astro.url);
 if ('redirect' in a) return Astro.redirect(a.redirect);
-const { open, kids, q, items, name } = a;
+const { open, kids, q, items } = a;
 const many = open.length > 1;
 const kidTitle = q.f ? kids.get(q.f)! : [...kids.values()].join('·');
 const title = `${kidTitle} 사진`;
+const latest = items[0] ? dayLabel(items[0].taken_at) : null;
 const showTag = many && !q.f;
 
 const cards = await Promise.all(
@@ -39,8 +40,8 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 <Family title={title}>
   <header class="sp-a__head">
     <div class="sp-a__head-text">
-      <h1 class="sp-f__title">{title}</h1>
-      <p class="sp-f__lead">{name ? `${name}, ` : ''}{items.length >= 200 ? '최근 200장' : `${items.length}장`}</p>
+      <h1 class="sp-f__title">{title} {items.length >= 200 ? '200장 넘게' : `${items.length}장`}</h1>
+      {latest && <p class="sp-f__lead">{latest}에 올라왔어요</p>}
     </div>
     <img class="sp-a__kongi" src="/favicon.svg" width="64" height="64" alt="" />
   </header>
@@ -68,24 +69,26 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
       <p class="sp-f__box">아직 올라온 사진이 없어요. 엄마아빠가 올리면 여기에 보여요.</p>
     ) : q.v === 'swipe' ? (
       <>
-        <ul class="sp-a__swipe" aria-label="사진, 옆으로 밀어서 넘겨 보기">
+        {/* 시안(GrandHome): 가운데 카드 + 양옆 사진이 비스듬히 보임. 손가락으로 밀면 넘어감(scroll-snap), 기울기는 CSS 스크롤 애니메이션 */}
+        <ul class="sp-a__swipe" aria-label={`사진 ${cards.length}장, 옆으로 밀어서 넘겨 보기`}>
           {cards.map((c) => (
             <li class="sp-a__slide">
               <a class="sp-a__card" href={c.href}>
                 {/* 링크 이름은 아래 글자로(그림 설명을 두 번 읽지 않게) */}
-                <img class="sp-a__card-img" src={c.src} alt="" loading={c.n > 2 ? 'lazy' : 'eager'} fetchpriority={c.n === 1 ? 'high' : undefined} decoding="async" />
+                <img class="sp-a__card-img" src={c.src} alt="" loading={c.n > 3 ? 'lazy' : 'eager'} fetchpriority={c.n === 1 ? 'high' : undefined} decoding="async" />
                 <span class="sp-a__card-cap">
                   {showTag && <span class="sp-a__tag">{c.kid}</span>}
                   {c.day}
                   {c.kind === 'video' ? ' · 영상' : <span class="sp-vh"> 사진</span>}
-                  <span class="sp-vh"> 크게 보기,</span>
-                  <span class="sp-a__count">{c.n} / {cards.length}</span>
+                  <span class="sp-vh"> 크게 보기</span>
                 </span>
               </a>
+              <p class="sp-a__pos">
+                <strong class="sp-a__pos-n">{c.n}</strong> / {cards.length}<span aria-hidden="true"> · 옆으로 밀거나 옆 사진을 누르세요</span>
+              </p>
             </li>
           ))}
         </ul>
-        <p class="sp-f__caption">옆으로 밀면 다음 사진, 누르면 크게 보여요</p>
       </>
     ) : (
       <>
