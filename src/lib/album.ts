@@ -54,4 +54,10 @@ export async function loadAlbum(cookies: AstroCookies, url: URL): Promise<AlbumL
 }
 
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
-export const dayLabel = (iso: string) => dayFmt.format(new Date(iso));
+const yearDayFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
+const yearFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', timeZone: 'Asia/Seoul' });
+/** 올해면 '10월 21일', 다른 해면 '2025년 10월 21일'(서울 기준) */
+export const dayLabel = (iso: string, now = new Date()) => {
+  const d = new Date(iso);
+  return (yearFmt.format(d) === yearFmt.format(now) ? dayFmt : yearDayFmt).format(d);
+};

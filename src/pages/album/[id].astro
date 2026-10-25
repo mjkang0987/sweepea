@@ -4,6 +4,7 @@ import Family from '../../layouts/Family.astro';
 import { albumHref, dayLabel, loadAlbum } from '../../lib/album';
 import { signedMediaUrl } from '../../lib/signed';
 
+Astro.response.headers.set('cache-control', 'private, no-store');
 const a = await loadAlbum(Astro.cookies, Astro.url);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const { open, kids, q, items } = a;
@@ -22,22 +23,22 @@ const label = `${dayLabel(m.taken_at)} ${kid}${what}`;
 
 <Family title={`${label} · ${i + 1} / ${items.length}`}>
   <nav class="sp-v__bar" aria-label="사진 이동">
-    <a class="sp-v__link" href={albumHref(q)}>‹ 닫기</a>
+    <a class="sp-v__link" href={albumHref(q)}><span aria-hidden="true">‹ </span>닫기</a>
     <p class="sp-v__pos">{i + 1} / {items.length}</p>
     <span class="sp-v__spacer"></span>
   </nav>
-  <figure class="sp-v__fig">
+  <h1 class="sp-f__title sp-v__title" id="v-title">{label}</h1>
+  <figure class="sp-v__fig" aria-labelledby="v-title">
     {
       m.kind === 'video' ? (
-        <video class="sp-v__media" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} />
+        <video class="sp-v__media" src={src} poster={poster} controls playsinline preload="metadata" aria-labelledby="v-title" />
       ) : (
-        <img class="sp-v__media" src={src} alt={label} width={m.width ?? undefined} height={m.height ?? undefined} decoding="async" />
+        <img class="sp-v__media" src={src} alt="" width={m.width ?? undefined} height={m.height ?? undefined} decoding="async" />
       )
     }
-    <figcaption class="sp-f__caption">{label}</figcaption>
   </figure>
   <nav class="sp-v__nav" aria-label="이전·다음">
-    {prev ? <a class="sp-f__btn sp-f__btn--fill" href={albumHref(q, `/album/${prev.id}`)} rel="prev">이전 사진</a> : <span></span>}
-    {next ? <a class="sp-f__btn sp-f__btn--fill" href={albumHref(q, `/album/${next.id}`)} rel="next">다음 사진</a> : <span></span>}
+    {prev ? <a class="sp-f__btn sp-f__btn--fill" href={albumHref(q, `/album/${prev.id}`)} rel="prev">이전</a> : <span></span>}
+    {next ? <a class="sp-f__btn sp-f__btn--fill" href={albumHref(q, `/album/${next.id}`)} rel="next">다음</a> : <span></span>}
   </nav>
 </Family>
