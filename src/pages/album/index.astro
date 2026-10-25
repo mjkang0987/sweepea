@@ -3,6 +3,8 @@
 import Family from '../../layouts/Family.astro';
 import HeartToggle from '../../components/HeartToggle.astro';
 import ReactRow from '../../components/ReactRow.astro';
+import InstallGuide from '../../components/InstallGuide.astro';
+import { callName } from '../../lib/ko';
 import { EMOJI_SPRITE } from '../../lib/emoji';
 import { albumHref, dayLabel, loadAlbum, loadReacts, ZOOMS } from '../../lib/album';
 import { signedMediaUrl } from '../../lib/signed';
@@ -145,4 +147,5 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
       </>
     )
   }
+  <InstallGuide kid={callName([...kids.values()][0] ?? '아이')} />
 </Family>

@@ -1,0 +1,55 @@
+---
+// 가족 앨범 아래 '홈 화면에 두세요' 안내. 기기마다 단계가 다르고, 카톡 안에서는 엄마아빠에게 부탁한다.
+// 홈 화면 아이콘으로 열었으면 CSS(display-mode: standalone)로 숨긴다(JS 없음)
+import { INSTALL_COOKIE, installPlatform } from '../lib/install';
+
+interface Props {
+  /** 아이를 부르는 꼴(하린이) */
+  kid: string;
+}
+const { kid } = Astro.props;
+const state = Astro.cookies.get(INSTALL_COOKIE)?.value;
+const asked = Astro.cookies.get(`${INSTALL_COOKIE}_msg`)?.value === '1';
+if (asked) Astro.cookies.delete(`${INSTALL_COOKIE}_msg`, { path: '/' });
+const platform = installPlatform(Astro.request.headers.get('user-agent') ?? '');
+const back = Astro.url.pathname + Astro.url.search;
+const steps =
+  platform === 'ios' ? [['아래', '공유', '누르기'], ['', '홈 화면에 추가', '누르기'], ['오른쪽 위', '추가', '누르기']] :
+  platform === 'android' ? [['오른쪽 위', '⋮', '누르기'], ['', '홈 화면에 추가', '누르기'], ['', '추가', '누르기']] :
+  [];
+---
+
+{asked && <p class="sp-f__box sp-f__box--pea sp-f__install-done" role="status">엄마아빠에게 부탁했어요. 엄마아빠가 스위피를 열면 보여요.</p>}
+{
+  !state && platform !== 'other' && (
+    <aside class="sp-f__install" aria-labelledby="install-title">
+      <img class="sp-f__install-icon" src="/icons/icon-192.png" width="56" height="56" alt="" />
+      <h2 class="sp-f__install-title" id="install-title">홈 화면에 두세요</h2>
+      <p class="sp-f__install-lead">다음부터 아이콘만 누르면 {kid} 사진이 바로 열려요.</p>
+      <form class="sp-f__form" method="post" action="/install">
+        <input type="hidden" name="back" value={back} />
+        {
+          platform === 'kakao' ? (
+            <>
+              <p class="sp-f__text">카톡 안에서는 홈 화면에 둘 수 없어요. 엄마아빠에게 부탁하면 문자로 바로 둘 수 있게 보내 드려요.</p>
+              <button class="sp-f__btn" type="submit" name="do" value="ask">엄마아빠에게 부탁하기</button>
+            </>
+          ) : (
+            <>
+              <ol class="sp-f__install-steps">
+                {steps.map(([pre, key, post], i) => (
+                  <li class="sp-f__install-step">
+                    <span class="sp-f__install-num" aria-hidden="true">{i + 1}</span>
+                    <span>{pre && `${pre} `}<strong>{key}</strong> {post}</span>
+                  </li>
+                ))}
+              </ol>
+              <button class="sp-f__btn" type="submit" name="do" value="ok">알겠어요</button>
+            </>
+          )
+        }
+        <button class="sp-f__btn sp-f__btn--quiet" type="submit" name="do" value="later">다음에 할게요</button>
+      </form>
+    </aside>
+  )
+}
