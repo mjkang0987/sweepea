@@ -132,6 +132,34 @@ export interface NewFamily {
   hint?: string;
 }
 
+/** 설정 > 가족에서 부모가 보는 것 */
+export interface AdminGroup {
+  id: string;
+  name: string;
+}
+export interface AdminMember {
+  id: string;
+  group_id: string;
+  display_name: string;
+  status: 'active' | 'pending' | 'rejected';
+  pending_until: string | null;
+  created_at: string;
+}
+export interface AdminDevice {
+  id: string;
+  member_id: string | null;
+  status: 'active' | 'pending' | 'revoked';
+  requested_name: string | null;
+  requested_group_id: string | null;
+  requested_member_id: string | null;
+  created_at: string;
+}
+export interface FamilyAdmin {
+  groups: AdminGroup[];
+  members: AdminMember[];
+  devices: AdminDevice[];
+}
+
 export interface Backend {
   /** 처음 오는 기기에 익명 출입증을 만든다 */
   signInAnonymously(): Promise<Pass>;
@@ -163,4 +191,11 @@ export interface Backend {
   createFamily(pass: Pass, input: NewFamily): Promise<string>;
   /** 로그아웃: 이 세션의 갱신 토큰을 무효로(실패해도 쿠키는 지운다) */
   parentLogout(pass: Pass): Promise<void>;
+  familyAdmin(pass: Pass): Promise<FamilyAdmin>;
+  /** 새 이름 승인(active)·거절(rejected). 거절하면 그 이름으로 들어온 기기도 막힌다(DB 트리거) */
+  setMemberStatus(pass: Pass, memberId: string, status: 'active' | 'rejected'): Promise<void>;
+  /** 승인 대기 기기 승인(active, 들어가려던 이름을 붙임)·내 가족 아님(revoked) */
+  setDeviceStatus(pass: Pass, deviceId: string, status: 'active' | 'revoked'): Promise<void>;
+  /** 공유 링크 코드(8자). targetMemberId를 주면 그 사람 전용 한 번 쓰는 링크 */
+  createShare(pass: Pass, groupIds: string[], targetMemberId?: string): Promise<string>;
 }

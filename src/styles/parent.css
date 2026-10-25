@@ -463,3 +463,214 @@
 .sp-p__tab[aria-current='page'] {
   color: var(--pea-ink);
 }
+
+/* 설정 */
+.sp-p__bar {
+  min-height: var(--target-min);
+  display: flex;
+  align-items: center;
+}
+.sp-p__back {
+  min-height: var(--target-min);
+  display: flex;
+  align-items: center;
+  color: var(--pea-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.sp-p__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-p__section-title {
+  margin: 0;
+  padding: 0 var(--space-4);
+  font-size: var(--footnote-size);
+  font-weight: 700;
+  color: var(--label-2);
+}
+.sp-p__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+.sp-p__row {
+  min-height: 3.5rem;
+  padding: 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--label);
+  text-decoration: none;
+}
+.sp-p__row-label {
+  flex: 1;
+}
+.sp-p__row-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--label-2);
+}
+.sp-p__chev {
+  color: var(--label-2);
+  font-size: 1.25rem;
+}
+.sp-p__badge {
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--blossom);
+  color: #ffffff;
+  font-size: var(--footnote-size);
+  font-weight: 700;
+}
+.sp-p__cta {
+  position: relative;
+  padding: var(--space-4);
+  padding-right: var(--space-8);
+  border-radius: var(--radius-lg);
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+}
+.sp-p__cta .sp-p__chev {
+  position: absolute;
+  right: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--pea-deep);
+}
+.sp-p__cta-title {
+  font-weight: 700;
+}
+.sp-p__cta-sub {
+  font-size: var(--footnote-size);
+}
+.sp-p__card {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  scroll-margin-top: var(--space-5);
+}
+.sp-p__card-title {
+  margin: 0;
+  font-size: var(--headline-size);
+  font-weight: 700;
+}
+.sp-p__who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sp-p__who-name {
+  margin: 0;
+  font-size: var(--headline-size);
+  font-weight: 700;
+}
+.sp-p__avatar {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background: var(--fill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.sp-p__pair {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: var(--space-2);
+}
+.sp-p__btn--danger {
+  background: var(--fill);
+  color: var(--danger);
+}
+.sp-p__group {
+  min-height: 3.5rem;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sp-p__group + .sp-p__group {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__group-text {
+  flex: 1;
+  min-width: 0;
+}
+.sp-p__chip {
+  min-height: 2.5rem;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: var(--pea);
+  color: var(--on-pea);
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sp-p__toast {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-weight: 600;
+}
+.sp-p__toast--error {
+  background: var(--surface);
+  color: var(--danger);
+}
+.sp-p__bubble {
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.sp-p__radios {
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+.sp-p__radio-row {
+  min-height: 3.5rem;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+.sp-p__radio-row + .sp-p__radio-row {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__radio-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.sp-p__empty-note {
+  padding: 0 var(--space-4);
+}
+
+.sp-p__card--warn {
+  box-shadow: inset 0 0 0 2px var(--danger);
+}
+.sp-p__btn--danger-strong {
+  background: var(--danger);
+  /* 라이트는 흰 글자, 다크(밝은 빨강)는 검은 글자라야 4.5:1 */
+  color: var(--bg);
+}

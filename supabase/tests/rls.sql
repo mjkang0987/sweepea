@@ -397,6 +397,26 @@ select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, 
 reset role;
 \set ON_ERROR_STOP 1
 
+-- ── 승인 대기 기기를 승인할 때 같은 이름이 이미 있으면 그 사람으로 붙인다
+\set N3 '00000000-0000-0000-0000-0000000000c3'
+insert into auth.users (id, is_anonymous) values (:'N3', true);
+insert into public.devices (auth_user_id, family_id, status, requested_group_id, requested_name)
+  values (:'N3', :'fam', 'pending', :'gma', '외할아버지') returning id as d_n3 \gset
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.devices set status = 'active' where id = :'d_n3';
+reset role;
+select pg_temp.ok((select member_id = :'m_gf' from public.devices where id = :'d_n3'), '같은 이름이 있으면 그 구성원으로 승인(이름 중복 오류 없음)');
+-- 한 사람용 문자 링크는 72시간이 지나면 못 쓴다
+set role authenticated;
+select public.sp_create_share(array[:'gma']::uuid[], '{}'::uuid[], :'m_gf') as code_old \gset
+reset role;
+update public.shares set created_at = now() - interval '73 hours' where code = :'code_old';
+select set_config('request.jwt.claims', json_build_object('sub', :'N1', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code_old', '1234', :'m_gf') ->> 'result' = 'expired', '오래된 문자 링크는 기간 지남');
+reset role;
+
 -- ── 반응·한마디(함수)
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
 set role authenticated;

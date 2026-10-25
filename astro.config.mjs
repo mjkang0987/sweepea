@@ -22,6 +22,8 @@ export default defineConfig({
       MEDIA_URL_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
       // 부모 로그인에 켤 제공자(쉼표로). Supabase에서 켠 것만 적는다. 예: kakao,google,apple
       PARENT_PROVIDERS: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // 문자·카톡으로 보내는 공유 주소의 앞부분. 예: https://sweepea.co.kr
+      SITE_ORIGIN: envField.string({ context: 'server', access: 'public', optional: true }),
       // mock: 개발·검사용 메모리 백엔드(운영 빌드에선 멈춤)
       SWEEPEA_BACKEND: envField.enum({ context: 'server', access: 'secret', values: ['supabase', 'mock'], default: 'supabase' }),
     },
