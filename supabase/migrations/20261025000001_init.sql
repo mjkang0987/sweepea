@@ -668,6 +668,7 @@ begin
     'result', 'ok',
     'me', v_me,
     'child_name', v_child,
+    'text_size_mode', f.text_size_mode,
     'new_entry_open', s.created_at + interval '72 hours' > now() and s.used_at is null,
     'target_member_id', s.target_member_id,
     'groups', coalesce((
