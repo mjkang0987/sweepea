@@ -82,6 +82,8 @@ create table public.members (
   -- 승인 전에는 이 공유 묶음의 사진만 본다
   entry_share_id uuid references public.shares (id) on delete set null,
   text_size text check (text_size in ('base', 'large', 'xlarge')),
+  -- 홈 화면에 두기를 엄마아빠에게 부탁한 때(부모 최근 반응에 7일 보임)
+  install_help_at timestamptz,
   created_at timestamptz not null default now(),
   unique (group_id, display_name),
   unique (family_id, id),

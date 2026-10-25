@@ -775,3 +775,15 @@ select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anon
 set role authenticated;
 select pg_temp.ok((select count(*) = 0 from public.health_done), '가족 기기는 못 읽음');
 reset role;
+
+-- ── 홈 화면에 두기 부탁: 가족 기기 본인만
+insert into public.devices (auth_user_id, family_id, member_id) values (:'N6', :'fam3', :'mem_a');
+select set_config('request.jwt.claims', json_build_object('sub', :'N6', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_request_install_help(:'fam3');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(들어가지 않은 가족방에 부탁)'
+select public.sp_request_install_help(:'fam');
+\set ON_ERROR_STOP 1
+reset role;
+select pg_temp.ok((select install_help_at is not null from public.members where id = :'mem_a'), '부탁하면 그 사람에게 기록');
