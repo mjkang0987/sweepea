@@ -49,7 +49,7 @@ const shares: Share[] = [
 ];
 // 기기(출입증) × 가족방마다 하나
 const devices = new Map<string, Device>();
-// shortcut: 그룹별 공개 범위는 흉내 내지 않고 가족방 단위로만 보여 준다. 실제 규칙은 DB 검사(rls.sql)가 맡는다
+// 그룹별 공개는 목록(listMedia)만 흉내 낸다(승인 대기·공유 묶음 규칙은 DB 검사 rls.sql이 맡는다)
 const media: (MediaItem & { status: 'uploading' | 'ready'; uploader: string; groupIds: string[]; childIds: string[]; bytes: number })[] = [];
 const deviceOf = (pass: Pass, familyId: string) => devices.get(key(pass, familyId));
 const canUpload = (d: Device | undefined) => !!d && d.status === 'active' && !!d.canUpload;
@@ -387,7 +387,8 @@ export function createMockBackend(): Backend {
           if (isClosing(x.family_id)) return false;
           const d = deviceOf(pass, x.family_id);
           const mem = members.find((m) => m.id === d?.memberId);
-          return d?.status === 'active' && mem?.status === 'active' && x.groupIds.includes(mem.groupId);
+          // 올리기 권한 가족은 모든 그룹 사진을 본다(DB sp_can_view_media와 같게)
+          return d?.status === 'active' && mem?.status === 'active' && (canUpload(d) || x.groupIds.includes(mem.groupId));
         })
         .sort((a, b) => (a.taken_at === b.taken_at ? (a.id < b.id ? 1 : -1) : a.taken_at < b.taken_at ? 1 : -1))
         .slice(0, opts.limit ?? 60)
@@ -404,7 +405,7 @@ export function createMockBackend(): Backend {
     async updateMedia(pass, id, u) {
       const fam = parents.get(pass.access)?.familyId;
       const x = media.find((y) => y.id === id && y.status === 'ready' && y.family_id === fam);
-      if (!x) throw new BackendError('not_allowed', 403, '42501');
+      if (!x || isClosing(fam!)) throw new BackendError('not_allowed', 403, '42501');
       const okGroups = u.groupIds.length > 0 && u.groupIds.every((g) => groups.some((y) => y.id === g && y.familyId === fam));
       const okKids = u.childIds.every((c) => kids.some((k) => k.id === c && k.familyId === fam));
       if (!okGroups || !okKids) throw new BackendError('bad_request', 400, '22023');
@@ -412,10 +413,12 @@ export function createMockBackend(): Backend {
     },
     async deleteMedia(pass, id) {
       const fam = parents.get(pass.access)?.familyId;
-      const i = media.findIndex((y) => y.id === id && y.family_id === fam);
-      if (i < 0) throw new BackendError('not_allowed', 403, '42501');
-      if (media[i].status === 'ready') used[fam!] = Math.max(0, (used[fam!] ?? 0) - media[i].bytes);
+      const i = media.findIndex((y) => y.id === id && y.family_id === fam && y.status === 'ready');
+      if (i < 0 || isClosing(fam!)) throw new BackendError('not_allowed', 403, '42501');
+      used[fam!] = Math.max(0, (used[fam!] ?? 0) - media[i].bytes);
       media.splice(i, 1);
+      for (let j = comments.length - 1; j >= 0; j--) if (comments[j].mediaId === id) comments.splice(j, 1);
+      for (const k of [...reactions]) if (k.startsWith(`${id}|`)) reactions.delete(k);
     },
   };
 }

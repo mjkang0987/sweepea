@@ -321,7 +321,7 @@
   - 백엔드: `mediaInfo`, `updateMedia`, `deleteMedia`. 화면은 폼 POST + PRG, 지우기는 확인 카드
 - 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/pages/home.astro`(칸을 링크로), `src/pages/photo/[id].astro`, `src/styles/parent.css`, `index.md`, `plan.md`
 - 예상 결과: mock으로 사진 올림 → 사진 정보에서 그룹 빼기 → 그 그룹 가족 앨범에서 사라짐, 찍은 날 바꾸면 앨범 달이 바뀜, 지우면 앨범·용량에서 빠짐(e2e). DB 검사: 남의 사진·남의 가족방 그룹/아이 거부, 그룹 0개 거부, 가족 기기는 지우기 불가, 지우면 용량 감소·대기열
-- 범위 밖: 올린 가족(배우자)이 자기 사진 고치는 화면(DB는 허용), 영상 재생(크게 보기는 사진·포스터), 여러 장 한꺼번에 고치기
+- 범위 밖: 올린 가족(배우자)이 자기 사진 고치는 화면(DB는 허용), 여러 장 한꺼번에 고치기. 영상은 기본 플레이어로 재생
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
