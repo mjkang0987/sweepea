@@ -11,6 +11,7 @@
   --glass-clear: rgba(255,255,255,0.72);
   /* 고른 탭 바탕, 사진 자리(시안 DS와 같은 값) */
   --seg: #ffffff;
+  --bar: rgba(255,255,255,0.92);
   --ph-1: #e3e3e8;
   --glass-edge: rgba(255,255,255,0.85);
   --blossom: #c8385f;
@@ -86,6 +87,7 @@
     --glass-tint: rgba(45,212,191,0.92);
     --glass-clear: rgba(44,44,46,0.6);
     --seg: #636366;
+    --bar: rgba(22,22,24,0.92);
     --ph-1: #2c2c2e;
     --glass-edge: rgba(255,255,255,0.22);
     --blossom: #ff6b8b;

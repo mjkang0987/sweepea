@@ -1,0 +1,52 @@
+---
+// 부모 앨범: 사진이 없으면 첫 사진 안내, 있으면 월별 모아 보기. 아래 탭(앨범·설정)
+import Parent from '../layouts/Parent.astro';
+import { getBackend } from '../lib/backend';
+import { callName } from '../lib/ko';
+import { loadParent } from '../lib/parent';
+import { signedMediaUrl } from '../lib/signed';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const kid = callName(a.home.children?.[0]?.name ?? '아이');
+// shortcut: 최근 200장까지만. 다음 쪽 넘기기는 가족 앨범과 같이 커서로
+const items = await getBackend().listMedia(a.pass, { limit: 200 });
+const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
+const months: { label: string; cells: { id: string; src: string; video: boolean }[] }[] = [];
+for (const m of items) {
+  const label = monthFmt.format(new Date(m.taken_at));
+  if (months.at(-1)?.label !== label) months.push({ label, cells: [] });
+  months.at(-1)!.cells.push({ id: m.id, src: await signedMediaUrl(m.thumb_key), video: m.kind === 'video' });
+}
+---
+
+<Parent title="앨범 · 스위피" tab="home">
+  <h1 class="sp-p__title sp-p__title--large">앨범</h1>
+  {
+    items.length === 0 ? (
+      <section class="sp-p__empty" aria-labelledby="empty-title">
+        <img class="sp-p__empty-kongi" src="/favicon.svg" width="128" height="128" alt="" />
+        <h2 class="sp-p__empty-title" id="empty-title">{kid} 첫 사진을 올려 주세요</h2>
+        <p class="sp-p__lead">올리고 카톡으로 보내면 조부모님이<br />설치 없이 바로 보실 수 있어요</p>
+      </section>
+    ) : (
+      months.map((mo) => (
+        <section class="sp-p__month" aria-label={`${mo.label} ${mo.cells.length}장`}>
+          <h2 class="sp-p__month-title">{mo.label} <span class="sp-p__month-count">· {mo.cells.length}장</span></h2>
+          <ul class="sp-p__grid">
+            {mo.cells.map((c) => (
+              <li class="sp-p__cell">
+                <img class="sp-p__cell-img" src={c.src} alt={c.video ? '영상' : '사진'} loading="lazy" decoding="async" />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    )
+  }
+  <a class="sp-p__fab" href="/upload">
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+    사진 추가하기
+  </a>
+</Parent>
