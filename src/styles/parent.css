@@ -994,3 +994,10 @@
   gap: var(--space-3);
   text-align: center;
 }
+/* 탈퇴 신청 중: 남은 시간 */
+.sp-p__remaining {
+  margin: 0;
+  font-size: var(--title-2-size);
+  font-weight: 700;
+  color: var(--danger);
+}
