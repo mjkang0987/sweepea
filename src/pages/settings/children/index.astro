@@ -1,0 +1,39 @@
+---
+// 아이 목록: 이름·생일·생후 개월, 고치기, 아이 추가
+import Parent from '../../../layouts/Parent.astro';
+import { birthLabel, monthsOld } from '../../../lib/age';
+import { loadParent, seoulToday } from '../../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const kids = a.home.children ?? [];
+const today = seoulToday();
+const done = Astro.url.searchParams.get('done');
+const doneText: Record<string, string> = { added: '아이를 추가했어요.', saved: '고쳤어요.' };
+---
+
+<Parent title="아이 · 설정" tab="settings">
+  <nav class="sp-p__bar" aria-label="뒤로">
+    <a class="sp-p__back" href="/settings"><span aria-hidden="true">‹ </span>설정</a>
+  </nav>
+  <h1 class="sp-p__title">아이</h1>
+  {done && doneText[done] && <p class="sp-p__toast" tabindex="-1" autofocus>{doneText[done]}</p>}
+  <ul class="sp-p__list">
+    {
+      kids.map((k) => (
+        <li>
+          <a class="sp-p__row sp-p__row--tall" href={`/settings/children/${k.id}`}>
+            <span class="sp-p__avatar" aria-hidden="true">{k.name.slice(0, 1)}</span>
+            <span class="sp-p__row-label sp-p__radio-text">
+              <span class="sp-p__who-name">{k.name}</span>
+              <span class="sp-p__hint">{birthLabel(k.birth_date)} · 생후 {monthsOld(k.birth_date, today)}개월</span>
+            </span>
+            <span class="sp-p__row-action">고치기</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+  <a class="sp-p__btn sp-p__btn--quiet sp-p__add" href="/settings/children/new"><span aria-hidden="true">+ </span>아이 추가</a>
+</Parent>

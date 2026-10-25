@@ -933,3 +933,44 @@
   width: 100%;
   height: 0.5rem;
 }
+
+/* 아이 목록: 두 줄 행, 오른쪽 '고치기' */
+.sp-p__row--tall {
+  padding-block: var(--space-3);
+}
+.sp-p__row-action {
+  color: var(--pea-ink);
+  font-weight: 600;
+}
+.sp-p__add {
+  margin-top: var(--space-4);
+}
+
+/* 글자 크기 미리보기: 가족 화면 senior 토큰 × 고른 배율(base.css .sp-size-*와 같은 값) */
+.sp-p__sizes {
+  --preview-k: 1;
+}
+.sp-p__sizes:has(.sp-p__size-base:checked) {
+  --preview-k: 0.82;
+}
+.sp-p__sizes:has(.sp-p__size-xlarge:checked) {
+  --preview-k: 1.25;
+}
+.sp-p__preview-title {
+  margin: 0;
+  font-size: calc(var(--senior-title-size) * var(--preview-k));
+  line-height: 1.25;
+  font-weight: var(--senior-title-weight);
+}
+.sp-p__preview-body {
+  margin: var(--space-1) 0 0;
+  font-size: calc(var(--senior-body-size) * var(--preview-k));
+  line-height: 1.4;
+  color: var(--label-2);
+}
+.sp-p__account-out {
+  margin-top: var(--space-4);
+}
+.sp-p__list--gap {
+  margin-bottom: var(--space-2);
+}

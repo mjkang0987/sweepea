@@ -41,6 +41,8 @@ export function validBirth(birth: string): boolean {
   const d = new Date(`${birth}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === birth && birth >= '2010-01-01' && birth <= seoulToday();
 }
+/** 계정 화면에 쓰는 로그인 제공자 이름 */
+export const PROVIDER_NAMES: Record<string, string> = { kakao: '카카오', naver: '네이버', google: 'Google', apple: 'Apple' };
 export const INTRO_COOKIE = 'sp_intro';
 
 /** 부모 화면 들어오기: 로그인 안 했으면 소개(처음)·로그인, 설정 전이면 처음 설정으로 */
