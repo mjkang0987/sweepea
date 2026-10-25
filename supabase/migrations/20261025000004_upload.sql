@@ -20,6 +20,10 @@ begin
      or exists (select 1 from public.families where id = p_family_id and delete_after is not null) then
     raise exception 'not_allowed' using errcode = '42501';
   end if;
+  -- 무료 가족방은 저장 용량 5GB(5×1024³)가 차면 새로 올리기만 멈춘다. PT507 → HTTP 507
+  if exists (select 1 from public.families where id = p_family_id and plan = 'free' and storage_used_bytes >= 5368709120) then
+    raise exception 'storage_full' using errcode = 'PT507';
+  end if;
   -- 끝내지 않은 올리기가 쌓이지 않게(완료 전 파일은 용량에 안 잡힌다). 올린 사람별·최근 하루만 세서
   -- 한 사람이 가족 전체를 막지 못하게 한다. 오래된 것 지우기는 이슈 13의 정리 작업. PT429 → PostgREST가 HTTP 429로
   if (select count(*) from public.media
