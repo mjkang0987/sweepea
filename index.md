@@ -5,7 +5,7 @@
 ## 현재 상태
 
 - 버전 0.1.0. DB 스키마·권한(Supabase 마이그레이션)은 작성·로컬 검사 완료, 실제 Supabase 프로젝트는 아직 없다.
-- 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. mock 백엔드로 동작 확인, 앨범은 자리만. 지금은 기기 하나가 가족방 하나에만 들어간다(이슈 7에서 여러 가족방). 다음 이슈는 plan.md 참고.
+- 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. mock 백엔드로 동작 확인, 앨범은 자리만. 기기 하나로 여러 가족방에 들어간다(가족방마다 승인·차단 따로). 다음 이슈는 plan.md 참고.
 - 첫 화면(`/`)은 심볼과 이름만 있는 임시 페이지. 클라이언트 JS 0KB.
 - 로컬 Lighthouse(모바일, 기본 스로틀링): LCP 약 0.7초, CLS 0, 접근성 100점.
 
@@ -34,6 +34,7 @@ src/layouts/Family.astro 가족 화면 뼈대 (글자 크기 쿠키 적용)
 src/styles/family.css   가족 화면 공통 (.sp-f*)
 src/lib/backend/        백엔드 계약(types.ts), supabase.ts(fetch로 Auth·RPC), mock.ts(개발용, 운영 금지)
 src/lib/pass.ts         출입증 쿠키(sp_pass, httpOnly)·글자 크기 쿠키(sp_size)
+src/lib/families.ts     가족방 상태 분류(들어감·승인 대기)
 src/pages/index.astro   주소 없이 온 경우 안내
 src/pages/i/[code]/     누구세요(index) → 비밀번호(password)
 src/pages/wait.astro    승인 기다림 / album.astro 앨범(자리만) / 500.astro
@@ -43,7 +44,8 @@ supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stu
 
 ## DB 요약
 
-- 부모: Supabase Auth 사용자(가족방당 1명). 가족 기기: 익명 사용자(기기 하나 = 익명 사용자 하나). 배우자는 구성원 + 기기 올리기 권한.
+- 부모: Supabase Auth 사용자(가족방당 1명). 가족 기기: 익명 사용자(기기 하나 = 익명 사용자 하나, 가족방마다 `devices` 한 행). 배우자는 구성원 + 기기 올리기 권한.
+- 가족방끼리는 서로 안 보인다. 부모도 기기 사용자 id(`auth_user_id`)는 못 읽는다(열 권한이라 `select *` 불가).
 - 입장은 `sp_entry_info`(누구세요 화면 정보) → `sp_enter`(이름 + 그룹 비밀번호). 새 이름은 링크 72시간 안에만, 승인 대기 3일. 틀린 기록은 기기·그룹별(3번 30초, 10번 승인 대기)과 그룹 전체(1시간 20번·하루 30번이면 새 기기는 승인 대기).
 - 공유 링크는 `sp_create_share`로만(8자 코드). 연결 표는 family_id 복합 FK로 같은 가족방끼리만.
 - 사진 상태·저장 키·용량은 서버(service_role)만 쓴다. 비밀번호 해시는 클라이언트가 못 읽는다.

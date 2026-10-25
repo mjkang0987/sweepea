@@ -6,6 +6,7 @@ import { getBackend } from '../../../lib/backend';
 import { chosenTextSize, currentPass } from '../../../lib/pass';
 import { callName } from '../../../lib/ko';
 import { NOTICES, type NoticeKey } from '../../../lib/notices';
+import { isOpen, isWaiting } from '../../../lib/families';
 
 const code = Astro.params.code ?? '';
 let notice: NoticeKey | null = /^[A-Za-z0-9]{8}$/.test(code) ? null : 'not_found';
@@ -14,17 +15,15 @@ const backend = getBackend();
 const pass = notice ? null : await currentPass(Astro.cookies);
 
 let info = null;
-if (pass) {
-  const me = await backend.me(pass);
-  if (me.closed) notice = 'closed';
-  else if (me.device === 'revoked') notice = 'revoked';
-  // 승인 대기 3일이 지난(expired) 기기는 새 주소로 다시 들어올 수 있게 폼을 보여 준다
-  else if (me.device === 'pending' || me.member === 'pending') return Astro.redirect('/wait');
-  else if (me.device === 'active' && me.member === 'active') return Astro.redirect('/album');
-}
 if (!notice) {
   const r = await backend.entryInfo(pass, code);
-  if (r.result === 'ok') info = r;
+  // 이 링크의 가족방에서 이미 들어온 기기면 상태대로 보낸다. 승인 대기 3일이 지난(expired) 기기는 폼을 다시 보여 준다
+  const me = r.result === 'not_found' ? null : r.me;
+  if (r.result === 'closed') notice = 'closed';
+  else if (me?.device === 'revoked') notice = 'revoked';
+  else if (me && isWaiting(me)) return Astro.redirect('/wait');
+  else if (me && isOpen(me)) return Astro.redirect('/album');
+  else if (r.result === 'ok') info = r;
   else notice = r.result;
 }
 

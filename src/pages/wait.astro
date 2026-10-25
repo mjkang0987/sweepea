@@ -6,12 +6,17 @@ import { getBackend } from '../lib/backend';
 import { currentPass } from '../lib/pass';
 import { callName, ro } from '../lib/ko';
 import { NOTICES } from '../lib/notices';
+import { isOpen, isWaiting } from '../lib/families';
 
 const pass = await currentPass(Astro.cookies);
 if (!pass) return Astro.redirect('/');
-const me = await getBackend().me(pass);
-if (!me.device) return Astro.redirect('/');
-if (me.device === 'active' && me.member === 'active' && !me.closed) return Astro.redirect('/album');
+// 가족방이 여럿이면 가장 최근에 들어가려던 곳을 보여 준다
+const { families } = await getBackend().me(pass);
+if (families.length === 0) return Astro.redirect('/');
+const hasOpen = families.some(isOpen);
+const waiting = families.filter(isWaiting).at(-1);
+if (!waiting && hasOpen) return Astro.redirect('/album');
+const me = waiting ?? families.at(-1)!;
 const child = callName(me.child_name ?? '아이');
 const state = me.closed ? 'closed' : me.device === 'revoked' ? 'revoked' : me.member === 'expired' ? 'pending_expired' : me.device === 'pending' ? 'attempts' : 'pending';
 ---
@@ -40,6 +45,11 @@ const state = me.closed ? 'closed' : me.device === 'revoked' ? 'revoked' : me.me
           <a class="sp-f__btn sp-f__btn--fill" href="/wait">
             다시 확인하기
           </a>
+          {hasOpen && (
+            <a class="sp-f__btn sp-f__btn--quiet" href="/album">
+              들어간 앨범 보기
+            </a>
+          )}
         </div>
       </>
     ) : (

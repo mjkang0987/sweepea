@@ -1,23 +1,27 @@
 // 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
 // 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
-import type { Backend, EnterResult, EntryInfo, Me, Pass } from './types';
+import type { Backend, EnterResult, EntryInfo, EntryMe, Me, MeFamily, Pass } from './types';
 
-interface Group { id: string; name: string; hint: string; password: string }
+interface Group { id: string; familyId: string; name: string; hint: string; password: string }
 interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected' }
 interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean }
-interface Device { status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]> }
+interface Device { familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]> }
 
 const HOUR = 3600_000;
+// 하린이네(외가·친가)와 도윤이네(외할머니의 다른 손주). 외할머니 한 기기로 두 가족방에 들어가는 흐름을 본다
+const children: Record<string, string> = { 'f-harin': '하린', 'f-doyun': '도윤' };
 const groups: Group[] = [
-  { id: 'g-mat', name: '외가', hint: '외가 비밀번호', password: '1234' },
-  { id: 'g-pat', name: '친가', hint: '할아버지 생신', password: '5678' },
+  { id: 'g-mat', familyId: 'f-harin', name: '외가', hint: '외가 비밀번호', password: '1234' },
+  { id: 'g-pat', familyId: 'f-harin', name: '친가', hint: '할아버지 생신', password: '5678' },
+  { id: 'g-dy', familyId: 'f-doyun', name: '가족', hint: '도윤이 생일', password: '9999' },
 ];
 const members: Member[] = [
   { id: 'm-gm', groupId: 'g-mat', name: '외할머니', status: 'active' },
   { id: 'm-gf', groupId: 'g-mat', name: '외할아버지', status: 'active' },
   { id: 'm-aunt', groupId: 'g-mat', name: '이모', status: 'active' },
   { id: 'm-pgm', groupId: 'g-pat', name: '할머니', status: 'active' },
+  { id: 'm-dgm', groupId: 'g-dy', name: '할머니', status: 'active' },
 ];
 const shares: Share[] = [
   { code: 'Harin001', groupIds: ['g-mat'], createdAt: Date.now() },
@@ -25,8 +29,17 @@ const shares: Share[] = [
   { code: 'Harin003', groupIds: ['g-pat'], createdAt: Date.now() },
   { code: 'Sms00001', groupIds: ['g-mat'], createdAt: Date.now(), targetMemberId: 'm-gm' },
   { code: 'Closed01', groupIds: ['g-mat'], createdAt: Date.now(), closed: true },
+  { code: 'Doyun001', groupIds: ['g-dy'], createdAt: Date.now() },
 ];
+// 기기(출입증) × 가족방마다 하나
 const devices = new Map<string, Device>();
+const familyOf = (s: Share) => groups.find((g) => g.id === s.groupIds[0])!.familyId;
+const key = (pass: Pass, familyId: string) => `${pass.access}|${familyId}`;
+function meOf(d: Device | undefined): EntryMe | null {
+  if (!d) return null;
+  const m = members.find((x) => x.id === d.memberId);
+  return { device: d.status, member: m?.status ?? null, name: m?.name ?? d.requestedName ?? null };
+}
 
 const newOpen = (s: Share) => s.createdAt + 72 * HOUR > Date.now() && !s.usedAt;
 
@@ -39,14 +52,16 @@ export function createMockBackend(): Backend {
     async refresh(pass) {
       return pass;
     },
-    async entryInfo(_pass, code): Promise<EntryInfo> {
+    async entryInfo(pass, code): Promise<EntryInfo> {
       const s = shares.find((x) => x.code === code);
       if (!s) return { result: 'not_found' };
-      if (s.closed) return { result: 'closed' };
-      if (s.targetMemberId && s.usedAt) return { result: 'expired' };
+      const me = pass ? meOf(devices.get(key(pass, familyOf(s)))) : null;
+      if (s.closed) return { result: 'closed', me };
+      if (s.targetMemberId && s.usedAt) return { result: 'expired', me };
       return {
         result: 'ok',
-        child_name: '하린',
+        me,
+        child_name: children[familyOf(s)],
         new_entry_open: newOpen(s),
         target_member_id: s.targetMemberId ?? null,
         groups: groups
@@ -64,7 +79,13 @@ export function createMockBackend(): Backend {
       const s = shares.find((x) => x.code === i.code);
       if (!s) return { result: 'not_found' };
       if (s.closed) return { result: 'closed' };
-      const d = devices.get(pass.access);
+      const k = key(pass, familyOf(s));
+      const d = devices.get(k);
+      // 마지막으로 들어가려던 가족방이 목록 끝에 오게(DB의 last_seen_at 순서와 같게)
+      if (d) {
+        devices.delete(k);
+        devices.set(k, d);
+      }
       if (d?.status === 'revoked') return { result: 'revoked' };
       if (d?.status === 'pending') return { result: 'needs_approval' };
       let groupId: string;
@@ -78,7 +99,7 @@ export function createMockBackend(): Backend {
         if (!i.groupId || !s.groupIds.includes(i.groupId)) return { result: 'bad_request' };
         groupId = i.groupId;
       }
-      const dev: Device = d ?? { status: 'active', failures: new Map() };
+      const dev: Device = d ?? { familyId: familyOf(s), status: 'active', failures: new Map() };
       const fails = dev.failures.get(groupId) ?? [];
       const last = fails.at(-1) ?? 0;
       if (fails.length > 0 && fails.length % 3 === 0 && last > Date.now() - 30_000) {
@@ -91,10 +112,10 @@ export function createMockBackend(): Backend {
         if (fails.length >= 10) {
           dev.status = 'pending';
           dev.requestedName = i.newName ?? members.find((m) => m.id === i.memberId)?.name;
-          devices.set(pass.access, dev);
+          devices.set(k, dev);
           return { result: 'needs_approval' };
         }
-        devices.set(pass.access, dev);
+        devices.set(k, dev);
         return { result: 'wrong_password', hint: g.hint, attempts: fails.length };
       }
       dev.failures.delete(groupId);
@@ -106,21 +127,18 @@ export function createMockBackend(): Backend {
         members.push(member);
       }
       dev.memberId = member.id;
-      devices.set(pass.access, dev);
+      devices.set(k, dev);
       if (s.targetMemberId) s.usedAt = Date.now();
       return { result: member.status === 'pending' ? 'pending' : 'ok', member_id: member.id };
     },
     async me(pass): Promise<Me> {
-      const d = devices.get(pass.access);
-      if (!d) return { device: null };
-      const m = members.find((x) => x.id === d.memberId);
-      return {
-        device: d.status,
-        member: m?.status ?? null,
-        name: m?.name ?? d.requestedName ?? null,
-        closed: false,
-        child_name: '하린',
-      };
+      const families: MeFamily[] = [];
+      for (const [k, d] of devices) {
+        if (k.startsWith(`${pass.access}|`)) {
+          families.push({ ...meOf(d)!, family_id: d.familyId, closed: false, child_name: children[d.familyId] });
+        }
+      }
+      return { families };
     },
   };
 }
