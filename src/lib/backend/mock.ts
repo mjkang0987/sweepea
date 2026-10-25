@@ -28,6 +28,7 @@ const members: Member[] = [
   { id: 'm-dad', groupId: 'g-mat', name: '하린 아빠', status: 'active', uploader: true },
   { id: 'm-pgm', groupId: 'g-pat', name: '할머니', status: 'active' },
   { id: 'm-dgm', groupId: 'g-dy', name: '할머니', status: 'active' },
+  { id: 'm-dmom', groupId: 'g-dy', name: '도윤 엄마', status: 'active', uploader: true },
 ];
 const shares: Share[] = [
   { code: 'Harin001', groupIds: ['g-mat'], createdAt: Date.now() },
