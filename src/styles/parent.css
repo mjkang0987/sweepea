@@ -1025,3 +1025,16 @@
   color: var(--label-2);
   font-size: var(--footnote-size);
 }
+/* 최근 반응 썸네일 */
+.sp-p__thumb {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-sm);
+  background: var(--fill);
+  object-fit: cover;
+}
+/* 앨범 위 '최근 반응' 줄 */
+.sp-p__activity {
+  margin-bottom: var(--space-4);
+}
