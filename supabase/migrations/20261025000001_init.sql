@@ -470,6 +470,10 @@ grant update (body) on public.comments to authenticated;
 -- 사진: 상태·저장 키·용량은 서버(service_role)만. 클라이언트는 기본 정보만 넣고 촬영일만 고친다
 -- 사진 행은 sp_create_media로만 만든다(올린 사람·그룹·아이 태그를 함께 검사)
 revoke insert, update on public.media from authenticated;
+-- 읽기는 열을 정해서: 부모 사용자 id·원본 키·용량은 가족에게 안 보인다. select * 는 거부되니 열을 적는다
+revoke select on public.media from authenticated;
+grant select (id, family_id, uploaded_by_member, kind, taken_at, taken_at_source, width, height, duration_sec,
+  status, view_key, thumb_key, poster_key, created_at) on public.media to authenticated;
 grant update (taken_at, taken_at_source) on public.media to authenticated;
 -- 연결 표는 넣고 지우기만
 revoke update on public.media_groups, public.media_children, public.share_groups, public.share_media from authenticated;
