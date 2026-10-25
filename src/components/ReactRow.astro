@@ -1,0 +1,37 @@
+---
+// "눌러서 바로 보내기" 반응 5개. JS 없이 폼 POST, 버튼 값에 켤지 끌지를 담는다(다시 누르면 취소)
+import { REACTION_KINDS } from '../lib/backend';
+import { EMOJI } from '../lib/emoji';
+import type { Reacts } from '../lib/album';
+
+interface Props {
+  mediaId: string;
+  back: string;
+  reacts: Reacts;
+  /** 넘겨 보기 카드마다 둘 때 제목 id가 겹치지 않게 */
+  idSuffix?: string;
+  /** 크게 보기는 시안대로 제목을 숨김(화면 읽기엔 남김) */
+  hideTitle?: boolean;
+}
+const { mediaId, back, reacts, idSuffix = '', hideTitle = false } = Astro.props;
+const r = reacts.get(mediaId);
+const titleId = `react-title${idSuffix}`;
+---
+
+<form class="sp-r" method="post" action={`/album/${mediaId}`} aria-labelledby={titleId}>
+  <input type="hidden" name="back" value={back} />
+  <h2 class={hideTitle ? 'sp-vh' : 'sp-r__title'} id={titleId}>눌러서 바로 보내기</h2>
+  <div class="sp-r__row">
+    {
+      REACTION_KINDS.map((k) => {
+        const on = r?.mine.has(k) ?? false;
+        return (
+          <button class="sp-r__btn" type="submit" name="react" value={`${k}:${on ? 'off' : 'on'}`} aria-pressed={on ? 'true' : 'false'}>
+            <span class={`sp-r__icon sp-r__icon--${EMOJI[k].anim}`} set:html={EMOJI[k].svg} />
+            <span class="sp-r__label">{EMOJI[k].label}</span>
+          </button>
+        );
+      })
+    }
+  </div>
+</form>
