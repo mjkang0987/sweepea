@@ -407,14 +407,6 @@ create policy media_uploader_read on public.media for select to authenticated
   using (uploaded_by_member is not null and uploaded_by_member = public.sp_device_member(family_id) and status <> 'deleted');
 create policy media_read on public.media for select to authenticated
   using (public.sp_can_view_media(id));
-create policy media_insert on public.media for insert to authenticated
-  with check (
-    public.sp_can_upload(family_id)
-    and (
-      (uploaded_by_parent = auth.uid() and uploaded_by_member is null and family_id = public.sp_parent_family())
-      or (uploaded_by_member = public.sp_device_member(family_id) and uploaded_by_parent is null)
-    )
-  );
 create policy media_parent_update on public.media for update to authenticated
   using (family_id = public.sp_parent_family()) with check (family_id = public.sp_parent_family());
 create policy media_parent_delete on public.media for delete to authenticated
@@ -476,9 +468,8 @@ revoke truncate, references, trigger on all tables in schema public from anon, a
 revoke update on public.comments from authenticated;
 grant update (body) on public.comments to authenticated;
 -- 사진: 상태·저장 키·용량은 서버(service_role)만. 클라이언트는 기본 정보만 넣고 촬영일만 고친다
+-- 사진 행은 sp_create_media로만 만든다(올린 사람·그룹·아이 태그를 함께 검사)
 revoke insert, update on public.media from authenticated;
-grant insert (family_id, uploaded_by_parent, uploaded_by_member, kind, taken_at, taken_at_source, width, height, duration_sec)
-  on public.media to authenticated;
 grant update (taken_at, taken_at_source) on public.media to authenticated;
 -- 연결 표는 넣고 지우기만
 revoke update on public.media_groups, public.media_children, public.share_groups, public.share_media from authenticated;

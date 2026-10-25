@@ -28,17 +28,11 @@ insert into public.members (family_id, group_id, display_name) values
 select id as m_gm from public.members where display_name = '외할머니' \gset
 select id as m_gf from public.members where display_name = '외할아버지' \gset
 select id as m_sp from public.members where display_name = '하린 아빠' \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values
-  (:'fam', :'P', 'photo', now(), 'exif') returning id as m1 \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values
-  (:'fam', :'P', 'photo', now(), 'exif') returning id as m2 \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values
-  (:'fam', :'P', 'video', now(), 'file') returning id as m3 \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values
-  (:'fam', :'P', 'photo', now(), 'exif') returning id as m4 \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values
-  (:'fam', :'P', 'photo', now(), 'exif') returning id as m5 \gset
-insert into public.media_groups (family_id, media_id, group_id) values (:'fam', :'m1', :'gma'), (:'fam', :'m2', :'gpa'), (:'fam', :'m3', :'gma'), (:'fam', :'m3', :'gpa'), (:'fam', :'m4', :'gma'), (:'fam', :'m5', :'gma');
+select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, array[:'gma']::uuid[]) as m1 \gset
+select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, array[:'gpa']::uuid[]) as m2 \gset
+select public.sp_create_media(:'fam', 'video', now(), 'file', null, null, null, array[:'gma', :'gpa']::uuid[]) as m3 \gset
+select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, array[:'gma']::uuid[]) as m4 \gset
+select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, array[:'gma']::uuid[]) as m5 \gset
 reset role;
 -- 처리 완료 표시는 서버(postgres)만. m4는 올리는 중으로 둔다
 update public.media set status = 'ready' where id in (:'m1', :'m2', :'m3', :'m5');
@@ -179,8 +173,9 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'SP', 'is_anonymous', true)::text, false);
 set role authenticated;
 select pg_temp.ok((select count(*) = 4 from public.media), '올리기 권한이면 모든 그룹 사진(올리는 중 제외)');
-insert into public.media (family_id, uploaded_by_member, kind, taken_at, taken_at_source) values (:'fam', :'m_sp', 'photo', now(), 'exif') returning id as m6 \gset
-insert into public.media_groups (family_id, media_id, group_id) values (:'fam', :'m6', :'gpa');
+select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, array[:'gpa']::uuid[]) as m6 \gset
+select pg_temp.ok((select uploaded_by_member = :'m_sp' and uploaded_by_parent is null from public.media where id = :'m6'), '가족 기기가 올리면 올린 사람은 그 구성원');
+select pg_temp.ok(public.sp_upload_target(:'m6') ->> 'kind' = 'photo', '가족 기기도 자기 사진에 파일을 넣을 수 있음');
 select pg_temp.ok(length(public.sp_create_share(array[:'gpa']::uuid[], array[:'m6']::uuid[])) = 8, '올리기 권한 가족도 공유 링크 만듦');
 reset role;
 select id as d_gm from public.devices where auth_user_id = :'GM' \gset
@@ -270,7 +265,7 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
 set role authenticated;
 select public.sp_create_family('dad', '다른집', '아이', '2025-01-01', '1111') as fam2 \gset
-insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source) values (:'fam2', :'P2', 'photo', now(), 'exif') returning id as mx \gset
+select public.sp_create_media(:'fam2', 'photo', now(), 'exif') as mx \gset
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
@@ -327,7 +322,6 @@ select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anon
 set role authenticated;
 select id as g2 from public.groups where family_id = :'fam2' \gset
 insert into public.members (family_id, group_id, display_name) values (:'fam2', :'g2', '할머니') returning id as m_h2 \gset
-insert into public.media_groups (family_id, media_id, group_id) values (:'fam2', :'mx', :'g2');
 select public.sp_create_share(array[:'g2']::uuid[]) as code2 \gset
 reset role;
 update public.media set status = 'ready' where id = :'mx';

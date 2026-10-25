@@ -10,12 +10,20 @@ create function public.sp_create_media(
 language plpgsql security definer set search_path = ''
 as $$
 declare
-  v_parent boolean := p_family_id = public.sp_parent_family();
+  -- 익명 기기는 sp_parent_family()가 null이라 coalesce가 없으면 두 갈래 다 null이 된다
+  v_parent boolean := coalesce(p_family_id = public.sp_parent_family(), false);
   v_member uuid := public.sp_device_member(p_family_id);
   v_groups uuid[];
   v_id uuid;
 begin
-  if not public.sp_can_upload(p_family_id) then raise exception 'not_allowed' using errcode = '42501'; end if;
+  if not public.sp_can_upload(p_family_id) or (not v_parent and v_member is null)
+     or exists (select 1 from public.families where id = p_family_id and delete_after is not null) then
+    raise exception 'not_allowed' using errcode = '42501';
+  end if;
+  -- 끝내지 않은 올리기가 쌓이지 않게(완료되지 않은 파일은 용량에 안 잡힌다). 지우기는 이슈 13의 정리 작업
+  if (select count(*) from public.media where family_id = p_family_id and status = 'uploading') >= 50 then
+    raise exception 'too_many_uploads' using errcode = '22023';
+  end if;
   v_groups := coalesce(p_group_ids,
     array(select g.id from public.groups g where g.family_id = p_family_id and g.include_by_default));
   if coalesce(array_length(v_groups, 1), 0) = 0
