@@ -371,6 +371,11 @@
   text-decoration: none;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.08);
 }
+.sp-a__card-link {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
 .sp-a__card-img {
   flex: 1;
   min-height: 0;
@@ -392,6 +397,9 @@
   line-height: var(--senior-caption-line);
   font-weight: 500;
   color: var(--label-2);
+}
+.sp-a__card-day {
+  flex: 1;
 }
 .sp-a__pos {
   margin: 0;
@@ -418,6 +426,11 @@
     .sp-a__pos {
       animation-name: sp-a-fade;
     }
+    /* 반응 줄은 가운데 카드 것만 보이고 눌린다(visibility는 클릭도 막음) */
+    .sp-a__slide-react {
+      animation: sp-a-only linear both;
+      animation-timeline: view(inline);
+    }
   }
 }
 /* 0%: 오른쪽(다음) 카드, 100%: 왼쪽(이전) 카드. 안쪽 모서리를 축으로 기울여 가운데 카드에 붙게 */
@@ -439,6 +452,22 @@
     transform-origin: right center;
     opacity: 0.5;
     z-index: 1;
+  }
+}
+@keyframes sp-a-only {
+  0%,
+  42% {
+    visibility: hidden;
+    opacity: 0;
+  }
+  50% {
+    visibility: visible;
+    opacity: 1;
+  }
+  58%,
+  100% {
+    visibility: hidden;
+    opacity: 0;
   }
 }
 @keyframes sp-a-fade {
@@ -610,10 +639,6 @@
 .sp-v__spacer {
   width: 4rem;
 }
-.sp-v__title {
-  font-size: var(--senior-body-size);
-  line-height: var(--senior-body-line);
-}
 .sp-v__fig {
   margin: 0 calc(-1 * var(--space-5));
   display: flex;
@@ -637,4 +662,179 @@
 /* 떠 있는 칸 크기 버튼이 포커스된 사진을 가리지 않게 */
 .sp-html {
   scroll-padding-bottom: calc(var(--target-senior) + var(--space-8));
+}
+
+/* 넘겨 보기 카드 밑 반응 줄: 카드보다 넓게(시안 폭) */
+.sp-a__slide-react {
+  margin-inline: calc((var(--card-w) - min(100vw, 32rem) + 2 * var(--space-5)) / 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-a__say {
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+}
+
+/* 반응 5개 */
+.sp-r {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-r__title {
+  margin: 0;
+  font-size: var(--senior-caption-size);
+  line-height: var(--senior-caption-line);
+  font-weight: 500;
+  color: var(--label-2);
+}
+.sp-r__row {
+  display: flex;
+  gap: var(--space-2);
+}
+.sp-r__btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 5rem;
+  padding: 0.625rem 0 0.5rem;
+  border: 0;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--label);
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  cursor: pointer;
+}
+.sp-r__btn[aria-pressed='true'] {
+  background: var(--pea-tint);
+  box-shadow: inset 0 0 0 2px var(--pea);
+  color: var(--pea-deep);
+}
+.sp-r__btn:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+.sp-r__icon {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+}
+.sp-r__label {
+  font-size: var(--senior-caption-size);
+  line-height: 1.375rem;
+  font-weight: 600;
+}
+/* 도트 이모지 움직임: 두 번만(5초 넘게 계속 움직이지 않게), 동작 줄이기면 끔 */
+@media (prefers-reduced-motion: no-preference) {
+  .sp-r__icon--beat {
+    animation: sp-beat 1.6s ease-in-out 2;
+  }
+  .sp-r__icon--nod {
+    animation: sp-nod 1.8s ease-in-out 2;
+    transform-origin: 30% 80%;
+  }
+  .sp-r__icon--bob {
+    animation: sp-bob 1.4s ease-in-out 2;
+  }
+  .sp-r__icon--wobble {
+    animation: sp-wobble 1.6s ease-in-out 2;
+  }
+  .sp-r__icon--twinkle {
+    animation: sp-twinkle 1.2s ease-in-out 2;
+  }
+}
+@keyframes sp-beat {
+  0%, 60%, 100% { transform: scale(1); }
+  20% { transform: scale(1.18); }
+  40% { transform: scale(0.96); }
+}
+@keyframes sp-nod {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-14deg); }
+  50% { transform: rotate(6deg); }
+}
+@keyframes sp-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes sp-wobble {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-6deg); }
+  75% { transform: rotate(6deg); }
+}
+@keyframes sp-twinkle {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.82); opacity: 0.55; }
+}
+
+/* 하트 수(누르면 켜기·끄기) */
+.sp-h {
+  margin: 0;
+}
+.sp-h__btn {
+  min-width: var(--target-senior);
+  min-height: var(--target-senior);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--blossom);
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  cursor: pointer;
+}
+.sp-h__icon {
+  fill: none;
+  stroke: var(--blossom);
+  stroke-width: 2;
+}
+.sp-h__btn[aria-pressed='true'] .sp-h__icon {
+  fill: var(--blossom);
+}
+.sp-h__n {
+  font-size: var(--senior-body-size);
+  line-height: 1.75rem;
+  font-weight: 600;
+}
+.sp-h__btn:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+
+/* 모아 보기 칸 배지 */
+.sp-a__badge {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  display: flex;
+  gap: var(--space-2);
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--label);
+  font-size: var(--senior-caption-size);
+  font-weight: 700;
+}
+.sp-a__badge-heart {
+  fill: var(--blossom);
+  vertical-align: -1px;
+  margin-right: 2px;
+}
+
+.sp-v__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sp-say {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  scroll-margin-top: var(--space-5);
 }
