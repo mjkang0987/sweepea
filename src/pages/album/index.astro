@@ -1,14 +1,19 @@
 ---
 // 앨범: 넘겨 보기(기본)·모아 보기. 여러 가족방이면 모두 섞어 보는 게 기본, 집 고르기는 링크(JS 없음)
 import Family from '../../layouts/Family.astro';
-import { albumHref, dayLabel, loadAlbum, ZOOMS } from '../../lib/album';
+import HeartToggle from '../../components/HeartToggle.astro';
+import ReactRow from '../../components/ReactRow.astro';
+import { EMOJI_SPRITE } from '../../lib/emoji';
+import { albumHref, dayLabel, loadAlbum, loadReacts, ZOOMS } from '../../lib/album';
 import { signedMediaUrl } from '../../lib/signed';
 
 // 서명된 사진 주소가 들어 있는 사람별 페이지: 공유 캐시 금지
 Astro.response.headers.set('cache-control', 'private, no-store');
 const a = await loadAlbum(Astro.cookies, Astro.url);
 if ('redirect' in a) return Astro.redirect(a.redirect);
-const { open, kids, q, items } = a;
+const { pass, open, kids, q, items } = a;
+const reacts = await loadReacts(pass, items.map((m) => m.id));
+const here = albumHref(q);
 const many = open.length > 1;
 const kidTitle = q.f ? kids.get(q.f)! : [...kids.values()].join('·');
 const title = `${kidTitle} 사진`;
@@ -38,6 +43,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 ---
 
 <Family title={title}>
+  <Fragment set:html={EMOJI_SPRITE} />
   <header class="sp-a__head">
     <div class="sp-a__head-text">
       <h1 class="sp-f__title">{title} {items.length >= 200 ? '200장 넘게' : `${items.length}장`}</h1>
@@ -72,20 +78,26 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
         {/* 시안(GrandHome): 가운데 카드 + 양옆 사진이 비스듬히 보임. 손가락으로 밀면 넘어감(scroll-snap), 기울기는 CSS 스크롤 애니메이션 */}
         <ul class="sp-a__swipe" aria-label={`사진 ${cards.length}장, 옆으로 밀어서 넘겨 보기`}>
           {cards.map((c) => (
-            <li class="sp-a__slide">
-              <a class="sp-a__card" href={c.href}>
-                {/* 링크 이름은 아래 글자로(그림 설명을 두 번 읽지 않게) */}
-                <img class="sp-a__card-img" src={c.src} alt="" loading={c.n > 3 ? 'lazy' : 'eager'} fetchpriority={c.n === 1 ? 'high' : undefined} decoding="async" />
-                <span class="sp-a__card-cap">
+            <li class="sp-a__slide" id={`p-${c.id}`}>
+              <div class="sp-a__card">
+                <a class="sp-a__card-link" href={c.href} aria-label={`${c.day} ${showTag ? `${c.kid} ` : ''}${c.what} 크게 보기`}>
+                  <img class="sp-a__card-img" src={c.src} alt="" loading={c.n > 3 ? 'lazy' : 'eager'} fetchpriority={c.n === 1 ? 'high' : undefined} decoding="async" />
+                </a>
+                <div class="sp-a__card-cap">
                   {showTag && <span class="sp-a__tag">{c.kid}</span>}
-                  {c.day}
-                  {c.kind === 'video' ? ' · 영상' : <span class="sp-vh"> 사진</span>}
-                  <span class="sp-vh"> 크게 보기</span>
-                </span>
-              </a>
+                  <span class="sp-a__card-day">{c.day}{c.kind === 'video' && ' · 영상'}</span>
+                  <HeartToggle mediaId={c.id} back={`${here}#p-${c.id}`} reacts={reacts} />
+                </div>
+              </div>
               <p class="sp-a__pos">
                 <strong class="sp-a__pos-n">{c.n}</strong> / {cards.length}<span aria-hidden="true"> · 옆으로 밀거나 옆 사진을 누르세요</span>
               </p>
+              {/* 반응 줄은 카드마다. 가운데 카드 것만 보이게(CSS), JS 없이 그 사진에 보낸다 */}
+              <div class="sp-a__slide-react">
+                {/* 돌아올 때 같은 카드가 가운데에 오게 #p-<id> */}
+                <ReactRow mediaId={c.id} back={`${here}#p-${c.id}`} reacts={reacts} idSuffix={`-${c.n}`} />
+                <a class="sp-f__btn sp-a__say" href={`${c.href}#say`}>직접 쓰기</a>
+              </div>
             </li>
           ))}
         </ul>
@@ -116,6 +128,12 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
                     />
                     {showTag && q.z <= 2 && <span class="sp-a__tag sp-a__tag--on" aria-hidden="true">{c.kid}</span>}
                     {c.kind === 'video' && <span class="sp-a__play" aria-hidden="true">▶</span>}
+                    {(reacts.get(c.id)?.counts.heart || reacts.get(c.id)?.counts.comment) && q.z <= 3 && (
+                      <span class="sp-a__badge">
+                        {reacts.get(c.id)?.counts.heart ? <span><svg class="sp-a__badge-heart" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.2 5 6.7 5c2.1 0 3.6 1.2 4.3 2.4h2C13.7 6.2 15.2 5 17.3 5c3.5 0 5.5 3.6 4.2 6.8C19.5 16.4 12 21 12 21z"></path></svg><span class="sp-vh">하트 </span>{reacts.get(c.id)?.counts.heart}</span> : null}
+                        {reacts.get(c.id)?.counts.comment ? <span><span class="sp-vh">, </span>한마디 {reacts.get(c.id)?.counts.comment}</span> : null}
+                      </span>
+                    )}
                   </a>
                 </li>
               ))}

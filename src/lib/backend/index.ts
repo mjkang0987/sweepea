@@ -18,3 +18,4 @@ export function getBackend(): Backend {
 
 export type * from './types';
 export { BackendError } from './supabase';
+export { REACTION_KINDS } from './types';

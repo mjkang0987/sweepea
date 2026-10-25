@@ -60,19 +60,18 @@ select pg_temp.ok((select count(*) = 0 from public.entry_failures where auth_use
 set role authenticated;
 select pg_temp.ok((select count(*) = 3 from public.media), '외할머니는 외가 사진 3장(올리는 중 제외)');
 select pg_temp.ok(not exists (select 1 from public.media where id = :'m2'), '친가 전용 사진은 안 보임');
-insert into public.reactions (media_id, member_id, kind) values (:'m1', :'m_gm', 'heart'), (:'m1', :'m_gm', 'sparkle');
-insert into public.comments (media_id, member_id, body) values (:'m1', :'m_gm', '아이고 많이 컸네');
+select public.sp_react(:'m1', 'heart', true), public.sp_react(:'m1', 'sparkle', true);
+select public.sp_comment(:'m1', '아이고 많이 컸네');
 update public.members set text_size = 'large' where id = :'m_gm';
 reset role;
 
 -- 권한 밖 동작은 에러가 나야 한다
 \set ON_ERROR_STOP 0
 set role authenticated;
-\echo '아래 에러 4줄은 의도된 거부'
-insert into public.reactions (media_id, member_id, kind) values (:'m2', :'m_gm', 'heart');
+\echo '아래 에러 3줄은 의도된 거부'
+select public.sp_react(:'m2', 'heart', true);
 select password_hash from public.groups;
 update public.members set display_name = '왕할머니' where id = :'m_gm';
-insert into public.reactions (media_id, member_id, kind) values (:'m1', :'m_gf', 'heart');
 reset role;
 \set ON_ERROR_STOP 1
 select pg_temp.ok((select count(*) = 2 from public.reactions), '거부된 반응은 안 들어감');
@@ -84,6 +83,10 @@ set role authenticated;
 select public.sp_enter(:'code1', '1234', null, '큰이모', :'gma') ->> 'result' as r \gset
 select pg_temp.ok(:'r' = 'pending', '새 이름은 승인 대기');
 select pg_temp.ok((select count(*) = 2 from public.media), '승인 전엔 공유 묶음 2장만');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(승인 대기는 반응 못 함)'
+select public.sp_react(:'m1', 'heart', true);
+\set ON_ERROR_STOP 1
 select pg_temp.ok((select count(*) = 1 from public.members), '승인 전엔 가족 명단 대신 자기 이름만');
 select pg_temp.ok(not exists (select 1 from public.media where id = :'m5'), '공유 안 한 외가 사진은 안 보임');
 reset role;
@@ -242,7 +245,7 @@ set role authenticated;
 select id as c1 from public.comments limit 1 \gset
 update public.comments set body = '아이고 많이 컸네!' where id = :'c1';
 select pg_temp.ok((select edited_at is not null from public.comments where id = :'c1'), '고친 시각');
-insert into public.comments (media_id, member_id, body) values (:'m3', :'m_gm', '영상 좋다') returning id as c2 \gset
+select public.sp_comment(:'m3', '영상 좋다') as c2 \gset
 select public.sp_delete_comment(:'c1');
 select pg_temp.ok(not exists (select 1 from public.comments where id = :'c1'), '본인이 지우면 안 보임');
 reset role;
@@ -338,14 +341,9 @@ select pg_temp.ok(public.sp_entry_info(:'code1') -> 'me' @> '{"device": "active"
 select pg_temp.ok(public.sp_enter(:'code2', '1111', :'m_h2') ->> 'result' = 'ok', '같은 기기로 다른 가족방 입장');
 select pg_temp.ok((select count(*) = 4 from public.media), '두 가족방 사진을 같이 봄(3 + 1)');
 select pg_temp.ok(jsonb_array_length(public.sp_me() -> 'families') = 2, 'sp_me 가족방 2개');
-insert into public.reactions (media_id, member_id, kind) values (:'mx', :'m_h2', 'heart');
+select public.sp_react(:'mx', 'heart', true);
 reset role;
-\set ON_ERROR_STOP 0
-set role authenticated;
-\echo '아래 에러 1줄은 의도된 거부(다른 가족방 이름으로 반응)'
-insert into public.reactions (media_id, member_id, kind) values (:'mx', :'m_gm', 'heart');
-reset role;
-\set ON_ERROR_STOP 1
+select pg_temp.ok((select member_id = :'m_h2' from public.reactions where media_id = :'mx'), '다른 가족방 사진엔 그 가족방 이름(할머니)으로 반응');
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
 set role authenticated;
 select pg_temp.ok((select count(*) = 1 from public.devices) and (select count(*) = 1 from public.members), 'P2는 자기 가족방 기기·이름만(외할머니의 다른 가족방은 모름)');
@@ -395,6 +393,34 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
 select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, array[:'g2']::uuid[]);
+reset role;
+\set ON_ERROR_STOP 1
+
+-- ── 반응·한마디(함수)
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_react(:'m3', 'best', true), '반응 켜기');
+select pg_temp.ok(not public.sp_react(:'m3', 'best', false), '반응 끄기');
+select public.sp_react(:'m3', 'heart', true);
+select public.sp_react(:'m3', 'heart', true);
+select pg_temp.ok((select n = 1 and mine from public.sp_reaction_counts(array[:'m3']::uuid[]) where kind = 'heart'), '같은 반응 두 번은 한 번');
+select public.sp_comment(:'m3', '  예쁘다  ');
+select pg_temp.ok((select body = '예쁘다' from public.comments where media_id = :'m3' order by created_at desc limit 1), '한마디 앞뒤 공백 정리');
+select pg_temp.ok((select n >= 1 from public.sp_reaction_counts(array[:'m3']::uuid[]) where kind = 'comment'), '한마디 수');
+select pg_temp.ok(not exists (select 1 from public.sp_reaction_counts(array[:'m2']::uuid[])), '안 보이는 사진 반응 수는 안 셈');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(not exists (select 1 from public.comments where media_id = :'m3'), '다른 가족의 한마디 글은 안 보임');
+select pg_temp.ok((select n >= 1 from public.sp_reaction_counts(array[:'m3']::uuid[]) where kind = 'comment'), '한마디 수는 보임');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+\set ON_ERROR_STOP 0
+\echo '아래 에러 3줄은 의도된 거부(안 보이는 사진 반응, 이상한 종류, 빈 한마디)'
+set role authenticated;
+select public.sp_react(:'m2', 'heart', true);
+select public.sp_react(:'m3', 'angry', true);
+select public.sp_comment(:'m3', '   ');
 reset role;
 \set ON_ERROR_STOP 1
 

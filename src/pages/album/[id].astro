@@ -1,13 +1,24 @@
 ---
 // 크게 보기: 사진은 화면에 맞춰, 영상은 브라우저 기본 재생 막대(JS 없음). 이전·다음은 링크
 import Family from '../../layouts/Family.astro';
-import { albumHref, dayLabel, loadAlbum } from '../../lib/album';
+import HeartToggle from '../../components/HeartToggle.astro';
+import ReactRow from '../../components/ReactRow.astro';
+import SayForm from '../../components/SayForm.astro';
+import { EMOJI_SPRITE } from '../../lib/emoji';
+import { albumHref, dayLabel, handleReactPost, loadAlbum, loadReacts } from '../../lib/album';
+import { UUID } from '../../lib/media';
 import { signedMediaUrl } from '../../lib/signed';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
+const id = Astro.params.id ?? '';
+if (!UUID.test(id)) return Astro.redirect('/album');
+// 반응·한마디 폼: 처리하고 원래 화면으로(PRG)
+if (Astro.request.method === 'POST') {
+  return Astro.redirect(await handleReactPost(Astro.request, id, Astro.cookies, `/album/${id}${Astro.url.search}`), 303);
+}
 const a = await loadAlbum(Astro.cookies, Astro.url);
 if ('redirect' in a) return Astro.redirect(a.redirect);
-const { open, kids, q, items } = a;
+const { pass, open, kids, q, items } = a;
 const i = items.findIndex((m) => m.id === Astro.params.id);
 // 볼 수 없거나 목록 밖 사진은 앨범으로
 if (i < 0) return Astro.redirect(albumHref(q));
@@ -19,15 +30,21 @@ const kid = open.length > 1 && !q.f ? `${kids.get(m.family_id)} ` : '';
 const src = await signedMediaUrl(m.view_key);
 const poster = m.poster_key ? await signedMediaUrl(m.poster_key) : undefined;
 const label = `${dayLabel(m.taken_at)} ${kid}${what}`;
+const reacts = await loadReacts(pass, [m.id]);
+const here = albumHref(q, `/album/${m.id}`);
+const child = kids.get(m.family_id) ?? '아이';
+const say = Astro.url.searchParams.get('say');
 ---
 
 <Family title={`${label} · ${i + 1} / ${items.length}`}>
+  <Fragment set:html={EMOJI_SPRITE} />
   <nav class="sp-v__bar" aria-label="사진 이동">
     <a class="sp-v__link" href={albumHref(q)}><span aria-hidden="true">‹ </span>닫기</a>
     <p class="sp-v__pos">{i + 1} / {items.length}</p>
     <span class="sp-v__spacer"></span>
   </nav>
-  <h1 class="sp-f__title sp-v__title" id="v-title">{label}</h1>
+  {/* 시안엔 제목 줄이 없어 화면에선 숨기고 화면 읽기에만 */}
+  <h1 class="sp-vh" id="v-title">{label}</h1>
   <figure class="sp-v__fig">
     {
       m.kind === 'video' ? (
@@ -37,6 +54,12 @@ const label = `${dayLabel(m.taken_at)} ${kid}${what}`;
       )
     }
   </figure>
+  <div class="sp-v__meta">
+    <p class="sp-f__caption">{dayLabel(m.taken_at)}</p>
+    <HeartToggle mediaId={m.id} back={here} reacts={reacts} />
+  </div>
+  <ReactRow mediaId={m.id} back={here} reacts={reacts} hideTitle />
+  <SayForm mediaId={m.id} back={here} child={child} say={say} />
   <nav class="sp-v__nav" aria-label="이전·다음">
     {prev ? <a class="sp-f__btn sp-f__btn--fill" href={albumHref(q, `/album/${prev.id}`)} rel="prev">이전</a> : <span></span>}
     {next ? <a class="sp-f__btn sp-f__btn--fill" href={albumHref(q, `/album/${next.id}`)} rel="next">다음</a> : <span></span>}
