@@ -179,7 +179,7 @@
 - 결과: 검토 2회 반영(반응·한마디는 함수로만, 한마디 글은 부모·쓴 사람만, 승인 대기는 반응 불가, 이모지 한 번만 그리기, 옆 카드 반응 숨김, 지원 안 하는 브라우저는 반응 줄 숨김). DB 검사(의도된 거부 23건), 반응 e2e 13개, 타입 검사·빌드 통과
 - 남은 일: 부모는 구성원 행이 없어 반응·한마디 함수가 막힘 → 부모 화면에서 반응하려면 함수에 부모 분기 필요(이슈 9·12). 키 작은 화면에서 반응 뒤 돌아올 때 반응 줄이 아래로 밀릴 수 있음(실기기 확인)
 
-### 12. feature/parent-start — 부모 시작: 소개·로그인·처음 설정·앨범 (계획)
+### 12. feature/parent-start — 부모 시작: 소개·로그인·처음 설정·앨범 (완료, dev 머지)
 
 - 요구사항(캔버스 ParentIntro1~3·ParentLogin·ParentOnboard·ParentOnboard2·ParentEmpty·ParentHome)
   - 소개 3장(처음 한 번, 건너뛰기) → 로그인(카카오·네이버·Google·Apple, 구현 안 된 제공자는 버튼 숨김) → 처음 설정 1/2 아이(이름·생일·엄마/아빠) → 2/2 가족 비밀번호(숫자 4자리·힌트) → 앨범
@@ -195,6 +195,8 @@
 - 영향받는 파일: `supabase/migrations/`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/lib/pass.ts`, `src/pages/{start,login,auth,setup,home}*`, `src/layouts/Parent.astro`, `src/styles/parent.css`, `astro.config.mjs`, `index.md`, `plan.md`
 - 예상 결과: mock으로 소개 → 로그인 → 처음 설정 → 빈 앨범, 사진이 있으면 앨범까지 e2e 통과. 실제 OAuth는 Supabase 연결 때 확인
 - 범위 밖: 설정 > 가족(승인·구성원·링크, 다음 이슈), 올리기 화면, 위 띠(승인 요청·접종 일정), 최근 반응, 아이 여러 명 전환, 이용약관·개인정보 처리방침 본문
+- 결과: 검토 반영(없는 날짜·서울 날짜 기준, 비밀번호·힌트 검사, 로그아웃 때 Supabase 세션 끊기, 탭바·떠 있는 버튼 아래 여백, 오류 연결). 부모 e2e 16개·입장·올리기 e2e, 타입 검사·빌드 통과
+- Supabase 연결 때 할 일: Additional Redirect URLs에 `https://sweepea.co.kr/auth/callback`(미리보기 주소도) 추가, 켤 제공자를 `PARENT_PROVIDERS`에. 네이버는 기본 제공자가 아니라 별도 확인
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 

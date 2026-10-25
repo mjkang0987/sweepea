@@ -47,8 +47,9 @@ const cur = pages[p - 1];
     <p class="sp-p__intro-text">{cur.text[0]}<br />{cur.text[1]}</p>
   </section>
   <div class="sp-p__bottom">
-    <p class="sp-p__dots" aria-label={`${p} / 3`}>
-      {[1, 2, 3].map((n) => <span class:list={['sp-p__dot', n === p && 'sp-p__dot--on']} />)}
+    <p class="sp-p__dots">
+      <span class="sp-vh">{p} / 3</span>
+      {[1, 2, 3].map((n) => <span class:list={['sp-p__dot', n === p && 'sp-p__dot--on']} aria-hidden="true" />)}
     </p>
     <a class="sp-p__btn" href={p < 3 ? `/start?p=${p + 1}` : '/login'}>{p < 3 ? '다음' : '시작하기'}</a>
   </div>

@@ -16,7 +16,12 @@
   }
 }
 .sp-p--tabbed {
-  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  /* 아래 탭바 + 떠 있는 '사진 추가하기'가 마지막 줄을 가리지 않게 */
+  padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+}
+/* 포커스된 칸이 탭바·떠 있는 버튼 밑에 숨지 않게 */
+.sp-html {
+  scroll-padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
 }
 
 .sp-p__head {

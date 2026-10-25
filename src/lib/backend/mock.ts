@@ -235,6 +235,7 @@ export function createMockBackend(): Backend {
       if (!code.startsWith('dev-')) return null;
       return { access: `parent-${code}`, refresh: `parent-${code}`, expiresAt: Math.floor(Date.now() / 1000) + 365 * 24 * 3600 };
     },
+    async parentLogout() {},
     async parentHome(pass): Promise<ParentHome> {
       const p = parents.get(pass.access);
       if (!p) return { family_id: null };

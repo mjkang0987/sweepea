@@ -6,6 +6,7 @@ import { currentParent } from './pass';
 
 export const PROVIDERS = {
   kakao: { label: '카카오로 계속하기', cls: 'sp-p__login--kakao' },
+  // 네이버는 Supabase 기본 제공자가 아니다: 따로 연결하기 전엔 PARENT_PROVIDERS에 넣지 않는다
   naver: { label: '네이버로 계속하기', cls: 'sp-p__login--naver' },
   google: { label: 'Google로 계속하기', cls: 'sp-p__login--google' },
   apple: { label: 'Apple로 계속하기', cls: 'sp-p__login--apple' },
@@ -30,6 +31,16 @@ export async function pkce(): Promise<{ verifier: string; challenge: string }> {
 }
 
 export const PKCE_COOKIE = 'sp_pkce';
+
+/** 서울 날짜 YYYY-MM-DD(새벽에 오늘 태어난 아이가 '미래'로 막히지 않게) */
+export const seoulToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+
+/** 있는 날짜(2월 31일 같은 값 거절)이고 2010-01-01~오늘(서울)이면 true */
+export function validBirth(birth: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birth)) return false;
+  const d = new Date(`${birth}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === birth && birth >= '2010-01-01' && birth <= seoulToday();
+}
 export const INTRO_COOKIE = 'sp_intro';
 
 /** 부모 화면 들어오기: 로그인 안 했으면 소개(처음)·로그인, 설정 전이면 처음 설정으로 */

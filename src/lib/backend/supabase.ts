@@ -132,6 +132,13 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         throw e;
       }
     },
+    async parentLogout(pass) {
+      await fetch(`${base}/auth/v1/logout?scope=local`, {
+        method: 'POST',
+        headers: { apikey: anonKey, authorization: `Bearer ${pass.access}` },
+        signal: AbortSignal.timeout(8000),
+      }).catch(() => undefined);
+    },
     parentHome: (pass) => rpc<ParentHome>(pass, 'sp_parent_home', {}),
     createFamily: (pass, f) =>
       rpc<string>(pass, 'sp_create_family', {

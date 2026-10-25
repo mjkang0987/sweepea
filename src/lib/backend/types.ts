@@ -161,4 +161,6 @@ export interface Backend {
   parentHome(pass: Pass): Promise<ParentHome>;
   /** 처음 설정: 가족방 + 기본 그룹(가족) + 첫 아이. 가족방 id */
   createFamily(pass: Pass, input: NewFamily): Promise<string>;
+  /** 로그아웃: 이 세션의 갱신 토큰을 무효로(실패해도 쿠키는 지운다) */
+  parentLogout(pass: Pass): Promise<void>;
 }

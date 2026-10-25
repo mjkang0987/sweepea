@@ -12,12 +12,13 @@ if ('redirect' in a) return Astro.redirect(a.redirect);
 const kid = callName(a.home.children?.[0]?.name ?? '아이');
 // shortcut: 최근 200장까지만. 다음 쪽 넘기기는 가족 앨범과 같이 커서로
 const items = await getBackend().listMedia(a.pass, { limit: 200 });
+const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
-const months: { label: string; cells: { id: string; src: string; video: boolean }[] }[] = [];
+const months: { label: string; cells: { id: string; src: string; video: boolean; day: string }[] }[] = [];
 for (const m of items) {
   const label = monthFmt.format(new Date(m.taken_at));
   if (months.at(-1)?.label !== label) months.push({ label, cells: [] });
-  months.at(-1)!.cells.push({ id: m.id, src: await signedMediaUrl(m.thumb_key), video: m.kind === 'video' });
+  months.at(-1)!.cells.push({ id: m.id, src: await signedMediaUrl(m.thumb_key), video: m.kind === 'video', day: dayFmt.format(new Date(m.taken_at)) });
 }
 ---
 
@@ -37,7 +38,7 @@ for (const m of items) {
           <ul class="sp-p__grid">
             {mo.cells.map((c) => (
               <li class="sp-p__cell">
-                <img class="sp-p__cell-img" src={c.src} alt={c.video ? '영상' : '사진'} loading="lazy" decoding="async" />
+                <img class="sp-p__cell-img" src={c.src} alt={`${c.day} ${c.video ? '영상' : '사진'}`} loading="lazy" decoding="async" />
               </li>
             ))}
           </ul>
