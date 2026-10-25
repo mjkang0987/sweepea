@@ -203,6 +203,22 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     resetGroupLinks: async (pass, groupId) => {
       await rpc<number>(pass, 'sp_reset_group_links', { p_group_id: groupId });
     },
+    healthDone: (pass, childId) =>
+      call<{ item_key: string; done_on: string }[]>(`/rest/v1/health_done?${new URLSearchParams({ child_id: `eq.${childId}`, select: 'item_key,done_on' })}`, { method: 'GET', token: pass.access }),
+    async setHealthDone(pass, familyId, childId, add, remove, today) {
+      if (add.length)
+        await call(`/rest/v1/health_done?on_conflict=child_id,item_key`, {
+          method: 'POST',
+          token: pass.access,
+          headers: { prefer: 'resolution=ignore-duplicates,return=minimal' },
+          body: JSON.stringify(add.map((k) => ({ family_id: familyId, child_id: childId, item_key: k, done_on: today }))),
+        });
+      if (remove.length)
+        await call(`/rest/v1/health_done?${new URLSearchParams({ child_id: `eq.${childId}`, item_key: `in.(${remove.join(',')})` })}`, { method: 'DELETE', token: pass.access });
+    },
+    async setShowHealth(pass, childIds, on) {
+      for (const id of childIds) await patchOne(pass, 'children', id, { show_health: on });
+    },
     parentActivity: (pass) => rpc<{ seen_at: string; read_at: string; items: ActivityItem[] } | null>(pass, 'sp_parent_activity', {}),
     markActivitySeen: (pass, readAt) => rpc<void>(pass, 'sp_mark_activity_seen', { p_read_at: readAt }),
     async mediaInfo(pass, id) {
@@ -231,12 +247,12 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     setDownloadAllowed: (pass, familyId, on) => patchOne(pass, 'families', familyId, { download_allowed: on }),
     setTextSizeMode: (pass, familyId, mode) => patchOne(pass, 'families', familyId, { text_size_mode: mode }),
     updateChild: (pass, childId, name, birthDate) => patchOne(pass, 'children', childId, { name, birth_date: birthDate }),
-    async addChild(pass, familyId, name, birthDate) {
+    async addChild(pass, familyId, name, birthDate, showHealth) {
       await call(`/rest/v1/children`, {
         method: 'POST',
         token: pass.access,
         headers: { prefer: 'return=minimal' },
-        body: JSON.stringify({ family_id: familyId, name, birth_date: birthDate }),
+        body: JSON.stringify({ family_id: familyId, name, birth_date: birthDate, show_health: showHealth }),
       });
     },
     createShare: (pass, groupIds, target, mediaIds) =>

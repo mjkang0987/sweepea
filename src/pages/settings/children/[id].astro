@@ -26,7 +26,7 @@ if (Astro.request.method === 'POST') {
       const b = getBackend();
       if (kid) await b.updateChild(a.pass, kid.id, name, birth);
       // 두 번 눌러 같은 아이가 둘 생기지 않게: 이름·생일이 같은 아이가 이미 있으면 넣지 않는다
-      else if (!kids.some((k) => k.name === name && k.birth_date === birth)) await b.addChild(a.pass, a.home.family_id!, name, birth);
+      else if (!kids.some((k) => k.name === name && k.birth_date === birth)) await b.addChild(a.pass, a.home.family_id!, name, birth, kids.length === 0 || kids.some((k) => k.show_health));
       return Astro.redirect(`/settings/children?done=${kid ? 'saved' : 'added'}`, 303);
     } catch (err) {
       if (!(err instanceof BackendError)) throw err;

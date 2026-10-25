@@ -160,7 +160,7 @@ export interface ParentHome {
   storage_used_bytes?: number;
   photo_count?: number;
   video_count?: number;
-  children?: { id: string; name: string; birth_date: string }[];
+  children?: { id: string; name: string; birth_date: string; show_health: boolean }[];
 }
 
 export interface NewFamily {
@@ -250,6 +250,12 @@ export interface Backend {
   setUploadAllowed(pass: Pass, memberId: string, on: boolean): Promise<void>;
   /** 가족도 사진 저장하기 */
   setDownloadAllowed(pass: Pass, familyId: string, on: boolean): Promise<void>;
+  /** 접종·검진 완료 기록(부모만) */
+  healthDone(pass: Pass, childId: string): Promise<{ item_key: string; done_on: string }[]>;
+  /** 완료 기록 맞추기: add는 오늘 날짜로 넣고(이미 있으면 그대로), remove는 지운다 */
+  setHealthDone(pass: Pass, familyId: string, childId: string, add: string[], remove: string[], today: string): Promise<void>;
+  /** 앨범에 접종·검진 일정 보기(아이 모두) */
+  setShowHealth(pass: Pass, childIds: string[], on: boolean): Promise<void>;
   /** 부모 최근 반응(최근 30일, 50개). 부모가 아니면 null */
   parentActivity(pass: Pass): Promise<{ seen_at: string; read_at: string; items: ActivityItem[] } | null>;
   /** 읽음 표시(목록을 읽은 시각까지만) */
@@ -273,7 +279,8 @@ export interface Backend {
   resetGroupLinks(pass: Pass, groupId: string): Promise<void>;
   /** 가족 화면 처음 글자 크기 */
   setTextSizeMode(pass: Pass, familyId: string, mode: TextSizeMode): Promise<void>;
-  addChild(pass: Pass, familyId: string, name: string, birthDate: string): Promise<void>;
+  /** showHealth: 다른 아이들과 같은 '접종·검진 일정 보기' */
+  addChild(pass: Pass, familyId: string, name: string, birthDate: string, showHealth: boolean): Promise<void>;
   /** 자기 가족방 아이가 아니면 404 */
   updateChild(pass: Pass, childId: string, name: string, birthDate: string): Promise<void>;
   createShare(pass: Pass, groupIds: string[], targetMemberId?: string, mediaIds?: string[]): Promise<string>;

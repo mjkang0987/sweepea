@@ -1038,3 +1038,29 @@
 .sp-p__activity {
   margin-bottom: var(--space-4);
 }
+/* 접종·검진 줄(체크박스 + 이름 + 시기) */
+.sp-p__health {
+  min-height: 3.5rem;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.sp-p__health-when {
+  flex: none;
+  color: var(--pea-ink);
+  font-size: var(--footnote-size);
+  font-weight: 600;
+}
+.sp-p__health-when--late {
+  color: var(--label-2);
+}
+/* 기본 펼침 표시(▶)를 지키려고 display는 그대로 둔다 */
+.sp-p__past-title {
+  cursor: pointer;
+  padding-block: var(--space-3);
+}
+.sp-p__past-h {
+  display: inline;
+}
