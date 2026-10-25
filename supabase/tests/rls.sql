@@ -171,9 +171,10 @@ set role authenticated;
 select pg_temp.ok(public.sp_enter(:'code_sms', '1234', :'m_sp') ->> 'result' = 'expired', '문자 링크는 한 번만');
 select pg_temp.ok(public.sp_enter(:'code_sms', '1234', null, '누군가', :'gma') ->> 'result' = 'expired', '쓴 문자 링크로 새 이름 불가');
 reset role;
+select id as d_sp from public.devices where auth_user_id = :'SP' \gset
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
-update public.devices set can_upload = true where auth_user_id = :'SP';
+update public.devices set can_upload = true where id = :'d_sp';
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'SP', 'is_anonymous', true)::text, false);
 set role authenticated;
@@ -182,10 +183,11 @@ insert into public.media (family_id, uploaded_by_member, kind, taken_at, taken_a
 insert into public.media_groups (family_id, media_id, group_id) values (:'fam', :'m6', :'gpa');
 select pg_temp.ok(length(public.sp_create_share(array[:'gpa']::uuid[], array[:'m6']::uuid[])) = 8, '올리기 권한 가족도 공유 링크 만듦');
 reset role;
+select id as d_gm from public.devices where auth_user_id = :'GM' \gset
 \set ON_ERROR_STOP 0
 set role authenticated;
 -- 자기 기기 수정 정책이 없어서 에러 없이 0행으로 끝난다
-update public.devices set can_upload = true, status = 'active' where auth_user_id = :'GM';
+update public.devices set can_upload = true, status = 'active' where id = :'d_gm';
 reset role;
 \set ON_ERROR_STOP 1
 select pg_temp.ok((select not can_upload from public.devices where auth_user_id = :'GM'), '가족은 스스로 권한을 못 줌');
@@ -200,7 +202,7 @@ select set_config('request.jwt.claims', json_build_object('sub', :'N1', 'is_anon
 set role authenticated;
 select pg_temp.ok(public.sp_enter(:'code1', null, :'m_gm') ->> 'result' = 'bad_request', 'NULL 비밀번호 거절');
 select pg_temp.ok(public.sp_enter(:'code1', '', :'m_gm') ->> 'result' = 'bad_request', '빈 비밀번호 거절');
-select pg_temp.ok(not exists (select 1 from public.devices where auth_user_id = :'N1'), '거절된 시도로 기기가 생기지 않음');
+select pg_temp.ok(not exists (select 1 from public.devices), '거절된 시도로 기기가 생기지 않음');
 reset role;
 
 -- 다른 그룹 비밀번호를 번갈아 맞히며 횟수를 초기화하지 못한다
@@ -221,9 +223,10 @@ set role authenticated;
 select pg_temp.ok(public.sp_enter(:'code_pa', '5678', :'m_pgm') ->> 'result' = 'needs_approval', '익명 사용자 갈아타기 공격은 승인 대기로');
 select pg_temp.ok((select count(*) = 0 from public.media), '승인 전엔 0장');
 reset role;
+select id as d_n2 from public.devices where auth_user_id = :'N2' \gset
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
-update public.devices set status = 'active' where auth_user_id = :'N2';
+update public.devices set status = 'active' where id = :'d_n2';
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'N2', 'is_anonymous', true)::text, false);
 set role authenticated;
@@ -271,7 +274,7 @@ insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_a
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
-update public.devices set can_upload = false where auth_user_id = :'SP';
+update public.devices set can_upload = false where id = :'d_sp';
 reset role;
 \set ON_ERROR_STOP 0
 \echo '아래 에러 8줄은 의도된 거부'
@@ -346,6 +349,14 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
 set role authenticated;
 select pg_temp.ok((select count(*) = 1 from public.devices) and (select count(*) = 1 from public.members), 'P2는 자기 가족방 기기·이름만(외할머니의 다른 가족방은 모름)');
+reset role;
+\set ON_ERROR_STOP 0
+set role authenticated;
+\echo '아래 에러 1줄은 의도된 거부(부모가 기기 사용자 id를 읽어 다른 가족방과 맞춰 보기)'
+select auth_user_id from public.devices;
+reset role;
+\set ON_ERROR_STOP 1
+set role authenticated;
 update public.devices set status = 'revoked' where family_id = :'fam2';
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);

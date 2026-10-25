@@ -461,6 +461,10 @@ revoke update on public.members from authenticated;
 grant update (display_name, group_id, status, pending_until, text_size) on public.members to authenticated;
 revoke update on public.devices from authenticated;
 grant update (status, can_upload, label) on public.devices to authenticated;
+-- 기기 사용자 id는 안 보여 준다: 가족방마다 같은 값이라 두 집 부모가 맞춰 보면 같은 사람인 걸 알 수 있다
+revoke select on public.devices from authenticated;
+grant select (id, family_id, member_id, status, can_upload, requested_member_id, requested_group_id, requested_name, label, last_seen_at, created_at)
+  on public.devices to authenticated;
 -- 그룹은 켜면 끌 수 없으니 groups_enabled는 sp_add_group만 바꾼다
 revoke update on public.families from authenticated;
 grant update (name, download_allowed, text_size_mode, delete_after) on public.families to authenticated;
@@ -758,7 +762,7 @@ begin
                 case when p_member_id is null then v_name end);
     else
       update public.devices
-        set status = 'pending', can_upload = false,
+        set status = 'pending', can_upload = false, last_seen_at = now(),
             requested_member_id = p_member_id,
             requested_group_id = case when p_member_id is null then v_group end,
             requested_name = case when p_member_id is null then v_name end
