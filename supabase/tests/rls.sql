@@ -710,6 +710,17 @@ select public.sp_update_media(:'mg', now(), '{}', array[:'g_other']::uuid[]);
 select public.sp_delete_media(:'mg');
 \set ON_ERROR_STOP 1
 reset role;
+-- 탈퇴 유예 중엔 부모도 고치기·지우기 못 함
+update public.families set delete_after = now() + interval '3 days' where id = :'fam3';
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(탈퇴 유예 중 사진 고치기·지우기)'
+select public.sp_update_media(:'mg', now(), '{}', array[:'g_other']::uuid[]);
+select public.sp_delete_media(:'mg');
+\set ON_ERROR_STOP 1
+reset role;
+update public.families set delete_after = null where id = :'fam3';
 update public.media set bytes = 1000 where id = :'mg';
 update public.families set storage_used_bytes = 5000 where id = :'fam3';
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);

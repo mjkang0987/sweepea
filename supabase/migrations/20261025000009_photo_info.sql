@@ -8,7 +8,8 @@ as $$
 declare v_family uuid;
 begin
   select family_id into v_family from public.media where id = p_media_id and status = 'ready';
-  if v_family is null or not public.sp_can_edit_media(p_media_id) then
+  -- 탈퇴 유예 중엔 부모도 고치지 못한다(sp_can_upload)
+  if v_family is null or not public.sp_can_edit_media(p_media_id) or not public.sp_can_upload(v_family) then
     raise exception 'not_allowed' using errcode = '42501';
   end if;
   if coalesce(array_length(p_group_ids, 1), 0) = 0
@@ -35,12 +36,11 @@ language plpgsql security definer set search_path = ''
 as $$
 declare m public.media;
 begin
-  select * into m from public.media where id = p_media_id and family_id = public.sp_parent_family() for update;
-  if not found then raise exception 'not_allowed' using errcode = '42501'; end if;
+  -- 다 올라간 사진만(올리는 중인 행은 파일이 더 들어올 수 있다). 탈퇴 유예 중엔 지우지 못한다
+  select * into m from public.media where id = p_media_id and family_id = public.sp_parent_family() and status = 'ready' for update;
+  if not found or not public.sp_can_upload(m.family_id) then raise exception 'not_allowed' using errcode = '42501'; end if;
   insert into public.r2_cleanup (prefix) values (m.family_id::text || '/' || m.id::text || '/') on conflict do nothing;
-  if m.status = 'ready' then
-    update public.families set storage_used_bytes = greatest(0, storage_used_bytes - m.bytes) where id = m.family_id;
-  end if;
+  update public.families set storage_used_bytes = greatest(0, storage_used_bytes - m.bytes) where id = m.family_id;
   delete from public.media where id = p_media_id;
 end $$;
 
