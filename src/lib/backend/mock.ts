@@ -292,6 +292,7 @@ export function createMockBackend(): Backend {
     },
     async addChild(pass, familyId, name, birthDate) {
       if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('forbidden', 403, '42501');
+      if (kids.filter((k) => k.familyId === familyId).length >= 10) throw new BackendError('children_limit', 400, '22023');
       kids.push({ id: crypto.randomUUID(), familyId, name, birth_date: birthDate });
     },
     async updateChild(pass, childId, name, birthDate) {
