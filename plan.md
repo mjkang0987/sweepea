@@ -109,7 +109,7 @@
 - 디자인: 앨범 위 가족방 고르기(모두 / 하린이네 / 도윤이네) 시안 추가 완료(캔버스 GrandMulti). 실제 구현은 JS 없이 링크(`?f=`) + `aria-current`, '모두'일 때 사진에 아이 이름표
 - 결과: 검토 2회 반영. DB 검사(의도된 거부 17건), e2e(두 번째 가족방 입장 포함), 타입 검사·빌드 통과
 
-### 8. feature/upload-api — 사진 올리기·목록 API (계획)
+### 8. feature/upload-api — 사진 올리기·목록 API (완료, dev 머지)
 
 - 요구사항
   - 부모(또는 올리기 권한 가족)가 사진·영상을 올리면 R2에 저장되고, 볼 수 있는 가족에게 목록으로 보인다
@@ -118,15 +118,17 @@
 - 구현 방식
   - 업로드는 서명 URL 대신 **Worker를 거쳐 R2에 직접 넣는다**(R2 바인딩). R2 API 키·CORS 설정이 필요 없고, 크기를 Worker가 직접 잰다. 한 파일 100MB까지(Workers 요청 한도)
     1. 사진 행 만들기: 사용자 권한으로 `media` insert(기존 RLS가 올리기 권한 확인) → `uploading`
-    2. `PUT /api/media/<id>/<view|thumb|poster>`: `sp_upload_target(id)`로 올린 사람·가족방 확인 → 형식(jpeg·webp·png·mp4·mov)·크기 확인 → R2 `<가족방>/<사진>/<종류>`
-    3. `POST /api/media/<id>/done`: R2에서 파일 크기 확인 → 서버 전용 `sp_finish_upload`(service_role)로 `ready`·키·용량 기록, 가족방 사용량 더하기
+    2. `PUT /api/media/<id>/<view|thumb|poster>`: `sp_upload_target(id)`로 올린 사람·가족방 확인 → 형식(jpeg·webp·png·mp4·mov)·크기 확인 → R2 `<가족방>/<사진>/<종류>-<uuid>`(넣을 때마다 새 키, 응답으로 돌려줌)
+    3. `POST /api/media/<id>/done` 본문 `{view, thumb, poster?}`(PUT이 준 키): 이 사진의 키인지·R2에 있는지 확인 → 서버 전용 `sp_finish_upload`(service_role)로 `ready`·키·용량 기록, 가족방 사용량 더하기
   - 목록: 새 SQL 없이 PostgREST로 `media` 읽기(RLS가 볼 수 있는 것만). `?family_id=`로 한 집만
+  - 사진 행은 `sp_create_media`로만(직접 insert 막음). 올린 사람별 하루 안 끝낸 올리기 50개까지(넘으면 429)
   - 백엔드 계약에 올리기·목록 추가, mock도 구현(메모리 R2)
   - 환경: `wrangler.jsonc`에 R2 바인딩 `MEDIA`, 비밀 `SUPABASE_SERVICE_ROLE_KEY`
 - 영향받는 파일: `supabase/migrations/`(새 마이그레이션), `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/pages/api/media/*`, `wrangler.jsonc`, `astro.config.mjs`, `index.md`, `plan.md`
 - 예상 결과: 로컬에서 mock 백엔드 + 로컬 R2로 올리기 → 완료 → 목록까지 동작. 권한 없는 사람·남의 사진 id로 올리기 거부를 DB 검사·API 검사로 확인
 - 범위 밖: 올리기 화면(이슈 10), 기기 압축 코드(이슈 10), 사진 보여 주는 Worker(이슈 6), 5GB 상한(이슈 13), 부모 로그인(이슈 9: 그 전까지 API 검사는 올리기 권한 가족 기기로)
 - 사용자 작업: Cloudflare에서 R2 켜기(카드 등록), 버킷 `sweepea-media` 만들기
+- 결과: 검토 2회 반영(가족 기기 올리기 버그, 덮어쓰기 경쟁, 인증 오류 500 등). DB 검사(의도된 거부 20건), 올리기 API e2e 20개, 입장 e2e, 타입 검사·빌드 통과. 남은 위험: 안 쓰인 파일·끝내지 않은 올리기 정리는 이슈 13, 실제 R2·Supabase에선 아직 안 돌려 봄
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
@@ -144,7 +146,7 @@
 10. web: 올리기 + 카톡 공유(카카오 JS SDK)
 11. web: 아이 정보 카드 + 접종·검진 페이지
 12. supabase·web: 부모 최근 반응·승인 목록 + iOS 홈 화면 추가 안내
-13. supabase: 용량 집계, 5GB 상한
+13. supabase: 용량 집계, 5GB 상한. 정리 작업(예약): 하루 지난 `uploading` 사진과 그 R2 폴더, 완료된 사진 폴더에서 기록 안 된 파일(PUT마다 새 키라 남음) 지우기. 사진 지우기는 RPC로 용량 빼고 R2 삭제 대기열에
 14. web: PC 화면 (모아 보기·크게 보기)
 
 ## 결정됨

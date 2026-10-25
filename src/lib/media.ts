@@ -23,6 +23,7 @@ export function backendErrorResponse(e: unknown): Response {
   if (e instanceof BackendError && e.status === 401) return json(401, { error: 'login_required' });
   if (e instanceof BackendError && e.status === 403) return json(403, { error: 'not_allowed' });
   if (e instanceof BackendError && e.status === 400) return json(400, { error: 'bad_request' });
+  if (e instanceof BackendError && e.status === 429) return json(429, { error: 'too_many_uploads' });
   throw e;
 }
 

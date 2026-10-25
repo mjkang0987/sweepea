@@ -20,9 +20,12 @@ begin
      or exists (select 1 from public.families where id = p_family_id and delete_after is not null) then
     raise exception 'not_allowed' using errcode = '42501';
   end if;
-  -- 끝내지 않은 올리기가 쌓이지 않게(완료되지 않은 파일은 용량에 안 잡힌다). 지우기는 이슈 13의 정리 작업
-  if (select count(*) from public.media where family_id = p_family_id and status = 'uploading') >= 50 then
-    raise exception 'too_many_uploads' using errcode = '22023';
+  -- 끝내지 않은 올리기가 쌓이지 않게(완료 전 파일은 용량에 안 잡힌다). 올린 사람별·최근 하루만 세서
+  -- 한 사람이 가족 전체를 막지 못하게 한다. 오래된 것 지우기는 이슈 13의 정리 작업. PT429 → PostgREST가 HTTP 429로
+  if (select count(*) from public.media
+      where family_id = p_family_id and status = 'uploading' and created_at > now() - interval '1 day'
+        and (uploaded_by_parent = auth.uid() or uploaded_by_member = v_member)) >= 50 then
+    raise exception 'too_many_uploads' using errcode = 'PT429';
   end if;
   v_groups := coalesce(p_group_ids,
     array(select g.id from public.groups g where g.family_id = p_family_id and g.include_by_default));
