@@ -28,7 +28,7 @@ function fakeBackend(queue: string[]) {
     done,
     purgeDeletedFamilies: async () => ['x'],
     cleanupStaleUploads: async () => 2,
-    r2CleanupTake: async () => [...queue],
+    r2CleanupTake: async (_n: number) => [...queue],
     r2CleanupDone: async (p: string) => void done.push(p),
   };
 }
@@ -38,7 +38,7 @@ test('대기열 폴더의 파일을 지우고 끝 표시, 다른 폴더는 그�
   const bucket = fakeBucket([`${F}/${M}/view-1`, `${F}/${M}/thumb-1`, `${F}/b/view-1`, `${other}/x/view-1`]);
   const backend = fakeBackend([`${F}/${M}/`]);
   const r = await runCleanup(backend, bucket);
-  assert.deepEqual({ ...r, calls: undefined }, { families: 1, stale: 2, folders: 1, files: 2, failed: [], errors: [], calls: undefined });
+  assert.deepEqual(r, { families: 1, stale: 2, folders: 1, files: 2, failed: [], errors: [], calls: 6 });
   assert.deepEqual([...bucket.keys].sort(), [`${F}/b/view-1`, `${other}/x/view-1`]);
   assert.deepEqual(backend.done, [`${F}/${M}/`]);
 });
@@ -74,9 +74,20 @@ test('호출 수가 모자라면 남은 폴더는 다음에', async () => {
   const queue = Array.from({ length: 30 }, (_, i) => `${F}/00000000-0000-4000-8000-${String(i).padStart(12, '0')}/`);
   const backend = fakeBackend(queue);
   let asked = 0;
-  backend.r2CleanupTake = async () => { asked++; return [...queue]; };
+  backend.r2CleanupTake = async (n: number) => { asked = n; return queue.slice(0, n); };
   const r = await runCleanup(backend, fakeBucket([]), 20);
   assert.ok(r.calls <= 20, `호출 ${r.calls}`);
-  assert.ok(r.folders < 30 && r.folders > 0);
-  assert.equal(asked, 1);
+  assert.equal(asked, 5, '남은 호출로 가져올 폴더 수');
+  assert.ok(r.folders > 0 && r.folders <= 5);
+});
+
+test('큰 폴더도 호출 한도를 넘지 않고, 다 못 지우면 대기열에 남긴다', async () => {
+  const keys = Array.from({ length: 30_000 }, (_, i) => `${F}/m${String(i).padStart(5, '0')}/v`);
+  const bucket = fakeBucket(keys);
+  const backend = fakeBackend([`${F}/`]);
+  const r = await runCleanup(backend, bucket, 45);
+  assert.ok(r.calls <= 45, `호출 ${r.calls}`);
+  assert.deepEqual(backend.done, []);
+  assert.ok(bucket.keys.size > 0 && bucket.keys.size < 30_000);
+  assert.deepEqual(r.errors, []);
 });
