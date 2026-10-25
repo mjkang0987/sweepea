@@ -2,18 +2,18 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { getBackend } from '../../../../lib/backend';
-import { PARTS, UUID, backendErrorResponse, isMediaKey, json, uploaderPass } from '../../../../lib/media';
+import { PARTS, UUID, backendErrorResponse, isMediaKey, json, withUploader } from '../../../../lib/media';
 
 export const POST: APIRoute = async ({ params, request, cookies }) => {
   const id = params.id ?? '';
   if (!UUID.test(id)) return json(404, { error: 'not_found' });
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   try {
-    const pass = await uploaderPass(cookies);
-    if (!pass) return json(401, { error: 'login_required' });
     const backend = getBackend();
-    const target = await backend.uploadTarget(pass, id);
-    if (!target) return json(404, { error: 'not_found' });
+    const r = await withUploader(cookies, (pass) => backend.uploadTarget(pass, id));
+    if (r === 'login') return json(401, { error: 'login_required' });
+    if (!r) return json(404, { error: 'not_found' });
+    const target = r.value;
     const parts = Object.keys(PARTS[target.kind]);
     const keys = parts.map((p) => (body && isMediaKey(body[p], target.family_id, id, p) ? (body[p] as string) : null));
     const heads = await Promise.all(keys.map((k) => (k ? env.MEDIA.head(k) : null)));

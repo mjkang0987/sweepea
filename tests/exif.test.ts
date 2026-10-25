@@ -44,6 +44,12 @@ test('EXIF 없음·JPEG 아님·빈 날짜', () => {
   assert.equal(exifTakenAt(jpeg('0000:00:00 00:00:00')), null);
   assert.equal(exifTakenAt(jpeg('2026:10:21 15:30:00').slice(0, 30)), null);
 });
+test('이상한 EXIF(포인터 개수 5)는 예외 없이 null', () => {
+  const buf = new Uint8Array(jpeg('2026:10:21 15:30:00'));
+  // IFD0의 0x8769 항목 개수를 5로(값이 포인터로 해석돼 범위 밖을 가리킴)
+  buf[6 + 6 + 8 + 2 + 4] = 5;
+  assert.equal(exifTakenAt(buf.buffer), null);
+});
 test('긴 변 맞추기', () => {
   assert.deepEqual(fitSize(4032, 3024, 2048), { width: 2048, height: 1536 });
   assert.deepEqual(fitSize(800, 600, 2048), { width: 800, height: 600 });

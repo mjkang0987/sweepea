@@ -1,10 +1,35 @@
 // 사진 파일 규칙: 종류별로 넣을 수 있는 파일(부분)과 형식·크기. 기기에서 압축해서 올린다(기획서)
 import type { AstroCookies } from 'astro';
-import { BackendError, type MediaKind } from './backend';
+import { BackendError, type MediaKind, type Pass } from './backend';
 import { currentParent, currentPass } from './pass';
 
-/** 올리는 사람: 부모 세션이 있으면 부모, 없으면 올리기 권한 가족 기기 출입증 */
-export const uploaderPass = async (cookies: AstroCookies) => (await currentParent(cookies)) ?? (await currentPass(cookies));
+/** 올릴 수 있는 출입증들: 부모 세션, 가족 기기 출입증 순. 한쪽 갱신이 일시적으로 실패해도 다른 쪽은 쓴다 */
+async function uploaderPasses(cookies: AstroCookies): Promise<Pass[]> {
+  const out: Pass[] = [];
+  for (const get of [currentParent, currentPass]) {
+    const p = await get(cookies).catch(() => null);
+    if (p) out.push(p);
+  }
+  return out;
+}
+
+/** 출입증마다 시도해서 처음 되는 것(403·null이면 다음 출입증). 하나도 없으면 null */
+export async function withUploader<T>(cookies: AstroCookies, fn: (pass: Pass) => Promise<T | null>): Promise<{ pass: Pass; value: T } | null | 'login'> {
+  const passes = await uploaderPasses(cookies);
+  if (!passes.length) return 'login';
+  let lastError: unknown = null;
+  for (const pass of passes) {
+    try {
+      const value = await fn(pass);
+      if (value !== null) return { pass, value };
+    } catch (e) {
+      if (!(e instanceof BackendError) || e.status !== 403) throw e;
+      lastError = e;
+    }
+  }
+  if (lastError) throw lastError;
+  return null;
+}
 
 const MB = 1024 * 1024;
 const IMAGE = { types: ['image/jpeg', 'image/webp', 'image/png'], max: 15 * MB };

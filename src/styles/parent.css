@@ -759,6 +759,7 @@
   font-weight: 500;
 }
 .sp-p__checks {
+  clear: both;
   margin-top: var(--space-2);
   display: flex;
   flex-wrap: wrap;
@@ -797,6 +798,15 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+/* 상태 칸: 비었을 때는 화면에서만 숨긴다(화면 읽기용 알림 영역은 늘 있게) */
+.sp-p__toast--live:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
 /* display를 준 클래스는 hidden 속성을 이겨서 다시 숨긴다 */
 .sp-p__card[hidden],
 .sp-p__form[hidden],
@@ -809,7 +819,4 @@
 .sp-p__panel-legend {
   float: left;
   width: 100%;
-}
-.sp-p__checks {
-  clear: both;
 }

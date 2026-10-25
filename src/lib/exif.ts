@@ -23,8 +23,9 @@ function readTiff(v: DataView, t: number, end: number): string | null {
   if (t + 8 > end) return null;
   const le = v.getUint16(t) === 0x4949;
   if (!le && v.getUint16(t) !== 0x4d4d) return null;
-  const u16 = (o: number) => v.getUint16(t + o, le);
-  const u32 = (o: number) => v.getUint32(t + o, le);
+  // 범위 밖이면 NaN을 돌려 아래 검사에서 걸러지게(이상한 파일에서 예외가 나지 않게)
+  const u16 = (o: number) => (t + o + 2 <= end ? v.getUint16(t + o, le) : NaN);
+  const u32 = (o: number) => (t + o + 4 <= end ? v.getUint32(t + o, le) : NaN);
   const ascii = (o: number, n: number) => {
     let s = '';
     for (let i = 0; i < n && t + o + i < end; i++) {
@@ -34,28 +35,35 @@ function readTiff(v: DataView, t: number, end: number): string | null {
     }
     return s;
   };
-  /** IFD에서 태그 → (형식, 개수, 값 위치) */
-  const find = (ifd: number, tag: number): { count: number; at: number } | null => {
-    if (t + ifd + 2 > end) return null;
+  // 형식별 한 개 크기: 2 ASCII 1바이트, 4 LONG·13 IFD 4바이트
+  const SIZE: Record<number, number> = { 2: 1, 4: 4, 13: 4 };
+  /** IFD에서 태그(기대 형식만) → (개수, 값 위치). 값이 4바이트 넘으면 위치는 포인터 */
+  const find = (ifd: number, tag: number, types: number[]): { count: number; at: number } | null => {
     const n = u16(ifd);
+    if (!(n >= 0) || n > 512) return null;
     for (let i = 0; i < n; i++) {
       const e = ifd + 2 + i * 12;
       if (t + e + 12 > end) return null;
-      if (u16(e) === tag) {
-        const count = u32(e + 4);
-        return { count, at: count > 4 ? u32(e + 8) : e + 8 };
-      }
+      if (u16(e) !== tag) continue;
+      const type = u16(e + 2);
+      const count = u32(e + 4);
+      if (!types.includes(type) || !(count >= 0)) return null;
+      const at = count * SIZE[type] > 4 ? u32(e + 8) : e + 8;
+      return Number.isFinite(at) ? { count, at } : null;
     }
     return null;
   };
-  const exifPtr = find(u32(4), 0x8769);
+  const ifd0 = u32(4);
+  if (!Number.isFinite(ifd0)) return null;
+  const exifPtr = find(ifd0, 0x8769, [4, 13]);
   if (!exifPtr) return null;
   const exif = u32(exifPtr.at);
-  const dto = find(exif, 0x9003);
+  if (!Number.isFinite(exif)) return null;
+  const dto = find(exif, 0x9003, [2]);
   if (!dto) return null;
   const m = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(ascii(dto.at, dto.count));
   if (!m || m[1] === '0000') return null;
-  const off = find(exif, 0x9011);
+  const off = find(exif, 0x9011, [2]);
   const tz = off && /^[+-]\d{2}:\d{2}$/.test(ascii(off.at, off.count)) ? ascii(off.at, off.count) : '+09:00';
   const d = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}${tz}`);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
