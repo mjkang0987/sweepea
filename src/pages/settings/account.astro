@@ -9,7 +9,7 @@ const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
-  if (form.get('agree') !== '1') return Astro.redirect('/settings/account?confirm=delete#confirm', 303);
+  if (form.get('agree') !== '1') return Astro.redirect('/settings/account?confirm=delete&e=agree#confirm', 303);
   try {
     const at = await getBackend().requestDelete(a.pass);
     await logoutParent(Astro.cookies);
@@ -22,7 +22,12 @@ if (Astro.request.method === 'POST') {
 const provider = PROVIDER_NAMES[a.home.provider ?? ''];
 const who = `${a.home.children?.[0]?.name ?? ''} ${a.home.role === 'dad' ? '아빠' : '엄마'}`.trim();
 const confirm = Astro.url.searchParams.get('confirm');
-const photos = (a.home.photo_count ?? 0) + (a.home.video_count ?? 0);
+const photos = a.home.photo_count ?? 0;
+const videos = a.home.video_count ?? 0;
+const what = videos ? `사진 ${photos.toLocaleString('ko-KR')}장·영상 ${videos.toLocaleString('ko-KR')}개` : `사진 ${photos.toLocaleString('ko-KR')}장`;
+const agreeError = Astro.url.searchParams.get('e') === 'agree';
+const day = (iso: string) => new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(iso));
+const planUntil = a.home.plan_until ? day(a.home.plan_until) : null;
 ---
 
 <Parent title={confirm === 'delete' ? '정말 탈퇴할까요? · 계정' : '계정 · 설정'} tab="settings">
@@ -35,13 +40,14 @@ const photos = (a.home.photo_count ?? 0) + (a.home.video_count ?? 0);
     <p class="sp-p__hint">{provider ? `${provider}로 로그인` : '로그인됨'}</p>
   </div>
   {
-    confirm === 'delete' ? (
+    confirm === 'delete' && !planUntil ? (
       <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
         <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>정말 탈퇴할까요?</h2>
-        <p class="sp-p__lead">가족 화면은 바로 닫히고, <strong>3일 뒤</strong> 사진 {photos.toLocaleString('ko-KR')}장과 가족·아이 정보가 모두 지워져요. 3일 안에 다시 로그인하면 되살릴 수 있어요.</p>
+        <p class="sp-p__lead">가족 화면은 바로 닫히고, <strong>3일 뒤</strong> {what}과 가족·아이 정보가 모두 지워져요. 3일 안에 다시 로그인하면 되살릴 수 있어요.</p>
         <form class="sp-p__form" method="post">
+          {agreeError && <p class="sp-p__error" role="alert" id="agree-err">'모두 지워지는 것을 확인했어요'를 체크해야 탈퇴할 수 있어요.</p>}
           <label class="sp-p__check sp-p__check--plain">
-            <input class="sp-p__checkbox" type="checkbox" name="agree" value="1" required />
+            <input class="sp-p__checkbox" type="checkbox" name="agree" value="1" required aria-invalid={agreeError ? 'true' : undefined} aria-describedby={agreeError ? 'agree-err' : undefined} />
             모두 지워지는 것을 확인했어요
           </label>
           <div class="sp-p__pair">
@@ -50,20 +56,20 @@ const photos = (a.home.photo_count ?? 0) + (a.home.video_count ?? 0);
           </div>
         </form>
       </section>
-    ) : confirm === 'subscribed' ? (
+    ) : confirm === 'subscribed' || confirm === 'delete' ? (
       <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
         <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>구독 중이에요</h2>
-        <p class="sp-p__lead">탈퇴해도 결제는 자동으로 멈추지 않아요. 먼저 App Store나 Google Play에서 가족 플랜 구독을 해지한 다음 탈퇴해 주세요.</p>
+        <p class="sp-p__lead">탈퇴해도 결제는 자동으로 멈추지 않아요. 아직 해지하지 않았다면 App Store나 Google Play에서 가족 플랜 구독을 먼저 해지해 주세요. {planUntil ? `구독 기간이 끝나는 ${planUntil} 뒤에 탈퇴할 수 있어요.` : '구독 기간이 끝난 뒤에 탈퇴할 수 있어요.'}</p>
         <a class="sp-p__btn sp-p__btn--quiet" href="/settings/account">닫기</a>
       </section>
     ) : (
       <>
-        {confirm === 'error' && <p class="sp-p__toast sp-p__toast--error" tabindex="-1" autofocus>처리하지 못했어요. 다시 눌러 주세요.</p>}
+        {confirm === 'error' && <p class="sp-p__toast sp-p__toast--error" role="alert" tabindex="-1" autofocus>처리하지 못했어요. 다시 눌러 주세요.</p>}
         <form class="sp-p__account-out" method="post" action="/logout">
           <button class="sp-p__btn sp-p__btn--quiet" type="submit">로그아웃</button>
         </form>
         <p class="sp-p__hint">로그아웃해도 사진과 가족은 그대로예요. 탈퇴하면 3일 뒤 모두 지워져요.</p>
-        <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" href="/settings/account?confirm=delete#confirm">탈퇴하기</a>
+        <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" href={`/settings/account?confirm=${planUntil ? 'subscribed' : 'delete'}#confirm`}>탈퇴하기</a>
       </>
     )
   }

@@ -132,6 +132,8 @@ export interface ParentHome {
   closing?: boolean;
   /** 탈퇴 유예 중이면 지울 시각(ISO) */
   delete_after?: string | null;
+  /** 스토어 구독이 끝나는 시각(구독 중이면). 그때까지 탈퇴 불가 */
+  plan_until?: string | null;
   download_allowed?: boolean;
   storage_used_bytes?: number;
   photo_count?: number;
