@@ -28,6 +28,7 @@ const members: Member[] = [
   { id: 'm-dad', groupId: 'g-mat', name: '하린 아빠', status: 'active', uploader: true },
   { id: 'm-pgm', groupId: 'g-pat', name: '할머니', status: 'active' },
   { id: 'm-dgm', groupId: 'g-dy', name: '할머니', status: 'active' },
+  { id: 'm-dmom', groupId: 'g-dy', name: '도윤 엄마', status: 'active', uploader: true },
 ];
 const shares: Share[] = [
   { code: 'Harin001', groupIds: ['g-mat'], createdAt: Date.now() },
@@ -177,7 +178,7 @@ export function createMockBackend(): Backend {
           const d = deviceOf(pass, x.family_id);
           return d?.status === 'active' && members.find((m) => m.id === d.memberId)?.status === 'active';
         })
-        .sort((a, b) => (a.taken_at < b.taken_at ? 1 : -1))
+        .sort((a, b) => (a.taken_at === b.taken_at ? (a.id < b.id ? 1 : -1) : a.taken_at < b.taken_at ? 1 : -1))
         .slice(0, opts.limit ?? 60)
         .map(({ status: _s, uploader: _u, ...rest }) => rest);
     },

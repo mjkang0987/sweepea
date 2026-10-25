@@ -251,24 +251,313 @@
   image-rendering: pixelated;
 }
 
-/* 앨범 자리 화면 썸네일(실제 뷰어는 이슈 7) */
-.sp-f__grid {
+/* 앨범(.sp-a)·크게 보기(.sp-v). 링크 탭·칩은 aria-current로 고른 것을 표시 */
+.sp-a__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sp-a__head-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.sp-a__kongi {
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  image-rendering: pixelated;
+}
+.sp-a__chips {
+  display: flex;
+  /* 가로 스크롤 영역은 위아래도 잘리므로 포커스 테두리 자리 */
+  padding-block: 4px;
+  gap: var(--space-2);
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--space-5));
+  padding: 0 var(--space-5);
+}
+.sp-a__chip {
+  flex: none;
+  min-height: var(--target-senior);
+  padding: 0 1.375rem;
+  display: flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--label);
+  font-size: var(--senior-button-size);
+  font-weight: 600;
+  text-decoration: none;
+}
+.sp-a__chip[aria-current='true'] {
+  background: var(--pea);
+  color: var(--on-pea);
+  font-weight: 700;
+}
+.sp-a__tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--fill);
+}
+.sp-a__tab {
+  flex: 1;
+  min-height: var(--target-senior);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--radius-md) - 2px);
+  color: var(--label);
+  font-size: var(--senior-button-size);
+  font-weight: 600;
+  text-decoration: none;
+}
+.sp-a__tab[aria-current='page'] {
+  background: var(--bg);
+  box-shadow: inset 0 0 0 2px var(--pea), 0 1px 2px rgba(0, 0, 0, 0.12);
+  color: var(--pea-deep);
+}
+@media (forced-colors: active) {
+  .sp-a__chip[aria-current='true'],
+  .sp-a__tab[aria-current='page'] {
+    outline: 3px solid Highlight;
+    outline-offset: -3px;
+  }
+}
+
+/* 넘겨 보기: 가로 스크롤 + 칸 맞춤(scroll-snap). JS 없이 손가락으로 넘긴다 */
+.sp-a__swipe {
+  list-style: none;
+  margin: 0 calc(-1 * var(--space-5));
+  padding: 4px var(--space-5) var(--space-5);
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 var(--space-5);
+  overscroll-behavior-x: contain;
+}
+.sp-a__slide {
+  flex: 0 0 86%;
+  scroll-snap-align: center;
+}
+.sp-a__card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--label);
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.sp-a__card-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  background: var(--fill);
+}
+.sp-a__card-cap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--senior-caption-size);
+  line-height: var(--senior-caption-line);
+  color: var(--label-2);
+}
+.sp-a__count {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--label);
+}
+.sp-a__tag {
+  padding: 0 0.625rem;
+  border-radius: 999px;
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-weight: 700;
+}
+
+/* 모아 보기: 날짜별, 칸 수는 ?z=. 원본 비율 그대로 쌓기(CSS columns) */
+.sp-a__day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-a__day-title {
+  margin: 0;
+  font-size: var(--senior-caption-size);
+  line-height: var(--senior-caption-line);
+  font-weight: 700;
+}
+.sp-a__day-count {
+  font-weight: 500;
+  color: var(--label-2);
+}
+.sp-a__grid {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  column-gap: var(--gap, 8px);
 }
-.sp-f__cell {
-  aspect-ratio: 1;
-  border-radius: 6px;
+.sp-a__grid--1 {
+  columns: 1;
+  --gap: 12px;
+}
+.sp-a__grid--2 {
+  columns: 2;
+  --gap: 8px;
+}
+/* 3·5칸은 정사각형 격자(줄 단위로 채워야 촘촘하다) */
+.sp-a__grid--3,
+.sp-a__grid--5 {
+  display: grid;
+  gap: var(--gap);
+}
+.sp-a__grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  --gap: 4px;
+}
+.sp-a__grid--5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  --gap: 2px;
+}
+.sp-a__grid--3 .sp-a__cell,
+.sp-a__grid--5 .sp-a__cell {
+  margin-bottom: 0;
+}
+.sp-a__cell {
+  break-inside: avoid;
+  margin-bottom: var(--gap, 8px);
+}
+.sp-a__cell-link {
+  position: relative;
+  display: block;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--fill);
 }
-.sp-f__thumb {
+.sp-a__grid--3 .sp-a__cell-link,
+.sp-a__grid--5 .sp-a__cell-link {
+  border-radius: 2px;
+}
+.sp-a__cell-img {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
+}
+/* 3·5칸은 정사각형으로 맞춰 촘촘하게 */
+.sp-a__grid--3 .sp-a__cell-img,
+.sp-a__grid--5 .sp-a__cell-img {
+  aspect-ratio: 1;
   object-fit: cover;
+}
+.sp-a__tag--on {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  /* 사진 위라 불투명하게(다크에서 반투명이면 대비 부족) */
+  background: var(--bg);
+  color: var(--label);
+  font-size: var(--senior-caption-size);
+}
+.sp-a__play {
+  position: absolute;
+  right: var(--space-2);
+  top: var(--space-2);
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 0.75rem;
+}
+.sp-a__zoom {
+  /* 화면 아래에 떠 있지만 DOM에선 사진들 앞(키보드로 바로 닿게) */
+  position: fixed;
+  z-index: 2;
+  bottom: var(--space-5);
+  right: max(var(--space-5), calc((100vw - 32rem) / 2 + var(--space-5)));
+  display: flex;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+.sp-a__zoom-btn {
+  width: var(--target-senior);
+  height: var(--target-senior);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--label);
+  font-size: var(--senior-title-size);
+  text-decoration: none;
+}
+.sp-a__zoom-space {
+  height: calc(var(--target-senior) + var(--space-5));
+}
+.sp-a__zoom-btn--off {
+  opacity: 0.35;
+}
+
+.sp-v__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sp-v__link {
+  min-height: var(--target-senior);
+  display: flex;
+  align-items: center;
+  color: var(--pea-ink);
+  font-size: var(--senior-button-size);
+  font-weight: 700;
+  text-decoration: none;
+}
+.sp-v__pos {
+  margin: 0;
+  font-size: var(--senior-caption-size);
+  font-weight: 700;
+}
+.sp-v__spacer {
+  width: 4rem;
+}
+.sp-v__title {
+  font-size: var(--senior-body-size);
+  line-height: var(--senior-body-line);
+}
+.sp-v__fig {
+  margin: 0 calc(-1 * var(--space-5));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-v__media {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
+  background: var(--surface);
+}
+.sp-v__nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+/* 떠 있는 칸 크기 버튼이 포커스된 사진을 가리지 않게 */
+.sp-html {
+  scroll-padding-bottom: calc(var(--target-senior) + var(--space-8));
 }

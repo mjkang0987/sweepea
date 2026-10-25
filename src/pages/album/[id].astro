@@ -1,0 +1,44 @@
+---
+// 크게 보기: 사진은 화면에 맞춰, 영상은 브라우저 기본 재생 막대(JS 없음). 이전·다음은 링크
+import Family from '../../layouts/Family.astro';
+import { albumHref, dayLabel, loadAlbum } from '../../lib/album';
+import { signedMediaUrl } from '../../lib/signed';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadAlbum(Astro.cookies, Astro.url);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const { open, kids, q, items } = a;
+const i = items.findIndex((m) => m.id === Astro.params.id);
+// 볼 수 없거나 목록 밖 사진은 앨범으로
+if (i < 0) return Astro.redirect(albumHref(q));
+const m = items[i];
+const prev = items[i - 1];
+const next = items[i + 1];
+const what = m.kind === 'video' ? '영상' : '사진';
+const kid = open.length > 1 && !q.f ? `${kids.get(m.family_id)} ` : '';
+const src = await signedMediaUrl(m.view_key);
+const poster = m.poster_key ? await signedMediaUrl(m.poster_key) : undefined;
+const label = `${dayLabel(m.taken_at)} ${kid}${what}`;
+---
+
+<Family title={`${label} · ${i + 1} / ${items.length}`}>
+  <nav class="sp-v__bar" aria-label="사진 이동">
+    <a class="sp-v__link" href={albumHref(q)}><span aria-hidden="true">‹ </span>닫기</a>
+    <p class="sp-v__pos">{i + 1} / {items.length}</p>
+    <span class="sp-v__spacer"></span>
+  </nav>
+  <h1 class="sp-f__title sp-v__title" id="v-title">{label}</h1>
+  <figure class="sp-v__fig">
+    {
+      m.kind === 'video' ? (
+        <video class="sp-v__media" src={src} poster={poster} controls playsinline preload="metadata" aria-labelledby="v-title" />
+      ) : (
+        <img class="sp-v__media" src={src} alt="" width={m.width ?? undefined} height={m.height ?? undefined} decoding="async" />
+      )
+    }
+  </figure>
+  <nav class="sp-v__nav" aria-label="이전·다음">
+    {prev ? <a class="sp-f__btn sp-f__btn--fill" href={albumHref(q, `/album/${prev.id}`)} rel="prev">이전</a> : <span></span>}
+    {next ? <a class="sp-f__btn sp-f__btn--fill" href={albumHref(q, `/album/${next.id}`)} rel="next">다음</a> : <span></span>}
+  </nav>
+</Family>
