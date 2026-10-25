@@ -81,6 +81,11 @@ export function createMockBackend(): Backend {
       if (s.closed) return { result: 'closed' };
       const k = key(pass, familyOf(s));
       const d = devices.get(k);
+      // 마지막으로 들어가려던 가족방이 목록 끝에 오게(DB의 last_seen_at 순서와 같게)
+      if (d) {
+        devices.delete(k);
+        devices.set(k, d);
+      }
       if (d?.status === 'revoked') return { result: 'revoked' };
       if (d?.status === 'pending') return { result: 'needs_approval' };
       let groupId: string;

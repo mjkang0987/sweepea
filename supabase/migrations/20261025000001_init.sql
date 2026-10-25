@@ -461,7 +461,8 @@ revoke update on public.members from authenticated;
 grant update (display_name, group_id, status, pending_until, text_size) on public.members to authenticated;
 revoke update on public.devices from authenticated;
 grant update (status, can_upload, label) on public.devices to authenticated;
--- 기기 사용자 id는 안 보여 준다: 가족방마다 같은 값이라 두 집 부모가 맞춰 보면 같은 사람인 걸 알 수 있다
+-- 기기 사용자 id는 안 보여 준다: 가족방마다 같은 값이라 두 집 부모가 맞춰 보면 같은 사람인 걸 알 수 있다.
+-- 그래서 select *·returning *는 거부된다. 부모 화면은 열을 꼭 적는다(select=id,status,...)
 revoke select on public.devices from authenticated;
 grant select (id, family_id, member_id, status, can_upload, requested_member_id, requested_group_id, requested_name, label, last_seen_at, created_at)
   on public.devices to authenticated;
@@ -699,6 +700,8 @@ begin
   -- 기기는 비밀번호가 맞거나 승인 대기로 넘어갈 때만 만든다(틀린 링크로 가족방에 묶이지 않게)
   select * into d from public.devices where auth_user_id = v_uid and family_id = s.family_id for update;
   if found then
+    -- 승인 대기 화면이 '마지막으로 들어가려던 가족방'을 보여 주게
+    update public.devices set last_seen_at = now() where id = d.id;
     if d.status = 'revoked' then return jsonb_build_object('result', 'revoked'); end if;
     if d.status = 'pending' then return jsonb_build_object('result', 'needs_approval'); end if;
   end if;
