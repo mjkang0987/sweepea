@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { Backend, EnterInput, EnterResult, EntryInfo, Me, Pass } from './types';
+import type { Backend, EnterInput, EnterResult, EntryInfo, MediaItem, Me, Pass, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -20,12 +20,12 @@ export class BackendError extends Error {
 }
 
 
-export function createSupabaseBackend(url: string, anonKey: string): Backend {
+export function createSupabaseBackend(url: string, anonKey: string, serviceKey?: string): Backend {
   const base = url.replace(/\/$/, '');
 
-  async function call<T>(path: string, init: RequestInit & { token?: string | null }): Promise<T> {
+  async function call<T>(path: string, init: RequestInit & { token?: string | null; apikey?: string }): Promise<T> {
     const headers = new Headers(init.headers);
-    headers.set('apikey', anonKey);
+    headers.set('apikey', init.apikey ?? anonKey);
     headers.set('content-type', 'application/json');
     headers.set('authorization', `Bearer ${init.token ?? anonKey}`);
     const res = await fetch(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(8000) });
@@ -76,5 +76,38 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
         p_group_id: i.groupId ?? null,
       }),
     me: (pass) => rpc<Me>(pass, 'sp_me', {}),
+    createMedia: (pass, m) =>
+      rpc<string>(pass, 'sp_create_media', {
+        p_family_id: m.familyId,
+        p_kind: m.kind,
+        p_taken_at: m.takenAt,
+        p_taken_at_source: m.takenAtSource,
+        p_width: m.width ?? null,
+        p_height: m.height ?? null,
+        p_duration_sec: m.durationSec ?? null,
+        p_group_ids: m.groupIds ?? null,
+        p_child_ids: m.childIds ?? [],
+      }),
+    uploadTarget: (pass, id) => rpc<UploadTarget | null>(pass, 'sp_upload_target', { p_media_id: id }),
+    async finishUpload(id, keys, bytes) {
+      if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY가 없다');
+      return call<boolean>('/rest/v1/rpc/sp_finish_upload', {
+        method: 'POST',
+        token: serviceKey,
+        // 새 형식 비밀 키(sb_secret_)는 JWT가 아니라 apikey 자리에도 넣어야 한다
+        apikey: serviceKey,
+        body: JSON.stringify({ p_media_id: id, p_view_key: keys.view, p_thumb_key: keys.thumb, p_poster_key: keys.poster, p_bytes: bytes }),
+      });
+    },
+    listMedia(pass, opts = {}) {
+      const q = new URLSearchParams({
+        select: 'id,family_id,kind,taken_at,width,height,duration_sec',
+        status: 'eq.ready',
+        order: 'taken_at.desc,id.desc',
+        limit: String(Math.min(opts.limit ?? 60, 200)),
+      });
+      if (opts.familyId) q.set('family_id', `eq.${opts.familyId}`);
+      return call<MediaItem[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access });
+    },
   };
 }

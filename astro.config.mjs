@@ -14,6 +14,8 @@ export default defineConfig({
     schema: {
       SUPABASE_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
       SUPABASE_ANON_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // 올리기 완료 처리(sp_finish_upload)만 쓴다. 클라이언트로 절대 내보내지 않는다
+      SUPABASE_SERVICE_ROLE_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       // mock: 개발·검사용 메모리 백엔드(운영 빌드에선 멈춤)
       SWEEPEA_BACKEND: envField.enum({ context: 'server', access: 'secret', values: ['supabase', 'mock'], default: 'supabase' }),
     },

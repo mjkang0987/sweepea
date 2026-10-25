@@ -13,6 +13,7 @@ const { families } = await getBackend().me(pass);
 const open = families.filter(isOpen);
 if (open.length === 0) return Astro.redirect(families.length ? '/wait' : '/');
 const title = `${open.map((f) => callName(f.child_name ?? '아이')).join('·')} 사진`;
+const items = await getBackend().listMedia(pass);
 ---
 
 <Family title={title}>
@@ -20,5 +21,5 @@ const title = `${open.map((f) => callName(f.child_name ?? '아이')).join('·')}
     <h1 class="sp-f__title">{title}</h1>
     <p class="sp-f__lead">{open[0].name}, 반가워요</p>
   </div>
-  <p class="sp-f__box">사진 화면은 곧 열려요.</p>
+  <p class="sp-f__box">사진 {items.length}{items.length >= 60 ? '장 넘게' : '장'} 올라와 있어요. 사진 화면은 곧 열려요.</p>
 </Family>

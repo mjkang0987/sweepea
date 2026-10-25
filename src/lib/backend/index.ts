@@ -1,4 +1,4 @@
-import { SUPABASE_ANON_KEY, SUPABASE_URL, SWEEPEA_BACKEND } from 'astro:env/server';
+import { SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL, SWEEPEA_BACKEND } from 'astro:env/server';
 import { createMockBackend } from './mock';
 import { createSupabaseBackend } from './supabase';
 import type { Backend } from './types';
@@ -13,7 +13,8 @@ export function getBackend(): Backend {
     return (cached = createMockBackend());
   }
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error('SUPABASE_URL·SUPABASE_ANON_KEY가 없다');
-  return (cached = createSupabaseBackend(SUPABASE_URL, SUPABASE_ANON_KEY));
+  return (cached = createSupabaseBackend(SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY));
 }
 
 export type * from './types';
+export { BackendError } from './supabase';

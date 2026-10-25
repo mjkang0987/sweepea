@@ -1,5 +1,7 @@
 {
   "name": "sweepea",
   "compatibility_date": "2026-10-01",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  // 사진·영상 파일. 키: <가족방 id>/<사진 id>/<view|thumb|poster>
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "sweepea-media" }]
 }

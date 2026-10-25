@@ -66,6 +66,43 @@ export interface Me {
   families: MeFamily[];
 }
 
+export type MediaKind = 'photo' | 'video';
+
+export interface NewMedia {
+  familyId: string;
+  kind: MediaKind;
+  takenAt: string;
+  takenAtSource: 'exif' | 'file' | 'upload' | 'manual';
+  width?: number;
+  height?: number;
+  durationSec?: number;
+  /** 없으면 '기본 포함' 그룹 전부 */
+  groupIds?: string[];
+  childIds?: string[];
+}
+
+/** 파일을 넣어도 되는 사진(올리는 중 + 호출자가 올린 사람) */
+export interface UploadTarget {
+  family_id: string;
+  kind: MediaKind;
+}
+
+export interface MediaKeys {
+  view: string;
+  thumb: string;
+  poster: string | null;
+}
+
+export interface MediaItem {
+  id: string;
+  family_id: string;
+  kind: MediaKind;
+  taken_at: string;
+  width: number | null;
+  height: number | null;
+  duration_sec: number | null;
+}
+
 export interface Backend {
   /** 처음 오는 기기에 익명 출입증을 만든다 */
   signInAnonymously(): Promise<Pass>;
@@ -75,4 +112,12 @@ export interface Backend {
   entryInfo(pass: Pass | null, code: string): Promise<EntryInfo>;
   enter(pass: Pass, input: EnterInput): Promise<EnterResult>;
   me(pass: Pass): Promise<Me>;
+  /** 사진 행 만들기(올리기 권한 확인). 권한 없으면 BackendError 403 */
+  createMedia(pass: Pass, input: NewMedia): Promise<string>;
+  uploadTarget(pass: Pass, mediaId: string): Promise<UploadTarget | null>;
+  /** 서버 전용(service_role). 이미 완료됐거나 없으면 false */
+  finishUpload(mediaId: string, keys: MediaKeys, bytes: number): Promise<boolean>;
+  /** 볼 수 있는 사진만(RLS). 최근 찍은 순 */
+  // shortcut: 다음 쪽 넘기기 없음(최근 limit장만). 뷰어 이슈에서 (taken_at, id) 기준 커서로
+  listMedia(pass: Pass, opts?: { familyId?: string; limit?: number }): Promise<MediaItem[]>;
 }

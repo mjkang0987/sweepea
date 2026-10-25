@@ -1,25 +1,31 @@
 // 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
 // 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
-import type { Backend, EnterResult, EntryInfo, EntryMe, Me, MeFamily, Pass } from './types';
+import type { Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, Pass } from './types';
+import { BackendError } from './supabase';
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string }
-interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected' }
+interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean }
 interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean }
-interface Device { familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]> }
+interface Device { familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]>; canUpload?: boolean }
 
 const HOUR = 3600_000;
 // 하린이네(외가·친가)와 도윤이네(외할머니의 다른 손주). 외할머니 한 기기로 두 가족방에 들어가는 흐름을 본다
-const children: Record<string, string> = { 'f-harin': '하린', 'f-doyun': '도윤' };
+// 가족방 id는 실제처럼 uuid(API가 형식을 검사한다)
+const HARIN = '00000000-0000-4000-8000-00000000f001';
+const DOYUN = '00000000-0000-4000-8000-00000000f002';
+const children: Record<string, string> = { [HARIN]: '하린', [DOYUN]: '도윤' };
 const groups: Group[] = [
-  { id: 'g-mat', familyId: 'f-harin', name: '외가', hint: '외가 비밀번호', password: '1234' },
-  { id: 'g-pat', familyId: 'f-harin', name: '친가', hint: '할아버지 생신', password: '5678' },
-  { id: 'g-dy', familyId: 'f-doyun', name: '가족', hint: '도윤이 생일', password: '9999' },
+  { id: 'g-mat', familyId: HARIN, name: '외가', hint: '외가 비밀번호', password: '1234' },
+  { id: 'g-pat', familyId: HARIN, name: '친가', hint: '할아버지 생신', password: '5678' },
+  { id: 'g-dy', familyId: DOYUN, name: '가족', hint: '도윤이 생일', password: '9999' },
 ];
 const members: Member[] = [
   { id: 'm-gm', groupId: 'g-mat', name: '외할머니', status: 'active' },
   { id: 'm-gf', groupId: 'g-mat', name: '외할아버지', status: 'active' },
   { id: 'm-aunt', groupId: 'g-mat', name: '이모', status: 'active' },
+  // 올리기 권한 가족(배우자). 실제로는 부모가 기기에 권한을 준다
+  { id: 'm-dad', groupId: 'g-mat', name: '하린 아빠', status: 'active', uploader: true },
   { id: 'm-pgm', groupId: 'g-pat', name: '할머니', status: 'active' },
   { id: 'm-dgm', groupId: 'g-dy', name: '할머니', status: 'active' },
 ];
@@ -33,6 +39,10 @@ const shares: Share[] = [
 ];
 // 기기(출입증) × 가족방마다 하나
 const devices = new Map<string, Device>();
+// shortcut: 그룹별 공개 범위는 흉내 내지 않고 가족방 단위로만 보여 준다. 실제 규칙은 DB 검사(rls.sql)가 맡는다
+const media: (MediaItem & { status: 'uploading' | 'ready'; uploader: string })[] = [];
+const deviceOf = (pass: Pass, familyId: string) => devices.get(key(pass, familyId));
+const canUpload = (d: Device | undefined) => !!d && d.status === 'active' && !!d.canUpload;
 const familyOf = (s: Share) => groups.find((g) => g.id === s.groupIds[0])!.familyId;
 const key = (pass: Pass, familyId: string) => `${pass.access}|${familyId}`;
 function meOf(d: Device | undefined): EntryMe | null {
@@ -127,6 +137,7 @@ export function createMockBackend(): Backend {
         members.push(member);
       }
       dev.memberId = member.id;
+      dev.canUpload = !!member.uploader;
       devices.set(k, dev);
       if (s.targetMemberId) s.usedAt = Date.now();
       return { result: member.status === 'pending' ? 'pending' : 'ok', member_id: member.id };
@@ -139,6 +150,36 @@ export function createMockBackend(): Backend {
         }
       }
       return { families };
+    },
+    async createMedia(pass, m) {
+      if (!canUpload(deviceOf(pass, m.familyId))) throw new BackendError('not_allowed', 403, '42501');
+      const id = crypto.randomUUID();
+      media.push({
+        id, family_id: m.familyId, kind: m.kind, taken_at: m.takenAt, width: m.width ?? null, height: m.height ?? null,
+        duration_sec: m.durationSec ?? null, status: 'uploading', uploader: pass.access,
+      });
+      return id;
+    },
+    async uploadTarget(pass, id) {
+      const x = media.find((y) => y.id === id && y.status === 'uploading' && y.uploader === pass.access);
+      return x && canUpload(deviceOf(pass, x.family_id)) ? { family_id: x.family_id, kind: x.kind } : null;
+    },
+    async finishUpload(id) {
+      const x = media.find((y) => y.id === id && y.status === 'uploading');
+      if (!x) return false;
+      x.status = 'ready';
+      return true;
+    },
+    async listMedia(pass, opts = {}) {
+      return media
+        .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId))
+        .filter((x) => {
+          const d = deviceOf(pass, x.family_id);
+          return d?.status === 'active' && members.find((m) => m.id === d.memberId)?.status === 'active';
+        })
+        .sort((a, b) => (a.taken_at < b.taken_at ? 1 : -1))
+        .slice(0, opts.limit ?? 60)
+        .map(({ status: _s, uploader: _u, ...rest }) => rest);
     },
   };
 }
