@@ -1,11 +1,12 @@
 // 홈 화면에 두기 안내: 기기 종류(User-Agent)와 '다음에 할게요'·'알겠어요' 쿠키
-export type InstallPlatform = 'kakao' | 'ios' | 'android' | 'other';
+export type InstallPlatform = 'inapp' | 'ios' | 'android' | 'other';
 
-/** 카톡 인앱 브라우저가 먼저(아이폰·안드로이드 둘 다 카톡 UA에 기기 이름이 같이 있다) */
+/** 앱 안 브라우저(카톡·네이버·라인·인스타·페이스북·밴드)는 홈 화면에 둘 수 없어 먼저 거른다(UA에 기기 이름이 같이 있다).
+ *  단계를 아는 건 아이폰 사파리·안드로이드 크롬뿐: 다른 브라우저(아이폰 크롬·웨일, 삼성 인터넷)는 메뉴 위치가 달라 안내하지 않는다 */
 export function installPlatform(ua: string): InstallPlatform {
-  if (/KAKAOTALK/i.test(ua)) return 'kakao';
-  if (/iPhone|iPad|iPod/.test(ua)) return 'ios';
-  if (/Android/.test(ua)) return 'android';
+  if (/KAKAOTALK|NAVER\(inapp|Line\/|Instagram|FBAN|FBAV|BAND\//i.test(ua)) return 'inapp';
+  if (/iPhone|iPad|iPod/.test(ua)) return /CriOS|FxiOS|EdgiOS|Whale|NAVER/.test(ua) ? 'other' : 'ios';
+  if (/Android/.test(ua)) return /SamsungBrowser|Whale|NAVER|Firefox/.test(ua) ? 'other' : 'android';
   return 'other';
 }
 

@@ -1,16 +1,17 @@
 ---
-// 가족 앨범 아래 '홈 화면에 두세요' 안내. 기기마다 단계가 다르고, 카톡 안에서는 엄마아빠에게 부탁한다.
-// 홈 화면 아이콘으로 열었으면 CSS(display-mode: standalone)로 숨긴다(JS 없음)
-import { INSTALL_COOKIE, installPlatform } from '../lib/install';
+// 가족 앨범 위 '홈 화면에 두세요' 안내(페이지 흐름 안의 판, 앨범을 가리지 않는다). 기기마다 단계가 다르고,
+// 앱 안 브라우저(카톡 등)에서는 엄마아빠에게 부탁한다. 홈 화면 아이콘으로 열었으면 CSS(display-mode: standalone)로 숨긴다(JS 없음)
+import { installPlatform } from '../lib/install';
 
 interface Props {
   /** 아이를 부르는 꼴(하린이) */
   kid: string;
+  /** 안내 쿠키 값(알겠어요·다음에·부탁함). 있으면 안내를 보이지 않는다 */
+  state: string | undefined;
+  /** 방금 부탁했으면 알림 */
+  asked: boolean;
 }
-const { kid } = Astro.props;
-const state = Astro.cookies.get(INSTALL_COOKIE)?.value;
-const asked = Astro.cookies.get(`${INSTALL_COOKIE}_msg`)?.value === '1';
-if (asked) Astro.cookies.delete(`${INSTALL_COOKIE}_msg`, { path: '/' });
+const { kid, state, asked } = Astro.props;
 const platform = installPlatform(Astro.request.headers.get('user-agent') ?? '');
 const back = Astro.url.pathname + Astro.url.search;
 const steps =
@@ -19,19 +20,18 @@ const steps =
   [];
 ---
 
-{asked && <p class="sp-f__box sp-f__box--pea sp-f__install-done" role="status">엄마아빠에게 부탁했어요. 엄마아빠가 스위피를 열면 보여요.</p>}
+{asked && <p class="sp-f__box sp-f__box--pea sp-f__install-done" role="status" tabindex="-1" autofocus>엄마아빠에게 부탁했어요. 엄마아빠가 스위피를 열면 보여요.</p>}
 {
   !state && platform !== 'other' && (
     <aside class="sp-f__install" aria-labelledby="install-title">
-      <img class="sp-f__install-icon" src="/icons/icon-192.png" width="56" height="56" alt="" />
       <h2 class="sp-f__install-title" id="install-title">홈 화면에 두세요</h2>
       <p class="sp-f__install-lead">다음부터 아이콘만 누르면 {kid} 사진이 바로 열려요.</p>
       <form class="sp-f__form" method="post" action="/install">
         <input type="hidden" name="back" value={back} />
         {
-          platform === 'kakao' ? (
+          platform === 'inapp' ? (
             <>
-              <p class="sp-f__text">카톡 안에서는 홈 화면에 둘 수 없어요. 엄마아빠에게 부탁하면 문자로 바로 둘 수 있게 보내 드려요.</p>
+              <p class="sp-f__text">카톡 같은 앱 안에서는 홈 화면에 둘 수 없어요. 엄마아빠에게 부탁하면 문자로 바로 둘 수 있게 보내 드려요.</p>
               <button class="sp-f__btn" type="submit" name="do" value="ask">엄마아빠에게 부탁하기</button>
             </>
           ) : (

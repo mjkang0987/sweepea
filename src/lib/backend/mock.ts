@@ -421,7 +421,7 @@ export function createMockBackend(): Backend {
     },
     async requestInstallHelp(pass, familyId) {
       const d = deviceOf(pass, familyId);
-      const m = members.find((x) => x.id === d?.memberId && x.status !== 'rejected');
+      const m = members.find((x) => x.id === d?.memberId && x.status === 'active');
       if (!d || d.status !== 'active' || !m) throw new BackendError('not_allowed', 403, '42501');
       m.helpAt = Date.now();
     },

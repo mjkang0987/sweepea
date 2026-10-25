@@ -18,9 +18,11 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const pass = await currentPass(cookies);
     if (!pass) return redirect('/', 303);
     const b = getBackend();
-    const { families } = await b.me(pass);
     try {
-      await Promise.all(families.filter(isOpen).map((f) => b.requestInstallHelp(pass, f.family_id)));
+      const open = (await b.me(pass)).families.filter(isOpen);
+      // 들어가 있는 가족방이 없으면 부탁할 곳이 없다(알림도 띄우지 않는다)
+      if (!open.length) return redirect(to, 303);
+      await Promise.all(open.map((f) => b.requestInstallHelp(pass, f.family_id)));
     } catch (e) {
       if (!(e instanceof BackendError)) throw e;
       return redirect(to, 303);
