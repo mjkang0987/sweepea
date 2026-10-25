@@ -3,6 +3,9 @@
 import Family from '../../layouts/Family.astro';
 import HeartToggle from '../../components/HeartToggle.astro';
 import ReactRow from '../../components/ReactRow.astro';
+import InstallGuide from '../../components/InstallGuide.astro';
+import { callName } from '../../lib/ko';
+import { INSTALL_COOKIE } from '../../lib/install';
 import { EMOJI_SPRITE } from '../../lib/emoji';
 import { albumHref, dayLabel, loadAlbum, loadReacts, ZOOMS } from '../../lib/album';
 import { signedMediaUrl } from '../../lib/signed';
@@ -38,6 +41,10 @@ for (const c of cards) {
   days.at(-1)!.cards.push(c);
 }
 const zi = ZOOMS.indexOf(q.z);
+// 홈 화면에 두기 안내 쿠키(쿠키는 페이지 맨 위에서 읽고 지운다: 그려지는 중에는 못 바꾼다)
+const installState = Astro.cookies.get(INSTALL_COOKIE)?.value;
+const installAsked = Astro.cookies.get(`${INSTALL_COOKIE}_msg`)?.value === '1';
+if (installAsked) Astro.cookies.delete(`${INSTALL_COOKIE}_msg`, { path: '/' });
 const fewer = zi < ZOOMS.length - 1 ? albumHref({ ...q, z: ZOOMS[zi + 1] }) : null;
 const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 ---
@@ -65,6 +72,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
     )
   }
 
+  <InstallGuide kid={callName([...kids.values()][0] ?? '아이')} state={installState} asked={installAsked} />
   <nav class="sp-a__tabs" aria-label="보기 방식">
     <a class="sp-a__tab" href={albumHref({ ...q, v: 'swipe' })} aria-current={q.v === 'swipe' ? 'page' : undefined}>넘겨 보기</a>
     <a class="sp-a__tab" href={albumHref({ ...q, v: 'list' })} aria-current={q.v === 'list' ? 'page' : undefined}>모아 보기</a>

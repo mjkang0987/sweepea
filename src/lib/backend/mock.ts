@@ -5,7 +5,7 @@ import type { ActivityItem, Backend, EnterResult, EntryInfo, EntryMe, MediaItem,
 import { BackendError } from './supabase';
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string; exclude?: boolean }
-interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean }
+interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean; helpAt?: number }
 interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean; revoked?: boolean }
 interface Device { id: string; familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]>; canUpload?: boolean }
 
@@ -287,7 +287,7 @@ export function createMockBackend(): Backend {
         groups: gs.map((g) => ({ id: g.id, name: g.name, include_by_default: !g.exclude, password_hint: g.hint || null })),
         members: members
           .filter((m) => gs.some((g) => g.id === m.groupId))
-          .map((m) => ({ id: m.id, group_id: m.groupId, display_name: m.name, status: m.status, pending_until: m.status === 'pending' ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, created_at: now })),
+          .map((m) => ({ id: m.id, group_id: m.groupId, display_name: m.name, status: m.status, pending_until: m.status === 'pending' ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, install_help_at: m.helpAt ? new Date(m.helpAt).toISOString() : null, created_at: now })),
         devices: [...devices.values()]
           .filter((d) => d.familyId === fam)
           .map((d) => ({ id: d.id, member_id: d.memberId ?? null, status: d.status, requested_name: d.requestedName ?? null, requested_group_id: null, requested_member_id: null, can_upload: !!d.canUpload, last_seen_at: now, created_at: now })),
@@ -418,6 +418,12 @@ export function createMockBackend(): Backend {
         .sort((a, b) => (a.taken_at === b.taken_at ? (a.id < b.id ? 1 : -1) : a.taken_at < b.taken_at ? 1 : -1))
         .slice(0, opts.limit ?? 60)
         .map(({ status: _s, uploader: _u, groupIds: _g, childIds: _c, bytes: _b, ...rest }) => rest);
+    },
+    async requestInstallHelp(pass, familyId) {
+      const d = deviceOf(pass, familyId);
+      const m = members.find((x) => x.id === d?.memberId && x.status === 'active');
+      if (!d || d.status !== 'active' || !m) throw new BackendError('not_allowed', 403, '42501');
+      m.helpAt = Date.now();
     },
     async healthDone(pass, childId) {
       const k = kids.find((x) => x.id === childId && x.familyId === parents.get(pass.access)?.familyId);
