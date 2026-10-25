@@ -9,11 +9,12 @@ begin
   with gone as (
     delete from public.media where status = 'uploading' and created_at < now() - interval '1 day'
     returning family_id, id
+  ), queued as (
+    insert into public.r2_cleanup (prefix)
+      select family_id::text || '/' || id::text || '/' from gone
+      on conflict do nothing
   )
-  insert into public.r2_cleanup (prefix)
-    select family_id::text || '/' || id::text || '/' from gone
-    on conflict do nothing;
-  get diagnostics v_n = row_count;
+  select count(*) into v_n from gone;
   return v_n;
 end $$;
 
