@@ -26,7 +26,7 @@ export const LINK_COOKIE = 'sp_link';
 export const sizeLabel = (bytes: number) =>
   bytes < 1024 ** 3 ? `${Math.round(bytes / 1024 ** 2)}MB` : `${(bytes / 1024 ** 3).toFixed(1)}GB`;
 
-/** 폼 동작: member:<id>:active|rejected, device:<id>:active|revoked, share:<그룹 id>. 돌아갈 주소.
+/** 폼 동작: member:<id>:active|rejected, device:<id>:active|revoked, share:<그룹 id>, reset:<그룹 id>(주소 다시 만들기). 돌아갈 주소.
  *  거절·내 가족 아님은 되돌릴 수 없어서 한 번 더 묻는다(confirm=1이 없으면 확인 화면으로) */
 export async function handleFamilyPost(request: Request, cookies: AstroCookies): Promise<string> {
   const pass = await currentParent(cookies);
@@ -36,7 +36,7 @@ export async function handleFamilyPost(request: Request, cookies: AstroCookies):
   const [kind, id, status] = action.split(':');
   if (!ID.test(id ?? '')) return '/settings/family';
   const b = getBackend();
-  const irreversible = (kind === 'member' && status === 'rejected') || (kind === 'device' && status === 'revoked');
+  const irreversible = (kind === 'member' && status === 'rejected') || (kind === 'device' && status === 'revoked') || kind === 'reset';
   if (irreversible && form?.get('confirm') !== '1') return `/settings/family?confirm=${encodeURIComponent(action)}#confirm`;
   try {
     // 켜기·끄기: 올리기 허용(구성원 상세), 가족도 사진 저장하기(설정)
@@ -50,7 +50,9 @@ export async function handleFamilyPost(request: Request, cookies: AstroCookies):
     }
     if (kind === 'member' && (status === 'active' || status === 'rejected')) await b.setMemberStatus(pass, id, status);
     else if (kind === 'device' && (status === 'active' || status === 'revoked')) await b.setDeviceStatus(pass, id, status);
-    else if (kind === 'share') {
+    else if (kind === 'share' || kind === 'reset') {
+      // 주소 다시 만들기: 예전 링크를 막고 새 링크를 바로 만든다
+      if (kind === 'reset') await b.resetGroupLinks(pass, id);
       // 만든 링크는 주소가 아니라 잠깐 쓰는 쿠키로 넘긴다(주소로 가짜 '링크를 만들었어요' 카드를 못 띄우게)
       cookies.set(LINK_COOKIE, `${await b.createShare(pass, [id])}:${id}`, { path: '/settings', httpOnly: true, sameSite: 'lax', secure: import.meta.env.PROD, maxAge: 300 });
       return '/settings/family#link';

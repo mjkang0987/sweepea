@@ -63,6 +63,8 @@ create table public.shares (
   used_at timestamptz,
   -- 카톡 카드 대표 사진(올리기 화면에서 고른 첫 장)
   cover_media_id uuid,
+  -- 주소 다시 만들기로 막은 링크. 새로 들어오기는 막고, 이 링크로 들어와 승인 기다리는 사람이 볼 사진은 남긴다
+  revoked_at timestamptz,
   created_at timestamptz not null default now(),
   unique (family_id, id)
 );
@@ -672,6 +674,11 @@ declare v_family uuid := public.sp_parent_family(); v_id uuid;
 begin
   if v_family is null then raise exception 'not_allowed' using errcode = '42501'; end if;
   if p_password !~ '^[0-9]{4}$' then raise exception 'password_4_digits' using errcode = '22023'; end if;
+  -- 그룹은 가족방당 10개까지(동시에 추가해도 넘지 않게 가족방 단위로 잠근다)
+  perform pg_advisory_xact_lock(hashtext('groups:' || v_family::text));
+  if (select count(*) from public.groups where family_id = v_family) >= 10 then
+    raise exception 'group_limit' using errcode = 'PT409';
+  end if;
   insert into public.groups (family_id, name, password_hash, password_hint, include_by_default)
     values (v_family, p_name, extensions.crypt(p_password, extensions.gen_salt('bf')), p_hint, p_include_by_default)
     returning id into v_id;
@@ -686,7 +693,7 @@ language plpgsql stable security definer set search_path = ''
 as $$
 declare s public.shares; f public.families; v_child text; v_me jsonb;
 begin
-  select * into s from public.shares where code = p_code;
+  select * into s from public.shares where code = p_code and revoked_at is null;
   if not found then return jsonb_build_object('result', 'not_found'); end if;
   select * into f from public.families where id = s.family_id;
   -- 이 가족방에서 지금 기기 상태(처음이면 null). 이미 들어온 기기는 바로 앨범으로 보낸다
@@ -750,7 +757,7 @@ begin
   if p_password is null or p_password !~ '^[0-9]{4}$' then return jsonb_build_object('result', 'bad_request'); end if;
   if (p_member_id is null) = (p_new_name is null) then return jsonb_build_object('result', 'bad_request'); end if;
 
-  select * into s from public.shares where code = p_code;
+  select * into s from public.shares where code = p_code and revoked_at is null;
   if not found then return jsonb_build_object('result', 'not_found'); end if;
   -- 한 사람용 문자 링크만 잠근다(동시 사용 방지). 일반 링크는 잠그지 않아 여러 가족이 동시에 들어온다
   if s.target_member_id is not null then

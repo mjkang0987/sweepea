@@ -154,6 +154,13 @@ export interface AdminGroup {
   id: string;
   name: string;
   include_by_default: boolean;
+  password_hint: string | null;
+}
+export interface NewGroup {
+  name: string;
+  password: string;
+  hint: string | null;
+  includeByDefault: boolean;
 }
 export interface AdminMember {
   id: string;
@@ -171,6 +178,7 @@ export interface AdminDevice {
   requested_group_id: string | null;
   requested_member_id: string | null;
   can_upload: boolean;
+  last_seen_at: string;
   created_at: string;
 }
 export interface FamilyAdmin {
@@ -224,6 +232,13 @@ export interface Backend {
   requestDelete(pass: Pass): Promise<string>;
   /** 유예 중 되살리기. 유예가 아니거나 기한이 지났으면 400 */
   restoreFamily(pass: Pass): Promise<void>;
+  /** 그룹 추가(10개까지, 넘으면 409). 그룹 id */
+  addGroup(pass: Pass, g: NewGroup): Promise<string>;
+  /** 이름·새 사진 기본 포함. 같은 이름이 있으면 409(23505), 남의 그룹이면 404 */
+  updateGroup(pass: Pass, groupId: string, patch: { name?: string; include_by_default?: boolean }): Promise<void>;
+  setGroupPassword(pass: Pass, groupId: string, password: string, hint: string | null): Promise<void>;
+  /** 그 그룹이 들어간 공유 링크를 모두 지운다(예전 주소 막기) */
+  resetGroupLinks(pass: Pass, groupId: string): Promise<void>;
   /** 가족 화면 처음 글자 크기 */
   setTextSizeMode(pass: Pass, familyId: string, mode: TextSizeMode): Promise<void>;
   addChild(pass: Pass, familyId: string, name: string, birthDate: string): Promise<void>;

@@ -70,3 +70,10 @@ export async function logoutParent(cookies: AstroCookies) {
 /** 작별 화면 주소: 지울 날(서울 날짜)을 들고 간다 */
 export const goodbyeHref = (deleteAfter: string) =>
   `/goodbye?on=${new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(deleteAfter))}`;
+
+/** 그룹 비밀번호(숫자 4자리)·힌트 검사. 문제가 있으면 안내 문구 */
+export function pinError(password: string, hint: string): string | null {
+  if (!/^[0-9]{4}$/.test(password)) return '숫자 4자리를 써 주세요.';
+  if (hint.includes(password)) return '힌트에 비밀번호를 그대로 쓰지 말아 주세요.';
+  return null;
+}

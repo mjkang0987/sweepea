@@ -1,0 +1,46 @@
+---
+// 그룹 목록: 이름·구성원·인원·기본 포함, 그룹 추가(10개까지)
+import Parent from '../../../../layouts/Parent.astro';
+import { getBackend } from '../../../../lib/backend';
+import { loadParent } from '../../../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const admin = await getBackend().familyAdmin(a.pass);
+const active = (gid: string) => admin.members.filter((m) => m.group_id === gid && m.status === 'active');
+const done = Astro.url.searchParams.get('done');
+---
+
+<Parent title="그룹 · 가족" tab="settings">
+  <nav class="sp-p__bar" aria-label="뒤로">
+    <a class="sp-p__back" href="/settings/family"><span aria-hidden="true">‹ </span>가족</a>
+  </nav>
+  <h1 class="sp-p__title">그룹</h1>
+  {done === 'added' && <p class="sp-p__toast" tabindex="-1" autofocus>그룹을 추가했어요.</p>}
+  <p class="sp-p__lead">그룹마다 주소와 비밀번호가 따로 있어요. 사진을 올릴 때 어느 그룹에 보여줄지 골라요.</p>
+  <section class="sp-p__section" aria-labelledby="sec-glist">
+    <h2 class="sp-p__section-title" id="sec-glist">그룹 · {admin.groups.length}개</h2>
+    <ul class="sp-p__list">
+      {
+        admin.groups.map((g) => {
+          const ms = active(g.id);
+          return (
+            <li>
+              <a class="sp-p__row sp-p__row--tall" href={`/settings/family/groups/${g.id}`}>
+                <span class="sp-p__row-label sp-p__radio-text">
+                  <span class="sp-p__who-name">{g.name}</span>
+                  <span class="sp-p__hint">{ms.length ? `${ms.map((m) => m.display_name).join(', ')} · ${ms.length}명` : '아직 들어온 사람이 없어요'}</span>
+                </span>
+                {g.include_by_default && <span class="sp-p__tag">기본 포함</span>}
+                <span class="sp-p__chev" aria-hidden="true">›</span>
+              </a>
+            </li>
+          );
+        })
+      }
+    </ul>
+  </section>
+  {admin.groups.length < 10 && <a class="sp-p__btn sp-p__btn--quiet sp-p__add" href="/settings/family/groups/new"><span aria-hidden="true">+ </span>그룹 추가</a>}
+  <p class="sp-p__hint">그룹은 10개까지 만들 수 있어요.</p>
+</Parent>

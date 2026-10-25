@@ -157,9 +157,9 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       const get = <T>(path: string) => call<T>(path, { method: 'GET', token: pass.access });
       // 부모 RLS로 자기 가족방 것만. devices는 열 권한이라 열을 적는다
       const [groups, members, devices] = await Promise.all([
-        get<AdminGroup[]>('/rest/v1/groups?select=id,name,include_by_default&order=sort_order,created_at'),
+        get<AdminGroup[]>('/rest/v1/groups?select=id,name,include_by_default,password_hint&order=sort_order,created_at'),
         get<AdminMember[]>('/rest/v1/members?select=id,group_id,display_name,status,pending_until,created_at&order=created_at'),
-        get<AdminDevice[]>('/rest/v1/devices?select=id,member_id,status,requested_name,requested_group_id,requested_member_id,can_upload,created_at&order=created_at.desc'),
+        get<AdminDevice[]>('/rest/v1/devices?select=id,member_id,status,requested_name,requested_group_id,requested_member_id,can_upload,last_seen_at,created_at&order=created_at.desc'),
       ]);
       return { groups, members, devices };
     },
@@ -195,6 +195,13 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         body: JSON.stringify({ can_upload: on }),
       });
       if (!rows.length) throw new BackendError('not_found', 404);
+    },
+    addGroup: (pass, g) =>
+      rpc<string>(pass, 'sp_add_group', { p_name: g.name, p_password: g.password, p_hint: g.hint, p_include_by_default: g.includeByDefault }),
+    updateGroup: (pass, groupId, patch) => patchOne(pass, 'groups', groupId, patch),
+    setGroupPassword: (pass, groupId, password, hint) => rpc<void>(pass, 'sp_set_group_password', { p_group_id: groupId, p_password: password, p_hint: hint }),
+    resetGroupLinks: async (pass, groupId) => {
+      await rpc<number>(pass, 'sp_reset_group_links', { p_group_id: groupId });
     },
     requestDelete: (pass) => rpc<string>(pass, 'sp_request_delete', {}),
     restoreFamily: (pass) => rpc<void>(pass, 'sp_restore_family', {}),

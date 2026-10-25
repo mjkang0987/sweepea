@@ -23,9 +23,10 @@ const linkGroup = s.groupName(linkGid ?? null);
 const [cKind, cId, cStatus] = (q.get('confirm') ?? '').split(':');
 const cName =
   cKind === 'member' ? admin.members.find((m) => m.id === cId && m.status !== 'rejected')?.display_name :
+  cKind === 'reset' ? admin.groups.find((g) => g.id === cId)?.name :
   cKind === 'device' ? (() => { const d = s.pendingDevices.find((x) => x.id === cId); return d && (d.requested_name ?? s.memberName(d.requested_member_id ?? d.member_id) ?? '새 휴대폰'); })() : undefined;
 const cActive = cKind === 'member' && admin.members.some((m) => m.id === cId && m.status === 'active');
-const confirmAsk = cName && ((cKind === 'member' && cStatus === 'rejected') || (cKind === 'device' && cStatus === 'revoked'));
+const confirmAsk = cName && ((cKind === 'member' && cStatus === 'rejected') || (cKind === 'device' && cStatus === 'revoked') || cKind === 'reset');
 // 확인하려던 대상이 그새 처리됐으면 '이미 처리됨'으로
 const done = q.get('done') ?? (q.get('confirm') ? 'pending-check' : null);
 const shownDone = done === 'pending-check' ? (confirmAsk ? null : 'gone') : done;
@@ -52,12 +53,12 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
   {
     confirmAsk && (
       <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
-        <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>{cKind === 'member' ? `${cName} ${cActive ? '내보낼까요' : '거절할까요'}?` : `${cName} 휴대폰을 내 가족 아님으로 할까요?`}</h2>
-        <p class="sp-p__lead">{cActive ? '이 사람의 휴대폰은 더 이상 들어올 수 없고, 남긴 반응과 한마디는 가족 화면에서 빠져요. 반응·한마디 기록이 남아 있으면 같은 이름은 다시 쓸 수 없어요. 그룹 비밀번호를 아는 사람이면 다른 이름으로 다시 요청할 수 있지만 승인해야 들어와요.' : '그 휴대폰은 다시 들어올 수 없어요. 되돌릴 수 없어요.'}</p>
+        <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>{cKind === 'reset' ? `${cName} 주소를 다시 만들까요?` : cKind === 'member' ? `${cName} ${cActive ? '내보낼까요' : '거절할까요'}?` : `${cName} 휴대폰을 내 가족 아님으로 할까요?`}</h2>
+        <p class="sp-p__lead">{cKind === 'reset' ? '예전 주소는 바로 막히고 새 주소를 만들어요. 이미 들어온 휴대폰은 그대로 봐요. 이 그룹이 같이 들어간 다른 링크도 막혀요.' : cActive ? '이 사람의 휴대폰은 더 이상 들어올 수 없고, 남긴 반응과 한마디는 가족 화면에서 빠져요. 반응·한마디 기록이 남아 있으면 같은 이름은 다시 쓸 수 없어요. 그룹 비밀번호를 아는 사람이면 다른 이름으로 다시 요청할 수 있지만 승인해야 들어와요.' : '그 휴대폰은 다시 들어올 수 없어요. 되돌릴 수 없어요.'}</p>
         <form class="sp-p__pair" method="post" action="/settings/family">
-          <a class="sp-p__btn sp-p__btn--quiet" href={cActive ? `/settings/family/member/${cId}` : '/settings/family'}>취소</a>
+          <a class="sp-p__btn sp-p__btn--quiet" href={cKind === 'reset' ? `/settings/family/groups/${cId}` : cActive ? `/settings/family/member/${cId}` : '/settings/family'}>취소</a>
           <input type="hidden" name="confirm" value="1" />
-          <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value={q.get('confirm')}>{cKind === 'member' ? (cActive ? '내보내기' : '거절') : '내 가족 아님'}</button>
+          <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value={q.get('confirm')}>{cKind === 'reset' ? '다시 만들기' : cKind === 'member' ? (cActive ? '내보내기' : '거절') : '내 가족 아님'}</button>
         </form>
       </section>
     )
@@ -126,7 +127,10 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
   }
 
   <section class="sp-p__section" aria-labelledby="sec-groups">
-    <h2 class="sp-p__section-title" id="sec-groups">가족 그룹</h2>
+    <div class="sp-p__group-head">
+      <h2 class="sp-p__section-title" id="sec-groups">가족 그룹</h2>
+      <a class="sp-p__chip" href="/settings/family/groups">그룹 관리<span aria-hidden="true"> ›</span></a>
+    </div>
     <ul class="sp-p__list">
       {
         admin.groups.map((g) => (
