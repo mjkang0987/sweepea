@@ -398,6 +398,28 @@ select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, 
 reset role;
 \set ON_ERROR_STOP 1
 
+-- ── 반응·한마디(함수)
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_react(:'m3', 'best', true), '반응 켜기');
+select pg_temp.ok(not public.sp_react(:'m3', 'best', false), '반응 끄기');
+select public.sp_react(:'m3', 'heart', true);
+select public.sp_react(:'m3', 'heart', true);
+select pg_temp.ok((select n = 1 and mine from public.sp_reaction_counts(array[:'m3']::uuid[]) where kind = 'heart'), '같은 반응 두 번은 한 번');
+select public.sp_comment(:'m3', '  예쁘다  ');
+select pg_temp.ok((select body = '예쁘다' from public.comments where media_id = :'m3' order by created_at desc limit 1), '한마디 앞뒤 공백 정리');
+select pg_temp.ok((select n >= 1 from public.sp_reaction_counts(array[:'m3']::uuid[]) where kind = 'comment'), '한마디 수');
+select pg_temp.ok(not exists (select 1 from public.sp_reaction_counts(array[:'m2']::uuid[])), '안 보이는 사진 반응 수는 안 셈');
+reset role;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 3줄은 의도된 거부(안 보이는 사진 반응, 이상한 종류, 빈 한마디)'
+set role authenticated;
+select public.sp_react(:'m2', 'heart', true);
+select public.sp_react(:'m3', 'angry', true);
+select public.sp_comment(:'m3', '   ');
+reset role;
+\set ON_ERROR_STOP 1
+
 -- ── 탈퇴 유예: 가족 화면은 바로 닫힘
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
