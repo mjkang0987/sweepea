@@ -258,8 +258,6 @@ select pg_temp.ok((select deleted_at is not null from public.comments where id =
 
 -- 거절하면 그 기기도 막힌다
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
-set role authenticated;
-reset role;
 -- 내보내기 전 큰이모가 올리기 허용·반응 기록을 가졌다고 둔다
 update public.devices set can_upload = true where auth_user_id = :'AU' and family_id = :'fam';
 insert into public.reactions (media_id, member_id, kind) select :'m1', id, 'heart' from public.members where display_name = '큰이모';

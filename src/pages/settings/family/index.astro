@@ -53,7 +53,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
     confirmAsk && (
       <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
         <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>{cKind === 'member' ? `${cName} ${cActive ? '내보낼까요' : '거절할까요'}?` : `${cName} 휴대폰을 내 가족 아님으로 할까요?`}</h2>
-        <p class="sp-p__lead">{cActive ? '이 사람의 휴대폰은 더 이상 들어올 수 없고, 남긴 반응과 한마디는 가족 화면에서 빠져요. 그룹 비밀번호를 아는 사람이면 다른 휴대폰으로 다시 요청할 수 있지만 승인해야 들어와요.' : '그 휴대폰은 다시 들어올 수 없어요. 되돌릴 수 없어요.'}</p>
+        <p class="sp-p__lead">{cActive ? '이 사람의 휴대폰은 더 이상 들어올 수 없고, 남긴 반응과 한마디는 가족 화면에서 빠져요. 반응·한마디 기록이 남아 있으면 같은 이름은 다시 쓸 수 없어요. 그룹 비밀번호를 아는 사람이면 다른 이름으로 다시 요청할 수 있지만 승인해야 들어와요.' : '그 휴대폰은 다시 들어올 수 없어요. 되돌릴 수 없어요.'}</p>
         <form class="sp-p__pair" method="post" action="/settings/family">
           <a class="sp-p__btn sp-p__btn--quiet" href={cActive ? `/settings/family/member/${cId}` : '/settings/family'}>취소</a>
           <input type="hidden" name="confirm" value="1" />

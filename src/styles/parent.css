@@ -858,14 +858,25 @@
   cursor: not-allowed;
 }
 @media (forced-colors: active) {
+  /* 고대비에선 box-shadow가 사라지니 안쪽 outline으로 테두리(크기 그대로) */
   .sp-p__switch {
-    border: 2px solid ButtonText;
+    outline: 2px solid ButtonText;
+    outline-offset: -2px;
   }
   .sp-p__switch::after {
     background: ButtonText;
   }
   .sp-p__switch[aria-checked='true'] {
     background: Highlight;
+  }
+  .sp-p__switch[aria-checked='true']::after {
+    background: HighlightText;
+  }
+  .sp-p__switch:disabled {
+    outline-color: GrayText;
+  }
+  .sp-p__switch:disabled::after {
+    background: GrayText;
   }
 }
 .sp-p__block {
