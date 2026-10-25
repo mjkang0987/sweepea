@@ -147,13 +147,14 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       const [groups, members, devices] = await Promise.all([
         get<AdminGroup[]>('/rest/v1/groups?select=id,name,include_by_default&order=sort_order,created_at'),
         get<AdminMember[]>('/rest/v1/members?select=id,group_id,display_name,status,pending_until,created_at&order=created_at'),
-        get<AdminDevice[]>('/rest/v1/devices?select=id,member_id,status,requested_name,requested_group_id,requested_member_id,created_at&order=created_at.desc'),
+        get<AdminDevice[]>('/rest/v1/devices?select=id,member_id,status,requested_name,requested_group_id,requested_member_id,can_upload,created_at&order=created_at.desc'),
       ]);
       return { groups, members, devices };
     },
     // 승인 대기인 것만 바꾼다(기간 지남·이미 처리됨·다른 가족방이면 0행 → 404). 열을 적어야 devices 열 권한에 걸리지 않는다
     async setMemberStatus(pass, id, status) {
-      const q = new URLSearchParams({ id: `eq.${id}`, status: 'eq.pending', select: 'id' });
+      // 승인은 승인 대기만, 거절은 승인 대기·승인된 사람(내보내기)
+      const q = new URLSearchParams({ id: `eq.${id}`, status: status === 'active' ? 'eq.pending' : 'in.(pending,active)', select: 'id' });
       if (status === 'active') q.set('pending_until', `gt.${new Date().toISOString()}`);
       const rows = await call<{ id: string }[]>(`/rest/v1/members?${q}`, {
         method: 'PATCH',
@@ -170,6 +171,26 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         token: pass.access,
         headers: { prefer: 'return=representation' },
         body: JSON.stringify(status === 'revoked' ? { status, can_upload: false } : { status }),
+      });
+      if (!rows.length) throw new BackendError('not_found', 404);
+    },
+    async setUploadAllowed(pass, memberId, on) {
+      const q = new URLSearchParams({ member_id: `eq.${memberId}`, status: 'eq.active', select: 'id' });
+      const rows = await call<{ id: string }[]>(`/rest/v1/devices?${q}`, {
+        method: 'PATCH',
+        token: pass.access,
+        headers: { prefer: 'return=representation' },
+        body: JSON.stringify({ can_upload: on }),
+      });
+      if (!rows.length) throw new BackendError('not_found', 404);
+    },
+    async setDownloadAllowed(pass, familyId, on) {
+      const q = new URLSearchParams({ id: `eq.${familyId}`, select: 'id' });
+      const rows = await call<{ id: string }[]>(`/rest/v1/families?${q}`, {
+        method: 'PATCH',
+        token: pass.access,
+        headers: { prefer: 'return=representation' },
+        body: JSON.stringify({ download_allowed: on }),
       });
       if (!rows.length) throw new BackendError('not_found', 404);
     },

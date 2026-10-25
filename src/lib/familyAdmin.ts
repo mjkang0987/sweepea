@@ -22,6 +22,10 @@ export function summarize(a: FamilyAdmin) {
 
 export const LINK_COOKIE = 'sp_link';
 
+/** 용량 표시: 1GB 미만은 MB로 */
+export const sizeLabel = (bytes: number) =>
+  bytes < 1024 ** 3 ? `${Math.round(bytes / 1024 ** 2)}MB` : `${(bytes / 1024 ** 3).toFixed(1)}GB`;
+
 /** 폼 동작: member:<id>:active|rejected, device:<id>:active|revoked, share:<그룹 id>. 돌아갈 주소.
  *  거절·내 가족 아님은 되돌릴 수 없어서 한 번 더 묻는다(confirm=1이 없으면 확인 화면으로) */
 export async function handleFamilyPost(request: Request, cookies: AstroCookies): Promise<string> {
@@ -35,6 +39,15 @@ export async function handleFamilyPost(request: Request, cookies: AstroCookies):
   const irreversible = (kind === 'member' && status === 'rejected') || (kind === 'device' && status === 'revoked');
   if (irreversible && form?.get('confirm') !== '1') return `/settings/family?confirm=${encodeURIComponent(action)}#confirm`;
   try {
+    // 켜기·끄기: 올리기 허용(구성원 상세), 가족도 사진 저장하기(설정)
+    if (kind === 'upload' && (status === 'on' || status === 'off')) {
+      await b.setUploadAllowed(pass, id, status === 'on');
+      return `/settings/family/member/${id}?done=upload-${status}`;
+    }
+    if (kind === 'download' && (status === 'on' || status === 'off')) {
+      await b.setDownloadAllowed(pass, id, status === 'on');
+      return `/settings?done=download-${status}`;
+    }
     if (kind === 'member' && (status === 'active' || status === 'rejected')) await b.setMemberStatus(pass, id, status);
     else if (kind === 'device' && (status === 'active' || status === 'revoked')) await b.setDeviceStatus(pass, id, status);
     else if (kind === 'share') {
@@ -46,7 +59,8 @@ export async function handleFamilyPost(request: Request, cookies: AstroCookies):
   } catch (e) {
     if (!(e instanceof BackendError) || e.status >= 500) throw e;
     // 404: 이미 처리됐거나 기간 지남, 22023: 같은 이름 승인 대기 중·이름이 없어짐(DB 트리거)
-    return `/settings/family?done=${e.status === 404 ? 'gone' : e.code === '22023' || e.code === '23505' ? 'conflict' : 'error'}`;
+    const where = kind === 'upload' ? `/settings/family/member/${id}` : kind === 'download' ? '/settings' : '/settings/family';
+    return `${where}?done=${e.status === 404 ? 'gone' : e.code === '22023' || e.code === '23505' ? 'conflict' : 'error'}`;
   }
 }
 

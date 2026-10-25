@@ -510,6 +510,15 @@ end $$;
 create trigger comments_touch before update on public.comments
   for each row execute function public.sp_comments_touch();
 
+-- 반응·한마디를 남긴 적 있는 구성원인가(내보낸 사람의 기록은 같은 이름 재사용으로 지우지 않는다)
+create function public.sp_member_has_history(p_member uuid) returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select exists (select 1 from public.reactions where member_id = p_member)
+      or exists (select 1 from public.comments where member_id = p_member)
+$$;
+revoke all on function public.sp_member_has_history(uuid) from public, anon, authenticated;
+
 -- 부모가 승인 대기 기기를 승인하면: 틀린 기록을 지우고, 들어가려던 이름을 붙인다(새 이름이면 구성원을 만든다)
 create function public.sp_devices_approve() returns trigger
 language plpgsql security definer set search_path = ''
@@ -527,7 +536,7 @@ begin
     elsif new.requested_name is not null and new.requested_group_id is not null then
       delete from public.members
         where group_id = new.requested_group_id and display_name = new.requested_name
-          and (status = 'rejected' or (status = 'pending' and pending_until <= now()));
+          and ((status = 'rejected' and not public.sp_member_has_history(id)) or (status = 'pending' and pending_until <= now()));
       -- 그 사이 같은 이름이 생겼으면: 승인된 이름이면 그 사람으로 붙이고, 아직 승인 대기면 막는다
       select id into v_member from public.members
         where group_id = new.requested_group_id and display_name = new.requested_name and status = 'active';
@@ -789,10 +798,10 @@ begin
   end if;
 
   if p_member_id is null then
-    -- 만료된 승인 대기·거절된 같은 이름은 비우고 다시 받는다
+    -- 만료된 승인 대기·거절된 같은 이름은 비우고 다시 받는다(내보낸 사람의 반응·한마디 기록이 있으면 남기고 이름을 막는다)
     delete from public.members
       where group_id = v_group and display_name = v_name
-        and (status = 'rejected' or (status = 'pending' and pending_until <= now()));
+        and ((status = 'rejected' and not public.sp_member_has_history(id)) or (status = 'pending' and pending_until <= now()));
     if exists (select 1 from public.members where group_id = v_group and display_name = v_name) then
       return jsonb_build_object('result', 'name_taken');
     end if;

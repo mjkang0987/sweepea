@@ -23,7 +23,7 @@ select public.sp_create_family('mom', '지우', '하린', '2025-09-17', '0917', 
 select public.sp_add_group('외가', '1234', '외가 비밀번호') as gma \gset
 select public.sp_add_group('친가', '5678') as gpa \gset
 select pg_temp.ok((select groups_enabled from public.families) , '그룹 추가하면 그룹 켜짐');
-select pg_temp.ok(public.sp_parent_home() @> '{"role": "mom", "children": [{"name": "하린"}]}', '부모 첫 화면 정보');
+select pg_temp.ok(public.sp_parent_home() @> '{"role": "mom", "children": [{"name": "하린"}], "download_allowed": false, "photo_count": 0}', '부모 첫 화면 정보');
 insert into public.members (family_id, group_id, display_name) values
   (:'fam', :'gma', '외할머니'), (:'fam', :'gma', '외할아버지'), (:'fam', :'gma', '하린 아빠'), (:'fam', :'gpa', '할머니');
 select id as m_gm from public.members where display_name = '외할머니' \gset
@@ -258,13 +258,29 @@ select pg_temp.ok((select deleted_at is not null from public.comments where id =
 
 -- 거절하면 그 기기도 막힌다
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+-- 내보내기 전 큰이모가 올리기 허용·반응 기록을 가졌다고 둔다
+update public.devices set can_upload = true where auth_user_id = :'AU' and family_id = :'fam';
+insert into public.reactions (media_id, member_id, kind) select :'m1', id, 'heart' from public.members where display_name = '큰이모';
 set role authenticated;
 update public.members set status = 'rejected' where display_name = '큰이모';
 reset role;
+select pg_temp.ok((select status = 'revoked' and not can_upload from public.devices where auth_user_id = :'AU' and family_id = :'fam'), '내보내면 기기 막힘·올리기 허용 꺼짐');
 select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
 set role authenticated;
 select pg_temp.ok(public.sp_enter(:'code1', '1234', null, '큰이모', :'gma') ->> 'result' = 'revoked', '거절된 기기는 같은 이름으로 다시 못 들어옴');
 reset role;
+-- 다른 휴대폰으로 같은 이름을 다시 써도 내보낸 사람의 기록은 지우지 않는다
+\set N6 '00000000-0000-0000-0000-0000000000c6'
+insert into auth.users (id, is_anonymous) values (:'N6', true);
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_create_share(array[:'gma']::uuid[], '{}'::uuid[]) as code_k \gset
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'N6', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_enter(:'code_k', '1234', null, '큰이모', :'gma') ->> 'result' = 'name_taken', '기록 있는 내보낸 이름은 다시 못 씀');
+reset role;
+select pg_temp.ok((select count(*) = 1 from public.reactions r join public.members m on m.id = r.member_id where m.display_name = '큰이모'), '내보낸 사람의 반응 기록은 남음');
 -- 부모 계정은 기기로 들어오지 못한다
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
 set role authenticated;
@@ -493,4 +509,21 @@ select set_config('request.jwt.claims', json_build_object('sub', :'N1', 'is_anon
 set role authenticated;
 select pg_temp.ok(public.sp_me() = '{"families": []}', 'sp_me 처음 기기');
 select pg_temp.ok(public.sp_parent_home() = '{"family_id": null}', '설정 전·기기 사용자는 가족방 없음');
+reset role;
+
+-- ── 사진 저장하기 켜기: 자기 가족방 부모만
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.families set download_allowed = true where id = :'fam';
+reset role;
+select pg_temp.ok((select not download_allowed from public.families where id = :'fam'), '다른 가족방 부모는 저장 허용을 못 바꿈');
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+do $$ begin update public.families set download_allowed = true; exception when insufficient_privilege then null; end $$;
+reset role;
+select pg_temp.ok((select not download_allowed from public.families where id = :'fam'), '가족 기기는 저장 허용을 못 바꿈');
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.families set download_allowed = true where id = :'fam';
+select pg_temp.ok(public.sp_parent_home() @> '{"download_allowed": true}', '부모는 저장 허용을 켬');
 reset role;

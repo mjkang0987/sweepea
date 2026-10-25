@@ -49,6 +49,9 @@ const reactions = new Set<string>();
 // 부모: 세션(access) → 가족방·역할, 아이 생일
 const parents = new Map<string, { familyId: string; role: 'mom' | 'dad' }>();
 const births: Record<string, string> = {};
+// 가족도 사진 저장하기(가족방별)
+const downloads: Record<string, boolean> = {};
+const used: Record<string, number> = {};
 const comments: { mediaId: string; memberId: string; at: number }[] = [];
 const familyOf = (s: Share) => groups.find((g) => g.id === s.groupIds[0])!.familyId;
 const key = (pass: Pass, familyId: string) => `${pass.access}|${familyId}`;
@@ -163,7 +166,7 @@ export function createMockBackend(): Backend {
       const families: MeFamily[] = [];
       for (const [k, d] of devices) {
         if (k.startsWith(`${pass.access}|`)) {
-          families.push({ ...meOf(d)!, family_id: d.familyId, closed: false, child_name: children[d.familyId] });
+          families.push({ ...meOf(d)!, family_id: d.familyId, closed: false, child_name: children[d.familyId], download_allowed: !!downloads[d.familyId] });
         }
       }
       return { families };
@@ -183,10 +186,11 @@ export function createMockBackend(): Backend {
       const ok = x && (parents.get(pass.access)?.familyId === x.family_id || canUpload(deviceOf(pass, x.family_id)));
       return x && ok ? { family_id: x.family_id, kind: x.kind } : null;
     },
-    async finishUpload(id, keys) {
+    async finishUpload(id, keys, bytes) {
       const x = media.find((y) => y.id === id && y.status === 'uploading');
       if (!x) return false;
       Object.assign(x, { status: 'ready', view_key: keys.view, thumb_key: keys.thumb, poster_key: keys.poster });
+      used[x.family_id] = (used[x.family_id] ?? 0) + bytes;
       return true;
     },
     async react(pass, id, kind, on) {
@@ -250,12 +254,12 @@ export function createMockBackend(): Backend {
           .map((m) => ({ id: m.id, group_id: m.groupId, display_name: m.name, status: m.status, pending_until: m.status === 'pending' ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, created_at: now })),
         devices: [...devices.values()]
           .filter((d) => d.familyId === fam)
-          .map((d) => ({ id: d.id, member_id: d.memberId ?? null, status: d.status, requested_name: d.requestedName ?? null, requested_group_id: null, requested_member_id: null, created_at: now })),
+          .map((d) => ({ id: d.id, member_id: d.memberId ?? null, status: d.status, requested_name: d.requestedName ?? null, requested_group_id: null, requested_member_id: null, can_upload: !!d.canUpload, created_at: now })),
       };
     },
     async setMemberStatus(pass, id, status) {
       const fam = parents.get(pass.access)?.familyId;
-      const m = members.find((x) => x.id === id && x.status === 'pending' && groups.find((g) => g.id === x.groupId)?.familyId === fam);
+      const m = members.find((x) => x.id === id && (x.status === 'pending' || (status === 'rejected' && x.status === 'active')) && groups.find((g) => g.id === x.groupId)?.familyId === fam);
       if (!m) throw new BackendError('not_found', 404);
       m.status = status;
       if (status === 'rejected') for (const d of devices.values()) if (d.memberId === id) d.status = 'revoked';
@@ -266,6 +270,16 @@ export function createMockBackend(): Backend {
       if (!d) throw new BackendError('not_found', 404);
       d.status = status;
       if (status === 'active') d.failures.clear();
+    },
+    async setUploadAllowed(pass, memberId, on) {
+      const fam = parents.get(pass.access)?.familyId;
+      const ds = [...devices.values()].filter((d) => d.familyId === fam && d.memberId === memberId && d.status === 'active');
+      if (!ds.length) throw new BackendError('not_found', 404);
+      ds.forEach((d) => (d.canUpload = on));
+    },
+    async setDownloadAllowed(pass, familyId, on) {
+      if (parents.get(pass.access)?.familyId !== familyId) throw new BackendError('not_found', 404);
+      downloads[familyId] = on;
     },
     async createShare(pass, groupIds, target) {
       const fam = parents.get(pass.access)?.familyId;
@@ -280,7 +294,12 @@ export function createMockBackend(): Backend {
     async parentHome(pass): Promise<ParentHome> {
       const p = parents.get(pass.access);
       if (!p) return { family_id: null };
-      return { family_id: p.familyId, role: p.role, closing: false, children: [{ id: p.familyId, name: children[p.familyId], birth_date: births[p.familyId] }] };
+      const ready = media.filter((x) => x.family_id === p.familyId && x.status === 'ready');
+      return {
+        family_id: p.familyId, role: p.role, closing: false, download_allowed: !!downloads[p.familyId],
+        storage_used_bytes: used[p.familyId] ?? 0, photo_count: ready.filter((x) => x.kind === 'photo').length, video_count: ready.filter((x) => x.kind === 'video').length,
+        children: [{ id: p.familyId, name: children[p.familyId], birth_date: births[p.familyId] }],
+      };
     },
     async createFamily(pass, f) {
       if (!pass.access.startsWith('parent-')) throw new BackendError('parent_login_required', 403, '42501');

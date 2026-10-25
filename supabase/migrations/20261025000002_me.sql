@@ -13,6 +13,7 @@ as $$
         else m.status end,
       'name', coalesce(m.display_name, d.requested_name),
       'closed', f.delete_after is not null,
+      'download_allowed', f.download_allowed,
       'child_name', (select c.name from public.children c where c.family_id = f.id order by c.sort_order, c.created_at limit 1)
     ) order by d.last_seen_at), '[]'::jsonb))
   from public.devices d
