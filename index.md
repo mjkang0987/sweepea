@@ -8,6 +8,7 @@
 - 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 1~2시간 주소) 완료. 올리기 화면은 아직.
 - 부모 올리기(`/upload`: 기기에서 줄이기·EXIF 찍은 날·대표 사진·아이·그룹, 올린 뒤 공유 링크 `POST /api/shares`) 완료. 부모 화면은 JS 사용, 가족 화면은 0KB 유지.
 - 설정 > 가족(`/settings/family` 승인·거절·새 기기·그룹 링크, `/settings/family/sms` 한 사람용 문자 링크) 완료.
+- 설정: 구성원 상세(`/settings/family/member/<id>` 사진 올리기 허용·내보내기), 가족도 사진 저장하기(`/settings`, 켜면 가족 크게 보기에 저장 링크), 저장 용량(`/settings/storage`) 완료. 다음은 아이·글자 크기·계정.
 - 부모 시작(`/start` 소개, `/login`·`/auth/callback` OAuth PKCE, `/setup` 처음 설정, `/home` 앨범, `/settings` 자리) 완료. 부모 세션은 쿠키 `sp_parent`(가족 기기 `sp_pass`와 따로).
 - 조부모 앨범(`/album` 넘겨 보기·모아 보기, `/album/<id>` 크게 보기, 집 고르기)과 하트·반응·한마디(폼 POST, `sp_react`·`sp_comment`) 완료.
 - 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. mock 백엔드로 동작 확인, 앨범은 자리만. 기기 하나로 여러 가족방에 들어간다(가족방마다 승인·차단 따로). 다음 이슈는 plan.md 참고.
@@ -64,6 +65,7 @@ supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stu
 - 가족은 `media`의 정해진 열만 읽는다(부모 사용자 id·원본 키·용량 제외, `select *` 불가).
 - 가족방끼리는 서로 안 보인다. 부모도 기기 사용자 id(`auth_user_id`)는 못 읽는다(열 권한이라 `select *` 불가).
 - 입장은 `sp_entry_info`(누구세요 화면 정보) → `sp_enter`(이름 + 그룹 비밀번호). 새 이름은 링크 72시간 안에만, 승인 대기 3일. 틀린 기록은 기기·그룹별(3번 30초, 10번 승인 대기)과 그룹 전체(1시간 20번·하루 30번이면 새 기기는 승인 대기).
+- 내보낸(거절된) 구성원은 반응·한마디 기록이 있으면 지우지 않고 그 이름을 막는다(`sp_member_has_history`). 올리기 허용은 기기마다(`devices.can_upload`).
 - 공유 링크는 `sp_create_share`로만(8자 코드). 연결 표는 family_id 복합 FK로 같은 가족방끼리만.
 - 사진 행은 `sp_create_media`로만 만들고, 상태·저장 키·용량은 서버(`sp_finish_upload`, service_role)만 쓴다. 비밀번호 해시는 클라이언트가 못 읽는다.
 
