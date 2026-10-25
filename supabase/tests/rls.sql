@@ -23,6 +23,7 @@ select public.sp_create_family('mom', '지우', '하린', '2025-09-17', '0917', 
 select public.sp_add_group('외가', '1234', '외가 비밀번호') as gma \gset
 select public.sp_add_group('친가', '5678') as gpa \gset
 select pg_temp.ok((select groups_enabled from public.families) , '그룹 추가하면 그룹 켜짐');
+select pg_temp.ok(public.sp_parent_home() @> '{"role": "mom", "children": [{"name": "하린"}]}', '부모 첫 화면 정보');
 insert into public.members (family_id, group_id, display_name) values
   (:'fam', :'gma', '외할머니'), (:'fam', :'gma', '외할아버지'), (:'fam', :'gma', '하린 아빠'), (:'fam', :'gpa', '할머니');
 select id as m_gm from public.members where display_name = '외할머니' \gset
@@ -449,4 +450,5 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'N1', 'is_anonymous', true)::text, false);
 set role authenticated;
 select pg_temp.ok(public.sp_me() = '{"families": []}', 'sp_me 처음 기기');
+select pg_temp.ok(public.sp_parent_home() = '{"family_id": null}', '설정 전·기기 사용자는 가족방 없음');
 reset role;

@@ -1,0 +1,41 @@
+---
+// 처음 설정 1/2: 아이. JS 없이 GET 폼으로 2단계에 넘긴다(값은 숨은 칸으로 이어감)
+import Parent from '../../layouts/Parent.astro';
+import { loadParent, seoulToday } from '../../lib/parent';
+
+const a = await loadParent(Astro.cookies, { needFamily: false });
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const q = Astro.url.searchParams;
+const e = q.get('e');
+const today = seoulToday();
+---
+
+<Parent title={e ? '다시 확인해 주세요 · 아이를 알려 주세요' : '아이를 알려 주세요'}>
+  <form class="sp-p__form" method="get" action="/setup/password">
+    <header class="sp-p__head">
+      <p class="sp-p__step">1 / 2</p>
+      <h1 class="sp-p__title">아이를 알려 주세요</h1>
+      <p class="sp-p__lead">생일로 월령과 접종·검진 시기를 계산해요. 아이가 여럿이면 나중에 더 추가할 수 있어요.</p>
+    </header>
+    {e && <p class="sp-p__error" role="alert" id="setup-err">{e === 'name' ? '이름을 1~12자로 써 주세요.' : '생일을 골라 주세요.'}</p>}
+    <div class="sp-p__field">
+      <label class="sp-p__label" for="child">이름</label>
+      <input class="sp-p__input" id="child" name="child" type="text" required maxlength="12" autocomplete="off" value={q.get('child') ?? ''} aria-invalid={e === 'name' ? 'true' : undefined} aria-describedby={e === 'name' ? 'setup-err' : undefined} />
+    </div>
+    <div class="sp-p__field">
+      <label class="sp-p__label" for="birth">생일</label>
+      <input class="sp-p__input" id="birth" name="birth" type="date" required max={today} min="2010-01-01" value={q.get('birth') ?? ''} aria-invalid={e === 'birth' ? 'true' : undefined} aria-describedby={e === 'birth' ? 'setup-err' : undefined} />
+    </div>
+    <fieldset class="sp-p__field sp-p__fieldset">
+      <legend class="sp-p__label">나는 아이의</legend>
+      <div class="sp-p__choices">
+        <label class="sp-p__choice"><input class="sp-p__radio" type="radio" name="role" value="mom" checked={q.get('role') !== 'dad'} /> 엄마</label>
+        <label class="sp-p__choice"><input class="sp-p__radio" type="radio" name="role" value="dad" checked={q.get('role') === 'dad'} /> 아빠</label>
+      </div>
+      <p class="sp-p__hint">가족 화면에 "오늘 엄마가 올렸어요"처럼 보여요</p>
+    </fieldset>
+    <div class="sp-p__bottom">
+      <button class="sp-p__btn" type="submit">다음</button>
+    </div>
+  </form>
+</Parent>

@@ -1,0 +1,16 @@
+---
+// 설정 자리(설정 > 가족은 다음 이슈). 지금은 로그아웃만
+import Parent from '../layouts/Parent.astro';
+import { loadParent } from '../lib/parent';
+
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+---
+
+<Parent title="설정 · 스위피" tab="settings">
+  <h1 class="sp-p__title sp-p__title--large">설정</h1>
+  <p class="sp-p__lead">가족·아이·저장 용량 설정은 곧 열려요.</p>
+  <form method="post" action="/logout">
+    <button class="sp-p__btn sp-p__btn--quiet" type="submit">로그아웃</button>
+  </form>
+</Parent>
