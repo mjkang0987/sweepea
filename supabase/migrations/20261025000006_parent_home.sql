@@ -10,6 +10,7 @@ as $$
       'provider', auth.jwt() -> 'app_metadata' ->> 'provider',
       'text_size_mode', f.text_size_mode,
       'closing', f.delete_after is not null,
+      'delete_after', f.delete_after,
       'download_allowed', f.download_allowed,
       'storage_used_bytes', f.storage_used_bytes,
       'photo_count', (select count(*) from public.media x where x.family_id = f.id and x.status = 'ready' and x.kind = 'photo'),

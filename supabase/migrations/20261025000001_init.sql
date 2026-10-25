@@ -465,7 +465,8 @@ revoke insert, update, delete on public.children from authenticated;
 grant insert (family_id, name, birth_date) on public.children to authenticated;
 grant update (name, birth_date) on public.children to authenticated;
 revoke update on public.families from authenticated;
-grant update (name, download_allowed, text_size_mode, delete_after) on public.families to authenticated;
+-- delete_after(탈퇴 유예)는 sp_request_delete·sp_restore_family로만
+grant update (name, download_allowed, text_size_mode) on public.families to authenticated;
 revoke insert on public.comments, public.reactions from authenticated;
 -- 반응·한마디 넣기는 sp_react·sp_comment로만(하루 한도·공백 정리·구성원 확인)
 revoke truncate, references, trigger on all tables in schema public from anon, authenticated;

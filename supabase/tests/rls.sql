@@ -486,7 +486,28 @@ reset role;
 -- ── 탈퇴 유예: 가족 화면은 바로 닫힘
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
-update public.families set delete_after = now() + interval '3 days';
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(부모가 탈퇴 날짜를 직접 고침)'
+update public.families set delete_after = now();
+reset role;
+insert into public.entitlements (family_id, platform, product_id, original_transaction_id, expires_at)
+  values (:'fam', 'ios', 'family', 'tx-1', now() + interval '1 month');
+set role authenticated;
+\echo '아래 에러 1줄은 의도된 거부(구독 중 탈퇴)'
+select public.sp_request_delete();
+reset role;
+delete from public.entitlements where family_id = :'fam';
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+\echo '아래 에러 1줄은 의도된 거부(가족 기기가 탈퇴)'
+select public.sp_request_delete();
+\set ON_ERROR_STOP 1
+reset role;
+select pg_temp.ok((select delete_after is null from public.families where id = :'fam'), '거부된 탈퇴는 반영 안 됨');
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_request_delete() between now() + interval '71 hours' and now() + interval '73 hours', '탈퇴하면 3일 뒤 지울 날');
+select pg_temp.ok(public.sp_parent_home() @> '{"closing": true}' and public.sp_parent_home() ? 'delete_after', '부모 첫 화면에 탈퇴 유예');
 select pg_temp.ok((select count(*) = 7 from public.media), '부모는 유예 중에도 봄(되살리기)');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
@@ -564,3 +585,29 @@ insert into public.children (family_id, name, birth_date) values (:'fam', '할�
 reset role;
 select pg_temp.ok((select name = '도윤이' from public.children where id = :'ch2'), '다른 가족방 부모·가족 기기는 아이를 못 바꿈');
 select pg_temp.ok((select text_size_mode = 'xlarge' from public.families where id = :'fam'), '다른 가족방 부모는 글자 크기를 못 바꿈');
+
+-- ── 되살리기·실제 삭제
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_restore_family();
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) > 0 from public.media), '되살리면 가족 화면 다시 열림');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_request_delete();
+reset role;
+update public.families set delete_after = now() - interval '1 minute' where id = :'fam';
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(기한 지난 뒤 되살리기, 부모가 지우기 함수 부름)'
+select public.sp_restore_family();
+select public.sp_purge_deleted_families();
+\set ON_ERROR_STOP 1
+reset role;
+set role service_role;
+select pg_temp.ok((select array_agg(x) = array[:'fam']::uuid[] from public.sp_purge_deleted_families() x), '기한 지난 가족방만 지움');
+reset role;
+select pg_temp.ok(not exists (select 1 from public.families where id = :'fam') and not exists (select 1 from public.media where family_id = :'fam') and not exists (select 1 from public.parents where family_id = :'fam'), '사진·부모 연결까지 같이 지워짐');
