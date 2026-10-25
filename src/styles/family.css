@@ -346,7 +346,7 @@
 }
 /* 화면이 가운데 칸보다 넓으면(태블릿·PC) 줄 양끝을 흐리게(칸 끝에서 옆 카드가 뚝 잘려 보이지 않게).
    줄을 화면 끝까지 펼치면 카드 크기·겹침 애니메이션(view-timeline)이 줄 너비 기준이라 어긋나서 너비는 그대로 둔다 */
-@media (min-width: 36rem) {
+@media (min-width: 32.0625rem) {
   .sp-a__swipe {
     -webkit-mask-image: linear-gradient(to right, transparent, black var(--space-5), black calc(100% - var(--space-5)), transparent);
     mask-image: linear-gradient(to right, transparent, black var(--space-5), black calc(100% - var(--space-5)), transparent);
