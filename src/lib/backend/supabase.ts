@@ -38,6 +38,13 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     return (text ? JSON.parse(text) : undefined) as T;
   }
 
+  /** 서버 전용 함수(service_role 키) */
+  function serviceRpc<T>(fn: string, body: object): Promise<T> {
+    if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY가 없다');
+    // 새 형식 비밀 키(sb_secret_)는 JWT가 아니라 apikey 자리에도 넣어야 한다
+    return call<T>(`/rest/v1/rpc/${fn}`, { method: 'POST', token: serviceKey, apikey: serviceKey, body: JSON.stringify(body) });
+  }
+
   /** 한 행 PATCH. RLS로 남의 가족방 행이면 0행이라 404로 */
   async function patchOne(pass: Pass, table: string, id: string, body: object) {
     const q = new URLSearchParams({ id: `eq.${id}`, select: 'id' });
@@ -103,16 +110,12 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         p_child_ids: m.childIds ?? [],
       }),
     uploadTarget: (pass, id) => rpc<UploadTarget | null>(pass, 'sp_upload_target', { p_media_id: id }),
-    async finishUpload(id, keys, bytes) {
-      if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY가 없다');
-      return call<boolean>('/rest/v1/rpc/sp_finish_upload', {
-        method: 'POST',
-        token: serviceKey,
-        // 새 형식 비밀 키(sb_secret_)는 JWT가 아니라 apikey 자리에도 넣어야 한다
-        apikey: serviceKey,
-        body: JSON.stringify({ p_media_id: id, p_view_key: keys.view, p_thumb_key: keys.thumb, p_poster_key: keys.poster, p_bytes: bytes }),
-      });
-    },
+    finishUpload: (id, keys, bytes) =>
+      serviceRpc<boolean>('sp_finish_upload', { p_media_id: id, p_view_key: keys.view, p_thumb_key: keys.thumb, p_poster_key: keys.poster, p_bytes: bytes }),
+    purgeDeletedFamilies: () => serviceRpc<string[]>('sp_purge_deleted_families', {}),
+    cleanupStaleUploads: () => serviceRpc<number>('sp_cleanup_stale_uploads', {}),
+    r2CleanupTake: (limit) => serviceRpc<string[]>('sp_r2_cleanup_take', { p_limit: limit }),
+    r2CleanupDone: (prefix) => serviceRpc<void>('sp_r2_cleanup_done', { p_prefix: prefix }),
     listMedia(pass, opts = {}) {
       const q = new URLSearchParams({
         select: 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key',

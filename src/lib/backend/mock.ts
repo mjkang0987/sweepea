@@ -206,6 +206,7 @@ export function createMockBackend(): Backend {
     async createMedia(pass, m) {
       const parentOwns = parents.get(pass.access)?.familyId === m.familyId;
       if (isClosing(m.familyId) || (!parentOwns && !canUpload(deviceOf(pass, m.familyId)))) throw new BackendError('not_allowed', 403, '42501');
+      if ((used[m.familyId] ?? 0) >= 5 * 1024 ** 3) throw new BackendError('storage_full', 507, 'PT507');
       const id = crypto.randomUUID();
       media.push({
         id, family_id: m.familyId, kind: m.kind, taken_at: m.takenAt, width: m.width ?? null, height: m.height ?? null,
@@ -419,6 +420,11 @@ export function createMockBackend(): Backend {
         .slice(0, opts.limit ?? 60)
         .map(({ status: _s, uploader: _u, groupIds: _g, childIds: _c, bytes: _b, ...rest }) => rest);
     },
+    // 정리 작업은 mock에선 할 일이 없다(실제 규칙은 DB 검사와 cleanup 단위 검사가 맡는다)
+    purgeDeletedFamilies: async () => [],
+    cleanupStaleUploads: async () => 0,
+    r2CleanupTake: async () => [],
+    r2CleanupDone: async () => {},
     async requestInstallHelp(pass, familyId) {
       const d = deviceOf(pass, familyId);
       const m = members.find((x) => x.id === d?.memberId && x.status === 'active');

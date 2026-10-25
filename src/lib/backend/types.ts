@@ -252,6 +252,13 @@ export interface Backend {
   setUploadAllowed(pass: Pass, memberId: string, on: boolean): Promise<void>;
   /** 가족도 사진 저장하기 */
   setDownloadAllowed(pass: Pass, familyId: string, on: boolean): Promise<void>;
+  /** 정리 예약 작업(service_role): 탈퇴 기한 지난 가족방 지우기. 지운 가족방 id */
+  purgeDeletedFamilies(): Promise<string[]>;
+  /** 하루 지난 '올리는 중' 사진 지우기. 지운 개수 */
+  cleanupStaleUploads(): Promise<number>;
+  /** R2 정리 대기열(폴더 접두사) 오래된 것부터 */
+  r2CleanupTake(limit: number): Promise<string[]>;
+  r2CleanupDone(prefix: string): Promise<void>;
   /** 홈 화면에 두기를 엄마아빠에게 부탁(가족 기기 본인) */
   requestInstallHelp(pass: Pass, familyId: string): Promise<void>;
   /** 접종·검진 완료 기록(부모만) */
