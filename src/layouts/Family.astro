@@ -1,0 +1,20 @@
+---
+import Base from './Base.astro';
+import '../styles/family.css';
+import { readTextSize } from '../lib/pass';
+
+interface Props {
+  title: string;
+  /** 쿠키 대신 이 크기로(이름으로 정한 크기를 아직 저장하지 않았을 때) */
+  size?: 'base' | 'large' | 'xlarge';
+}
+
+const { title } = Astro.props;
+const size = Astro.props.size ?? readTextSize(Astro.cookies);
+---
+
+<Base title={title} size={size}>
+  <main class="sp-f">
+    <slot />
+  </main>
+</Base>

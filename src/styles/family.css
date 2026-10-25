@@ -1,0 +1,252 @@
+/* 가족(조부모) 화면 공통. 크기는 senior 토큰(rem)이라 .sp-size-*로 한꺼번에 커지고 작아진다. */
+.sp-f {
+  box-sizing: border-box;
+  min-height: 100vh;
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-5) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  word-break: keep-all;
+}
+@supports (min-height: 100dvh) {
+  .sp-f {
+    min-height: 100dvh;
+  }
+}
+
+.sp-f__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-f__title {
+  margin: 0;
+  font-size: var(--senior-title-size);
+  line-height: var(--senior-title-line);
+  font-weight: var(--senior-title-weight);
+  letter-spacing: var(--senior-title-tracking);
+}
+.sp-f__lead,
+.sp-f__text {
+  margin: 0;
+  font-size: var(--senior-body-size);
+  line-height: var(--senior-body-line);
+}
+.sp-f__lead {
+  color: var(--label-2);
+}
+.sp-f__caption {
+  margin: 0;
+  font-size: var(--senior-caption-size);
+  line-height: var(--senior-caption-line);
+  font-weight: var(--senior-caption-weight);
+  color: var(--label-2);
+}
+
+.sp-f__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.sp-f__group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.sp-f__legend {
+  padding: 0;
+  margin-bottom: var(--space-3);
+  font-size: var(--senior-caption-size);
+  line-height: var(--senior-caption-line);
+  font-weight: 600;
+  color: var(--label-2);
+}
+.sp-f__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sp-f__name,
+.sp-f__btn {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--target-senior);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--senior-button-size);
+  line-height: var(--senior-button-line);
+  font-weight: var(--senior-button-weight);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sp-f__name {
+  border-radius: var(--radius-lg);
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-weight: 700;
+}
+.sp-f__btn {
+  background: var(--pea);
+  color: var(--on-pea);
+}
+.sp-f__btn--quiet {
+  background: transparent;
+  color: var(--pea-ink);
+}
+.sp-f__btn--fill {
+  background: var(--fill);
+  color: var(--label);
+}
+
+.sp-f__row {
+  display: flex;
+  gap: var(--space-2);
+}
+.sp-f__row .sp-f__btn {
+  flex: none;
+  width: auto;
+}
+/* 열 방향 묶음 안에선 flex: 1이 높이를 바꾸므로 가로 줄에서만 늘린다 */
+.sp-f__row .sp-f__input {
+  flex: 1;
+}
+.sp-f__label {
+  font-size: var(--senior-caption-size);
+  line-height: var(--senior-caption-line);
+  font-weight: 600;
+  color: var(--label-2);
+}
+.sp-f__input {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  height: var(--target-senior);
+  padding: 0 var(--space-4);
+  border: 1.5px solid var(--label-2);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--label);
+  font-family: inherit;
+  font-size: var(--senior-body-size);
+}
+.sp-f__input::placeholder {
+  color: var(--label-2);
+}
+.sp-f__input--pin {
+  letter-spacing: 0.4em;
+  text-align: center;
+  font-size: var(--senior-title-size);
+}
+
+/* 네이티브 라디오에 모양만 입힌 칸 고르기(글자 크기, 그룹) */
+.sp-f__seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--fill);
+}
+.sp-f__seg-item {
+  position: relative;
+  flex: 1;
+  display: flex;
+}
+.sp-f__seg-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.sp-f__seg-text {
+  flex: 1;
+  min-height: var(--target-senior);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--radius-md) - 2px);
+  font-size: var(--senior-caption-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+.sp-f__seg-input:checked + .sp-f__seg-text {
+  background: var(--bg);
+  /* 바탕 차이만으론 3:1이 안 나와서 테두리로 고른 칸을 보여 준다 */
+  box-shadow: inset 0 0 0 2px var(--pea), 0 1px 2px rgba(0, 0, 0, 0.12);
+  color: var(--pea-deep);
+}
+@media (forced-colors: active) {
+  .sp-f__seg-input:checked + .sp-f__seg-text {
+    outline: 3px solid Highlight;
+    outline-offset: -3px;
+  }
+}
+.sp-f__seg-input:focus-visible + .sp-f__seg-text {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+.sp-f__seg--big .sp-f__seg-text {
+  font-size: var(--senior-button-size);
+}
+.sp-f__size-base {
+  font-size: 0.82em;
+}
+.sp-f__size-xlarge {
+  font-size: 1.15em;
+}
+
+.sp-f__box {
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  font-size: var(--senior-body-size);
+  line-height: var(--senior-body-line);
+}
+.sp-f__box--pea {
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+}
+.sp-f__box--danger {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.sp-f__bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* 안내 화면(주소 지남, 닫힘 등): 가운데 콩이 + 제목 + 설명 */
+.sp-f__notice {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  text-align: center;
+}
+.sp-f__kongi {
+  width: 7rem;
+  height: 7rem;
+  border-radius: var(--radius-xl);
+  image-rendering: pixelated;
+}

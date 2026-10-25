@@ -1,0 +1,49 @@
+---
+// 승인 기다림: 새 이름(엄마아빠 확인 전) 또는 비밀번호 10번 틀림
+import Family from '../layouts/Family.astro';
+import Notice from '../components/Notice.astro';
+import { getBackend } from '../lib/backend';
+import { currentPass } from '../lib/pass';
+import { callName, ro } from '../lib/ko';
+import { NOTICES } from '../lib/notices';
+
+const pass = await currentPass(Astro.cookies);
+if (!pass) return Astro.redirect('/');
+const me = await getBackend().me(pass);
+if (!me.device) return Astro.redirect('/');
+if (me.device === 'active' && me.member === 'active' && !me.closed) return Astro.redirect('/album');
+const child = callName(me.child_name ?? '아이');
+const state = me.closed ? 'closed' : me.device === 'revoked' ? 'revoked' : me.member === 'expired' ? 'pending_expired' : me.device === 'pending' ? 'attempts' : 'pending';
+---
+
+<Family title="승인 기다림">
+  {
+    state === 'pending' || state === 'attempts' ? (
+      <>
+        <div class="sp-f__head">
+          <h1 class="sp-f__title">{child} 사진</h1>
+          {me.name && <p class="sp-f__lead">{ro(me.name)} 들어오는 중이에요</p>}
+        </div>
+        {state === 'attempts' ? (
+          <p class="sp-f__box" role="status">
+            비밀번호가 여러 번 맞지 않아서 엄마아빠에게 확인을 부탁해 뒀어요. 엄마아빠가 확인하면 들어갈 수 있어요.
+          </p>
+        ) : (
+          <section class="sp-f__box sp-f__box--pea" aria-labelledby="wait-h">
+            <h2 class="sp-f__title" id="wait-h">
+              엄마아빠가 확인하면 다 열려요
+            </h2>
+            <p class="sp-f__text">지금은 받은 사진만 볼 수 있어요. 3일 안에 확인하지 않으면 다시 받아야 해요.</p>
+          </section>
+        )}
+        <div class="sp-f__bottom">
+          <a class="sp-f__btn sp-f__btn--fill" href="/wait">
+            다시 확인하기
+          </a>
+        </div>
+      </>
+    ) : (
+      <Notice {...NOTICES[state]} />
+    )
+  }
+</Family>

@@ -294,7 +294,10 @@ set role authenticated;
 insert into public.media_groups (family_id, media_id, group_id) values (:'fam2', :'mx', :'gma');
 reset role;
 set role anon;
-select public.sp_entry_info(:'code1');
+select public.sp_enter(:'code1', '1234', :'m_gm');
+reset role;
+set role anon;
+select pg_temp.ok(public.sp_entry_info(:'code1') ->> 'result' = 'ok', 'anon(출입증 없는 첫 방문)도 입장 정보는 봄');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
 set role authenticated;
@@ -326,4 +329,18 @@ select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anon
 set role authenticated;
 select pg_temp.ok((select count(*) = 0 from public.media), '가족은 바로 0장');
 select pg_temp.ok(public.sp_entry_info(:'code1') ->> 'result' = 'closed', '앨범이 닫혔어요');
+reset role;
+
+-- ── sp_me: 가족 화면이 어디로 보낼지
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_me() @> '{"device": "active", "member": "active", "name": "외할머니", "closed": true, "child_name": "하린"}', 'sp_me 외할머니(앨범 닫힘)');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'X', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_me() @> '{"device": "revoked", "name": "모르는사람"}', 'sp_me 차단된 기기');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'N1', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_me() = '{"device": null}', 'sp_me 처음 기기');
 reset role;
