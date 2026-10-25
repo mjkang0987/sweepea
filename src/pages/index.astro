@@ -3,10 +3,12 @@
 import Family from '../layouts/Family.astro';
 import Notice from '../components/Notice.astro';
 import { getBackend } from '../lib/backend';
-import { currentPass } from '../lib/pass';
+import { currentPass, PARENT } from '../lib/pass';
 import { NOTICES } from '../lib/notices';
 import { isOpen } from '../lib/families';
 
+// 홈 화면 아이콘(시작 주소 /)으로 연 부모는 부모 앨범으로
+if (Astro.cookies.has(PARENT)) return Astro.redirect('/home');
 // 출입증이 없으면 백엔드를 부르지 않는다(첫 방문·성능 검사에서 외부 호출 없음)
 const pass = await currentPass(Astro.cookies);
 if (pass) {
