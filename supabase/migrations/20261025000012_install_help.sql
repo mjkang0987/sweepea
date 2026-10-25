@@ -4,7 +4,8 @@ language plpgsql security definer set search_path = ''
 as $$
 declare v_member uuid := public.sp_device_member(p_family_id);
 begin
-  if v_member is null then raise exception 'not_allowed' using errcode = '42501'; end if;
+  -- 승인된 가족만(부모 최근 반응에도 승인된 사람만 보인다)
+  if v_member is null or not public.sp_device_active(p_family_id) then raise exception 'not_allowed' using errcode = '42501'; end if;
   update public.members set install_help_at = now() where id = v_member;
 end $$;
 
