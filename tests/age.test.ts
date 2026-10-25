@@ -20,6 +20,8 @@ test('탈퇴까지 남은 시간', () => {
   assert.equal(remainingLabel(72 * H - 1, 0), '2일 23시간 남았어요');
   assert.equal(remainingLabel(29 * H + 59 * 60_000, 0), '1일 5시간 남았어요');
   assert.equal(remainingLabel(5 * H, 0), '5시간 남았어요');
-  assert.equal(remainingLabel(H - 1, 0), '1시간 안에 지워져요');
-  assert.equal(remainingLabel(-H, 0), '1시간 안에 지워져요');
+  assert.equal(remainingLabel(H - 1, 0), '곧 지워져요');
+  assert.equal(remainingLabel(-H, 0), '곧 지워져요');
+  assert.equal(remainingLabel(NaN, 0), '곧 지워져요');
+  assert.equal(remainingLabel(24 * H, 0), '1일 남았어요');
 });

@@ -11,10 +11,10 @@ export function birthLabel(birth: string): string {
   return `${y}년 ${m}월 ${d}일`;
 }
 
-/** 지울 시각까지 남은 시간: "2일 5시간 남았어요", 하루 미만 "5시간 남았어요", 1시간 미만 "1시간 안에 지워져요". 시간은 내림 */
+/** 지울 시각까지 남은 시간: "2일 5시간 남았어요", 하루 미만 "5시간 남았어요", 1시간 미만(또는 알 수 없음) "곧 지워져요". 시간은 내림 */
 export function remainingLabel(untilMs: number, nowMs: number): string {
   const hours = Math.floor((untilMs - nowMs) / 3_600_000);
-  if (hours < 1) return '1시간 안에 지워져요';
+  if (!(hours >= 1)) return '곧 지워져요';
   const d = Math.floor(hours / 24);
   const h = hours % 24;
   return `${d ? `${d}일` : ''}${d && h ? ' ' : ''}${h ? `${h}시간` : ''} 남았어요`;
