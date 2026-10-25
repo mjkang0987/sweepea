@@ -469,7 +469,7 @@ grant select (id, family_id, member_id, status, can_upload, requested_member_id,
 -- 아이: 부모는 이름·생일만 넣고 고친다. 지우기(사진 연결이 같이 지워짐)·순서는 아직 클라이언트에 열지 않는다
 revoke insert, update, delete on public.children from authenticated;
 grant insert (family_id, name, birth_date) on public.children to authenticated;
-grant update (name, birth_date) on public.children to authenticated;
+grant update (name, birth_date, show_health) on public.children to authenticated;
 revoke update on public.families from authenticated;
 -- delete_after(탈퇴 유예)는 sp_request_delete·sp_restore_family로만
 grant update (name, download_allowed, text_size_mode) on public.families to authenticated;

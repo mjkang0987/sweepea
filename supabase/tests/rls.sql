@@ -754,3 +754,24 @@ select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anon
 set role authenticated;
 select pg_temp.ok(public.sp_parent_activity() is null, '가족 기기는 못 봄');
 reset role;
+
+-- ── 접종·검진 완료 기록: 부모만
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+insert into public.health_done (family_id, child_id, item_key, done_on) values (:'fam3', :'kid1', 'mmr-1', '2026-10-02');
+update public.children set show_health = false where id = :'kid1';
+select pg_temp.ok((select count(*) = 1 from public.health_done), '부모는 완료 기록');
+select pg_temp.ok((select not show_health from public.children where id = :'kid1'), '일정 보기 끄기');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 0 from public.health_done where child_id = :'kid1'), '다른 가족방 부모는 못 읽음');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(다른 가족방 아이에 완료 기록)'
+insert into public.health_done (family_id, child_id, item_key, done_on) values (:'fam3', :'kid1', 'var', '2026-10-02');
+\set ON_ERROR_STOP 1
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) = 0 from public.health_done), '가족 기기는 못 읽음');
+reset role;
