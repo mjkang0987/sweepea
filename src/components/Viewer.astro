@@ -28,8 +28,10 @@ interface Props {
   child: string;
   say: string | null;
   sentText?: string;
+  /** 완료 안내(몇 초 뒤 사라짐), 예: 사진 정보 저장 뒤 */
+  toast?: string;
 }
-const { m, label, src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
+const { m, label, toast, src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
 const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 ---
@@ -37,6 +39,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 {/* 시안엔 제목 줄이 없어 화면에선 숨기고 화면 읽기에만 */}
 <h1 class="sp-vh" id="v-title">{label}</h1>
 <div class="sp-v" data-v>
+  {toast && <p class="sp-v__toast" role="status">{toast}</p>}
   <figure class="sp-v__stage">
     {
       m.kind === 'video' ? (
