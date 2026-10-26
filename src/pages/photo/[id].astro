@@ -67,17 +67,18 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
 ---
 
 <Parent title={error ? '다시 확인해 주세요 · 사진 정보 수정' : '사진 정보 수정 · 스위피'} tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  {/* 디자인(ParentPhoto): 위 줄 왼쪽 닫기, 가운데 작은 제목 */}
+  <div class="sp-p__nav">
     <a class="sp-p__back sp-p__back--cancel" href={`/view/${id}${kq}`}>닫기</a>
-  </nav>
-  <h1 class="sp-p__title">사진 정보 수정</h1>
+    <h1 class="sp-p__nav-title">사진 정보 수정</h1>
+  </div>
   {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} role={done === 'error' ? 'alert' : undefined} tabindex="-1" autofocus>{doneText[done]}</p>}
-  <div class="sp-p__field">
-    {isVideo ? <video class="sp-p__photo sp-p__photo--small" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} /> : <img class="sp-p__photo sp-p__photo--small" src={src} alt={label} />}
+  <div class="sp-p__preview">
+    {isVideo ? <video class="sp-p__preview-media" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} /> : <img class="sp-p__preview-media" src={src} alt={label} />}
     {
       info.latest && (
-        <p class="sp-p__card sp-p__say">
-          <span class="sp-p__say-who"><span class="sp-vh">최근 한마디, </span>{info.latest.name}</span>
+        <p class="sp-p__preview-say">
+          <strong class="sp-p__preview-who"><span class="sp-vh">최근 한마디, </span>{info.latest.name}</strong>
           {info.latest.body}
         </p>
       )
@@ -95,16 +96,19 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
       </section>
     ) : (
       <>
-        <form class="sp-p__form" method="post">
+        <form class="sp-p__form sp-p__form--fit" method="post">
           {error && <p class="sp-p__error" role="alert" id="p-err">{error.text}</p>}
-          <div class="sp-p__field">
-            <label class="sp-p__label" for="date">찍은 날</label>
-            <input class="sp-p__input" id="date" name="date" type="date" required min="2000-01-01" max={seoulToday()} value={date} aria-invalid={error?.field === 'date' ? 'true' : undefined} aria-describedby={error?.field === 'date' ? 'p-err' : undefined} />
-          </div>
+          {/* 디자인: 한 묶음 목록(찍은 날 줄 · 아이 · 보여줄 그룹) */}
+          <ul class="sp-p__group" role="list">
+          <li class="sp-p__group-row">
+            <label class="sp-p__group-label" for="date">찍은 날</label>
+            <input class="sp-p__inline-date" id="date" name="date" type="date" required min="2000-01-01" max={seoulToday()} value={date} aria-invalid={error?.field === 'date' ? 'true' : undefined} aria-describedby={error?.field === 'date' ? 'p-err' : undefined} />
+          </li>
           {
             kids.length > 0 && (
+              <li class="sp-p__group-row sp-p__group-row--stack">
               <fieldset class="sp-p__fieldset sp-p__field">
-                <legend class="sp-p__label">아이</legend>
+                <legend class="sp-p__group-label sp-p__group-legend">아이</legend>
                 <div class="sp-p__checks">
                   {kids.map((k) => (
                     <label class="sp-p__check">
@@ -114,10 +118,12 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
                   ))}
                 </div>
               </fieldset>
+              </li>
             )
           }
+          <li class="sp-p__group-row sp-p__group-row--stack">
           <fieldset class="sp-p__fieldset sp-p__field" aria-describedby={error?.field === 'group' ? 'group-note p-err' : 'group-note'}>
-            <legend class="sp-p__label">보여줄 그룹</legend>
+            <legend class="sp-p__group-label sp-p__group-legend">보여줄 그룹</legend>
             <div class="sp-p__checks">
               {groups.map((g) => (
                 <label class="sp-p__check">
@@ -126,11 +132,13 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
                 </label>
               ))}
             </div>
-            <p class="sp-p__hint" id="group-note">그룹을 빼면 그 가족 화면에서 바로 사라져요.</p>
           </fieldset>
+          </li>
+          </ul>
+          <p class="sp-p__hint" id="group-note">그룹을 빼면 그 가족 화면에서 바로 사라져요.</p>
           <button class="sp-p__btn" type="submit" name="do" value="save">저장</button>
         </form>
-        <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text sp-p__add" href={`/photo/${id}${kq ? `${kq}&` : '?'}confirm=delete#confirm`}>{isVideo ? '영상' : '사진'} 지우기</a>
+        <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" href={`/photo/${id}${kq ? `${kq}&` : '?'}confirm=delete#confirm`}>{isVideo ? '영상' : '사진'} 지우기</a>
       </>
     )
   }

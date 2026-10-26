@@ -700,10 +700,16 @@
   outline: 2px solid var(--pea-ink);
   outline-offset: 2px;
 }
+/* 도트 이모지 28px(디자인 125). 그림은 칸에 꽉 맞게: 글자 크기 배율이 달라도 가운데에서 안 벗어남 */
 .sp-r__icon {
   display: block;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.sp-r__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 /* 도트 이모지 움직임: 두 번만(5초 넘게 계속 움직이지 않게), 동작 줄이기면 끔 */
 @media (prefers-reduced-motion: no-preference) {
@@ -1024,8 +1030,9 @@
   align-items: center;
   justify-content: space-between;
 }
+/* 디자인: 반응 버튼은 회색 칸(밝은 화면에서 흰 반투명이면 판과 같은 색이라 안 보였음) */
 .sp-v__panel .sp-r__btn {
-  background: var(--panel-item);
+  background: var(--fill);
 }
 .sp-v__panel .sp-r__btn[aria-pressed='true'] {
   background: var(--pea-tint);
