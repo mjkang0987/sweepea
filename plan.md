@@ -657,6 +657,12 @@
 - 조사(2026-10-27): 반응·한마디 표는 `member_id`(링크로 들어온 가족)만 받는다. 부모 계정은 `parents` 한 명(배우자는 구성원으로 들어옴)이라 반응을 남길 자리가 없음
   - 고칠 곳: reactions·comments에 `parent_user_id` 열 추가(둘 중 하나만), reactions 기본 키 → 고유 색인 2개, 부모용 RPC(sp_parent_react·sp_parent_comment), 반응 수(sp_reaction_counts)·한마디 목록·부모 새 반응 수(내 반응은 빼기)·최근 반응 목록에 부모 포함, RLS·DB 검사(rls.sql)
   - 조부모 화면에는 부모 이름으로 보임(parents.display_name, 예: '하린 엄마')
+- (가) 디자인 완료: 버전 119(ParentView·ParentView-Light 새 보드, ParentPhoto → 사진 정보 수정: 닫기·저장 버튼·작은 미리보기)
+- (나) DB 완료(feature/parent-react-db, dev 머지): 마이그레이션 20261027000001_parent_reactions, 백엔드 parentReact·parentComment. 리뷰 3회차
+  - 1회차(별도 리뷰): 가족이 reactions.parent_user_id(부모 사용자 id)를 읽을 수 있었음 → 열 권한으로 막음. 탈퇴 유예 중 부모 반응 막음. 부모 지울 때 찾는 색인. 검사 추가(다른 집 부모, 하루 30개, 지우기, 탈퇴 유예)
+  - 2회차: mock과 DB 동작 대조(부모 이름 '엄마/아빠' = 실제 parents.display_name), parents 읽기 정책 확인
+  - 3회차: DB 검사(의도된 거부 58건), 타입 검사, 단위 테스트, e2e(reactions·photo·swiper) 통과
+  - 남은 것: 부모는 자기 한마디를 고칠 수 없음(지우기만, 가족도 고치는 화면은 아직 없음)
 - 나눠서 머지: (가) 디자인 → (나) DB: 부모 반응·한마디 → (다) 크게 보기 공통 부품 + 엄빠 갤러리 → (라) 사진 정보 수정 화면 → (마) 조부모 크게 보기 스와이퍼. 단계마다 코드 리뷰·검증·기능 리뷰 3회차
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
