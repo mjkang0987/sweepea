@@ -532,7 +532,7 @@
 - 결과: 실제 Supabase로 핵심 흐름 e2e 11개 통과 — 처음 설정, 아이 추가, 사진 올리기(완료 처리 = secret 키로 sp_finish_upload), 아이 탭(`media_children!inner` 필터), 링크 → 새 이름 입장 → 설정 탭 배지(waiting) → 승인 → 승인 완료 레이어 → 가족 앨범 → 반응 → 부모 알림 배지. 부모는 이메일 테스트 계정 토큰을 sp_parent 쿠키에 직접 넣어 확인(앱 화면엔 이메일 로그인 없음). 코드 수정 없이 통과
 - 실제 DB로 아직 안 돌린 것: 사진 정보 고치기·지우기, 그룹, 탈퇴·되살리기, 정리 예약 작업, 승인 대기 휴대폰(10번 틀림). R2는 로컬(miniflare)
 - 확인 필요: 카카오 로그인은 카카오 개발자 앱(REST 키·Client Secret)이 있어야 켤 수 있음. 무료 조직은 1주 쉬면 프로젝트가 멈춤
-- 확인 필요(출시 전): 이메일 확인 다시 켜기, `dev-test` secret 키 삭제(대화에 남음), 익명 가입 남용 막기(CAPTCHA·가입 횟수 제한), 테스트 데이터(가족방 2개·테스트 계정) 지우기
+- 확인 필요(출시 전): 익명 가입 남용 막기(CAPTCHA·가입 횟수 제한), 테스트 데이터(가족방·테스트 계정) 지우기
 
 ### 37. feature/deploy — Cloudflare Workers 첫 배포 (완료, dev 머지)
 
@@ -549,7 +549,7 @@
 - 배포 확인: 첫 화면 200, 로그인 200("준비되지 않았어요"), /home → /start, 없는 가족 링크 → 안내 화면, 정적 파일 200
 - 지우님: 운영용 secret 키 `prod`를 Cloudflare에 직접 넣음(SUPABASE_SERVICE_ROLE_KEY, 시크릿 4개 확인), Supabase 사이트 주소·리다이렉트
 - 결과: 배포 주소에서 실제 Supabase + 진짜 R2로 핵심 흐름 e2e 11개 통과(처음 설정·올리기·아이 탭·입장·배지·승인·레이어·반응·알림). R2에 view·thumb 파일 저장 확인. 콩이 움직임(38)도 같이 배포
-- 남은 것(지우님): 이메일 확인 다시 켜기, Cloudflare 토큰·Supabase dev-test 키 삭제(보안 헤더 배포 뒤)
+- 정리(2026-10-26 확인): 이메일 확인 다시 켬, Cloudflare 토큰 무효 확인, Supabase dev-test 키 삭제. 다음 배포 땐 토큰을 새로 받음
 - 확인 필요: 화면 응답에 보안 헤더(X-Frame-Options/CSP frame-ancestors·Referrer-Policy 등)가 사진 전달(/m)에만 있음. 가족 링크 주소(/i/코드)가 Referer로 새지 않게 다음 이슈에서 공통 헤더 추가
 - 영향받는 파일: `wrangler.jsonc`(필요하면), `index.md`, `plan.md`
 - 확인 필요: Cloudflare 계정·요금제(무료면 요청당 외부 호출 50개 → 정리 작업이 나눠서 돎), sweepea.co.kr 등록·DNS 위치
