@@ -14,6 +14,14 @@ const info = /^[0-9a-f-]{36}$/.test(id) ? await b.mediaInfo(a.pass, id) : null;
 if (!info) return Astro.redirect('/home');
 const groups = (await b.familyAdmin(a.pass)).groups;
 const kids = a.home.children ?? [];
+// 넘겨보기: 앨범 화면과 같은 순서(아이를 골랐으면 그 아이 사진만)
+const k = kids.length > 1 ? kids.find((x) => x.id === Astro.url.searchParams.get('k'))?.id : undefined;
+const kq = k ? `?k=${encodeURIComponent(k)}` : '';
+// shortcut: 앨범과 같이 최근 200장 안에서만 넘김, 더 많아지면 앞뒤 한 장씩 조회로
+const list = await b.listMedia(a.pass, { limit: 200, childId: k });
+const at = list.findIndex((m) => m.id === id);
+const prev = at > 0 ? list[at - 1] : undefined;
+const next = at >= 0 ? list[at + 1] : undefined;
 const seoul = (iso: string) => {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
   return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}:${p.second}` };
@@ -28,10 +36,10 @@ if (Astro.request.method === 'POST') {
   if (form.get('do') === 'delete') {
     try {
       await b.deleteMedia(a.pass, id);
-      return Astro.redirect('/home?done=deleted', 303);
+      return Astro.redirect(`/home${kq ? `${kq}&` : '?'}done=deleted`, 303);
     } catch (e) {
       if (!(e instanceof BackendError)) throw e;
-      return Astro.redirect(`/photo/${id}?done=error`, 303);
+      return Astro.redirect(`/photo/${id}${kq ? `${kq}&` : '?'}done=error`, 303);
     }
   }
   date = String(form.get('date') ?? '');
@@ -45,7 +53,7 @@ if (Astro.request.method === 'POST') {
       // 날짜만 바꾸고 시각(서울)은 그대로. 오늘로 바꿔 미래 시각이 되면 지금으로
       const at = new Date(Math.min(Date.parse(`${date}T${taken.time}+09:00`), Date.now())).toISOString();
       await b.updateMedia(a.pass, id, { takenAt: at, childIds, groupIds });
-      return Astro.redirect(`/photo/${id}?done=saved`, 303);
+      return Astro.redirect(`/photo/${id}${kq ? `${kq}&` : '?'}done=saved`, 303);
     } catch (e) {
       if (!(e instanceof BackendError)) throw e;
       error = { field: 'save', text: '저장하지 못했어요. 다시 눌러 주세요.' };
@@ -64,12 +72,24 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
 
 <Parent title={error ? '다시 확인해 주세요 · 사진 정보' : '사진 정보 · 스위피'} tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
-    <a class="sp-p__back" href="/home">앨범</a>
+    <a class="sp-p__back" href={`/home${kq}`}>앨범</a>
   </nav>
   <h1 class="sp-p__title">사진 정보</h1>
   {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} role={done === 'error' ? 'alert' : undefined} tabindex="-1" autofocus>{doneText[done]}</p>}
   <figure class="sp-p__field">
-    {isVideo ? <video class="sp-p__photo" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} /> : <img class="sp-p__photo" src={src} alt={label} />}
+    <div class="sp-p__stage" data-stage>
+      {isVideo ? <video class="sp-p__photo" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} /> : <img class="sp-p__photo" src={src} alt={label} draggable="false" />}
+      {prev && (
+        <a class="sp-p__arrow sp-p__arrow--prev" href={`/photo/${prev.id}${kq}`} rel="prev" aria-label={`이전 ${prev.kind === 'video' ? '영상' : '사진'}`}>
+          <svg class="sp-p__arrow-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" /></svg>
+        </a>
+      )}
+      {next && (
+        <a class="sp-p__arrow sp-p__arrow--next" href={`/photo/${next.id}${kq}`} rel="next" aria-label={`다음 ${next.kind === 'video' ? '영상' : '사진'}`}>
+          <svg class="sp-p__arrow-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
+        </a>
+      )}
+    </div>
     {
       info.latest && (
         <figcaption class="sp-p__card sp-p__say">
@@ -86,7 +106,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
         <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>이 {isVideo ? '영상' : '사진'}을 지울까요?</h2>
         <p class="sp-p__lead">가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요.</p>
         <form class="sp-p__pair" method="post">
-          <a class="sp-p__btn sp-p__btn--quiet" href={`/photo/${id}`}>취소</a>
+          <a class="sp-p__btn sp-p__btn--quiet" href={`/photo/${id}${kq}`}>취소</a>
           <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value="delete">지우기</button>
         </form>
       </section>
@@ -127,8 +147,31 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
           </fieldset>
           <button class="sp-p__btn" type="submit" name="do" value="save">저장</button>
         </form>
-        <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text sp-p__add" href={`/photo/${id}?confirm=delete#confirm`}>{isVideo ? '영상' : '사진'} 지우기</a>
+        <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text sp-p__add" href={`/photo/${id}${kq ? `${kq}&` : '?'}confirm=delete#confirm`}>{isVideo ? '영상' : '사진'} 지우기</a>
       </>
     )
   }
 </Parent>
+
+<script>
+  // 옆으로 밀기: 가로로 60px 넘게(세로보다 크게) 밀면 ‹ › 링크로. 스크립트가 없어도 화살표로 넘긴다
+  const stage = document.querySelector<HTMLElement>('[data-stage]');
+  if (stage) {
+    let x0: number | null = null;
+    let y0 = 0;
+    stage.addEventListener('pointerdown', (e) => {
+      x0 = e.isPrimary && !(e.target as Element).closest('a, video') ? e.clientX : null;
+      y0 = e.clientY;
+    });
+    stage.addEventListener('pointerup', (e) => {
+      if (x0 === null) return;
+      const dx = e.clientX - x0;
+      const dy = e.clientY - y0;
+      x0 = null;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      const link = stage.querySelector<HTMLAnchorElement>(dx < 0 ? 'a[rel="next"]' : 'a[rel="prev"]');
+      if (link) location.href = link.href;
+    });
+    stage.addEventListener('pointercancel', () => (x0 = null));
+  }
+</script>
