@@ -415,7 +415,7 @@ export function createMockBackend(): Backend {
     async listMedia(pass, opts = {}) {
       const parent = parents.get(pass.access);
       return media
-        .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId))
+        .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId) && (!opts.childId || x.childIds.includes(opts.childId)))
         .filter((x) => {
           if (parent) return x.family_id === parent.familyId;
           if (isClosing(x.family_id)) return false;
