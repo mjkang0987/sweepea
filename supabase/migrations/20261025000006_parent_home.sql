@@ -20,6 +20,9 @@ as $$
                     + (select count(*) from public.comments c join public.media x on x.id = c.media_id and x.status = 'ready'
                          join public.members m on m.id = c.member_id and m.status = 'active'
                          where x.family_id = f.id and c.deleted_at is null and c.created_at > greatest(p.activity_seen_at, now() - interval '30 days')),
+      -- 승인 기다리는 수(설정 탭 배지): 기한 안 지난 들어오기 신청 + 승인 기다리는 휴대폰
+      'waiting', (select count(*) from public.members m where m.family_id = f.id and m.status = 'pending' and m.pending_until > now())
+               + (select count(*) from public.devices d where d.family_id = f.id and d.status = 'pending'),
       'plan_until', (select max(e.expires_at) from public.entitlements e where e.family_id = f.id and e.expires_at > now()),
       'download_allowed', f.download_allowed,
       'storage_used_bytes', f.storage_used_bytes,

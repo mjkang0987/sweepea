@@ -395,7 +395,8 @@ export function createMockBackend(): Backend {
       if (!p) return { family_id: null };
       const ready = media.filter((x) => x.family_id === p.familyId && x.status === 'ready');
       return {
-        family_id: p.familyId, role: p.role, closing: isClosing(p.familyId), new_activity: activityOf(p.familyId).filter((x) => Date.parse(x.at) > (seenAt.get(pass.access) ?? 0)).length, delete_after: isClosing(p.familyId) ? new Date(closingAt[p.familyId]).toISOString() : null, download_allowed: !!downloads[p.familyId],
+        family_id: p.familyId, role: p.role, closing: isClosing(p.familyId), new_activity: activityOf(p.familyId).filter((x) => Date.parse(x.at) > (seenAt.get(pass.access) ?? 0)).length,
+        waiting: members.filter((m) => m.status === 'pending' && groups.find((g) => g.id === m.groupId)?.familyId === p.familyId).length + [...devices.values()].filter((d) => d.familyId === p.familyId && d.status === 'pending').length, delete_after: isClosing(p.familyId) ? new Date(closingAt[p.familyId]).toISOString() : null, download_allowed: !!downloads[p.familyId],
         storage_used_bytes: (used[p.familyId] ?? 0) + MOCK_USED, photo_count: ready.filter((x) => x.kind === 'photo').length, video_count: ready.filter((x) => x.kind === 'video').length,
         provider: null, text_size_mode: sizeModes[p.familyId] ?? 'relation',
         children: kids.filter((k) => k.familyId === p.familyId).map(({ id, name, birth_date, show_health }) => ({ id, name, birth_date, show_health })),
