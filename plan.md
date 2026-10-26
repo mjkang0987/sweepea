@@ -534,6 +534,23 @@
 - 확인 필요: 카카오 로그인은 카카오 개발자 앱(REST 키·Client Secret)이 있어야 켤 수 있음. 무료 조직은 1주 쉬면 프로젝트가 멈춤
 - 확인 필요(출시 전): 이메일 확인 다시 켜기, `dev-test` secret 키 삭제(대화에 남음), 익명 가입 남용 막기(CAPTCHA·가입 횟수 제한), 테스트 데이터(가족방 2개·테스트 계정) 지우기
 
+### 37. feature/deploy — Cloudflare Workers 첫 배포 (진행 중)
+
+- 요구사항(사용자 2026-10-26 "배포 먼저 가볼까?"): 실제 Supabase + 진짜 R2로 인터넷에서 열리는 주소
+- 구현 방식
+  1. 먼저 `*.workers.dev` 주소로 배포(도메인 연결은 그다음)
+  2. R2 버킷 `sweepea-media` 만들기(wrangler.jsonc 그대로)
+  3. 시크릿: SUPABASE_URL·SUPABASE_ANON_KEY(공개)·MEDIA_URL_SECRET(새로 만듦)·SITE_ORIGIN, SUPABASE_SERVICE_ROLE_KEY는 **운영용 secret 키를 지우님이 Cloudflare 대시보드에 직접**(대화에 남기지 않게). PARENT_PROVIDERS는 카카오 연결 전까지 비움(로그인 화면은 "준비되지 않았어요")
+  4. 매일 정리 예약(18:17 UTC)은 wrangler.jsonc 그대로 올라감
+  5. 배포 뒤 확인: 첫 화면·로그인 화면·가족 링크 화면 응답, 사진 전달 경로, 보안 헤더
+  6. Supabase Auth 사이트 주소·리다이렉트에 배포 주소 추가(카카오 연결 때 필요)
+- 배포 방법: 지우님이 Cloudflare API 토큰(Workers 스크립트·R2 편집 권한)을 만들어 주면 여기서 `wrangler deploy`. 토큰은 배포 끝나면 지우님이 삭제
+- 진행(2026-10-26): 계정 `Takeaseat.cs@gmail.com's Account`(workers.dev 이름 takeaseat-cs, 기존 Worker tas-proxy 있음). R2 켬(지우님, 무료 구간), 버킷 `sweepea-media`(apac) 만듦, 배포 → **https://sweepea.takeaseat-cs.workers.dev** (매일 18:17 UTC 예약 포함). 시크릿 SUPABASE_URL·SUPABASE_ANON_KEY·MEDIA_URL_SECRET(새로 만듦, 여기 안 남김) 넣음. SITE_ORIGIN은 비움(요청 주소로 링크 만듦, 도메인 연결 때 넣기)
+- 배포 확인: 첫 화면 200, 로그인 200("준비되지 않았어요"), /home → /start, 없는 가족 링크 → 안내 화면, 정적 파일 200
+- 남은 것(지우님): 운영용 secret 키를 Cloudflare에 직접(SUPABASE_SERVICE_ROLE_KEY), Supabase 사이트 주소·리다이렉트, 토큰 삭제
+- 확인 필요: 화면 응답에 보안 헤더(X-Frame-Options/CSP frame-ancestors·Referrer-Policy 등)가 사진 전달(/m)에만 있음. 가족 링크 주소(/i/코드)가 Referer로 새지 않게 다음 이슈에서 공통 헤더 추가
+- 영향받는 파일: `wrangler.jsonc`(필요하면), `index.md`, `plan.md`
+- 확인 필요: Cloudflare 계정·요금제(무료면 요청당 외부 호출 50개 → 정리 작업이 나눠서 돎), sweepea.co.kr 등록·DNS 위치
 ### 38. feature/kongi-hop — 콩이 통통 움직임 (완료, dev 머지)
 
 - 요구사항(사용자 2026-10-26 "콩 들어있는데는 전반적으로 움직이게"): 디자인 시스템 규칙(2.4초마다 통통 두 번, steps로 끊어서, 여러 마리면 0.3초씩 늦게, 동작 줄이기면 멈춤)을 코드에. 디자인 캔버스는 이미 움직임(`sp-kongi-anim`)이라 디자인 수정 없음
