@@ -64,9 +64,9 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
     </div>
     <button class="sp-p__btn sp-p__btn--quiet" type="submit" data-autosave-hide>저장</button>
   </form>
-  <ul class="sp-p__group" role="list">
+  <ul class="sp-p__rows" role="list">
     <li>
-      <label class="sp-p__group-row sp-p__group-row--check">
+      <label class="sp-p__rows-item sp-p__rows-item--check">
         <span class="sp-p__radio-text">
           <span class="sp-p__who-name">새 사진에 기본으로 포함</span>
           <span class="sp-p__hint" id="include-note">사진 올릴 때 이 그룹이 미리 체크돼요</span>
@@ -75,7 +75,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
       </label>
     </li>
     <li>
-      <a class="sp-p__group-row sp-p__group-row--link" href={`${here}/password`}>
+      <a class="sp-p__rows-item sp-p__rows-item--link" href={`${here}/password`}>
         <span class="sp-p__radio-text">
           <span class="sp-p__who-name">비밀번호</span>
           <span class="sp-p__hint">{g.password_hint ? `힌트 · ${g.password_hint}` : '힌트 없음'}</span>
@@ -85,7 +85,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
     </li>
     <li>
       <form method="post" action="/settings/family">
-        <button class="sp-p__group-row sp-p__group-row--link sp-p__group-button" type="submit" name="do" value={`share:${g.id}`}>
+        <button class="sp-p__rows-item sp-p__rows-item--link sp-p__rows-button" type="submit" name="do" value={`share:${g.id}`}>
           <span class="sp-p__radio-text">
             <span class="sp-p__who-name">{g.name} 주소 카톡으로 보내기</span>
             <span class="sp-p__hint">새로 들어오는 사람은 보낸 뒤 3일 안에</span>
