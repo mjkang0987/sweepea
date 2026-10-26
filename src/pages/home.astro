@@ -27,17 +27,20 @@ if (Astro.request.method === 'POST') {
 const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const kid = callName(a.home.children?.[0]?.name ?? '아이');
+// 아이 고르기(아이가 둘 이상일 때): ?k=아이id, 모르는 값이면 전체
+const kids = a.home.children ?? [];
+const picked = kids.length > 1 ? kids.find((k) => k.id === Astro.url.searchParams.get('k')) : undefined;
 // shortcut: 최근 200장까지만. 다음 쪽 넘기기는 가족 앨범과 같이 커서로
 const b = getBackend();
 // 접종·검진: 일정 보기를 켠 아이마다 다음 일정 하나. 옆 기능이라 실패하면 줄만 빼고 앨범은 보인다
 const today = seoulToday();
 // 승인 대기·설치 부탁 띠도 옆 기능이라 실패하면 띠만 뺀다
 const [items, admin, healthRows] = await Promise.all([
-  b.listMedia(a.pass, { limit: 200 }),
+  b.listMedia(a.pass, { limit: 200, childId: picked?.id }),
   b.familyAdmin(a.pass).catch(() => null),
   Promise.all(
-  (a.home.children ?? [])
-    .filter((k) => k.show_health)
+  kids
+    .filter((k) => k.show_health && (!picked || k.id === picked.id))
     .map(async (k) => {
       const rows = await b.healthDone(a.pass, k.id).catch(() => null);
       if (!rows) return null;
@@ -173,7 +176,19 @@ for (const m of items) {
     </a>
   ))}
   {
-    items.length === 0 ? (
+    kids.length > 1 && (
+      <nav class="sp-p__seg" aria-label="아이 고르기">
+        <a class="sp-p__seg-item" href="/home" aria-current={!picked ? 'page' : undefined}>전체</a>
+        {kids.map((k) => (
+          <a class="sp-p__seg-item" href={`/home?k=${encodeURIComponent(k.id)}`} aria-current={picked?.id === k.id ? 'page' : undefined}>{k.name}</a>
+        ))}
+      </nav>
+    )
+  }
+  {
+    items.length === 0 && picked ? (
+      <p class="sp-p__lead">{callName(picked.name)} 사진은 아직 없어요.</p>
+    ) : items.length === 0 ? (
       <section class="sp-p__empty" aria-labelledby="empty-title">
         <img class="sp-p__empty-kongi" src="/favicon.svg" width="128" height="128" alt="" />
         <h2 class="sp-p__empty-title" id="empty-title">{kid} 첫 사진을 올려 주세요</h2>

@@ -116,7 +116,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     cleanupStaleUploads: () => serviceRpc<number>('sp_cleanup_stale_uploads', {}),
     r2CleanupTake: (limit) => serviceRpc<string[]>('sp_r2_cleanup_take', { p_limit: limit }),
     r2CleanupDone: (prefix) => serviceRpc<void>('sp_r2_cleanup_done', { p_prefix: prefix }),
-    listMedia(pass, opts = {}) {
+    async listMedia(pass, opts = {}) {
       const q = new URLSearchParams({
         select: 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key,created_at',
         status: 'eq.ready',
@@ -124,7 +124,12 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         limit: String(Math.min(opts.limit ?? 60, 200)),
       });
       if (opts.familyId) q.set('family_id', `eq.${opts.familyId}`);
-      return call<MediaItem[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access });
+      if (!opts.childId) return call<MediaItem[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access });
+      // 한 아이만: 사진-아이 연결이 있는 것만(inner join), 연결 칸은 돌려주지 않는다
+      q.set('select', `${q.get('select')},media_children!inner(child_id)`);
+      q.set('media_children.child_id', `eq.${opts.childId}`);
+      const rows = await call<(MediaItem & { media_children?: unknown })[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access });
+      return rows.map(({ media_children: _c, ...m }) => m);
     },
     async react(pass, id, kind, on) {
       await rpc(pass, 'sp_react', { p_media_id: id, p_kind: kind, p_on: on });

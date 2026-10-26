@@ -231,7 +231,7 @@ export interface Backend {
   finishUpload(mediaId: string, keys: MediaKeys, bytes: number): Promise<boolean>;
   /** 볼 수 있는 사진만(RLS). 최근 찍은 순 */
   // shortcut: 다음 쪽 넘기기 없음(최근 limit장만). 뷰어 이슈에서 (taken_at, id) 기준 커서로
-  listMedia(pass: Pass, opts?: { familyId?: string; limit?: number }): Promise<MediaItem[]>;
+  listMedia(pass: Pass, opts?: { familyId?: string; childId?: string; limit?: number }): Promise<MediaItem[]>;
   /** 반응 켜기·끄기. 볼 수 없는 사진이면 BackendError 403 */
   react(pass: Pass, mediaId: string, kind: ReactionKind, on: boolean): Promise<void>;
   /** 한마디(1~200자). 하루 30개 넘으면 BackendError 429 */
