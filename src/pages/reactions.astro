@@ -43,7 +43,7 @@ const old = rows.filter((r) => !r.isNew);
           <ul class="sp-p__list">
             {g.list.map((r) => (
               <li>
-                <a class="sp-p__row sp-p__row--tall" href={`/photo/${r.media_id}`}>
+                <a class="sp-p__row sp-p__row--tall" href={`/view/${r.media_id}`}>
                   {r.thumb ? <img class="sp-p__thumb" src={r.thumb} alt="" width="48" height="48" loading="lazy" /> : <span class="sp-p__thumb" aria-hidden="true"></span>}
                   <span class="sp-p__row-label sp-p__radio-text">
                     <span><strong>{r.who}</strong> {r.text}</span>

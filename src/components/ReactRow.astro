@@ -7,18 +7,20 @@ import type { Reacts } from '../lib/album';
 interface Props {
   mediaId: string;
   back: string;
+  /** 폼 보낼 곳(기본은 가족 크게 보기 /album/<id>) */
+  action?: string;
   reacts: Reacts;
   /** 넘겨 보기 카드마다 둘 때 제목 id가 겹치지 않게 */
   idSuffix?: string;
   /** 크게 보기는 시안대로 제목을 숨김(화면 읽기엔 남김) */
   hideTitle?: boolean;
 }
-const { mediaId, back, reacts, idSuffix = '', hideTitle = false } = Astro.props;
+const { mediaId, back, action = `/album/${mediaId}`, reacts, idSuffix = '', hideTitle = false } = Astro.props;
 const r = reacts.get(mediaId);
 const titleId = `react-title${idSuffix}`;
 ---
 
-<form class="sp-r" method="post" action={`/album/${mediaId}`} aria-labelledby={titleId}>
+<form class="sp-r" method="post" action={action} aria-labelledby={titleId}>
   <input type="hidden" name="back" value={back} />
   <h2 class={hideTitle ? 'sp-vh' : 'sp-r__title'} id={titleId}>눌러서 바로 보내기</h2>
   <div class="sp-r__row">

@@ -1314,35 +1314,6 @@
   outline-offset: 2px;
 }
 
-@keyframes sp-toast-still {
-  0%,
-  85% {
-    opacity: 1;
-    transform: translateX(-50%);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(-50%);
-    visibility: hidden;
-  }
-}
-/* 완료 안내는 화면 아래에 떠서 몇 초 뒤 사라지는 알약(디자인 시스템 '알림·토스트'). 실패·진행 안내는 그대로 남긴다 */
-@keyframes sp-toast {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -8px);
-  }
-  8%,
-  85% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, 0);
-    visibility: hidden;
-  }
-}
 .sp-p__toast:not(.sp-p__toast--error):not(.sp-p__toast--live) {
   position: fixed;
   z-index: 20;
@@ -1405,97 +1376,7 @@
   text-align: left;
 }
 
-
-/* 사진 정보: 이전·다음 화살표(사진 위), 옆으로 밀기 */
-.sp-p__stage {
-  position: relative;
-}
-.sp-p__arrow {
-  position: absolute;
-  top: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  transform: translateY(-50%);
-}
-.sp-p__arrow--prev {
-  left: var(--space-2);
-}
-.sp-p__arrow--next {
-  right: var(--space-2);
-}
-.sp-p__arrow:focus-visible {
-  outline: 2px solid var(--pea-ink);
-  outline-offset: 2px;
-}
-.sp-p__arrow-icon {
-  fill: none;
-  stroke: #ffffff;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-@media (forced-colors: active) {
-  .sp-p__arrow {
-    border: 1px solid ButtonText;
-  }
-  .sp-p__arrow-icon {
-    stroke: ButtonText;
-  }
-}
-.sp-p__arrow[hidden] {
-  display: none;
-}
-
-/* 스와이퍼: 손가락을 따라 옆 사진이 움직이고 한 장씩 멈춘다 */
-.sp-p__stage {
-  width: 100%;
-}
-.sp-p__track {
-  display: flex;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  border-radius: var(--radius-lg);
-}
-.sp-p__track::-webkit-scrollbar {
-  display: none;
-}
-.sp-p__track:focus-visible {
-  outline: 2px solid var(--pea-ink);
-  outline-offset: 2px;
-}
-.sp-p__slide {
-  flex: 0 0 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
-}
-.sp-p__track {
-  height: 60vh;
-  transition: height 0.2s ease;
-}
-.sp-p__slide .sp-p__photo {
-  width: 100%;
-  height: 100%;
-  max-height: none;
-  border-radius: 0;
-  background: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .sp-p__track {
-    transition: none;
-  }
+/* 사진 정보 수정: 작은 미리보기 */
+.sp-p__photo--small {
+  max-height: 10rem;
 }

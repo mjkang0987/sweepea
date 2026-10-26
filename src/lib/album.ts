@@ -4,6 +4,7 @@ import { BackendError, getBackend, REACTION_KINDS, type MediaItem, type MeFamily
 import { currentPass } from './pass';
 import { isOpen } from './families';
 import { callName } from './ko';
+import { signedMediaUrl } from './signed';
 
 export const ZOOMS = [1, 2, 3, 5] as const;
 export type Zoom = (typeof ZOOMS)[number];
@@ -78,26 +79,31 @@ export async function loadReacts(pass: Pass, mediaIds: string[]): Promise<Reacts
 
 const BACK = /^\/album(\/[0-9a-f-]{36})?(\?[A-Za-z0-9=&%._-]*)?(#[A-Za-z0-9_-]+)?$/;
 
-/** 반응·한마디 폼(POST /album/<id>) 처리. 돌아갈 곳은 앨범 안 주소만(열린 이동 방지) */
-export async function handleReactPost(request: Request, mediaId: string, cookies: AstroCookies, fallback: string): Promise<string> {
+/** 반응·한마디 보내기(가족은 구성원으로, 엄빠는 부모 계정으로) */
+export interface ReactOps {
+  react(mediaId: string, kind: ReactionKind, on: boolean): Promise<void>;
+  comment(mediaId: string, body: string): Promise<void>;
+}
+
+/** 반응·한마디 폼 처리 공통. back은 back 정규식에 맞는 주소만(열린 이동 방지), 아니면 fallback */
+export async function applyReactPost(request: Request, mediaId: string, ops: ReactOps, back: RegExp, fallback: string): Promise<string> {
   const form = await request.formData().catch(() => null);
-  const back = String(form?.get('back') ?? '');
-  const to = new URL(BACK.test(back) ? back : fallback, 'http://x');
-  const pass = await currentPass(cookies);
-  if (!pass || !form) return '/';
+  const asked = String(form?.get('back') ?? '');
+  const to = new URL(back.test(asked) ? asked : fallback, 'http://x');
+  if (!form) return fallback;
   try {
     const react = String(form.get('react') ?? '');
     const body = form.get('body');
     if (react) {
       const [kind, on] = react.split(':');
       if ((REACTION_KINDS as readonly string[]).includes(kind) && (on === 'on' || on === 'off')) {
-        await getBackend().react(pass, mediaId, kind as ReactionKind, on === 'on');
+        await ops.react(mediaId, kind as ReactionKind, on === 'on');
       }
     } else if (body !== null) {
       const text = String(body).trim();
       if (!text) to.searchParams.set('say', 'empty');
       else {
-        await getBackend().comment(pass, mediaId, text.slice(0, 200));
+        await ops.comment(mediaId, text.slice(0, 200));
         to.searchParams.set('say', 'sent');
       }
       to.searchParams.set('sm', mediaId);
@@ -115,4 +121,45 @@ export async function handleReactPost(request: Request, mediaId: string, cookies
     }
   }
   return to.pathname + to.search + to.hash;
+}
+
+/** 가족 반응·한마디 폼(POST /album/<id>) 처리. 돌아갈 곳은 앨범 안 주소만 */
+export async function handleReactPost(request: Request, mediaId: string, cookies: AstroCookies, fallback: string): Promise<string> {
+  const pass = await currentPass(cookies);
+  if (!pass) return '/';
+  const b = getBackend();
+  return applyReactPost(request, mediaId, { react: (id, k, on) => b.react(pass, id, k, on), comment: (id, t) => b.comment(pass, id, t) }, BACK, fallback);
+}
+
+/** 크게 보기 스와이퍼에 넘길 앞뒤 사진(주소는 미리 서명: 한 시간 동안 같은 주소라 브라우저 캐시를 탄다) */
+export interface Slide {
+  id: string;
+  href: string;
+  src: string;
+  poster?: string;
+  video: boolean;
+  label: string;
+}
+// shortcut: 앞뒤 20장까지만 손가락으로 넘김, 그 밖은 끝에서 ‹ › 링크로 페이지를 새로 연다
+export interface SlideWindow {
+  slides: Slide[];
+  /** 창 바로 밖 앞뒤 사진 주소(창 끝에서 ‹ ›가 이 페이지를 연다) */
+  before?: string;
+  after?: string;
+}
+export async function slideWindow(items: MediaItem[], i: number, href: (m: MediaItem) => string, label: (m: MediaItem) => string): Promise<SlideWindow> {
+  const from = Math.max(0, i - 20);
+  const slides = await Promise.all(
+    items.slice(from, i + 21).map(async (m) => ({
+      id: m.id,
+      href: href(m),
+      src: await signedMediaUrl(m.view_key),
+      poster: m.poster_key ? await signedMediaUrl(m.poster_key) : undefined,
+      video: m.kind === 'video',
+      label: label(m),
+    })),
+  );
+  const b = items[from - 1];
+  const a = items[i + 21];
+  return { slides, before: b && href(b), after: a && href(a) };
 }

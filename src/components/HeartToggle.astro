@@ -5,15 +5,17 @@ import type { Reacts } from '../lib/album';
 interface Props {
   mediaId: string;
   back: string;
+  /** 폼 보낼 곳(기본은 가족 크게 보기 /album/<id>) */
+  action?: string;
   reacts: Reacts;
 }
-const { mediaId, back, reacts } = Astro.props;
+const { mediaId, back, action = `/album/${mediaId}`, reacts } = Astro.props;
 const r = reacts.get(mediaId);
 const n = r?.counts.heart ?? 0;
 const mine = r?.mine.has('heart') ?? false;
 ---
 
-<form class="sp-h" method="post" action={`/album/${mediaId}`}>
+<form class="sp-h" method="post" action={action}>
   <input type="hidden" name="back" value={back} />
   <button class="sp-h__btn" type="submit" name="react" value={`heart:${mine ? 'off' : 'on'}`} aria-pressed={mine ? 'true' : 'false'} aria-label={`하트 ${n}개`}>
     <svg class="sp-h__icon" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.2 5 6.7 5c2.1 0 3.6 1.2 4.3 2.4h2C13.7 6.2 15.2 5 17.3 5c3.5 0 5.5 3.6 4.2 6.8C19.5 16.4 12 21 12 21z"></path></svg>
