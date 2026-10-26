@@ -26,10 +26,10 @@ const doneText: Record<string, string> = { added: '아이를 추가했어요.', 
 ---
 
 <Parent title="아이 · 설정" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings">설정</a>
-  </nav>
-  <h1 class="sp-p__title">아이</h1>
+    <h1 class="sp-p__nav-title">아이</h1>
+  </div>
   {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} role={done === 'error' ? 'alert' : undefined} tabindex="-1" autofocus>{doneText[done]}</p>}
   <ul class="sp-p__list">
     {

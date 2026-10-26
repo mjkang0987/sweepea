@@ -35,10 +35,10 @@ const doneText: Record<string, string> = { saved: '저장했어요. 다음에 �
 ---
 
 <Parent title="가족 화면 글자 크기 · 설정" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings">설정</a>
-  </nav>
-  <h1 class="sp-p__title">가족 화면 글자 크기</h1>
+    <h1 class="sp-p__nav-title">가족 화면 글자 크기</h1>
+  </div>
   {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[done]}</p>}
   <form class="sp-p__form sp-p__sizes" method="post">
     <fieldset class="sp-p__fieldset sp-p__field">

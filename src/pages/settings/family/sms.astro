@@ -34,10 +34,10 @@ const message = made && `${made.name}, ${kid} 사진 바로 보시게 주소 보
 ---
 
 <Parent title={made ? `${made.name}에게 보낼 문자 · 문자로 공유하기` : '문자로 공유하기'} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings/family">가족</a>
-  </nav>
-  <h1 class="sp-p__title">문자로 공유하기</h1>
+    <h1 class="sp-p__nav-title">문자로 공유하기</h1>
+  </div>
   <p class="sp-p__lead">내 폰 문자로 그 사람 전용 링크를 보내요. 내 번호로 가서 할머니도 안심하고 누르실 수 있어요.</p>
   {error && <p class="sp-p__error" role="alert">{error}</p>}
   {

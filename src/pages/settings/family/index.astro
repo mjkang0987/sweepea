@@ -44,10 +44,10 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
 ---
 
 <Parent title="가족 · 설정" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings">설정</a>
-  </nav>
-  <h1 class="sp-p__title">가족</h1>
+    <h1 class="sp-p__nav-title">가족</h1>
+  </div>
   {/* 결과는 페이지가 열릴 때 바로 읽히게 초점을 옮긴다(JS 없이 autofocus) */}
   {shownDone && doneText[shownDone] && <p class:list={['sp-p__toast', ['error', 'gone', 'conflict'].includes(shownDone) && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[shownDone]}</p>}
   {

@@ -15,10 +15,10 @@ const used = sizeLabel(usedBytes);
 ---
 
 <Parent title="저장 용량 · 설정" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings">설정</a>
-  </nav>
-  <h1 class="sp-p__title">저장 용량</h1>
+    <h1 class="sp-p__nav-title">저장 용량</h1>
+  </div>
   <section class="sp-p__card" aria-labelledby="st-title">
     <h2 class="sp-p__card-title" id="st-title"><span class="sp-p__big">{used}</span> / 5GB 사용</h2>
     <meter class="sp-p__meter" min="0" max="100" low="80" high="95" optimum="0" value={pct} aria-label={`5GB 중 ${pct}% 사용`}>{pct}%</meter>
