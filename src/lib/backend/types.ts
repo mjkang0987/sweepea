@@ -107,6 +107,8 @@ export interface MediaItem {
   view_key: string;
   thumb_key: string;
   poster_key: string | null;
+  /** 올린 시각(가족 '새 사진' 레이어). 목록에서만 채운다 */
+  created_at?: string;
 }
 
 /** 부모 최근 반응 한 줄 */
