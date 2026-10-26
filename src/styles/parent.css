@@ -1471,6 +1471,19 @@
   scroll-snap-align: center;
   scroll-snap-stop: always;
 }
-.sp-p__slide .sp-p__photo {
+.sp-p__track {
   height: 60vh;
+  transition: height 0.2s ease;
+}
+.sp-p__slide .sp-p__photo {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  background: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-p__track {
+    transition: none;
+  }
 }
