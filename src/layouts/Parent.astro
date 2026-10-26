@@ -4,12 +4,14 @@ import '../styles/parent.css';
 
 interface Props {
   title: string;
-  /** 아래 탭(앨범·설정)을 보일 화면이면 지금 탭 */
-  tab?: 'home' | 'settings';
+  /** 아래 탭(앨범·알림·설정)을 보일 화면이면 지금 탭 */
+  tab?: 'home' | 'alerts' | 'settings';
+  /** 알림 탭 배지: 최근 반응을 연 뒤 새로 온 반응·한마디 수 */
+  alerts?: number;
   /** 넓은 화면에서 넓게 쓸 화면(앨범·올리기) */
   wide?: boolean;
 }
-const { title, tab, wide } = Astro.props;
+const { title, tab, wide, alerts = 0 } = Astro.props;
 ---
 
 <Base title={title}>
@@ -22,6 +24,11 @@ const { title, tab, wide } = Astro.props;
         <a class="sp-p__tab" href="/home" aria-current={tab === 'home' ? 'page' : undefined}>
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M4 17l5-4 4 3 3-2 4 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
           앨범
+        </a>
+        <a class="sp-p__tab" href="/reactions" aria-current={tab === 'alerts' ? 'page' : undefined} aria-label={alerts > 0 ? `알림, 새 반응 ${alerts}개` : undefined}>
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+          알림
+          {alerts > 0 && <span class="sp-p__tab-badge" aria-hidden="true">{alerts > 99 ? '99+' : alerts}</span>}
         </a>
         <a class="sp-p__tab" href="/settings" aria-current={tab === 'settings' ? 'page' : undefined}>
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
