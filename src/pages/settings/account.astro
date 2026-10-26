@@ -31,10 +31,10 @@ const planUntil = a.home.plan_until ? day(a.home.plan_until) : null;
 ---
 
 <Parent title={confirm === 'delete' ? '정말 탈퇴할까요? · 계정' : '계정 · 설정'} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings">설정</a>
-  </nav>
-  <h1 class="sp-p__title">계정</h1>
+    <h1 class="sp-p__nav-title">계정</h1>
+  </div>
   <div class="sp-p__card">
     <p class="sp-p__who-name">{who}</p>
     <p class="sp-p__hint">{provider ? `${provider}로 로그인` : '로그인됨'}</p>

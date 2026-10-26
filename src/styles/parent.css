@@ -562,7 +562,8 @@
   align-items: center;
   gap: 0.25rem;
   color: var(--pea-ink);
-  font-weight: 600;
+  /* 디자인: 뒤로·닫기 글자는 보통 굵기 */
+  font-weight: 400;
   text-decoration: none;
 }
 /* 뒤로 가기는 ‹ + 글자(글자만 있으면 누르는 곳으로 안 보인다, 사용자 2026-10-27). 취소 링크는 빼고 */
@@ -1578,3 +1579,9 @@
 .sp-p__group .sp-p__check:has(.sp-p__checkbox:checked) {
   font-weight: 600;
 }
+/* 구성원 상세 이름(디자인 20px) */
+.sp-p__who-name--large {
+  font-size: 1.25rem;
+  line-height: 1.625rem;
+}
+

@@ -10,7 +10,7 @@
 - [x] 크게 보기 반응 이모지 크기·회색 칸 — 51
 
 ## 1. 공통 패턴
-- [ ] 하위 화면 머리글: 위 줄 '‹ 이전' + 가운데 작은 제목(지금은 아래 큰 제목) — Family, SendSetup, GroupSettings, GroupDetail, PasswordChange, TextSize, ChildSettings, ChildAdd, Storage, Account, Health, MemberDetail(제목 없음)
+- [x] 하위 화면 머리글(53): 위 줄 '‹ 이전' + 가운데 작은 제목(지금은 아래 큰 제목) — Family, SendSetup, GroupSettings, GroupDetail, PasswordChange, TextSize, ChildSettings, ChildAdd, Storage, Account, Health, MemberDetail(제목 없음)
 - [ ] 묶음 카드 안 행 + 오른쪽 체크·라디오, 고르면 바로 적용('저장' 버튼 없앰) — GroupDetail, ChildSettings, TextSize(라디오 오른쪽)
 - [ ] 콩이 그림: 상태 화면 가운데 약 128px — GrandExpired·GrandNoLink·GrandClosed(지금 44px), GrandPassword·GrandPending·AccountDeleted·AccountRestore·AccountDelete(우는 콩이) 없음, ChildSettings 아이 행·Health 머리글·ChildAdd 안내 상자
 - [ ] 아래 시트·모달(어두운 배경): GrandInstall, InstallGuide, AccountDelete, AccountDeleteSub
@@ -60,7 +60,7 @@
 - [ ] SendSetup: 문자 미리보기·공유 버튼·PC 접기, 사람 행 '홈 화면에 없음/있음', 링크 만든 뒤 목록 유지, 링크 초록
 - [ ] GroupSettings: '그룹을 하나만 남기면…' 안내, 행 높이
 - [ ] GroupDetail: 한 묶음(기본 포함·비밀번호·주소 보내기 행 ›), 이름 칸 회색 채움, 구성원 행 상태(홈 화면·올리기·대기 남은 날)
-- [ ] MemberDetail: 가운데 제목, 이름 크기, 내보내기 위치
+- [ ] MemberDetail: ~~가운데 제목, 이름 크기~~(53), 내보내기 위치
 - [ ] PasswordChange: 안내 상자 반짝이·글자색, 버튼 위치
 - [ ] TextSize: 행·미리보기 크기
 - [ ] ChildSettings: 콩이 박스, '고치기', 접종 일정 보기를 묶음 안으로

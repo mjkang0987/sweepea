@@ -13,10 +13,10 @@ const done = Astro.url.searchParams.get('done');
 ---
 
 <Parent title="그룹 · 가족" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings/family">가족</a>
-  </nav>
-  <h1 class="sp-p__title">그룹</h1>
+    <h1 class="sp-p__nav-title">그룹</h1>
+  </div>
   {done === 'added' && <p class="sp-p__toast" tabindex="-1" autofocus>그룹을 추가했어요.</p>}
   <p class="sp-p__lead">그룹마다 주소와 비밀번호가 따로 있어요. 사진을 올릴 때 어느 그룹에 보여줄지 골라요.</p>
   <section class="sp-p__section" aria-labelledby="sec-glist">

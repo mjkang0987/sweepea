@@ -49,10 +49,10 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
 ---
 
 <Parent title={error ? `다시 확인해 주세요 · ${g.name}` : `${g.name} · 그룹`} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings/family/groups">그룹</a>
-  </nav>
-  <h1 class="sp-p__title">{g.name}</h1>
+    <h1 class="sp-p__nav-title">{g.name}</h1>
+  </div>
   {done && doneText[done] && <p class="sp-p__toast" tabindex="-1" autofocus>{doneText[done]}</p>}
   <form class="sp-p__form" method="post">
     {error && <p class="sp-p__error" role="alert" id="g-err">{error}</p>}

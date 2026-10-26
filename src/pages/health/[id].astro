@@ -44,10 +44,11 @@ const done = Astro.url.searchParams.get('done');
 ---
 
 <Parent title={`접종·검진 · ${kid.name}`} tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  <div class="sp-p__nav">
     <a class="sp-p__back" href="/home">앨범</a>
-  </nav>
-  <h1 class="sp-p__title">{kid.name} · 생후 {monthsOld(kid.birth_date, today)}개월</h1>
+    <h1 class="sp-p__nav-title">접종·검진</h1>
+  </div>
+  <h2 class="sp-p__title">{kid.name} · 생후 {monthsOld(kid.birth_date, today)}개월</h2>
   <p class="sp-p__lead">한 것을 체크하고 저장하면 완료한 날이 기록돼요. 엄마아빠만 봐요.</p>
   {done === 'saved' && <p class="sp-p__toast" tabindex="-1" autofocus>저장했어요.</p>}
   {done === 'error' && <p class="sp-p__toast sp-p__toast--error" role="alert" tabindex="-1" autofocus>저장하지 못했어요. 다시 눌러 주세요.</p>}

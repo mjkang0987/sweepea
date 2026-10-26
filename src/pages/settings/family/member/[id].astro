@@ -29,13 +29,14 @@ const doneText: Record<string, string> = {
 ---
 
 <Parent title={`${m.display_name} · 가족`} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
-  <nav class="sp-p__bar" aria-label="뒤로">
+  <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings/family">가족</a>
-  </nav>
+    <h1 class="sp-p__nav-title">{m.display_name}</h1>
+  </div>
   <div class="sp-p__who">
     <span class="sp-p__avatar sp-p__avatar--large" aria-hidden="true">{(m.display_name.split(' ').at(-1) ?? m.display_name).slice(0, 1)}</span>
     <div>
-      <h1 class="sp-p__title">{m.display_name}</h1>
+      <p class="sp-p__who-name sp-p__who-name--large">{m.display_name}</p>
       <p class="sp-p__hint">{group} · 휴대폰 {devices.length}대{lastSeen && ` · ${seenLabel(lastSeen, Date.now())}`}</p>
     </div>
   </div>
