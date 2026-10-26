@@ -156,6 +156,8 @@ export interface ParentHome {
   delete_after?: string | null;
   /** 최근 반응을 마지막으로 연 뒤 새로 온 반응·한마디 수 */
   new_activity?: number;
+  /** 승인 기다리는 들어오기 신청 + 휴대폰 수(설정 탭 배지) */
+  waiting?: number;
   /** 스토어 구독이 끝나는 시각(구독 중이면). 그때까지 탈퇴 불가 */
   plan_until?: string | null;
   download_allowed?: boolean;

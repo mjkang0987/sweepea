@@ -12,7 +12,7 @@ const active = (gid: string) => admin.members.filter((m) => m.group_id === gid &
 const done = Astro.url.searchParams.get('done');
 ---
 
-<Parent title="그룹 · 가족" tab="settings" alerts={a.home.new_activity ?? 0}>
+<Parent title="그룹 · 가족" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
     <a class="sp-p__back" href="/settings/family">가족</a>
   </nav>

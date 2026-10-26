@@ -38,7 +38,7 @@ const errText = { name: '이름을 1~12자로 써 주세요.', birth: '생일을
 const title = kid ? `${kid.name} 고치기` : '아이 추가';
 ---
 
-<Parent title={e ? `다시 확인해 주세요 · ${title}` : `${title} · 설정`} tab="settings" alerts={a.home.new_activity ?? 0}>
+<Parent title={e ? `다시 확인해 주세요 · ${title}` : `${title} · 설정`} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
     <a class="sp-p__back" href="/settings/children">아이</a>
   </nav>

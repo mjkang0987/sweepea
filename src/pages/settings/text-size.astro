@@ -34,7 +34,7 @@ const done = Astro.url.searchParams.get('done');
 const doneText: Record<string, string> = { saved: '저장했어요. 다음에 처음 들어오는 가족부터 적용돼요.', error: '저장하지 못했어요. 다시 눌러 주세요.' };
 ---
 
-<Parent title="가족 화면 글자 크기 · 설정" tab="settings" alerts={a.home.new_activity ?? 0}>
+<Parent title="가족 화면 글자 크기 · 설정" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
     <a class="sp-p__back" href="/settings">설정</a>
   </nav>

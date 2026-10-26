@@ -8,10 +8,12 @@ interface Props {
   tab?: 'home' | 'alerts' | 'settings';
   /** 알림 탭 배지: 최근 반응을 연 뒤 새로 온 반응·한마디 수 */
   alerts?: number;
+  /** 설정 탭 배지: 승인 기다리는 들어오기 신청·휴대폰 수 */
+  waiting?: number;
   /** 넓은 화면에서 넓게 쓸 화면(앨범·올리기) */
   wide?: boolean;
 }
-const { title, tab, wide, alerts = 0 } = Astro.props;
+const { title, tab, wide, alerts = 0, waiting = 0 } = Astro.props;
 ---
 
 <Base title={title}>
@@ -30,9 +32,10 @@ const { title, tab, wide, alerts = 0 } = Astro.props;
           알림
           {alerts > 0 && <span class="sp-p__tab-badge" aria-hidden="true">{alerts > 99 ? '99+' : alerts}</span>}
         </a>
-        <a class="sp-p__tab" href="/settings" aria-current={tab === 'settings' ? 'page' : undefined}>
+        <a class="sp-p__tab" href="/settings" aria-current={tab === 'settings' ? 'page' : undefined} aria-label={waiting > 0 ? `설정, 승인 기다리는 사람 ${waiting}명` : undefined}>
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
           설정
+          {waiting > 0 && <span class="sp-p__tab-badge" aria-hidden="true">{waiting > 99 ? '99+' : waiting}</span>}
         </a>
       </nav>
     )

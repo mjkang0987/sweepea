@@ -25,7 +25,7 @@ const doneText: Record<string, string> = {
 };
 ---
 
-<Parent title="설정 · 스위피" tab="settings" alerts={a.home.new_activity ?? 0}>
+<Parent title="설정 · 스위피" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <h1 class="sp-p__title sp-p__title--large">설정</h1>
   {done && doneText[done] && <p class:list={['sp-p__toast', ['error', 'gone'].includes(done) && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[done]}</p>}
   <section class="sp-p__section" aria-labelledby="sec-family">
