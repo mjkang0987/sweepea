@@ -48,7 +48,7 @@ const done = Astro.url.searchParams.get('done');
 const doneText: Record<string, string> = { saved: '저장했어요.', password: '비밀번호를 바꿨어요. 이미 들어온 휴대폰은 그대로 봐요.' };
 ---
 
-<Parent title={error ? `다시 확인해 주세요 · ${g.name}` : `${g.name} · 그룹`} tab="settings" alerts={a.home.new_activity ?? 0}>
+<Parent title={error ? `다시 확인해 주세요 · ${g.name}` : `${g.name} · 그룹`} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
     <a class="sp-p__back" href="/settings/family/groups">그룹</a>
   </nav>

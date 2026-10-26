@@ -43,7 +43,7 @@ const KIND = { vaccine: '접종', checkup: '검진' };
 const done = Astro.url.searchParams.get('done');
 ---
 
-<Parent title={`접종·검진 · ${kid.name}`} tab="home" alerts={a.home.new_activity ?? 0}>
+<Parent title={`접종·검진 · ${kid.name}`} tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
     <a class="sp-p__back" href="/home">앨범</a>
   </nav>

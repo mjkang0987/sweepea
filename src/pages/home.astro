@@ -92,7 +92,7 @@ for (const m of items) {
 }
 ---
 
-<Parent title="앨범 · 스위피" tab="home" alerts={a.home.new_activity ?? 0} wide>
+<Parent title="앨범 · 스위피" tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0} wide>
   <h1 class="sp-p__title sp-p__title--large">앨범</h1>
   {
     join && (

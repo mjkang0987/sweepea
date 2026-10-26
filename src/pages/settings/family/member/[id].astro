@@ -25,7 +25,7 @@ const doneText: Record<string, string> = {
 };
 ---
 
-<Parent title={`${m.display_name} · 가족`} tab="settings" alerts={a.home.new_activity ?? 0}>
+<Parent title={`${m.display_name} · 가족`} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
     <a class="sp-p__back" href="/settings/family">가족</a>
   </nav>

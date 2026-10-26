@@ -30,7 +30,7 @@ const day = (iso: string) => new Intl.DateTimeFormat('ko-KR', { month: 'long', d
 const planUntil = a.home.plan_until ? day(a.home.plan_until) : null;
 ---
 
-<Parent title={confirm === 'delete' ? '정말 탈퇴할까요? · 계정' : '계정 · 설정'} tab="settings" alerts={a.home.new_activity ?? 0}>
+<Parent title={confirm === 'delete' ? '정말 탈퇴할까요? · 계정' : '계정 · 설정'} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
     <a class="sp-p__back" href="/settings">설정</a>
   </nav>
