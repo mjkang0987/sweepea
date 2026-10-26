@@ -75,6 +75,7 @@ const slides =
         list.slice(Math.max(0, at - 20), at + 21).map(async (m) => ({
           id: m.id,
           video: m.kind === 'video',
+          ratio: m.width && m.height ? m.height / m.width : undefined,
           src: await signedMediaUrl(m.view_key),
           poster: m.poster_key ? await signedMediaUrl(m.poster_key) : undefined,
           label: `${new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(m.taken_at))} ${m.kind === 'video' ? '영상' : '사진'}`,
@@ -174,7 +175,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
 <script>
   // 진짜 스와이퍼: 손가락을 따라 옆 사진이 움직이고(CSS 스크롤 스냅), 멈추면 주소를 바꾸고 아래 정보 칸만 새로 받아 바꾼다.
   // 스크립트가 없으면 사진 한 장 + ‹ › 링크로 페이지를 넘긴다
-  type Slide = { id: string; video: boolean; src: string; poster?: string; label: string };
+  type Slide = { id: string; video: boolean; ratio?: number; src: string; poster?: string; label: string };
   const stage = document.querySelector<HTMLElement>('[data-stage]');
   const data = stage?.dataset.slides ? (JSON.parse(stage.dataset.slides) as { k: string; before?: string; after?: string; slides: Slide[] }) : null;
   if (stage && data) {
@@ -206,12 +207,19 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
     stage.querySelector('.sp-p__photo')?.replaceWith(track);
     track.scrollLeft = at * track.clientWidth;
     // 화살표는 밀고 있는 동안 바로 바꾼다(멈출 때까지 기다리면 늦게 사라진다). 창 끝에서는 창 밖 사진 페이지 링크로 남는다
+    // 칸 높이를 지금 사진 비율에 맞춘다(화면 60%까지). 고정 높이면 가로 사진 위아래가 빈 칸으로 남는다
+    const fit = (i: number) => {
+      const r = data.slides[i]?.ratio;
+      track.style.height = r ? `${Math.min(track.clientWidth * r, innerHeight * 0.6)}px` : '';
+    };
     const arrows = (i: number) => {
+      fit(i);
       const p = data.slides[i - 1]?.id ?? data.before;
       const n = data.slides[i + 1]?.id ?? data.after;
       if (prev) [prev.hidden, prev.href] = [!p, `/photo/${p}${data.k}`];
       if (next) [next.hidden, next.href] = [!n, `/photo/${n}${data.k}`];
     };
+    fit(at);
     let load = 0;
     const settle = async () => {
       const i = Math.round(track.scrollLeft / track.clientWidth);
@@ -262,6 +270,9 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
       if (e.key === 'ArrowLeft') go(-1)(e);
       if (e.key === 'ArrowRight') go(1)(e);
     });
-    addEventListener('resize', () => (track.scrollLeft = at * track.clientWidth));
+    addEventListener('resize', () => {
+      track.scrollLeft = at * track.clientWidth;
+      fit(at);
+    });
   }
 </script>
