@@ -100,7 +100,9 @@ export async function handleReactPost(request: Request, mediaId: string, cookies
         await getBackend().comment(pass, mediaId, text.slice(0, 200));
         to.searchParams.set('say', 'sent');
       }
-      to.hash = 'say';
+      to.searchParams.set('sm', mediaId);
+      // 넘겨 보기는 돌아올 카드(#p-<id>)가 이미 붙어 온다
+      if (!to.hash) to.hash = 'say';
     }
   } catch (e) {
     if (!(e instanceof BackendError)) throw e;
@@ -108,7 +110,8 @@ export async function handleReactPost(request: Request, mediaId: string, cookies
     // 반응 실패는 조용히, 한마디 실패는 알려 준다(429 하루 한도, 그 밖은 승인 대기·볼 수 없는 사진 등)
     if (form.get('body') !== null) {
       to.searchParams.set('say', e.status === 429 ? 'limit' : 'error');
-      to.hash = 'say';
+      to.searchParams.set('sm', mediaId);
+      if (!to.hash) to.hash = 'say';
     }
   }
   return to.pathname + to.search + to.hash;
