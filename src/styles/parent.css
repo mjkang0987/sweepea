@@ -1475,20 +1475,20 @@
 }
 
 /* 사진 정보 수정: 작은 미리보기(160px) + 최근 한마디 말풍선 */
-.sp-p__preview {
+.sp-p__thumbbox {
   position: relative;
   height: 10rem;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--fill);
 }
-.sp-p__preview-media {
+.sp-p__thumbbox-media {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.sp-p__preview-say {
+.sp-p__thumbbox-say {
   position: absolute;
   left: 12px;
   bottom: 12px;
@@ -1504,7 +1504,7 @@
   font-size: var(--subhead-size);
   line-height: 1.25rem;
 }
-.sp-p__preview-who {
+.sp-p__thumbbox-who {
   display: block;
   font-size: var(--footnote-size);
 }
@@ -1565,7 +1565,7 @@
   color: var(--danger);
 }
 @media (prefers-reduced-transparency: reduce) {
-  .sp-p__preview-say {
+  .sp-p__thumbbox-say {
     background: var(--bg);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
