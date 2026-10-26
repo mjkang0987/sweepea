@@ -25,9 +25,9 @@ const doneText: Record<string, string> = {
 };
 ---
 
-<Parent title={`${m.display_name} · 가족`} tab="settings">
+<Parent title={`${m.display_name} · 가족`} tab="settings" alerts={a.home.new_activity ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
-    <a class="sp-p__back" href="/settings/family"><span aria-hidden="true">‹ </span>가족</a>
+    <a class="sp-p__back" href="/settings/family">가족</a>
   </nav>
   <div class="sp-p__who">
     <span class="sp-p__avatar sp-p__avatar--large" aria-hidden="true">{(m.display_name.split(' ').at(-1) ?? m.display_name).slice(0, 1)}</span>
