@@ -1,0 +1,149 @@
+---
+// 골라서 저장하기: 모아 보기에서 여러 장 골라 휴대폰에 저장. 엄마아빠가 '가족도 사진 저장하기'를 켠 집 사진만.
+// 스크립트가 있으면 공유 창(휴대폰 '이미지 저장')이나 한 장씩 내려받기, 없으면 고른 사진마다 저장 링크 목록
+import Family from '../../layouts/Family.astro';
+import { albumHref, dayLabel, loadAlbum } from '../../lib/album';
+import { signedMediaUrl } from '../../lib/signed';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadAlbum(Astro.cookies, Astro.url);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const { open, kids, q, items } = a;
+const allowed = new Set(open.filter((f) => f.download_allowed).map((f) => f.family_id));
+const back = albumHref({ ...q, v: 'list' });
+const savable = items.filter((m) => allowed.has(m.family_id));
+if (savable.length === 0) return Astro.redirect(back);
+const showTag = open.length > 1 && !q.f;
+const picked = new Set(Astro.url.searchParams.getAll('id'));
+const cards = await Promise.all(
+  savable.map(async (m) => ({
+    id: m.id,
+    thumb: await signedMediaUrl(m.thumb_key),
+    src: await signedMediaUrl(m.view_key),
+    name: `sweepea-${m.taken_at.slice(0, 10)}-${m.id.slice(0, 4)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`,
+    label: `${dayLabel(m.taken_at)} ${showTag ? `${kids.get(m.family_id)} ` : ''}${m.kind === 'video' ? '영상' : '사진'}`,
+    width: m.width,
+    height: m.height,
+  })),
+);
+// 스크립트 없이 고른 뒤: 고른 사진마다 저장 링크
+const chosen = cards.filter((c) => picked.has(c.id));
+---
+
+<Family title="저장할 사진 고르기 · 스위피" wide>
+  <nav class="sp-s__bar" aria-label="뒤로">
+    <a class="sp-s__back" href={back}>그만두기</a>
+  </nav>
+  {
+    chosen.length > 0 ? (
+      <>
+        <h1 class="sp-f__title">{chosen.length}장을 하나씩 눌러 저장하세요</h1>
+        <ul class="sp-s__list">
+          {chosen.map((c) => (
+            <li class="sp-s__row">
+              <img class="sp-s__row-img" src={c.thumb} width="64" height="64" alt="" />
+              <span class="sp-s__row-label">{c.label}</span>
+              <a class="sp-f__btn sp-s__row-btn" href={c.src} download={c.name}>저장<span class="sp-vh"> ({c.label})</span></a>
+            </li>
+          ))}
+        </ul>
+      </>
+    ) : (
+      <form class="sp-s__form" method="get" action="/album/save" data-save>
+        {q.f && <input type="hidden" name="f" value={q.f} />}
+        <header class="sp-s__head">
+          <h1 class="sp-f__title">저장할 사진을 눌러 주세요</h1>
+          <p class="sp-f__lead" role="status" data-count>고른 뒤 아래 버튼을 눌러 주세요</p>
+        </header>
+        <fieldset class="sp-s__pickset">
+          <legend class="sp-vh">저장할 사진</legend>
+          <ul class="sp-a__grid sp-a__grid--2">
+            {cards.map((c) => (
+              <li class="sp-a__cell">
+                <label class="sp-s__pick">
+                  <input class="sp-s__check" type="checkbox" name="id" value={c.id} data-src={c.src} data-name={c.name} />
+                  <img class="sp-a__cell-img" src={c.thumb} width={c.width ?? undefined} height={c.height ?? undefined} alt={c.label} loading="lazy" decoding="async" />
+                  <span class="sp-s__mark" aria-hidden="true">
+                    <svg class="sp-s__mark-icon" width="22" height="22" viewBox="0 0 24 24" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+        <div class="sp-s__space" aria-hidden="true"></div>
+        <div class="sp-s__go">
+          <button class="sp-f__btn sp-s__go-btn" type="submit" data-go>휴대폰에 저장하기</button>
+        </div>
+      </form>
+    )
+  }
+</Family>
+
+<script>
+  // 고른 수를 보여 주고, 누르면 파일을 받아 공유 창(휴대폰 '이미지 저장') 또는 한 장씩 내려받기
+  const form = document.querySelector<HTMLFormElement>('[data-save]');
+  if (form) {
+    const count = form.querySelector<HTMLElement>('[data-count]')!;
+    const go = form.querySelector<HTMLButtonElement>('[data-go]')!;
+    const checks = () => [...form.querySelectorAll<HTMLInputElement>('.sp-s__check:checked')];
+    let busy = false;
+    // 고르는 즉시 파일을 미리 받아 둔다: 공유 창은 누른 직후에 열어야 휴대폰이 막지 않는다
+    const files = new Map<string, Promise<File>>();
+    const load = (c: HTMLInputElement) => {
+      if (!files.has(c.value)) {
+        const p = fetch(c.dataset.src!).then(async (r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          const b = await r.blob();
+          return new File([b], c.dataset.name!, { type: b.type });
+        });
+        p.catch(() => files.delete(c.value));
+        files.set(c.value, p);
+      }
+      return files.get(c.value)!;
+    };
+    const show = () => {
+      const n = checks().length;
+      count.textContent = n ? `${n}장 골랐어요 · 한 번 더 누르면 빠져요` : '저장할 사진을 눌러서 골라 주세요';
+      go.textContent = n ? `${n}장 휴대폰에 저장하기` : '휴대폰에 저장하기';
+      go.disabled = n === 0 || busy;
+    };
+    form.addEventListener('change', (e) => {
+      const c = e.target as HTMLInputElement;
+      if (c.checked) load(c).catch(() => {});
+      show();
+    });
+    show();
+    form.addEventListener('submit', async (e) => {
+      const picked = checks();
+      if (!picked.length) return;
+      e.preventDefault();
+      busy = true;
+      show();
+      count.textContent = '저장하고 있어요…';
+      try {
+        const got = await Promise.all(picked.map(load));
+        if (navigator.canShare?.({ files: got })) {
+          await navigator.share({ files: got });
+        } else {
+          // 공유 창이 없으면(PC) 한 장씩 내려받기. 브라우저가 연달아 받기를 막지 않게 조금씩 띄운다
+          for (const f of got) {
+            const url = URL.createObjectURL(f);
+            const link = Object.assign(document.createElement('a'), { href: url, download: f.name });
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 10_000);
+            await new Promise((r) => setTimeout(r, 400));
+          }
+        }
+        busy = false;
+        show();
+        count.textContent = `${got.length}장을 저장했어요`;
+      } catch (err) {
+        busy = false;
+        show();
+        // 공유 창에서 그만두기는 실패가 아니다
+        count.textContent = err instanceof DOMException && err.name === 'AbortError' ? '저장하지 않았어요' : '저장하지 못했어요. 다시 눌러 주세요.';
+      }
+    });
+  }
+</script>
