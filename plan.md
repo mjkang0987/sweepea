@@ -413,6 +413,17 @@
 - 영향받는 파일: `src/pages/settings/family/groups/[id]/index.astro`, `src/styles/parent.css`, `plan.md`
 - 예상 결과: 그룹 상세에 점이 안 보이고, 비밀번호 칸은 모두 가운데 정렬(스크린샷·groups e2e)
 
+### 28. feature/activity-split — 최근 반응과 들어오기 요청 나누기
+
+- 요구사항(사용자 피드백 2026-10-26 "최근반응 반응이랑 진입요청이랑 분리해서 노출"): 최근 반응 화면에 반응·한마디만. 들어오려는 사람(승인 대기)과 홈 화면에 두기 부탁은 앨범 위에 따로 띠로 보인다(시안 부모 앨범의 승인 요청·설치 부탁 띠)
+- 구현 방식
+  - `/reactions`: '도와줄 사람'·'확인할 사람' 칸을 뺌. familyAdmin 호출도 뺌
+  - `/home`: familyAdmin을 목록과 같이 불러(실패하면 띠만 안 보임) 띠 두 개. ① 확인할 사람(대기 구성원+새 휴대폰): 한 명이면 "{이름}이 {그룹} 앨범에 들어오려고 해요", 새 휴대폰만이면 "새 휴대폰 {N}대가 들어오려고 해요", 여럿이면 "{N}명이 들어오려고 해요" → `/settings/family` "확인 ›" ② 홈 화면에 두기 부탁(7일 안): "{이름}이 홈 화면에 두기를 부탁했어요"(여럿이면 "외 N명") → `/settings/family/sms` "문자 ›"
+  - 띠 모양: pea-tint 바탕, pea-deep 글자, 56px, radius 14px(시안). 도트 이모지는 범위 밖
+- 영향받는 파일: `src/pages/reactions.astro`, `src/pages/home.astro`, `src/styles/parent.css`, `plan.md`, 작업 폴더 e2e(reactions·install)
+- 예상 결과: 최근 반응엔 반응만, 앨범 위 띠에서 승인·부탁으로 감(e2e)
+- 결과: 검토 반영(이/가 조사, 새 휴대폰만 기다릴 때 문구). reactions·install·parent·members·health e2e 통과
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
