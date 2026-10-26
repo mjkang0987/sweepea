@@ -2,7 +2,8 @@
 // 부모 앨범: 사진이 없으면 첫 사진 안내, 있으면 월별 모아 보기. 아래 탭(앨범·설정)
 import Parent from '../layouts/Parent.astro';
 import { getBackend } from '../lib/backend';
-import { callName } from '../lib/ko';
+import { summarize } from '../lib/familyAdmin';
+import { callName, hasBatchim } from '../lib/ko';
 import { splitSchedule } from '../lib/health';
 import { loadParent, seoulToday } from '../lib/parent';
 import { signedMediaUrl } from '../lib/signed';
@@ -15,8 +16,10 @@ const kid = callName(a.home.children?.[0]?.name ?? '아이');
 const b = getBackend();
 // 접종·검진: 일정 보기를 켠 아이마다 다음 일정 하나. 옆 기능이라 실패하면 줄만 빼고 앨범은 보인다
 const today = seoulToday();
-const [items, healthRows] = await Promise.all([
+// 승인 대기·설치 부탁 띠도 옆 기능이라 실패하면 띠만 뺀다
+const [items, admin, healthRows] = await Promise.all([
   b.listMedia(a.pass, { limit: 200 }),
+  b.familyAdmin(a.pass).catch(() => null),
   Promise.all(
   (a.home.children ?? [])
     .filter((k) => k.show_health)
@@ -30,6 +33,11 @@ const [items, healthRows] = await Promise.all([
     }),
   ).then((r) => r.filter((x) => x !== null)),
 ]);
+const now = Date.now();
+const s = admin && summarize(admin);
+const firstWait = s && s.pendingDevices.length === 0 && s.pendingMembers.length === 1 ? s.pendingMembers[0] : null;
+const ga = (w: string) => (hasBatchim(w) ? '이' : '가');
+const helpers = admin?.members.filter((m) => m.status === 'active' && m.install_help_at && now - Date.parse(m.install_help_at) < 7 * 86_400_000) ?? [];
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
 const months: { label: string; cells: { id: string; src: string; video: boolean; day: string }[] }[] = [];
@@ -43,6 +51,22 @@ for (const m of items) {
 <Parent title="앨범 · 스위피" tab="home" wide>
   <h1 class="sp-p__title sp-p__title--large">앨범</h1>
   {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus>지웠어요.</p>}
+  {
+    s && s.waiting > 0 && (
+      <a class="sp-p__alert" href="/settings/family">
+        <span class="sp-p__alert-text">{firstWait ? <><strong>{firstWait.display_name}</strong>{ga(firstWait.display_name)} {s.groupName(firstWait.group_id)} 앨범에 들어오려고 해요</> : s.pendingMembers.length === 0 ? <>새 휴대폰 <strong>{s.waiting}대</strong>가 들어오려고 해요</> : <><strong>{s.waiting}명</strong>이 들어오려고 해요</>}</span>
+        <span class="sp-p__alert-action">확인<span aria-hidden="true"> ›</span></span>
+      </a>
+    )
+  }
+  {
+    helpers.length > 0 && (
+      <a class="sp-p__alert" href="/settings/family/sms">
+        <span class="sp-p__alert-text"><strong>{helpers[0].display_name}</strong>{helpers.length > 1 ? ` 외 ${helpers.length - 1}명이` : ga(helpers[0].display_name)} 홈 화면에 두기를 부탁했어요</span>
+        <span class="sp-p__alert-action">문자<span aria-hidden="true"> ›</span></span>
+      </a>
+    )
+  }
   <ul class="sp-p__list sp-p__activity">
     {healthRows.map((h) => (
       <li>

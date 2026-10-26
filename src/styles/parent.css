@@ -1034,6 +1034,29 @@
   background: var(--fill);
   object-fit: cover;
 }
+/* 앨범 위 승인 요청·설치 부탁 띠 */
+.sp-p__alert {
+  min-height: 3.5rem;
+  padding: 0.625rem 0.875rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border-radius: 0.875rem;
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  text-decoration: none;
+}
+.sp-p__alert-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--subhead-size);
+}
+.sp-p__alert-action {
+  flex: none;
+  font-size: var(--subhead-size);
+  font-weight: 700;
+}
 /* 앨범 위 '최근 반응' 줄 */
 .sp-p__activity {
   margin-bottom: var(--space-4);
