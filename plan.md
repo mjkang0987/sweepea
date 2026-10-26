@@ -518,7 +518,7 @@
 
 - 요구사항(사용자 2026-10-26 "3번 진행하자"): mock이 아닌 실제 Supabase에 스키마를 올리고 화면을 실제 백엔드로 확인
 - 지우님이 할 일(둘 중 하나)
-  - A(추천): claude.ai 설정 > 커넥터에서 **Supabase** 커넥터 연결 → Claude가 프로젝트 만들기(리전 서울 ap-northeast-2)·마이그레이션 적용·키 확인까지 직접
+  - A(선택됨): Supabase 커넥터 연결(커넥터는 조직 하나만 고를 수 있어 sweepea 조직으로)
   - B: supabase.com에서 프로젝트를 직접 만들고 Project URL, anon 키, service_role 키, DB 비밀번호를 알려 주기(service_role·DB 비밀번호는 이 대화 대신 `.dev.vars`에 직접 넣어도 됨)
 - 구현 방식(연결 뒤)
   1. 마이그레이션 13개를 순서대로 적용(로컬 Postgres 16 검사는 통과: `npm run test:db`, 의도된 거부 48건). 적용 뒤부터 init 직접 수정 금지, 새 파일로
@@ -527,7 +527,9 @@
   4. 실제 백엔드로 핵심 흐름 확인: 부모 처음 설정 → 링크 → 가족 입장·승인 → 올리기(R2는 로컬 miniflare) → 보기·반응 → 아이 탭(`media_children!inner`)·배지(waiting)·사진 정보
   5. 운영 배포(Cloudflare 시크릿·R2 버킷)는 다음 이슈
 - 영향받는 파일: 확인 중 나오는 버그 수정만(supabase.ts 등), `.dev.vars.example`, `index.md`, `plan.md`
-- 확인 필요: 카카오 로그인은 카카오 개발자 앱(REST 키·Client Secret)이 있어야 켤 수 있음. 무료 요금제는 1주 쉬면 프로젝트가 멈춤
+- 진행(2026-10-26): 프로젝트 `sweepea`(ref aemzbelwyyweugxuqgoh, 서울, 무료 조직) 생성. 마이그레이션 13개 적용 완료(커넥터, 같은 이름). 보안 점검: 정책 없는 표 2개(entry_failures·r2_cleanup, 의도: 함수만 씀), 로그인 사용자가 부르는 security definer 함수 31개·anon `sp_entry_info`(의도: 권한 판정을 함수 안에서 함). `.dev.vars.supabase`(git 제외)에 URL·anon 키
+- 남은 것: 익명 로그인 켜기·테스트용 부모 로그인·service_role(또는 secret) 키 → 지우님 대시보드에서
+- 확인 필요: 카카오 로그인은 카카오 개발자 앱(REST 키·Client Secret)이 있어야 켤 수 있음. 무료 조직은 1주 쉬면 프로젝트가 멈춤
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
