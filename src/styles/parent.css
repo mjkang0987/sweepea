@@ -1301,3 +1301,70 @@
   outline: 3px dashed var(--pea);
   outline-offset: 2px;
 }
+
+@keyframes sp-toast-still {
+  0%,
+  85% {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%);
+    visibility: hidden;
+  }
+}
+/* 완료 안내는 화면 아래에 떠서 몇 초 뒤 사라지는 알약(디자인 시스템 '알림·토스트'). 실패·진행 안내는 그대로 남긴다 */
+@keyframes sp-toast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  8%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+    visibility: hidden;
+  }
+}
+.sp-p__toast:not(.sp-p__toast--error):not(.sp-p__toast--live) {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  /* 아래엔 떠 있는 '사진 추가하기'가 있어서 위에 */
+  top: calc(var(--space-4) + env(safe-area-inset-top));
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--space-5));
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-5);
+  border-radius: 999px;
+  background: var(--glass-clear);
+  color: var(--label);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator), 0 10px 28px rgba(0, 0, 0, 0.16);
+  text-align: center;
+  pointer-events: none;
+  animation: sp-toast 4s ease-out forwards;
+}
+@media (min-width: 64rem) {
+  .sp-p__toast:not(.sp-p__toast--error):not(.sp-p__toast--live) {
+    top: 4.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-p__toast:not(.sp-p__toast--error):not(.sp-p__toast--live) {
+    animation-name: sp-toast-still;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__toast:not(.sp-p__toast--error):not(.sp-p__toast--live) {
+    background: var(--fill);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
