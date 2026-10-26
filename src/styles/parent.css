@@ -517,6 +517,10 @@
   background: var(--surface);
   overflow: hidden;
 }
+/* 줄 사이 구분선(디자인 목록과 같이). 줄 요소는 li라 태그 대신 전체 선택자로 */
+.sp-p__list > * + * {
+  border-top: 1px solid var(--separator);
+}
 .sp-p__row {
   min-height: 3.5rem;
   padding: 0 var(--space-4);
@@ -1007,6 +1011,34 @@
 .sp-p__meter {
   width: 100%;
   height: 0.5rem;
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  overflow: hidden;
+}
+/* 막대 색: 브라우저 기본(노랑·빨강) 대신 키컬러 하나(blossom은 하트에만) */
+.sp-p__meter::-webkit-meter-bar {
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+}
+.sp-p__meter::-webkit-meter-optimum-value,
+.sp-p__meter::-webkit-meter-suboptimum-value,
+.sp-p__meter::-webkit-meter-even-less-good-value {
+  border-radius: 999px;
+  background: var(--pea);
+}
+.sp-p__meter::-moz-meter-bar {
+  border-radius: 999px;
+  background: var(--pea);
+}
+@media (forced-colors: active) {
+  .sp-p__meter {
+    -webkit-appearance: auto;
+    appearance: auto;
+  }
 }
 
 /* 아이 목록: 두 줄 행, 오른쪽 '고치기' */
