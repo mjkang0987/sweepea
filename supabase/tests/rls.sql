@@ -485,6 +485,74 @@ select public.sp_comment(:'m3', '   ');
 reset role;
 \set ON_ERROR_STOP 1
 
+-- ── 엄빠 반응·한마디(부모 계정)
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select (public.sp_parent_home() ->> 'new_activity')::int as na0 \gset
+select pg_temp.ok(public.sp_parent_react(:'m3', 'heart', true), '부모 반응 켜기');
+select public.sp_parent_react(:'m3', 'heart', true);
+select pg_temp.ok((select n = 2 and mine from public.sp_reaction_counts(array[:'m3']::uuid[]) where kind = 'heart'), '부모 하트는 한 번 + 가족 하트 = 2, 내가 누름');
+select public.sp_parent_comment(:'m3', '  우리 딸 최고  ');
+select pg_temp.ok((select body = '우리 딸 최고' and member_id is null from public.comments where parent_user_id = :'P'), '부모 한마디(공백 정리), 부모가 읽음');
+select pg_temp.ok((public.sp_parent_home() ->> 'new_activity')::int = :na0, '내 반응·한마디는 새 반응 수에 안 셈');
+select pg_temp.ok(not exists (select 1 from jsonb_array_elements(public.sp_parent_activity() -> 'items') i where i ->> 'body' = '우리 딸 최고'), '최근 반응 목록에 내 것은 없음');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select n = 2 and mine from public.sp_reaction_counts(array[:'m3']::uuid[]) where kind = 'heart'), '가족 화면에 부모 하트도 셈(내 것은 내 것만)');
+select pg_temp.ok(not exists (select 1 from public.comments where parent_user_id is not null), '가족은 부모 한마디 글을 못 읽음(수만)');
+select pg_temp.ok((select count(*) = 1 from public.reactions where media_id = :'m3' and kind = 'heart' and member_id is null), '가족도 부모 반응 행은 보임(누군지는 모름)');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(가족이 부모 반응 함수 부름, 부모 사용자 id 읽기)'
+select public.sp_parent_react(:'m3', 'best', true);
+select parent_user_id from public.reactions;
+\set ON_ERROR_STOP 1
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(다른 집 부모가 반응·한마디)'
+set role authenticated;
+select public.sp_parent_react(:'m3', 'best', true);
+select public.sp_parent_comment(:'m3', '남의 집');
+reset role;
+\set ON_ERROR_STOP 1
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+\set ON_ERROR_STOP 0
+\echo '아래 에러 4줄은 의도된 거부(올리는 중 사진, 이상한 종류, 빈 한마디, 직접 넣기)'
+set role authenticated;
+select public.sp_parent_react(:'m4', 'heart', true);
+select public.sp_parent_react(:'m3', 'angry', true);
+select public.sp_parent_comment(:'m3', '   ');
+insert into public.reactions (media_id, parent_user_id, kind) values (:'m3', :'P', 'best');
+reset role;
+\set ON_ERROR_STOP 1
+set role authenticated;
+select pg_temp.ok(not public.sp_parent_react(:'m3', 'heart', false), '부모 반응 끄기');
+select pg_temp.ok((select n = 1 and not mine from public.sp_reaction_counts(array[:'m3']::uuid[]) where kind = 'heart'), '끄면 가족 하트만 남음');
+select id as pc from public.comments where parent_user_id = :'P' \gset
+select public.sp_delete_comment(:'pc');
+select pg_temp.ok(not exists (select 1 from public.comments where parent_user_id = :'P'), '부모가 자기 한마디 지움');
+reset role;
+-- 하루 30개 한도(지운 것도 셈: 지운 1개 + 28개를 미리 넣고 30번째는 되고 31번째는 막힘)
+insert into public.comments (media_id, parent_user_id, body) select :'m3', :'P', '하나' from generate_series(1, 28);
+set role authenticated;
+select public.sp_parent_comment(:'m3', '서른');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(부모 한마디 하루 30개 넘음)'
+select public.sp_parent_comment(:'m3', '서른하나');
+\set ON_ERROR_STOP 1
+reset role;
+delete from public.comments where parent_user_id = :'P';
+-- 탈퇴 유예 중엔 반응 못 함
+update public.families set delete_after = now() + interval '3 days' where id = :'fam';
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(탈퇴 유예 중 부모 반응)'
+select public.sp_parent_react(:'m3', 'heart', true);
+\set ON_ERROR_STOP 1
+reset role;
+update public.families set delete_after = null where id = :'fam';
+
 -- ── 탈퇴 유예: 가족 화면은 바로 닫힘
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
