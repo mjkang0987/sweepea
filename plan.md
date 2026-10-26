@@ -534,6 +534,20 @@
 - 확인 필요: 카카오 로그인은 카카오 개발자 앱(REST 키·Client Secret)이 있어야 켤 수 있음. 무료 조직은 1주 쉬면 프로젝트가 멈춤
 - 확인 필요(출시 전): 이메일 확인 다시 켜기, `dev-test` secret 키 삭제(대화에 남음), 익명 가입 남용 막기(CAPTCHA·가입 횟수 제한), 테스트 데이터(가족방 2개·테스트 계정) 지우기
 
+### 37. feature/deploy — Cloudflare Workers 첫 배포 (진행 중)
+
+- 요구사항(사용자 2026-10-26 "배포 먼저 가볼까?"): 실제 Supabase + 진짜 R2로 인터넷에서 열리는 주소
+- 구현 방식
+  1. 먼저 `*.workers.dev` 주소로 배포(도메인 연결은 그다음)
+  2. R2 버킷 `sweepea-media` 만들기(wrangler.jsonc 그대로)
+  3. 시크릿: SUPABASE_URL·SUPABASE_ANON_KEY(공개)·MEDIA_URL_SECRET(새로 만듦)·SITE_ORIGIN, SUPABASE_SERVICE_ROLE_KEY는 **운영용 secret 키를 지우님이 Cloudflare 대시보드에 직접**(대화에 남기지 않게). PARENT_PROVIDERS는 카카오 연결 전까지 비움(로그인 화면은 "준비되지 않았어요")
+  4. 매일 정리 예약(18:17 UTC)은 wrangler.jsonc 그대로 올라감
+  5. 배포 뒤 확인: 첫 화면·로그인 화면·가족 링크 화면 응답, 사진 전달 경로, 보안 헤더
+  6. Supabase Auth 사이트 주소·리다이렉트에 배포 주소 추가(카카오 연결 때 필요)
+- 배포 방법: 지우님이 Cloudflare API 토큰(Workers 스크립트·R2 편집 권한)을 만들어 주면 여기서 `wrangler deploy`. 토큰은 배포 끝나면 지우님이 삭제
+- 영향받는 파일: `wrangler.jsonc`(필요하면), `index.md`, `plan.md`
+- 확인 필요: Cloudflare 계정·요금제(무료면 요청당 외부 호출 50개 → 정리 작업이 나눠서 돎), sweepea.co.kr 등록·DNS 위치
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
