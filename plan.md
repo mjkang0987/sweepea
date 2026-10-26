@@ -514,6 +514,21 @@
 - 결과: 기존 settings2·members·groups e2e 통과, 스크린샷 확인
 - 남김: 가족 플랜 줄·카드(결제 이슈에서), 설정 하위 화면 제목 배치(디자인은 가운데 작은 제목, 코드는 큰 제목)
 
+### 36. feature/db-setup — 실제 Supabase 연결 (진행 중)
+
+- 요구사항(사용자 2026-10-26 "3번 진행하자"): mock이 아닌 실제 Supabase에 스키마를 올리고 화면을 실제 백엔드로 확인
+- 지우님이 할 일(둘 중 하나)
+  - A(추천): claude.ai 설정 > 커넥터에서 **Supabase** 커넥터 연결 → Claude가 프로젝트 만들기(리전 서울 ap-northeast-2)·마이그레이션 적용·키 확인까지 직접
+  - B: supabase.com에서 프로젝트를 직접 만들고 Project URL, anon 키, service_role 키, DB 비밀번호를 알려 주기(service_role·DB 비밀번호는 이 대화 대신 `.dev.vars`에 직접 넣어도 됨)
+- 구현 방식(연결 뒤)
+  1. 마이그레이션 13개를 순서대로 적용(로컬 Postgres 16 검사는 통과: `npm run test:db`, 의도된 거부 48건). 적용 뒤부터 init 직접 수정 금지, 새 파일로
+  2. Auth: 익명 로그인 켜기(가족 기기), 부모 로그인 제공자(카카오 먼저, 나머지는 키 받은 뒤), 사이트 주소·리다이렉트 주소
+  3. `.dev.vars`(git 제외)에 SUPABASE_URL·SUPABASE_ANON_KEY·SUPABASE_SERVICE_ROLE_KEY·MEDIA_URL_SECRET, `SWEEPEA_BACKEND=supabase`로 개발 서버
+  4. 실제 백엔드로 핵심 흐름 확인: 부모 처음 설정 → 링크 → 가족 입장·승인 → 올리기(R2는 로컬 miniflare) → 보기·반응 → 아이 탭(`media_children!inner`)·배지(waiting)·사진 정보
+  5. 운영 배포(Cloudflare 시크릿·R2 버킷)는 다음 이슈
+- 영향받는 파일: 확인 중 나오는 버그 수정만(supabase.ts 등), `.dev.vars.example`, `index.md`, `plan.md`
+- 확인 필요: 카카오 로그인은 카카오 개발자 앱(REST 키·Client Secret)이 있어야 켤 수 있음. 무료 요금제는 1주 쉬면 프로젝트가 멈춤
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
