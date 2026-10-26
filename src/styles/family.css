@@ -927,9 +927,10 @@
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
 }
+/* 위 버튼 자리는 엄빠 화면 뒤로 링크와 같게: 글자 왼쪽 20px, 세로 가운데 46px(안전 영역 아래) */
 .sp-v__bar {
   top: 0;
-  padding: max(var(--space-4), env(safe-area-inset-top)) max(var(--space-3), calc((100% - 32rem) / 2)) var(--space-2);
+  padding: calc(46px - var(--target-senior) / 2 + env(safe-area-inset-top)) max(20px, calc((100% - 32rem) / 2)) var(--space-2);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
@@ -937,12 +938,12 @@
 .sp-v__link {
   justify-self: start;
   min-height: var(--target-senior);
-  padding: 0 var(--space-2);
+  padding: 0;
   display: flex;
   align-items: center;
   color: var(--pea-ink);
   font-size: var(--senior-button-size);
-  font-weight: 700;
+  font-weight: 600;
   text-decoration: none;
 }
 .sp-v__link:last-child {
