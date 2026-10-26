@@ -77,6 +77,7 @@ const doneText: Record<string, string> = {
       <li>
         <a class="sp-p__row" href="/settings/account">
           <span class="sp-p__row-label">{PROVIDER_NAMES[h.provider ?? ''] ?? '로그인'} 계정</span>
+          <span class="sp-p__row-value">{`${h.children?.[0]?.name ?? ''} ${h.role === 'dad' ? '아빠' : '엄마'}`.trim()}</span>
           <span class="sp-p__chev" aria-hidden="true">›</span>
         </a>
       </li>
