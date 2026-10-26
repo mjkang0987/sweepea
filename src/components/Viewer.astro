@@ -187,7 +187,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       img.className = 'sp-v__media';
       // 영상은 대표 사진으로 보여 주고, 멈추면 영상 화면을 연다
       img.src = x.video ? (x.poster ?? '') : x.src;
-      img.alt = i === at ? '' : x.label;
+      img.alt = x.label;
       img.draggable = false;
       img.decoding = 'async';
       img.loading = Math.abs(i - at) <= 1 ? 'eager' : 'lazy';
@@ -197,16 +197,35 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     stage.replaceChildren(track);
     track.scrollLeft = at * track.clientWidth;
     v.dataset.swiper = '';
+    const bar = v.querySelector<HTMLElement>('.sp-v__bar');
+    const dock = v.querySelector<HTMLElement>('.sp-v__dock');
+    const title = document.getElementById('v-title');
+    // 바뀐 사진을 화면 읽기에 알린다(제목 글자만 바뀜)
+    title?.setAttribute('aria-live', 'polite');
     const arrows = (i: number) => {
       // 창(앞뒤 20장) 끝에서는 창 바로 밖 사진 페이지로
-      const p = slides[i - 1]?.href ?? win.before;
-      const n = slides[i + 1]?.href ?? win.after;
-      if (prev) [prev.hidden, prev.href] = [!p, p ?? prev.href];
-      if (next) [next.hidden, next.href] = [!n, n ?? next.href];
+      const p = slides[i - 1] ?? (i === 0 && win.before ? { href: win.before, video: false } : undefined);
+      const n = slides[i + 1] ?? (i === slides.length - 1 && win.after ? { href: win.after, video: false } : undefined);
+      for (const [a, x, word] of [[prev, p, '이전'], [next, n, '다음']] as const) {
+        if (!a) continue;
+        // 숨길 화살표에 포커스가 있으면 반대쪽으로(포커스가 사라지지 않게)
+        if (!x && document.activeElement === a) (a === prev ? next : prev)?.focus();
+        a.hidden = !x;
+        if (x) {
+          a.href = x.href;
+          a.setAttribute('aria-label', `${word} ${x.video ? '영상' : '사진'}`);
+        }
+      }
     };
     let load = 0;
+    let busy: AbortController | undefined;
+    // 화살표를 빠르게 여러 번 누르면 가는 중인 칸 기준으로
+    let to: number | undefined;
     const settle = async () => {
       const i = Math.round(track.scrollLeft / track.clientWidth);
+      // 손가락을 댄 채 멈춘 중간 위치에선 아무것도 안 한다(칸에 딱 맞았을 때만)
+      if (Math.abs(track.scrollLeft - i * track.clientWidth) > 2) return;
+      to = undefined;
       if (i === at || !slides[i]) return;
       at = i;
       const x = slides[i];
@@ -214,40 +233,44 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       history.replaceState(null, '', x.href);
       v.dataset.id = x.id;
       v.querySelector('.sp-v__toast')?.remove();
+      // 새 내용이 올 때까지 위 메뉴·아래 판은 못 누르게(지난 사진에 반응하지 않게)
+      for (const el of [bar, dock]) if (el) el.inert = true;
+      busy?.abort();
+      busy = new AbortController();
       // 늦게 온 응답은 버린다. 받지 못하면 그 화면을 새로 연다
       const mine = ++load;
       try {
-        const r = await fetch(x.href, { credentials: 'same-origin' });
+        const r = await fetch(x.href, { credentials: 'same-origin', signal: busy.signal });
         if (!r.ok || r.redirected) throw new Error(String(r.status));
         const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
         if (mine !== load) return;
-        for (const sel of ['.sp-v__bar', '.sp-v__dock']) {
+        for (const [sel, el] of [['.sp-v__bar', bar], ['.sp-v__dock', dock]] as const) {
           const from = doc.querySelector(sel);
-          const to = v.querySelector(sel);
-          if (from && to) to.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
+          if (from && el) el.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
         }
-        const title = doc.getElementById('v-title')?.textContent;
-        const h = document.getElementById('v-title');
-        if (title && h) h.textContent = title;
+        const t = doc.getElementById('v-title')?.textContent;
+        if (t && title) title.textContent = t;
         document.title = doc.title;
-      } catch {
-        if (mine === load) location.replace(x.href);
+        for (const el of [bar, dock]) if (el) el.inert = false;
+      } catch (err) {
+        if (mine === load && !(err instanceof DOMException && err.name === 'AbortError')) location.replace(x.href);
       }
     };
     let t: ReturnType<typeof setTimeout> | undefined;
     track.addEventListener('scroll', () => {
       arrows(Math.round(track.scrollLeft / track.clientWidth));
+      // 멈춤 알림(scrollend)이 없는 브라우저만 시간으로
+      if ('onscrollend' in window) return;
       clearTimeout(t);
       t = setTimeout(settle, 120);
     });
-    track.addEventListener('scrollend', () => {
-      clearTimeout(t);
-      void settle();
-    });
+    track.addEventListener('scrollend', () => void settle());
     const go = (d: number) => (e: Event) => {
-      if (!slides[at + d]) return; // 창 끝: 링크대로 페이지를 연다
+      const i = (to ?? at) + d;
+      if (!slides[i]) return; // 창 끝: 링크대로 페이지를 연다
       e.preventDefault();
-      track.scrollTo({ left: (at + d) * track.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      to = i;
+      track.scrollTo({ left: i * track.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     };
     prev?.addEventListener('click', go(-1));
     next?.addEventListener('click', go(1));

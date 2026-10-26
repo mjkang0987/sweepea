@@ -1470,8 +1470,8 @@
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
-  /* .sp-v는 가로 밀기를 막아 둔다(pan-y): 트랙 안에선 가로로 */
-  touch-action: pan-x pinch-zoom;
+  /* .sp-v는 가로 밀기를 막아 둔다(pan-y): 트랙 안에선 가로로. 확대한 채 위아래로 둘러보기도 되게 pan-y */
+  touch-action: pan-x pan-y pinch-zoom;
 }
 .sp-v__track::-webkit-scrollbar {
   display: none;
