@@ -10,9 +10,19 @@ import { INSTALL_COOKIE } from '../../lib/install';
 import { EMOJI_SPRITE } from '../../lib/emoji';
 import { albumHref, dayLabel, loadAlbum, loadReacts, ZOOMS } from '../../lib/album';
 import { signedMediaUrl } from '../../lib/signed';
+import { PHOTOS_SEEN, WAITED, seenAt, setLayerCookie } from '../../lib/layers';
 
 // 서명된 사진 주소가 들어 있는 사람별 페이지: 공유 캐시 금지
 Astro.response.headers.set('cache-control', 'private, no-store');
+// 가운데 레이어 버튼: '봤음'을 쿠키에 적고 같은 화면으로(PRG). 승인 레이어를 닫을 때 지금 사진까지 본 걸로
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData().catch(() => null);
+  const at = String(form?.get('at') ?? '');
+  if (form?.get('do') === 'approved') Astro.cookies.delete(WAITED, { path: '/' });
+  if (Number.isFinite(Date.parse(at))) setLayerCookie(Astro.cookies, PHOTOS_SEEN, new Date(at).toISOString());
+  const back = String(form?.get('back') ?? '/album');
+  return Astro.redirect(back.startsWith('/album') ? back : '/album', 303);
+}
 const a = await loadAlbum(Astro.cookies, Astro.url);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const { pass, open, kids, q, items } = a;
@@ -49,12 +59,59 @@ const zi = ZOOMS.indexOf(q.z);
 const installState = Astro.cookies.get(INSTALL_COOKIE)?.value;
 const installAsked = Astro.cookies.get(`${INSTALL_COOKIE}_msg`)?.value === '1';
 if (installAsked) Astro.cookies.delete(`${INSTALL_COOKIE}_msg`, { path: '/' });
+// 가운데 레이어(한 번 열 때 하나): 승인 뒤 처음 → 새 사진. 처음 온 기기는 지금 사진까지 본 걸로만 적는다
+const newestAt = items.reduce((t, m) => Math.max(t, m.created_at ? Date.parse(m.created_at) : 0), 0);
+const newestIso = newestAt ? new Date(newestAt).toISOString() : '';
+const waited = Astro.cookies.get(WAITED)?.value;
+const approved = waited && open.some((f) => f.family_id === waited) ? kids.get(waited) ?? '아이' : null;
+// 한 집만 거른 화면에선 다른 집 사진을 모르니 건드리지 않는다
+const allKids = !q.f;
+const photosSeen = seenAt(Astro.cookies, PHOTOS_SEEN);
+// 처음 온 기기: 지금까지(사진이 없으면 지금 시각까지) 본 걸로만 적는다
+if (photosSeen === null && allKids && !approved) setLayerCookie(Astro.cookies, PHOTOS_SEEN, newestIso || new Date().toISOString());
+const fresh = !approved && allKids && photosSeen !== null ? items.filter((m) => m.created_at && Date.parse(m.created_at) > photosSeen) : [];
+const freshThumbs = await Promise.all(fresh.slice(0, 3).map((m) => signedMediaUrl(m.thumb_key)));
+const freshKid = fresh.length ? kids.get(fresh[0].family_id) ?? '아이' : '';
 const fewer = zi < ZOOMS.length - 1 ? albumHref({ ...q, z: ZOOMS[zi + 1] }) : null;
 const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 ---
 
 <Family title={title} wide={q.v !== 'swipe'}>
   <Fragment set:html={EMOJI_SPRITE} />
+  {
+    (approved || fresh.length > 0) && (
+      <div class="sp-layer">
+        <div class="sp-layer__scrim" aria-hidden="true"></div>
+        <dialog class="sp-layer__box sp-layer__box--senior" open aria-labelledby="layer-t" aria-describedby="layer-d">
+          {approved ? (
+            <>
+              <img class="sp-layer__kongi" src="/favicon.svg" width="96" height="96" alt="" />
+              <h2 class="sp-layer__title" id="layer-t">엄마아빠가 확인했어요</h2>
+              <p class="sp-layer__text" id="layer-d">이제 {approved} 사진을 모두 볼 수 있어요</p>
+            </>
+          ) : (
+            <>
+              <h2 class="sp-layer__title" id="layer-t">{freshKid} 새 사진 {fresh.length}장이 왔어요</h2>
+              <ul class="sp-layer__thumbs" aria-hidden="true">
+                {freshThumbs.map((src, i) => (
+                  <li class="sp-layer__thumb">
+                    <img class="sp-layer__thumb-img" src={src} alt="" width="96" height="96" />
+                    {i === 2 && fresh.length > 3 && <span class="sp-layer__more">+{fresh.length - 3}</span>}
+                  </li>
+                ))}
+              </ul>
+              <p class="sp-layer__text" id="layer-d">{dayLabel(fresh[0].created_at!)}에 올라왔어요</p>
+            </>
+          )}
+          <form class="sp-layer__actions" method="post">
+            <input type="hidden" name="at" value={newestIso} />
+            <input type="hidden" name="back" value={here} />
+            <button class="sp-f__btn" type="submit" name="do" value={approved ? 'approved' : 'photos'} autofocus>{approved ? '사진 보기' : '보기'}</button>
+          </form>
+        </dialog>
+      </div>
+    )
+  }
   <header class="sp-a__head">
     <div class="sp-a__head-text">
       <h1 class="sp-f__title">{title} {items.length >= 200 ? '200장 넘게' : `${items.length}장`}</h1>
