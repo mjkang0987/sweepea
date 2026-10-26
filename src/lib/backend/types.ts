@@ -236,6 +236,10 @@ export interface Backend {
   react(pass: Pass, mediaId: string, kind: ReactionKind, on: boolean): Promise<void>;
   /** 한마디(1~200자). 하루 30개 넘으면 BackendError 429 */
   comment(pass: Pass, mediaId: string, body: string): Promise<void>;
+  /** 부모 계정이 반응 켜기·끄기(자기 가족방 사진만, 아니면 BackendError 403) */
+  parentReact(pass: Pass, mediaId: string, kind: ReactionKind, on: boolean): Promise<void>;
+  /** 부모 계정 한마디(1~200자, 하루 30개) */
+  parentComment(pass: Pass, mediaId: string, body: string): Promise<void>;
   reactionCounts(pass: Pass, mediaIds: string[]): Promise<ReactionCount[]>;
   /** 부모 로그인 시작 주소(Supabase OAuth, PKCE) */
   parentAuthorizeUrl(provider: string, redirectTo: string, codeChallenge: string): string;
