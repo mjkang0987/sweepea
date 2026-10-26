@@ -366,6 +366,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  /* 반응 줄이 카드보다 넓어 옆 카드 칸과 겹친다. 빈 칸은 누름을 통과시키고 카드·줄만 받는다 */
+  pointer-events: none;
+}
+.sp-a__card,
+.sp-a__slide-react {
+  pointer-events: auto;
 }
 .sp-a__slide + .sp-a__slide {
   /* 양옆 카드가 가운데 카드 뒤로 겹쳐 들어가게 */
@@ -640,48 +646,6 @@
   opacity: 0.35;
 }
 
-.sp-v__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.sp-v__link {
-  min-height: var(--target-senior);
-  display: flex;
-  align-items: center;
-  color: var(--pea-ink);
-  font-size: var(--senior-button-size);
-  font-weight: 700;
-  text-decoration: none;
-}
-.sp-v__pos {
-  margin: 0;
-  font-size: var(--senior-caption-size);
-  font-weight: 700;
-}
-.sp-v__spacer {
-  width: 4rem;
-}
-.sp-v__fig {
-  margin: 0 calc(-1 * var(--space-5));
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.sp-v__media {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 70vh;
-  object-fit: contain;
-  background: var(--surface);
-}
-.sp-v__nav {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
-}
-
 /* 떠 있는 칸 크기 버튼이 포커스된 사진을 가리지 않게 */
 .sp-html {
   scroll-padding-bottom: calc(var(--target-senior) + var(--space-8));
@@ -693,10 +657,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-.sp-a__say {
-  background: var(--pea-tint);
-  color: var(--pea-deep);
 }
 
 /* 반응 5개 */
@@ -719,17 +679,16 @@
 .sp-r__btn {
   flex: 1;
   min-width: 0;
-  min-height: 5rem;
-  padding: 0.625rem 0 0.5rem;
+  min-height: 3.75rem;
+  padding: 0;
   border: 0;
   border-radius: 18px;
   background: var(--surface);
   color: var(--label);
   font-family: inherit;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.375rem;
+  justify-content: center;
   cursor: pointer;
 }
 .sp-r__btn[aria-pressed='true'] {
@@ -743,13 +702,8 @@
 }
 .sp-r__icon {
   display: block;
-  width: 2rem;
-  height: 2rem;
-}
-.sp-r__label {
-  font-size: var(--senior-caption-size);
-  line-height: 1.375rem;
-  font-weight: 600;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 /* 도트 이모지 움직임: 두 번만(5초 넘게 계속 움직이지 않게), 동작 줄이기면 끔 */
 @media (prefers-reduced-motion: no-preference) {
@@ -850,11 +804,6 @@
   margin-right: 2px;
 }
 
-.sp-v__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .sp-say {
   display: flex;
   flex-direction: column;
@@ -934,4 +883,285 @@
   .sp-f--wide .sp-a__grid--5 {
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }
+}
+
+/* 크게 보기(사진·영상): 화면 가득 + 위 메뉴·아래 판이 반투명으로 겹침. 영상 재생 중엔 재생 막대 줄만 */
+.sp-v {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: var(--bg);
+  /* 가로 밀기는 스크립트가, 세로 스크롤·두 손가락 확대는 브라우저가 */
+  touch-action: pan-y pinch-zoom;
+}
+.sp-v[data-playing] {
+  background: #000000;
+}
+.sp-v__stage {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+}
+.sp-v__media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.sp-v__tap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.sp-v__bar,
+.sp-v__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+.sp-v__bar {
+  top: 0;
+  padding: max(var(--space-4), env(safe-area-inset-top)) max(var(--space-3), calc((100% - 32rem) / 2)) var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+}
+.sp-v__link {
+  justify-self: start;
+  min-height: var(--target-senior);
+  padding: 0 var(--space-2);
+  display: flex;
+  align-items: center;
+  color: var(--pea-ink);
+  font-size: var(--senior-button-size);
+  font-weight: 700;
+  text-decoration: none;
+}
+.sp-v__link:last-child {
+  justify-self: end;
+}
+.sp-v__pos {
+  justify-self: center;
+  margin: 0;
+  font-size: var(--senior-caption-size);
+  font-weight: 700;
+}
+.sp-v__arrow,
+.sp-v__play {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  /* 큰 글씨·가로 화면에서 아래 판이 올라와도 눌리게 */
+  z-index: 1;
+}
+.sp-v__arrow {
+  width: 3rem;
+  height: 3rem;
+  background: var(--panel-item);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.sp-v__arrow--prev {
+  left: max(var(--space-2), env(safe-area-inset-left));
+}
+.sp-v__arrow--next {
+  right: max(var(--space-2), env(safe-area-inset-right));
+}
+.sp-v__line {
+  fill: none;
+  stroke: var(--label);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sp-v__play {
+  left: 50%;
+  width: 4.5rem;
+  height: 4.5rem;
+  padding: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.5);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+.sp-v__fill-white {
+  fill: #ffffff;
+}
+.sp-v__panel {
+  bottom: 0;
+  max-height: 75%;
+  overflow-y: auto;
+  padding: var(--space-1) max(var(--space-5), calc((100% - 32rem) / 2)) max(var(--space-6), env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-v__more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-v__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sp-v__panel .sp-r__btn {
+  background: var(--panel-item);
+}
+.sp-v__panel .sp-r__btn[aria-pressed='true'] {
+  background: var(--pea-tint);
+}
+.sp-v__panel .sp-f__input {
+  background: var(--panel-field);
+}
+/* 재생 중: 메뉴·반응은 숨기고 재생 막대 줄만 */
+.sp-v[data-playing] .sp-v__hide {
+  display: none;
+}
+.sp-v__ctrl {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+.sp-v__ctrl[hidden],
+.sp-v__play[hidden],
+.sp-v__tap[hidden] {
+  display: none;
+}
+.sp-v__seek-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sp-v__time {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+  font-weight: 600;
+}
+/* 재생 막대: 네이티브 range에 모양만(6px 캡슐, 28px 흰 손잡이, 누르는 영역 44px) */
+.sp-v__seek {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 2.75rem;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.sp-v__seek::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--pea) 0 var(--p, 0%), var(--fill) var(--p, 0%) 100%);
+}
+.sp-v__seek::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--pea) 0 var(--p, 0%), var(--fill) var(--p, 0%) 100%);
+}
+.sp-v__seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -11px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.sp-v__seek::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.sp-v__seek:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.sp-v__mute {
+  flex: none;
+  width: var(--target-senior);
+  height: var(--target-senior);
+  border: 0;
+  border-radius: 14px;
+  background: var(--panel-item);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.sp-v__fill {
+  fill: var(--label);
+}
+.sp-v__wave {
+  fill: none;
+  stroke: var(--label);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.sp-v__icon-off,
+.sp-v__mute[aria-pressed='true'] .sp-v__icon-on {
+  display: none;
+}
+.sp-v__mute[aria-pressed='true'] .sp-v__icon-off {
+  display: block;
+}
+.sp-v__tap:focus-visible,
+.sp-v__play:focus-visible,
+.sp-v__mute:focus-visible,
+.sp-v__arrow:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+.sp-v__tap:focus-visible {
+  outline-offset: -4px;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-v__bar,
+  .sp-v__panel {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .sp-v__arrow,
+  .sp-v__mute,
+  .sp-v__panel .sp-r__btn {
+    background: var(--surface);
+  }
+  .sp-v__panel .sp-f__input {
+    background: var(--bg);
+  }
+}
+/* 스크립트가 없으면(기본 재생 막대) 아래 판이 막대를 덮지 않게: 판을 무대 밑으로 내려 스크롤 */
+.sp-v:not([data-js]) {
+  overflow-y: auto;
+}
+.sp-v:not([data-js]) .sp-v__stage {
+  position: relative;
+  height: 100%;
+}
+.sp-v:not([data-js]) .sp-v__panel {
+  position: relative;
+  max-height: none;
 }

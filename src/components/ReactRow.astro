@@ -26,11 +26,10 @@ const titleId = `react-title${idSuffix}`;
       REACTION_KINDS.map((k) => {
         const on = r?.mine.has(k) ?? false;
         return (
-          <button class="sp-r__btn" type="submit" name="react" value={`${k}:${on ? 'off' : 'on'}`} aria-pressed={on ? 'true' : 'false'}>
+          <button class="sp-r__btn" type="submit" name="react" value={`${k}:${on ? 'off' : 'on'}`} aria-pressed={on ? 'true' : 'false'} aria-label={EMOJI[k].label}>
             <span class={`sp-r__icon sp-r__icon--${EMOJI[k].anim}`}>
-              <svg width="32" height="32" aria-hidden="true" focusable="false"><use href={`#e-${k}`} /></svg>
+              <svg width="40" height="40" aria-hidden="true" focusable="false"><use href={`#e-${k}`} /></svg>
             </span>
-            <span class="sp-r__label">{EMOJI[k].label}</span>
           </button>
         );
       })

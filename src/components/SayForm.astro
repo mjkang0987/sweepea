@@ -5,8 +5,10 @@ interface Props {
   back: string;
   child: string;
   say: string | null;
+  /** 넘겨 보기 카드마다 둘 때 id가 겹치지 않게 */
+  idSuffix?: string;
 }
-const { mediaId, back, child, say } = Astro.props;
+const { mediaId, back, child, say, idSuffix = '' } = Astro.props;
 const msg =
   say === 'sent' ? { cls: 'sp-f__box sp-f__box--pea', text: '보냈어요. 엄마아빠가 볼 수 있어요.' } :
   say === 'limit' ? { cls: 'sp-f__box sp-f__box--danger', text: '오늘은 한마디를 많이 보냈어요. 내일 다시 보내 주세요.' } :
@@ -14,12 +16,12 @@ const msg =
   say === 'error' ? { cls: 'sp-f__box sp-f__box--danger', text: '보내지 못했어요. 잠시 뒤에 다시 보내 주세요.' } : null;
 ---
 
-<form class="sp-say" id="say" method="post" action={`/album/${mediaId}`}>
+<form class="sp-say" id={`say${idSuffix}`} method="post" action={`/album/${mediaId}`}>
   <input type="hidden" name="back" value={back} />
-  <label class="sp-vh" for="say-body">{child}에게 한마디</label>
+  <label class="sp-vh" for={`say-body${idSuffix}`}>{child}에게 한마디</label>
   <div class="sp-f__row">
-    <input class="sp-f__input" id="say-body" name="body" type="text" maxlength="200" autocomplete="off" placeholder={`${child}에게 한마디`} aria-describedby={msg ? 'say-msg' : undefined} />
+    <input class="sp-f__input" id={`say-body${idSuffix}`} name="body" type="text" maxlength="200" autocomplete="off" placeholder={`${child}에게 한마디`} aria-describedby={msg ? `say-msg${idSuffix}` : undefined} />
     <button class="sp-f__btn" type="submit">보내기</button>
   </div>
-  {msg && <p class={msg.cls} id="say-msg" role="status">{msg.text}</p>}
+  {msg && <p class={msg.cls} id={`say-msg${idSuffix}`} role="status">{msg.text}</p>}
 </form>
