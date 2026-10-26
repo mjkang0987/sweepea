@@ -1166,6 +1166,64 @@
   max-height: none;
 }
 
+/* 아래 판 + 그 위에 뜨는 버튼 묶음. 판은 묶음 안에서 제자리, 높이는 화면의 75%까지 */
+.sp-v__dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+.sp-v__dock .sp-v__panel,
+.sp-v__dock .sp-v__edit {
+  pointer-events: auto;
+}
+.sp-v__dock .sp-v__panel {
+  position: relative;
+  bottom: auto;
+  max-height: 75vh;
+  max-height: 75dvh;
+}
+.sp-v:not([data-js]) .sp-v__dock {
+  position: relative;
+}
+.sp-v:not([data-js]) .sp-v__dock .sp-v__panel {
+  max-height: none;
+}
+/* 엄빠만: 사진 정보 수정(아래 판 바로 위에 뜸) */
+.sp-v__edit {
+  align-self: flex-end;
+  margin: 0 max(var(--space-4), calc((100% - 32rem) / 2)) var(--space-3);
+  min-height: 3.25rem;
+  padding: 0 var(--space-5);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: 999px;
+  background: var(--pea);
+  color: var(--on-pea);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+.sp-v__edit:focus-visible {
+  outline: 3px solid var(--pea-ink);
+  outline-offset: 3px;
+}
+.sp-v__edit-icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+@media (forced-colors: active) {
+  .sp-v__edit {
+    border: 2px solid ButtonText;
+  }
+}
+
 /* 모아 보기 → 골라서 저장하기 */
 .sp-a__save {
   align-self: flex-start;
