@@ -85,7 +85,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
         <dialog class="sp-layer__box sp-layer__box--senior" open aria-labelledby="layer-t" aria-describedby="layer-d">
           {approved ? (
             <>
-              <img class="sp-layer__kongi" src="/favicon.svg" width="96" height="96" alt="" />
+              <img class="sp-layer__kongi" src="/kongi.svg" width="96" height="96" alt="" />
               <h2 class="sp-layer__title" id="layer-t">엄마아빠가 확인했어요</h2>
               <p class="sp-layer__text" id="layer-d">이제 {approved} 사진을 모두 볼 수 있어요</p>
             </>
@@ -117,7 +117,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
       <h1 class="sp-f__title">{title} {items.length >= 200 ? '200장 넘게' : `${items.length}장`}</h1>
       {latest && <p class="sp-f__lead">{latest}에 올라왔어요</p>}
     </div>
-    <img class="sp-a__kongi" src="/favicon.svg" width="64" height="64" alt="" />
+    <img class="sp-a__kongi" src="/kongi.svg" width="64" height="64" alt="" />
   </header>
 
   {
