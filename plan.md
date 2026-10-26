@@ -568,6 +568,13 @@
 - 예상 결과: 화면·리다이렉트·정적 파일 응답에 헤더(e2e), 기존 e2e 통과, 배포 뒤 확인
 - 결과: 개발 서버에서 화면·리다이렉트·404·가족 링크 응답 헤더 확인, 기존 parent·members·layers·vplay e2e 통과. 확인 필요: 전체 CSP(script-src·img-src)는 인라인 스크립트를 해시로 바꾼 뒤
 
+### 40. feature/kongi-asset — 콩이만 움직이게 (완료, dev 머지)
+
+- 요구사항(사용자 2026-10-26 "콩만 움직여야지 배경은 움직이지 말고"): 코드는 콩이 자리에 앱 아이콘(`favicon.svg`, 둥근 바탕 칸 포함)을 써서 바탕까지 같이 뛰었음. 디자인 캔버스 콩이는 바탕 없는 그림이라 코드만 달랐음
+- 구현: 디자인의 콩이 그림(3단계 떡잎, 바탕 없음)을 `public/kongi.svg`로 넣고 콩이 자리 8곳을 바꿈. 앱 아이콘(`favicon.svg`)은 탭 아이콘으로만
+- 영향받는 파일: `public/kongi.svg`(새), `src/components/Notice.astro`, `src/pages/home.astro`, `src/pages/start.astro`, `src/pages/album/index.astro`, `src/pages/login/index.astro`, `plan.md`
+- 확인 필요: 콩이 나이별 7단계 그림은 아직 3단계 하나로 씀
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.

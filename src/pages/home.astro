@@ -119,7 +119,7 @@ for (const m of items) {
       <div class="sp-layer">
         <div class="sp-layer__scrim" aria-hidden="true"></div>
         <dialog class="sp-layer__box" open aria-labelledby="layer-t" aria-describedby="layer-d">
-          <img class="sp-layer__kongi" src="/favicon.svg" width="96" height="96" alt="" />
+          <img class="sp-layer__kongi" src="/kongi.svg" width="96" height="96" alt="" />
           <h2 class="sp-layer__title" id="layer-t">{birthday.title}<br />{birthday.what}</h2>
           <p class="sp-layer__text" id="layer-d">오늘 찍은 사진을 올려서 가족과 함께 축하해요.</p>
           <form class="sp-layer__actions" method="post">
@@ -167,7 +167,7 @@ for (const m of items) {
   }
   {healthRows.map((h) => (
     <a class="sp-p__kid" href={`/health/${h.id}`}>
-      <img class="sp-p__kid-kongi" src="/favicon.svg" width="64" height="64" alt="" />
+      <img class="sp-p__kid-kongi" src="/kongi.svg" width="64" height="64" alt="" />
       <span class="sp-p__kid-text">
         <span class="sp-vh">접종·검진 일정, </span><span class="sp-p__kid-line"><strong class="sp-p__kid-name">{h.name}</strong><span class="sp-p__hint">생후 {h.months}개월 · 태어난 지 {h.days}일</span></span>
         <span class="sp-p__kid-next">{h.next}</span>
@@ -190,7 +190,7 @@ for (const m of items) {
       <p class="sp-p__lead">{callName(picked.name)} 사진은 아직 없어요.</p>
     ) : items.length === 0 ? (
       <section class="sp-p__empty" aria-labelledby="empty-title">
-        <img class="sp-p__empty-kongi" src="/favicon.svg" width="128" height="128" alt="" />
+        <img class="sp-p__empty-kongi" src="/kongi.svg" width="128" height="128" alt="" />
         <h2 class="sp-p__empty-title" id="empty-title">{kid} 첫 사진을 올려 주세요</h2>
         <p class="sp-p__lead">올리고 카톡으로 보내면 조부모님이<br />설치 없이 바로 보실 수 있어요</p>
       </section>
