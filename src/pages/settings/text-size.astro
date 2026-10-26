@@ -1,6 +1,7 @@
 ---
 // 가족 화면 글자 크기: 가족이 처음 들어올 때 크기. 가족이 자기 화면에서 고른 크기가 먼저다
 import Parent from '../../layouts/Parent.astro';
+import AutoSave from '../../components/AutoSave.astro';
 import { BackendError, getBackend, type TextSizeMode } from '../../lib/backend';
 import { callName } from '../../lib/ko';
 import { loadParent } from '../../lib/parent';
@@ -40,18 +41,18 @@ const doneText: Record<string, string> = { saved: '저장했어요. 다음에 �
     <h1 class="sp-p__nav-title">가족 화면 글자 크기</h1>
   </div>
   {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[done]}</p>}
-  <form class="sp-p__form sp-p__sizes" method="post">
+  <form class="sp-p__form sp-p__form--fit sp-p__sizes" method="post" data-autosave>
     <fieldset class="sp-p__fieldset sp-p__field">
-      <legend class="sp-p__label">처음 들어올 때 크기</legend>
+      <legend class="sp-p__section-title">처음 들어올 때 크기</legend>
       <div class="sp-p__radios">
         {
           MODES.map((m) => (
             <label class="sp-p__radio-row">
-              <input class:list={['sp-p__radio', `sp-p__size-${m.value}`]} type="radio" name="mode" value={m.value} checked={m.value === current} />
               <span class="sp-p__radio-text">
                 <span class="sp-p__who-name">{m.label}</span>
                 {m.hint && <span class="sp-p__hint">{m.hint}</span>}
               </span>
+              <input class:list={['sp-p__radio', `sp-p__size-${m.value}`]} type="radio" name="mode" value={m.value} checked={m.value === current} />
             </label>
           ))
         }
@@ -60,15 +61,14 @@ const doneText: Record<string, string> = { saved: '저장했어요. 다음에 �
     {/* 고른 라디오에 맞춰 CSS로 바뀐다(JS 없음). 외할머니라 '관계에 맞춰'면 크게 */}
     {/* 고른 라디오를 눈으로 보여 주는 장식이라 화면 읽기에서는 통째로 뺀다 */}
     <div class="sp-p__field" aria-hidden="true">
-      <p class="sp-p__label">외할머니 화면 미리보기</p>
+      <p class="sp-p__section-title">외할머니 화면 미리보기</p>
       <div class="sp-p__card sp-p__preview">
         <p class="sp-p__preview-title">{child} 새 사진 12장</p>
         <p class="sp-p__preview-body">오늘 {who}가 올렸어요</p>
       </div>
     </div>
-    <p class="sp-p__hint">가족이 자기 화면에서 직접 바꾼 크기가 있으면 그게 먼저예요. 이미 들어와 있는 가족의 크기는 바뀌지 않아요.</p>
-    <div class="sp-p__bottom">
-      <button class="sp-p__btn" type="submit">저장</button>
-    </div>
+    <p class="sp-p__hint">가족이 자기 화면에서 직접 바꾼 크기가 있으면 그게 먼저예요.</p>
+    <button class="sp-p__btn" type="submit" data-autosave-hide>저장</button>
   </form>
+  <AutoSave />
 </Parent>

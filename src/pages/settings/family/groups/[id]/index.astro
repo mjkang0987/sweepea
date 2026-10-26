@@ -1,6 +1,7 @@
 ---
 // 그룹 상세: 이름·새 사진 기본 포함, 비밀번호(힌트)·바꾸기, 주소 보내기, 구성원, 주소 다시 만들기
 import Parent from '../../../../../layouts/Parent.astro';
+import AutoSave from '../../../../../components/AutoSave.astro';
 import { seenLabel } from '../../../../../lib/age';
 import { BackendError, getBackend } from '../../../../../lib/backend';
 import { loadParent } from '../../../../../lib/parent';
@@ -54,35 +55,46 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
     <h1 class="sp-p__nav-title">{g.name}</h1>
   </div>
   {done && doneText[done] && <p class="sp-p__toast" tabindex="-1" autofocus>{doneText[done]}</p>}
-  <form class="sp-p__form" method="post">
+  {/* 디자인: 이름 칸 + 한 묶음(기본 포함 체크 · 비밀번호 › · 주소 보내기 ›). 이름·체크는 바꾸면 바로 저장 */}
+  <form class="sp-p__form sp-p__form--fit" id="g-form" method="post" data-autosave>
     {error && <p class="sp-p__error" role="alert" id="g-err">{error}</p>}
     <div class="sp-p__field">
       <label class="sp-p__label" for="name">그룹 이름</label>
-      <input class="sp-p__input" id="name" name="name" type="text" required maxlength="12" autocomplete="off" value={name} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? 'g-err' : undefined} />
+      <input class="sp-p__input sp-p__input--filled" id="name" name="name" type="text" required maxlength="12" autocomplete="off" value={name} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? 'g-err' : undefined} />
     </div>
-    <label class="sp-p__check sp-p__check--plain">
-      <input class="sp-p__checkbox" type="checkbox" name="include" value="1" checked={include} aria-describedby="include-note" />
-      새 사진에 기본으로 포함
-    </label>
-    <p class="sp-p__hint" id="include-note">사진 올릴 때 이 그룹이 미리 체크돼요.</p>
-    <button class="sp-p__btn sp-p__btn--quiet" type="submit">저장</button>
+    <button class="sp-p__btn sp-p__btn--quiet" type="submit" data-autosave-hide>저장</button>
   </form>
-
-  <ul class="sp-p__list sp-p__list--gap">
+  <ul class="sp-p__group" role="list">
     <li>
-      <a class="sp-p__row sp-p__row--tall" href={`${here}/password`}>
-        <span class="sp-p__row-label sp-p__radio-text">
+      <label class="sp-p__group-row sp-p__group-row--check">
+        <span class="sp-p__radio-text">
+          <span class="sp-p__who-name">새 사진에 기본으로 포함</span>
+          <span class="sp-p__hint" id="include-note">사진 올릴 때 이 그룹이 미리 체크돼요</span>
+        </span>
+        <input class="sp-p__checkbox" type="checkbox" name="include" value="1" form="g-form" checked={include} aria-describedby="include-note" />
+      </label>
+    </li>
+    <li>
+      <a class="sp-p__group-row sp-p__group-row--link" href={`${here}/password`}>
+        <span class="sp-p__radio-text">
           <span class="sp-p__who-name">비밀번호</span>
           <span class="sp-p__hint">{g.password_hint ? `힌트 · ${g.password_hint}` : '힌트 없음'}</span>
         </span>
         <span class="sp-p__chev" aria-hidden="true">›</span>
       </a>
     </li>
+    <li>
+      <form method="post" action="/settings/family">
+        <button class="sp-p__group-row sp-p__group-row--link sp-p__group-button" type="submit" name="do" value={`share:${g.id}`}>
+          <span class="sp-p__radio-text">
+            <span class="sp-p__who-name">{g.name} 주소 카톡으로 보내기</span>
+            <span class="sp-p__hint">새로 들어오는 사람은 보낸 뒤 3일 안에</span>
+          </span>
+          <span class="sp-p__chev" aria-hidden="true">›</span>
+        </button>
+      </form>
+    </li>
   </ul>
-  <form method="post" action="/settings/family">
-    <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value={`share:${g.id}`}>{g.name} 주소 보내기</button>
-  </form>
-  <p class="sp-p__hint">새로 들어오는 사람은 보낸 뒤 3일 안에 들어와야 해요.</p>
 
   <section class="sp-p__section" aria-labelledby="sec-people">
     <h2 class="sp-p__section-title" id="sec-people">구성원 · {people.length}명</h2>
@@ -108,4 +120,5 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
   <form class="sp-p__account-out" method="post" action="/settings/family">
     <button class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" type="submit" name="do" value={`reset:${g.id}`}>주소 다시 만들기 (예전 주소는 바로 막혀요)</button>
   </form>
+  <AutoSave />
 </Parent>

@@ -41,6 +41,6 @@ const done = Astro.url.searchParams.get('done');
       }
     </ul>
   </section>
-  {admin.groups.length < 10 && <a class="sp-p__btn sp-p__btn--quiet sp-p__add" href="/settings/family/groups/new"><span aria-hidden="true">+ </span>그룹 추가</a>}
+  {admin.groups.length < 10 && <a class="sp-p__btn sp-p__btn--quiet sp-p__btn--add sp-p__add" href="/settings/family/groups/new"><span aria-hidden="true">+</span>그룹 추가</a>}
   <p class="sp-p__hint">그룹은 10개까지 만들 수 있어요.</p>
 </Parent>
