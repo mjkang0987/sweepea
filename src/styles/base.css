@@ -211,3 +211,33 @@
     animation: none;
   }
 }
+
+/* 완료 안내 알약(엄빠·가족 화면 공통) */
+@keyframes sp-toast-still {
+  0%,
+  85% {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%);
+    visibility: hidden;
+  }
+}
+@keyframes sp-toast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  8%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+    visibility: hidden;
+  }
+}
