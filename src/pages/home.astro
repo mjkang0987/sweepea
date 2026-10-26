@@ -5,11 +5,20 @@ import { getBackend } from '../lib/backend';
 import { summarize } from '../lib/familyAdmin';
 import { callName, hasBatchim } from '../lib/ko';
 import { splitSchedule } from '../lib/health';
-import { monthsOld } from '../lib/age';
+import { agoLabel, monthsOld } from '../lib/age';
 import { loadParent, seoulToday } from '../lib/parent';
 import { signedMediaUrl } from '../lib/signed';
+import { EMOJI } from '../lib/emoji';
+import { JOIN_SEEN, seenAt, setLayerCookie } from '../lib/layers';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
+// 들어오기 신청 레이어 버튼: 지금 보이는 신청까지 '봤음'으로 적고 이동(PRG)
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData().catch(() => null);
+  const at = String(form?.get('at') ?? '');
+  if (Number.isFinite(Date.parse(at))) setLayerCookie(Astro.cookies, JOIN_SEEN, new Date(at).toISOString());
+  return Astro.redirect(form?.get('do') === 'join-check' ? '/settings/family' : '/home', 303);
+}
 const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const kid = callName(a.home.children?.[0]?.name ?? '아이');
@@ -40,6 +49,20 @@ const now = Date.now();
 const s = admin && summarize(admin);
 const firstWait = s && s.pendingDevices.length === 0 && s.pendingMembers.length === 1 ? s.pendingMembers[0] : null;
 const ga = (w: string) => (hasBatchim(w) ? '이' : '가');
+// 가운데 레이어: 아직 닫지 않은 들어오기 신청 중 가장 최근 것(새 휴대폰 포함)
+const joinSeen = seenAt(Astro.cookies, JOIN_SEEN) ?? 0;
+const joins = s
+  ? [
+      ...s.pendingMembers.map((m) => ({ who: m.display_name, what: `${s.groupName(m.group_id)} 앨범에 들어오려고 해요`, at: m.created_at, expires: true })),
+      ...s.pendingDevices.map((d) => ({
+        who: admin!.members.find((m) => m.id === (d.member_id ?? d.requested_member_id))?.display_name ?? d.requested_name ?? '가족',
+        what: '새 휴대폰으로 들어오려고 해요',
+        at: d.created_at,
+        expires: false,
+      })),
+    ].sort((x, y) => Date.parse(y.at) - Date.parse(x.at))
+  : [];
+const join = joins[0] && Date.parse(joins[0].at) > joinSeen ? joins[0] : null;
 const helpers = admin?.members.filter((m) => m.status === 'active' && m.install_help_at && now - Date.parse(m.install_help_at) < 7 * 86_400_000) ?? [];
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
@@ -53,7 +76,24 @@ for (const m of items) {
 
 <Parent title="앨범 · 스위피" tab="home" alerts={a.home.new_activity ?? 0} wide>
   <h1 class="sp-p__title sp-p__title--large">앨범</h1>
-  {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus>지웠어요.</p>}
+  {
+    join && (
+      <div class="sp-layer">
+        <div class="sp-layer__scrim" aria-hidden="true"></div>
+        <dialog class="sp-layer__box" open aria-labelledby="layer-t" aria-describedby="layer-d">
+          <span class="sp-layer__emoji" aria-hidden="true" set:html={EMOJI.sparkle.svg.replace('width="32" height="32"', 'width="40" height="40"')} />
+          <h2 class="sp-layer__title" id="layer-t"><strong>{join.who}</strong>{ga(join.who)} {join.what}</h2>
+          <p class="sp-layer__text" id="layer-d">{agoLabel(join.at, now)} 신청했어요.{joins.length > 1 && ` 기다리는 사람이 ${joins.length}명 있어요.`}{join.expires && ' 3일 안에 확인하지 않으면 자동으로 취소돼요.'}</p>
+          <form class="sp-layer__actions" method="post">
+            <input type="hidden" name="at" value={joins[0].at} />
+            <button class="sp-p__btn" type="submit" name="do" value="join-check" autofocus>확인하기</button>
+            <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value="join-later">나중에</button>
+          </form>
+        </dialog>
+      </div>
+    )
+  }
+  {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus={!join}>지웠어요.</p>}
   {
     s && s.waiting > 0 && (
       <a class="sp-p__alert" href="/settings/family">
