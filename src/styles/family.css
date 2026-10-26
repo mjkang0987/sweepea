@@ -973,6 +973,10 @@
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
 }
+/* 평소엔 화면 가운데, 아래 판이 가운데까지 올라오면 판 바로 위로 */
+.sp-v[data-js] .sp-v__arrow {
+  top: min(50%, calc(100% - var(--dock-h, 0px) - 2rem));
+}
 .sp-v__arrow--prev {
   left: max(var(--space-2), env(safe-area-inset-left));
 }
@@ -1172,6 +1176,9 @@
   left: 0;
   right: 0;
   bottom: 0;
+  /* 큰 글씨에서도 버튼 + 판이 화면 75%를 넘지 않게: 판이 줄어들고 스크롤 */
+  max-height: 75vh;
+  max-height: 75dvh;
   display: flex;
   flex-direction: column;
   pointer-events: none;
@@ -1183,17 +1190,23 @@
 .sp-v__dock .sp-v__panel {
   position: relative;
   bottom: auto;
-  max-height: 75vh;
-  max-height: 75dvh;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 .sp-v:not([data-js]) .sp-v__dock {
   position: relative;
+  max-height: none;
 }
 .sp-v:not([data-js]) .sp-v__dock .sp-v__panel {
   max-height: none;
 }
 /* 엄빠만: 사진 정보 수정(아래 판 바로 위에 뜸) */
 .sp-v__edit {
+  /* ‹ › 화살표(z-index 1)보다 위 */
+  position: relative;
+  z-index: 2;
+  flex: none;
   align-self: flex-end;
   margin: 0 max(var(--space-4), calc((100% - 32rem) / 2)) var(--space-3);
   min-height: 3.25rem;

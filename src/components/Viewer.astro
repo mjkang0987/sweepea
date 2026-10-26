@@ -10,6 +10,8 @@ import type { MediaItem } from '../lib/backend';
 
 interface Props {
   m: MediaItem;
+  /** 화면 읽기용 제목(영상 이름도 이걸로) */
+  label: string;
   src: string;
   poster?: string;
   pos: number;
@@ -27,11 +29,13 @@ interface Props {
   say: string | null;
   sentText?: string;
 }
-const { m, src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
+const { m, label, src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
 const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 ---
 
+{/* 시안엔 제목 줄이 없어 화면에선 숨기고 화면 읽기에만 */}
+<h1 class="sp-vh" id="v-title">{label}</h1>
 <div class="sp-v" data-v>
   <figure class="sp-v__stage">
     {
@@ -101,6 +105,11 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
   const v = document.querySelector<HTMLElement>('[data-v]');
   const video = v?.querySelector('video');
   if (v) v.dataset.js = '';
+  // 아래 판이 커지면(큰 글씨·작은 화면) ‹ › 화살표를 판 위 남은 칸 가운데로: 판·버튼에 가리지 않게
+  const dock = v?.querySelector<HTMLElement>('.sp-v__dock');
+  if (v && dock && 'ResizeObserver' in window) {
+    new ResizeObserver(() => v.style.setProperty('--dock-h', `${dock.offsetHeight}px`)).observe(dock);
+  }
   if (v && video) {
     const $ = <T extends Element>(s: string) => v.querySelector<T>(s)!;
     const play = $<HTMLButtonElement>('.sp-v__play');
