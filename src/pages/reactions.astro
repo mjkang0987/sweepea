@@ -30,7 +30,7 @@ const old = rows.filter((r) => !r.isNew);
 
 <Parent title="알림 · 스위피" tab="alerts" alerts={0} waiting={a.home.waiting ?? 0}>
   <h1 class="sp-p__title sp-p__title--large">알림</h1>
-  <p class="sp-p__lead">가족이 남긴 하트와 말이에요. 앱이 나오면 알림으로도 알려 드릴게요.</p>
+  {rows.length > 0 && <p class="sp-p__lead">가족이 남긴 하트와 말이에요. 앱이 나오면 알림으로도 알려 드릴게요.</p>}
   {
     [
       { id: 'sec-new', title: `새 반응 · ${fresh.length}`, list: fresh },
