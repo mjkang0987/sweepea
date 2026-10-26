@@ -514,7 +514,7 @@
 - 결과: 기존 settings2·members·groups e2e 통과, 스크린샷 확인
 - 남김: 가족 플랜 줄·카드(결제 이슈에서), 설정 하위 화면 제목 배치(디자인은 가운데 작은 제목, 코드는 큰 제목)
 
-### 36. feature/db-setup — 실제 Supabase 연결 (진행 중)
+### 36. feature/db-setup — 실제 Supabase 연결 (완료, dev 머지)
 
 - 요구사항(사용자 2026-10-26 "3번 진행하자"): mock이 아닌 실제 Supabase에 스키마를 올리고 화면을 실제 백엔드로 확인
 - 지우님이 할 일(둘 중 하나)
@@ -528,8 +528,11 @@
   5. 운영 배포(Cloudflare 시크릿·R2 버킷)는 다음 이슈
 - 영향받는 파일: 확인 중 나오는 버그 수정만(supabase.ts 등), `.dev.vars.example`, `index.md`, `plan.md`
 - 진행(2026-10-26): 프로젝트 `sweepea`(ref aemzbelwyyweugxuqgoh, 서울, 무료 조직) 생성. 마이그레이션 13개 적용 완료(커넥터, 같은 이름). 보안 점검: 정책 없는 표 2개(entry_failures·r2_cleanup, 의도: 함수만 씀), 로그인 사용자가 부르는 security definer 함수 31개·anon `sp_entry_info`(의도: 권한 판정을 함수 안에서 함). `.dev.vars.supabase`(git 제외)에 URL·anon 키
-- 남은 것: 익명 로그인 켜기·테스트용 부모 로그인·service_role(또는 secret) 키 → 지우님 대시보드에서
+- 대시보드(지우님): 익명 로그인 켬, 이메일 확인 잠시 끔(테스트 부모 계정용), secret 키 `dev-test` 발급 → `.dev.vars.supabase`
+- 결과: 실제 Supabase로 핵심 흐름 e2e 11개 통과 — 처음 설정, 아이 추가, 사진 올리기(완료 처리 = secret 키로 sp_finish_upload), 아이 탭(`media_children!inner` 필터), 링크 → 새 이름 입장 → 설정 탭 배지(waiting) → 승인 → 승인 완료 레이어 → 가족 앨범 → 반응 → 부모 알림 배지. 부모는 이메일 테스트 계정 토큰을 sp_parent 쿠키에 직접 넣어 확인(앱 화면엔 이메일 로그인 없음). 코드 수정 없이 통과
+- 실제 DB로 아직 안 돌린 것: 사진 정보 고치기·지우기, 그룹, 탈퇴·되살리기, 정리 예약 작업, 승인 대기 휴대폰(10번 틀림). R2는 로컬(miniflare)
 - 확인 필요: 카카오 로그인은 카카오 개발자 앱(REST 키·Client Secret)이 있어야 켤 수 있음. 무료 조직은 1주 쉬면 프로젝트가 멈춤
+- 확인 필요(출시 전): 이메일 확인 다시 켜기, `dev-test` secret 키 삭제(대화에 남음), 익명 가입 남용 막기(CAPTCHA·가입 횟수 제한), 테스트 데이터(가족방 2개·테스트 계정) 지우기
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
