@@ -7,6 +7,7 @@ import { currentPass } from '../lib/pass';
 import { callName, ro } from '../lib/ko';
 import { NOTICES } from '../lib/notices';
 import { isOpen, isWaiting } from '../lib/families';
+import { WAITED, setLayerCookie } from '../lib/layers';
 
 const pass = await currentPass(Astro.cookies);
 if (!pass) return Astro.redirect('/');
@@ -18,6 +19,8 @@ const waiting = families.filter(isWaiting).at(-1);
 if (!waiting && hasOpen) return Astro.redirect('/album');
 const me = waiting ?? families.at(-1)!;
 const child = callName(me.child_name ?? '아이');
+// 승인되고 앨범을 처음 열 때 '엄마아빠가 확인했어요' 레이어를 한 번 띄우려고 기다리던 가족방을 적어 둔다
+if (waiting) setLayerCookie(Astro.cookies, WAITED, waiting.family_id);
 const state = me.closed ? 'closed' : me.device === 'revoked' ? 'revoked' : me.member === 'expired' ? 'pending_expired' : me.device === 'pending' ? 'attempts' : 'pending';
 ---
 

@@ -118,7 +118,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     r2CleanupDone: (prefix) => serviceRpc<void>('sp_r2_cleanup_done', { p_prefix: prefix }),
     listMedia(pass, opts = {}) {
       const q = new URLSearchParams({
-        select: 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key',
+        select: 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key,created_at',
         status: 'eq.ready',
         order: 'taken_at.desc,id.desc',
         limit: String(Math.min(opts.limit ?? 60, 200)),

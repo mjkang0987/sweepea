@@ -31,6 +31,9 @@ const groups: Group[] = [
   { id: 'g-pat', familyId: HARIN, name: '친가', hint: '할아버지 생신', password: '5678' },
   { id: 'g-dy', familyId: DOYUN, name: '가족', hint: '도윤이 생일', password: '9999' },
 ];
+// shortcut: 만든 시각을 따로 안 들고 있어 처음 목록에 나온 때를 만든 때로 친다(목 전용)
+const born = new WeakMap<object, string>();
+const bornAt = (o: object) => born.get(o) ?? (born.set(o, new Date().toISOString()), born.get(o)!);
 const members: Member[] = [
   { id: 'm-gm', groupId: 'g-mat', name: '외할머니', status: 'active' },
   { id: 'm-gf', groupId: 'g-mat', name: '외할아버지', status: 'active' },
@@ -210,7 +213,7 @@ export function createMockBackend(): Backend {
       const id = crypto.randomUUID();
       media.push({
         id, family_id: m.familyId, kind: m.kind, taken_at: m.takenAt, width: m.width ?? null, height: m.height ?? null,
-        duration_sec: m.durationSec ?? null, status: 'uploading', uploader: pass.access, view_key: '', thumb_key: '', poster_key: null,
+        duration_sec: m.durationSec ?? null, status: 'uploading', uploader: pass.access, view_key: '', thumb_key: '', poster_key: null, created_at: new Date().toISOString(),
         groupIds: m.groupIds?.length ? m.groupIds : groups.filter((g) => g.familyId === m.familyId && !g.exclude).map((g) => g.id),
         childIds: m.childIds ?? [], bytes: 0,
       });
@@ -288,10 +291,10 @@ export function createMockBackend(): Backend {
         groups: gs.map((g) => ({ id: g.id, name: g.name, include_by_default: !g.exclude, password_hint: g.hint || null })),
         members: members
           .filter((m) => gs.some((g) => g.id === m.groupId))
-          .map((m) => ({ id: m.id, group_id: m.groupId, display_name: m.name, status: m.status, pending_until: m.status === 'pending' ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, install_help_at: m.helpAt ? new Date(m.helpAt).toISOString() : null, created_at: now })),
+          .map((m) => ({ id: m.id, group_id: m.groupId, display_name: m.name, status: m.status, pending_until: m.status === 'pending' ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, install_help_at: m.helpAt ? new Date(m.helpAt).toISOString() : null, created_at: bornAt(m) })),
         devices: [...devices.values()]
           .filter((d) => d.familyId === fam)
-          .map((d) => ({ id: d.id, member_id: d.memberId ?? null, status: d.status, requested_name: d.requestedName ?? null, requested_group_id: null, requested_member_id: null, can_upload: !!d.canUpload, last_seen_at: now, created_at: now })),
+          .map((d) => ({ id: d.id, member_id: d.memberId ?? null, status: d.status, requested_name: d.requestedName ?? null, requested_group_id: null, requested_member_id: null, can_upload: !!d.canUpload, last_seen_at: now, created_at: bornAt(d) })),
       };
     },
     async setMemberStatus(pass, id, status) {
