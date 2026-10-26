@@ -2,22 +2,27 @@
 // 부모 앨범: 사진이 없으면 첫 사진 안내, 있으면 월별 모아 보기. 아래 탭(앨범·설정)
 import Parent from '../layouts/Parent.astro';
 import { getBackend } from '../lib/backend';
-import { summarize } from '../lib/familyAdmin';
+import { sizeLabel, summarize } from '../lib/familyAdmin';
 import { callName, hasBatchim } from '../lib/ko';
 import { splitSchedule } from '../lib/health';
-import { agoLabel, monthsOld } from '../lib/age';
+import { agoLabel, milestone, monthsOld } from '../lib/age';
 import { loadParent, seoulToday } from '../lib/parent';
 import { signedMediaUrl } from '../lib/signed';
 import { EMOJI } from '../lib/emoji';
-import { JOIN_SEEN, seenAt, setLayerCookie } from '../lib/layers';
+import { JOIN_SEEN, MILESTONE_SEEN, STORAGE_SEEN, seenAt, setLayerCookie } from '../lib/layers';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
-// 들어오기 신청 레이어 버튼: 지금 보이는 신청까지 '봤음'으로 적고 이동(PRG)
+// 가운데 레이어 버튼: 지금 보이는 것까지 '봤음'으로 적고 이동(PRG)
+const GO: Record<string, string> = { 'join-check': '/settings/family', 'day-upload': '/upload', 'storage-view': '/settings/storage' };
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData().catch(() => null);
   const at = String(form?.get('at') ?? '');
+  const day = String(form?.get('day') ?? '');
+  const level = String(form?.get('level') ?? '');
   if (Number.isFinite(Date.parse(at))) setLayerCookie(Astro.cookies, JOIN_SEEN, new Date(at).toISOString());
-  return Astro.redirect(form?.get('do') === 'join-check' ? '/settings/family' : '/home', 303);
+  if (/^[\w-]{1,64}:\d{4}-\d{2}-\d{2}$/.test(day)) setLayerCookie(Astro.cookies, MILESTONE_SEEN, day);
+  if (level === '90' || level === '100') setLayerCookie(Astro.cookies, STORAGE_SEEN, level);
+  return Astro.redirect(GO[String(form?.get('do'))] ?? '/home', 303);
 }
 const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
@@ -63,6 +68,19 @@ const joins = s
     ].sort((x, y) => Date.parse(y.at) - Date.parse(x.at))
   : [];
 const join = joins[0] && Date.parse(joins[0].at) > joinSeen ? joins[0] : null;
+// 백일·돌·생일: 그날 한 번(아이 여럿이면 첫 아이)
+const dayKid = join ? null : (a.home.children ?? []).map((k) => ({ k, what: milestone(k.birth_date, today) })).find((x) => x.what);
+const dayKey = dayKid ? `${dayKid.k.id}:${today}` : '';
+const birthday = dayKid && Astro.cookies.get(MILESTONE_SEEN)?.value !== dayKey ? { title: `오늘은 ${callName(dayKid.k.name)}`, what: dayKid.what! } : null;
+// 저장 공간: 무료 5GB의 90%·100%에서 한 번씩. 90 밑으로 내려가면 기록을 지워 다시 넘을 때 또 뜸
+// shortcut: 가족 플랜(plan_until 있음)은 상한이 달라 건너뜀, 결제 이슈에서 플랜별 상한으로
+const LIMIT = 5 * 1024 ** 3;
+const usedBytes = a.home.storage_used_bytes ?? 0;
+const pct = Math.min(100, Math.floor((usedBytes / LIMIT) * 100));
+const level = a.home.plan_until ? null : pct >= 100 ? '100' : pct >= 90 ? '90' : null;
+const storageSeen = Number(Astro.cookies.get(STORAGE_SEEN)?.value ?? 0);
+if (!level && storageSeen) Astro.cookies.delete(STORAGE_SEEN, { path: '/' });
+const storage = !join && !birthday && level && Number(level) > storageSeen ? { level, full: level === '100' } : null;
 const helpers = admin?.members.filter((m) => m.status === 'active' && m.install_help_at && now - Date.parse(m.install_help_at) < 7 * 86_400_000) ?? [];
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
@@ -93,7 +111,41 @@ for (const m of items) {
       </div>
     )
   }
-  {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus={!join}>지웠어요.</p>}
+  {
+    birthday && (
+      <div class="sp-layer">
+        <div class="sp-layer__scrim" aria-hidden="true"></div>
+        <dialog class="sp-layer__box" open aria-labelledby="layer-t" aria-describedby="layer-d">
+          <img class="sp-layer__kongi" src="/favicon.svg" width="96" height="96" alt="" />
+          <h2 class="sp-layer__title" id="layer-t">{birthday.title}<br />{birthday.what}</h2>
+          <p class="sp-layer__text" id="layer-d">오늘 찍은 사진을 올려서 가족과 함께 축하해요.</p>
+          <form class="sp-layer__actions" method="post">
+            <input type="hidden" name="day" value={dayKey} />
+            <button class="sp-p__btn" type="submit" name="do" value="day-upload" autofocus>사진 올리기</button>
+            <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value="day-close">닫기</button>
+          </form>
+        </dialog>
+      </div>
+    )
+  }
+  {
+    storage && (
+      <div class="sp-layer">
+        <div class="sp-layer__scrim" aria-hidden="true"></div>
+        <dialog class="sp-layer__box" open aria-labelledby="layer-t" aria-describedby="layer-d">
+          <h2 class="sp-layer__title" id="layer-t">저장 공간이 {storage.full ? '다' : '거의'} 찼어요</h2>
+          <meter class="sp-p__meter sp-layer__meter" min="0" max="100" low="80" high="95" optimum="0" value={pct} aria-label={`5GB 중 ${pct}% 사용`}>{pct}%</meter>
+          <p class="sp-layer__text" id="layer-d">5GB 중 {sizeLabel(usedBytes)}를 쓰고 있어요. 5GB가 차면 새로 올리기만 멈추고, 가족은 계속 볼 수 있어요.</p>
+          <form class="sp-layer__actions" method="post">
+            <input type="hidden" name="level" value={storage.level} />
+            <button class="sp-p__btn" type="submit" name="do" value="storage-view" autofocus>저장 용량 보기</button>
+            <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value="storage-later">나중에</button>
+          </form>
+        </dialog>
+      </div>
+    )
+  }
+  {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !birthday && !storage}>지웠어요.</p>}
   {
     s && s.waiting > 0 && (
       <a class="sp-p__alert" href="/settings/family">
