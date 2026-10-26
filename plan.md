@@ -575,13 +575,16 @@
 - 영향받는 파일: `public/kongi.svg`(새), `src/components/Notice.astro`, `src/pages/home.astro`, `src/pages/start.astro`, `src/pages/album/index.astro`, `src/pages/login/index.astro`, `plan.md`
 - 확인 필요: 콩이 나이별 7단계 그림은 아직 3단계 하나로 씀
 
-### 41. feature/kakao-login — 부모 카카오 로그인 연결 (진행 중)
+### 41. feature/kakao-login — 부모 카카오 로그인 연결 (완료)
 
 - 요구사항(사용자 2026-10-26 "그럼 카카오"): 배포된 사이트에서 부모가 카카오로 로그인
 - 지우님이 할 일: 카카오 개발자 앱 만들기(스위피) → REST API 키·Client Secret → 카카오 로그인 켜기, Redirect URI `https://aemzbelwyyweugxuqgoh.supabase.co/auth/v1/callback`, 동의항목 닉네임(필수 아님 최소) → Supabase Kakao 켜기 + 키 두 개 + "Allow users without an email" → Cloudflare 변수 `PARENT_PROVIDERS=kakao`
 - 구현 방식: 코드는 이미 있음(PKCE, `/login/kakao` → Supabase → `/auth/callback`). 이메일은 받지 않음(비즈 앱 필요, 쓸 데 없음). 카카오가 이메일 범위 때문에 거절하면 authorize 주소에 범위를 직접 지정
 - 영향받는 파일: 필요하면 `src/lib/backend/supabase.ts`(parentAuthorizeUrl), `plan.md`
 - 예상 결과: 지우님 휴대폰으로 배포 주소에서 카카오 로그인 → 처음 설정 → 앨범
+- 결과(2026-10-26): 지우님 휴대폰으로 배포 주소에서 카카오 로그인 성공(가족 설정 화면까지). 겪은 것: KOE101(REST API Key 칸에 'sweepea'), KOE205(Supabase는 이메일·프로필 사진·닉네임을 늘 요청 → 카카오 동의항목을 맞춤), localhost로 감(Supabase URL Configuration 미저장). 코드 수정 없음
+- 같이 고침(fix/group-link): 가족 화면 '그룹 관리' 칩이 실기기에서 깨짐 → 디자인대로 '가족 그룹 ›' 제목 링크. **아직 배포 안 함**(Cloudflare 토큰 필요)
+- 확인 필요: 카카오에서 받는 이메일·사진은 쓰지 않으니 개인정보 처리방침에 적고, 나중에 직접 OIDC로 닉네임만 받는 방식 검토
 - 확인 필요: 도메인(sweepea.co.kr)은 실제 가족에게 링크 보내기 전에 등록·연결(링크가 주소에 묶이고, 주소가 바뀌면 가족 기기가 다시 들어와야 함). .co.kr은 국내 등록 업체에서 사고 네임서버만 Cloudflare로
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
@@ -651,6 +654,8 @@
 - 접종·검진 일정 데이터: 질병관리청 원문(nip.kdca.go.kr)을 자동으로 못 읽어 보건소 게시본으로 맞춤. 출시 전 원문과 대조. 구강검진 시기는 보건소마다 표기가 달라(4·6·7차 vs 18~29·30~41·42~53·54~65개월) 아직 안 넣음. A형간염 2차 간격(제품마다 6~12/18개월)·폴리오 3차(6개월 vs 6~18개월)도 원문 대조
 
 ## 결정 필요
+
+- 여러 장 골라 저장하기(사용자 2026-10-26 "선택해서 여러 개 저장"): 어느 화면(가족 모아 보기·부모 앨범)·어떻게(한 장씩 내려받기 vs 묶음 파일) 정하고 디자인 먼저
 
 
 - 화면 문구 규칙(브랜드 리뷰 2026-10-24 반영): 실제 가족 호칭 사용, "카톡" 통일, 날짜 "~부터", 접종 일정은 출시 전 질병관리청 표준 일정과 대조
