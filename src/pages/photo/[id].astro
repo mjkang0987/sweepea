@@ -205,6 +205,13 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
     });
     stage.querySelector('.sp-p__photo')?.replaceWith(track);
     track.scrollLeft = at * track.clientWidth;
+    // 화살표는 밀고 있는 동안 바로 바꾼다(멈출 때까지 기다리면 늦게 사라진다). 창 끝에서는 창 밖 사진 페이지 링크로 남는다
+    const arrows = (i: number) => {
+      const p = data.slides[i - 1]?.id ?? data.before;
+      const n = data.slides[i + 1]?.id ?? data.after;
+      if (prev) [prev.hidden, prev.href] = [!p, `/photo/${p}${data.k}`];
+      if (next) [next.hidden, next.href] = [!n, `/photo/${n}${data.k}`];
+    };
     let load = 0;
     const settle = async () => {
       const i = Math.round(track.scrollLeft / track.clientWidth);
@@ -214,11 +221,6 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
       track.querySelectorAll('video').forEach((v) => v.pause());
       const url = `/photo/${id}${data.k}`;
       history.replaceState(null, '', url);
-      // 창 끝에서는 화살표가 창 밖 사진 페이지 링크로 남는다
-      const p = data.slides[i - 1]?.id ?? (i === 0 ? data.before : undefined);
-      const n = data.slides[i + 1]?.id ?? data.after;
-      if (prev) [prev.hidden, prev.href] = [!p, `/photo/${p}${data.k}`];
-      if (next) [next.hidden, next.href] = [!n || (i < data.slides.length - 1 ? false : !data.after), `/photo/${n}${data.k}`];
       document.querySelector('.sp-p__toast')?.remove();
       // 아래 날짜·아이·그룹·한마디는 그 사진 화면을 받아 그 칸만 바꾼다. 늦게 온 응답은 버린다
       const mine = ++load;
@@ -239,8 +241,14 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
     };
     let t: ReturnType<typeof setTimeout> | undefined;
     track.addEventListener('scroll', () => {
+      arrows(Math.round(track.scrollLeft / track.clientWidth));
       clearTimeout(t);
       t = setTimeout(settle, 120);
+    });
+    // 멈춤을 알려 주는 브라우저면 기다리지 않고 바로
+    track.addEventListener('scrollend', () => {
+      clearTimeout(t);
+      settle();
     });
     const go = (d: number) => (e: Event) => {
       const i = at + d;
