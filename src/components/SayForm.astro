@@ -3,20 +3,24 @@
 interface Props {
   mediaId: string;
   back: string;
+  /** 폼 보낼 곳(기본은 가족 크게 보기 /album/<id>) */
+  action?: string;
   child: string;
   say: string | null;
+  /** 보낸 뒤 안내(엄빠는 '가족이 볼 수 있어요'가 아니니 바꿔 씀) */
+  sentText?: string;
   /** 넘겨 보기 카드마다 둘 때 id가 겹치지 않게 */
   idSuffix?: string;
 }
-const { mediaId, back, child, say, idSuffix = '' } = Astro.props;
+const { mediaId, back, action = `/album/${Astro.props.mediaId}`, child, say, sentText = '보냈어요. 엄마아빠가 볼 수 있어요.', idSuffix = '' } = Astro.props;
 const msg =
-  say === 'sent' ? { cls: 'sp-f__box sp-f__box--pea', text: '보냈어요. 엄마아빠가 볼 수 있어요.' } :
+  say === 'sent' ? { cls: 'sp-f__box sp-f__box--pea', text: sentText } :
   say === 'limit' ? { cls: 'sp-f__box sp-f__box--danger', text: '오늘은 한마디를 많이 보냈어요. 내일 다시 보내 주세요.' } :
   say === 'empty' ? { cls: 'sp-f__box sp-f__box--danger', text: '한마디를 써 주세요.' } :
   say === 'error' ? { cls: 'sp-f__box sp-f__box--danger', text: '보내지 못했어요. 잠시 뒤에 다시 보내 주세요.' } : null;
 ---
 
-<form class="sp-say" id={`say${idSuffix}`} method="post" action={`/album/${mediaId}`}>
+<form class="sp-say" id={`say${idSuffix}`} method="post" action={action}>
   <input type="hidden" name="back" value={back} />
   <label class="sp-vh" for={`say-body${idSuffix}`}>{child}에게 한마디</label>
   <div class="sp-f__row">

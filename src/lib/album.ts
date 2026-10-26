@@ -78,26 +78,31 @@ export async function loadReacts(pass: Pass, mediaIds: string[]): Promise<Reacts
 
 const BACK = /^\/album(\/[0-9a-f-]{36})?(\?[A-Za-z0-9=&%._-]*)?(#[A-Za-z0-9_-]+)?$/;
 
-/** 반응·한마디 폼(POST /album/<id>) 처리. 돌아갈 곳은 앨범 안 주소만(열린 이동 방지) */
-export async function handleReactPost(request: Request, mediaId: string, cookies: AstroCookies, fallback: string): Promise<string> {
+/** 반응·한마디 보내기(가족은 구성원으로, 엄빠는 부모 계정으로) */
+export interface ReactOps {
+  react(mediaId: string, kind: ReactionKind, on: boolean): Promise<void>;
+  comment(mediaId: string, body: string): Promise<void>;
+}
+
+/** 반응·한마디 폼 처리 공통. back은 back 정규식에 맞는 주소만(열린 이동 방지), 아니면 fallback */
+export async function applyReactPost(request: Request, mediaId: string, ops: ReactOps, back: RegExp, fallback: string): Promise<string> {
   const form = await request.formData().catch(() => null);
-  const back = String(form?.get('back') ?? '');
-  const to = new URL(BACK.test(back) ? back : fallback, 'http://x');
-  const pass = await currentPass(cookies);
-  if (!pass || !form) return '/';
+  const asked = String(form?.get('back') ?? '');
+  const to = new URL(back.test(asked) ? asked : fallback, 'http://x');
+  if (!form) return fallback;
   try {
     const react = String(form.get('react') ?? '');
     const body = form.get('body');
     if (react) {
       const [kind, on] = react.split(':');
       if ((REACTION_KINDS as readonly string[]).includes(kind) && (on === 'on' || on === 'off')) {
-        await getBackend().react(pass, mediaId, kind as ReactionKind, on === 'on');
+        await ops.react(mediaId, kind as ReactionKind, on === 'on');
       }
     } else if (body !== null) {
       const text = String(body).trim();
       if (!text) to.searchParams.set('say', 'empty');
       else {
-        await getBackend().comment(pass, mediaId, text.slice(0, 200));
+        await ops.comment(mediaId, text.slice(0, 200));
         to.searchParams.set('say', 'sent');
       }
       to.searchParams.set('sm', mediaId);
@@ -115,4 +120,12 @@ export async function handleReactPost(request: Request, mediaId: string, cookies
     }
   }
   return to.pathname + to.search + to.hash;
+}
+
+/** 가족 반응·한마디 폼(POST /album/<id>) 처리. 돌아갈 곳은 앨범 안 주소만 */
+export async function handleReactPost(request: Request, mediaId: string, cookies: AstroCookies, fallback: string): Promise<string> {
+  const pass = await currentPass(cookies);
+  if (!pass) return '/';
+  const b = getBackend();
+  return applyReactPost(request, mediaId, { react: (id, k, on) => b.react(pass, id, k, on), comment: (id, t) => b.comment(pass, id, t) }, BACK, fallback);
 }
