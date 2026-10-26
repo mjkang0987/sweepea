@@ -385,6 +385,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  /* 칸 높이 단위를 이 폭(cqi) 기준으로 */
+  container-type: inline-size;
 }
 .sp-p__month-title {
   margin: 0;
@@ -392,23 +394,88 @@
   line-height: var(--title-2-line);
   font-weight: 700;
 }
+.sp-p__month-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
 .sp-p__month-count {
-  font-size: var(--subhead-size);
-  font-weight: 500;
+  margin: 0;
+  font-size: var(--footnote-size);
+  line-height: 1.125rem;
   color: var(--label-2);
 }
+/* 엇갈린 배열(디자인): 서버가 정한 줄·칸 자리(--c·--r·--s, src/lib/masonry.ts). 높이 단위 --u = 줄 폭 / 40 */
 .sp-p__grid {
+  --cols: 2;
+  --u: calc((100cqi - (var(--cols) - 1) * 4px) / var(--cols) / 40);
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 2px;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  grid-auto-rows: var(--u);
+  column-gap: 4px;
 }
 .sp-p__cell {
-  aspect-ratio: 1;
+  position: relative;
+  grid-column: var(--c2);
+  grid-row: var(--r2) / span var(--s2);
+  /* 아래 1단위는 사진 사이 간격 */
+  margin-bottom: var(--u);
+  border-radius: 12px;
   background: var(--fill);
   overflow: hidden;
+}
+.sp-p__cell-meta,
+.sp-p__cell-length {
+  position: absolute;
+  bottom: 8px;
+  font-size: var(--footnote-size);
+  line-height: 1.125rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+.sp-p__cell-meta {
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--glass-clear);
+  color: var(--label);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator);
+}
+.sp-p__cell-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.sp-p__cell-heart {
+  color: var(--blossom);
+}
+.sp-p__cell-say {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.sp-p__cell-length {
+  right: 8px;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__cell-meta {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 .sp-p__cell-img {
   display: block;
@@ -1251,7 +1318,11 @@
     max-width: 72rem;
   }
   .sp-p--wide .sp-p__grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    --cols: 4;
+  }
+  .sp-p--wide .sp-p__cell {
+    grid-column: var(--c4);
+    grid-row: var(--r4) / span var(--s4);
   }
   .sp-p--tabbed {
     padding-top: calc(var(--space-6) + 3.5rem);

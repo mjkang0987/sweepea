@@ -8,6 +8,8 @@ import { splitSchedule } from '../lib/health';
 import { agoLabel, milestone, monthsOld } from '../lib/age';
 import { loadParent, seoulToday } from '../lib/parent';
 import { signedMediaUrl } from '../lib/signed';
+import { loadReacts } from '../lib/album';
+import { masonry, ratioOf } from '../lib/masonry';
 import { EMOJI } from '../lib/emoji';
 import { JOIN_SEEN, MILESTONE_SEEN, STORAGE_SEEN, seenAt, setLayerCookie } from '../lib/layers';
 
@@ -87,11 +89,40 @@ const storage = !join && !birthday && level && Number(level) > storageSeen ? { l
 const helpers = admin?.members.filter((m) => m.status === 'active' && m.install_help_at && now - Date.parse(m.install_help_at) < 7 * 86_400_000) ?? [];
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
-const months: { label: string; cells: { id: string; src: string; video: boolean; day: string }[] }[] = [];
+// 칸마다 받은 하트·한마디 수(디자인: 칸 왼쪽 아래 알약). 옆 기능이라 실패하면 알약만 뺀다
+const reacts = await loadReacts(a.pass, items.map((m) => m.id)).catch(() => null);
+const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
+type Cell = { id: string; src: string; video: boolean; day: string; ratio: number; hearts: number; says: number; length: string | null; at2?: string };
+const months: { label: string; age: string; cells: Cell[] }[] = [];
+// 달 제목(디자인): 올해면 '10월', 아니면 '2025년 10월'. 오른쪽에 그 달 끝(이번 달이면 오늘) 아이 개월 수 · 사진 수
+const ageKid = picked ?? (kids.length === 1 ? kids[0] : undefined);
+const seoulYM = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
 for (const m of items) {
-  const label = monthFmt.format(new Date(m.taken_at));
-  if (months.at(-1)?.label !== label) months.push({ label, cells: [] });
-  months.at(-1)!.cells.push({ id: m.id, src: await signedMediaUrl(m.thumb_key), video: m.kind === 'video', day: dayFmt.format(new Date(m.taken_at)) });
+  const ym = seoulYM(m.taken_at);
+  const label = ym.slice(0, 4) === today.slice(0, 4) ? `${Number(ym.slice(5, 7))}월` : monthFmt.format(new Date(m.taken_at));
+  if (months.at(-1)?.label !== label) {
+    const end = ym === today.slice(0, 7) ? today : new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).toISOString().slice(0, 10);
+    months.push({ label, age: ageKid && end >= ageKid.birth_date ? `${ageKid.name} 생후 ${monthsOld(ageKid.birth_date, end)}개월 · ` : '', cells: [] });
+  }
+  const r = reacts?.get(m.id)?.counts;
+  months.at(-1)!.cells.push({
+    id: m.id,
+    src: await signedMediaUrl(m.thumb_key),
+    video: m.kind === 'video',
+    day: dayFmt.format(new Date(m.taken_at)),
+    ratio: ratioOf(m.width, m.height),
+    hearts: r?.heart ?? 0,
+    says: r?.comment ?? 0,
+    length: m.kind === 'video' && m.duration_sec ? clock(Number(m.duration_sec)) : null,
+  });
+}
+// 엇갈린 배열 자리: 휴대폰 2줄, 넓은 화면 4줄(CSS가 화면 폭에 맞는 쪽을 씀)
+for (const mo of months) {
+  const two = masonry(mo.cells.map((c) => c.ratio), 2);
+  const four = masonry(mo.cells.map((c) => c.ratio), 4);
+  mo.cells.forEach((c, i) => {
+    c.at2 = `--c2:${two[i].col};--r2:${two[i].row};--s2:${two[i].span};--c4:${four[i].col};--r4:${four[i].row};--s4:${four[i].span}`;
+  });
 }
 ---
 
@@ -197,12 +228,33 @@ for (const m of items) {
     ) : (
       months.map((mo) => (
         <section class="sp-p__month" aria-label={`${mo.label} ${mo.cells.length}장`}>
-          <h2 class="sp-p__month-title">{mo.label} <span class="sp-p__month-count">· {mo.cells.length}장</span></h2>
+          <div class="sp-p__month-head">
+            <h2 class="sp-p__month-title">{mo.label}</h2>
+            <p class="sp-p__month-count">{mo.age}사진 {mo.cells.length}</p>
+          </div>
           <ul class="sp-p__grid">
             {mo.cells.map((c) => (
-              <li class="sp-p__cell">
+              <li class="sp-p__cell" style={c.at2}>
                 <a class="sp-p__cell-link" href={`/view/${c.id}${picked ? `?k=${encodeURIComponent(picked.id)}` : ''}`}>
-                  <img class="sp-p__cell-img" src={c.src} alt={`${c.day} ${c.video ? '영상' : '사진'}`} loading="lazy" decoding="async" />
+                  <img
+                    class="sp-p__cell-img"
+                    src={c.src}
+                    alt={`${c.day} ${c.video ? `영상${c.length ? ` ${c.length}` : ''}` : '사진'}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''}`}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  {(c.hearts > 0 || c.says > 0) && (
+                    <span class="sp-p__cell-meta" aria-hidden="true">
+                      {c.hearts > 0 && <span class="sp-p__cell-count"><span class="sp-p__cell-heart">♥</span>{c.hearts}</span>}
+                      {c.says > 0 && (
+                        <span class="sp-p__cell-count">
+                          <svg class="sp-p__cell-say" width="14" height="14" viewBox="0 0 24 24" focusable="false"><path d="M4 5h16v11H9l-5 4z" /></svg>
+                          {c.says}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {c.length && <span class="sp-p__cell-length" aria-hidden="true">{c.length}</span>}
                 </a>
               </li>
             ))}
