@@ -99,16 +99,16 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
         <form class="sp-p__form sp-p__form--fit" method="post">
           {error && <p class="sp-p__error" role="alert" id="p-err">{error.text}</p>}
           {/* 디자인: 한 묶음 목록(찍은 날 줄 · 아이 · 보여줄 그룹) */}
-          <ul class="sp-p__group" role="list">
-          <li class="sp-p__group-row">
-            <label class="sp-p__group-label" for="date">찍은 날</label>
+          <ul class="sp-p__rows" role="list">
+          <li class="sp-p__rows-item">
+            <label class="sp-p__rows-label" for="date">찍은 날</label>
             <input class="sp-p__inline-date" id="date" name="date" type="date" required min="2000-01-01" max={seoulToday()} value={date} aria-invalid={error?.field === 'date' ? 'true' : undefined} aria-describedby={error?.field === 'date' ? 'p-err' : undefined} />
           </li>
           {
             kids.length > 0 && (
-              <li class="sp-p__group-row sp-p__group-row--stack">
+              <li class="sp-p__rows-item sp-p__rows-item--stack">
               <fieldset class="sp-p__fieldset sp-p__field">
-                <legend class="sp-p__group-label sp-p__group-legend">아이</legend>
+                <legend class="sp-p__rows-label sp-p__rows-legend">아이</legend>
                 <div class="sp-p__checks">
                   {kids.map((k) => (
                     <label class="sp-p__check">
@@ -121,9 +121,9 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
               </li>
             )
           }
-          <li class="sp-p__group-row sp-p__group-row--stack">
+          <li class="sp-p__rows-item sp-p__rows-item--stack">
           <fieldset class="sp-p__fieldset sp-p__field" aria-describedby={error?.field === 'group' ? 'group-note p-err' : 'group-note'}>
-            <legend class="sp-p__group-label sp-p__group-legend">보여줄 그룹</legend>
+            <legend class="sp-p__rows-label sp-p__rows-legend">보여줄 그룹</legend>
             <div class="sp-p__checks">
               {groups.map((g) => (
                 <label class="sp-p__check">
