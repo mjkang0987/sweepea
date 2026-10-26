@@ -559,6 +559,15 @@
 - 구현: `base.css`에 `sp-kongi-hop` 하나, 콩이 클래스 7개(부모 소개·빈 앨범·아이 카드·소개 시안, 가족 입장·앨범, 가운데 레이어)에 적용. 아이 카드가 여러 개면 두 번째부터 0.3초씩 늦게
 - 영향받는 파일: `src/styles/base.css`, `plan.md`
 
+### 39. feature/security-headers — 공통 보안 헤더 (완료, dev 머지)
+
+- 요구사항(37에서 발견, 사용자 2026-10-26 "응"): 사진 전달(/m) 말고는 보안 헤더가 없음. 다른 사이트가 틀(iframe)에 넣어 누르게 하는 공격, 가족 링크(/i/코드)·사진 주소가 Referer로 밖에 새는 것 막기
+- 구현: `src/middleware.ts`(모든 화면 응답) — X-Content-Type-Options nosniff, Referrer-Policy no-referrer, X-Frame-Options DENY, CSP `frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'`, Permissions-Policy(카메라·마이크·위치 끔), 운영에서만 HSTS. 이미 있는 헤더(/m의 sandbox CSP)는 덮지 않음. 정적 파일은 `public/_headers`로 nosniff·no-referrer
+- 전체 CSP(script-src 등)는 화면마다 인라인 스크립트가 있어 이번엔 안 함(확인 필요로)
+- 영향받는 파일: `src/middleware.ts`(새), `public/_headers`(새), `plan.md`
+- 예상 결과: 화면·리다이렉트·정적 파일 응답에 헤더(e2e), 기존 e2e 통과, 배포 뒤 확인
+- 결과: 개발 서버에서 화면·리다이렉트·404·가족 링크 응답 헤더 확인, 기존 parent·members·layers·vplay e2e 통과. 확인 필요: 전체 CSP(script-src·img-src)는 인라인 스크립트를 해시로 바꾼 뒤
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
