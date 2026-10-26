@@ -4,6 +4,8 @@ import type { AstroCookies } from 'astro';
 export const JOIN_SEEN = 'sp_join_seen';
 export const WAITED = 'sp_waited';
 export const PHOTOS_SEEN = 'sp_photos_seen';
+export const MILESTONE_SEEN = 'sp_milestone_seen';
+export const STORAGE_SEEN = 'sp_storage_seen';
 
 const opts = { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: import.meta.env.PROD, maxAge: 365 * 24 * 3600 };
 

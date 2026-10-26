@@ -3,6 +3,10 @@
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
 import type { ActivityItem, Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, ParentHome, Pass, ReactionCount, ReactionKind, TextSizeMode } from './types';
 import { BackendError } from './supabase';
+import { SWEEPEA_MOCK_USED_BYTES } from 'astro:env/server';
+
+// 개발 확인용: 저장 공간 레이어를 보려고 사용량을 미리 더한다
+const MOCK_USED = SWEEPEA_MOCK_USED_BYTES ?? 0;
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string; exclude?: boolean }
 interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean; helpAt?: number }
@@ -392,7 +396,7 @@ export function createMockBackend(): Backend {
       const ready = media.filter((x) => x.family_id === p.familyId && x.status === 'ready');
       return {
         family_id: p.familyId, role: p.role, closing: isClosing(p.familyId), new_activity: activityOf(p.familyId).filter((x) => Date.parse(x.at) > (seenAt.get(pass.access) ?? 0)).length, delete_after: isClosing(p.familyId) ? new Date(closingAt[p.familyId]).toISOString() : null, download_allowed: !!downloads[p.familyId],
-        storage_used_bytes: used[p.familyId] ?? 0, photo_count: ready.filter((x) => x.kind === 'photo').length, video_count: ready.filter((x) => x.kind === 'video').length,
+        storage_used_bytes: (used[p.familyId] ?? 0) + MOCK_USED, photo_count: ready.filter((x) => x.kind === 'photo').length, video_count: ready.filter((x) => x.kind === 'video').length,
         provider: null, text_size_mode: sizeModes[p.familyId] ?? 'relation',
         children: kids.filter((k) => k.familyId === p.familyId).map(({ id, name, birth_date, show_health }) => ({ id, name, birth_date, show_health })),
       };

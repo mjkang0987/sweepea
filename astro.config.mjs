@@ -26,6 +26,8 @@ export default defineConfig({
       SITE_ORIGIN: envField.string({ context: 'server', access: 'public', optional: true, url: true }),
       // mock: 개발·검사용 메모리 백엔드(운영 빌드에선 멈춤)
       SWEEPEA_BACKEND: envField.enum({ context: 'server', access: 'secret', values: ['supabase', 'mock'], default: 'supabase' }),
+      // mock 전용: 저장 공간 레이어 확인용으로 사용량을 미리 더함(바이트)
+      SWEEPEA_MOCK_USED_BYTES: envField.number({ context: 'server', access: 'secret', optional: true }),
     },
   },
 });

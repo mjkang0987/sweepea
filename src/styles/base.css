@@ -130,6 +130,9 @@
   height: 6rem;
   image-rendering: pixelated;
 }
+.sp-layer__meter {
+  align-self: stretch;
+}
 .sp-layer__thumbs {
   align-self: stretch;
   margin: 0;

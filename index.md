@@ -65,7 +65,8 @@ src/lib/album.ts        앨범 쿼리 읽기·링크·목록 불러오기, 반�
 src/components/        ReactRow(반응 5개)·HeartToggle·SayForm(한마디)·Notice
 src/lib/parent.ts       부모 로그인 제공자·PKCE·부모 화면 진입(loadParent)
 src/layouts/Parent.astro 부모 화면 뼈대(아래 탭), 스타일 src/styles/parent.css(.sp-p*)
-src/lib/age.ts          생후 개월·생일·남은 시간·지난 시간 표시(단위 검사)
+src/lib/age.ts          생후 개월·생일·백일/돌/생일 당일·남은 시간·지난 시간 표시(단위 검사)
+src/lib/layers.ts       가운데 레이어 '봤음' 기기 쿠키(들어오기 신청·승인·새 사진·백일/생일·저장 공간)
 src/lib/health.ts       접종·검진 권장 일정 표와 날짜 계산(단위 검사)
 src/lib/emoji.ts        반응 도트 이모지와 페이지당 한 번 넣는 sprite
 supabase/migrations/    DB 스키마·RLS·권한 함수(sp_*)·입장 RPC. 실제 Supabase에 그대로 적용
@@ -94,7 +95,7 @@ supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stu
 
 | 명령 | 하는 일 |
 | --- | --- |
-| `npm run dev` | 개발 서버 (`SWEEPEA_BACKEND=mock`이면 메모리 백엔드) |
+| `npm run dev` | 개발 서버 (`SWEEPEA_BACKEND=mock`이면 메모리 백엔드, `SWEEPEA_MOCK_USED_BYTES`로 저장 사용량 미리 더하기) |
 | `npm run check` | 타입 검사 |
 | `npm run test:unit` | 순수 함수 단위 검사(`tests/*.test.ts`, Node 24 타입 제거 실행) |
 | `npm run types` | wrangler.jsonc 바인딩이 바뀌면 Worker 타입 다시 만들기 |
