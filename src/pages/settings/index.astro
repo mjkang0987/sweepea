@@ -4,6 +4,7 @@ import Parent from '../../layouts/Parent.astro';
 import { getBackend } from '../../lib/backend';
 import { handleFamilyPost, sizeLabel, summarize } from '../../lib/familyAdmin';
 import { loadParent, PROVIDER_NAMES } from '../../lib/parent';
+import { version } from '../../../package.json';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
 if (Astro.request.method === 'POST') return Astro.redirect(await handleFamilyPost(Astro.request, Astro.cookies), 303);
@@ -90,4 +91,5 @@ const doneText: Record<string, string> = {
       </li>
     </ul>
   </section>
+  <p class="sp-p__version">스위피 {version}</p>
 </Parent>

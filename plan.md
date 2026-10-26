@@ -613,6 +613,12 @@
 - 방식: Cloudflare Workers Builds를 GitHub `mjkang0987/sweepea`에 연결(지우님). 운영 브랜치 `dev`, 빌드 `npm run build`, 배포 `npx wrangler deploy`, 경로 `/`, 미리보기 빌드 끔(feature 브랜치가 실제 DB·R2를 건드리지 않게). 빌드 토큰은 Cloudflare가 만들어 보관
 - 연결만으로는 빌드가 돌지 않아 이 기록 커밋을 dev에 푸시해 첫 빌드를 띄움
 - 출시 때: 운영 브랜치를 `main`으로 바꾸기
+
+### 45. feature/settings-version — 설정 맨 아래 버전 (완료, dev 머지, 디자인 버전 117)
+
+- 요구사항(사용자 2026-10-26 "뭐 하나 배포해줘 테스트보게"): 자동 배포 확인용. 휴대폰에서 지금 몇 버전인지 보이게
+- 방식: 설정 화면 맨 아래 "스위피 0.2.1"(package.json 버전). 버전 0.2.0 → 0.2.1
+- 결과: 타입 검사·단위 테스트·e2e(ver.py) 통과, dev 푸시로 자동 배포
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
