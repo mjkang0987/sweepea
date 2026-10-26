@@ -487,13 +487,14 @@
 - 결과: layers45 e2e 9개(백일·저장 공간·돌·평범한 날), 기존 layers·health·members 통과, 단위 22개. 저장 공간 확인용으로 mock에 `SWEEPEA_MOCK_USED_BYTES` 추가. 막대는 저장 용량 화면과 같은 기본 meter라 색은 브라우저 기본(디자인은 분홍 막대)
 - 확인 필요: 2월 29일생은 평년엔 생일 레이어 없음. 가족 플랜 레이어는 자동 갱신을 끈 사람에게만 띄울지(스토어 구독 상태 필요), 끝난 뒤 정책 문구
 
-### 33. feature/settings-badge — 설정 탭 승인 대기 배지 (디자인 버전 112)
+### 33. feature/settings-badge — 설정 탭 승인 대기 배지 (완료, dev 머지, 디자인 버전 112)
 
 - 요구사항(사용자 2026-10-26 "추가되어야 확인하지"): 부모 아래 탭 '설정'에 승인 기다리는 사람·휴대폰 수 배지(`blossom`), 화면 읽기는 "설정, 승인 기다리는 사람 N명"
 - 구현 방식: 부모 첫 화면 정보(`sp_parent_home`)에 `waiting`(기한 안 지난 들어오기 신청 + 승인 기다리는 휴대폰) 추가 → 탭 있는 모든 화면이 레이아웃에 넘김. 마이그레이션은 아직 적용 전이라 parent_home 파일을 직접 고침
 - 영향받는 파일: `supabase/migrations/20261025000006_parent_home.sql`, `src/lib/backend/types.ts`, `src/lib/backend/mock.ts`, `src/layouts/Parent.astro`, 탭 있는 부모 화면 17개, `plan.md`
 - 예상 결과: 신청이 오면 설정 탭에 숫자, 승인하면 사라짐(e2e), 스크린샷
-- 같이 정리: 켜고 끄기는 토글로 결정(디자인을 토글로 고침, 코드는 이미 토글)
+- 같이 정리: 켜고 끄기는 토글로 결정(디자인을 토글로 고침, 코드는 이미 토글, 디자인 시스템 README 19)
+- 결과: badge e2e 5개, 기존 members·layers·parent 통과. 확인 필요: parent_home SQL은 실제 DB에서 아직 안 돌려 봄(DB 설정 뒤)
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
