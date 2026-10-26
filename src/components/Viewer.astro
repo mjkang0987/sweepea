@@ -1,0 +1,177 @@
+---
+// 크게 보기(가족·엄빠 공통): 사진·영상이 화면 가득, 위 메뉴·아래 판이 반투명으로 겹친다. 이 부품만 작은 스크립트(영상 재생 막대·옆으로 밀기).
+// 스크립트가 없어도 ‹ › 링크로 넘기고 영상은 브라우저 기본 재생 막대로 본다
+import HeartToggle from './HeartToggle.astro';
+import ReactRow from './ReactRow.astro';
+import SayForm from './SayForm.astro';
+import type { Reacts } from '../lib/album';
+import { dayLabel } from '../lib/album';
+import type { MediaItem } from '../lib/backend';
+
+interface Props {
+  m: MediaItem;
+  src: string;
+  poster?: string;
+  pos: number;
+  total: number;
+  closeHref: string;
+  /** 저장 링크(가족은 엄마아빠가 허용했을 때만) */
+  save?: { href: string; name: string; label: string };
+  prev?: { href: string; video: boolean };
+  next?: { href: string; video: boolean };
+  reacts: Reacts;
+  /** 반응·한마디 폼 보낼 곳과 돌아올 곳 */
+  action: string;
+  here: string;
+  child: string;
+  say: string | null;
+  sentText?: string;
+}
+const { m, src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
+const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
+---
+
+<div class="sp-v" data-v>
+  <figure class="sp-v__stage">
+    {
+      m.kind === 'video' ? (
+        <video class="sp-v__media" src={src} poster={poster} controls playsinline preload="metadata" aria-labelledby="v-title" />
+      ) : (
+        <img class="sp-v__media" src={src} alt="" draggable="false" width={m.width ?? undefined} height={m.height ?? undefined} decoding="async" />
+      )
+    }
+  </figure>
+  {m.kind === 'video' && <button class="sp-v__tap" type="button" hidden aria-label="일시정지하고 메뉴 보기"></button>}
+  <nav class="sp-v__bar sp-v__hide" aria-label="사진 이동">
+    <a class="sp-v__link" href={closeHref}>닫기</a>
+    <p class="sp-v__pos">{pos} / {total}</p>
+    {save ? <a class="sp-v__link" href={save.href} download={save.name}>저장<span class="sp-vh"> ({save.label})</span></a> : <span class="sp-v__spacer"></span>}
+  </nav>
+  {prev && (
+    <a class="sp-v__arrow sp-v__arrow--prev sp-v__hide" href={prev.href} rel="prev" aria-label={`이전 ${prev.video ? '영상' : '사진'}`}>
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__line" d="M15 5l-7 7 7 7" /></svg>
+    </a>
+  )}
+  {next && (
+    <a class="sp-v__arrow sp-v__arrow--next sp-v__hide" href={next.href} rel="next" aria-label={`다음 ${next.video ? '영상' : '사진'}`}>
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__line" d="M9 5l7 7-7 7" /></svg>
+    </a>
+  )}
+  {
+    m.kind === 'video' && (
+      <button class="sp-v__play sp-v__hide" type="button" hidden aria-label="재생">
+        <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__fill-white" d="M8 5l12 7-12 7z" /></svg>
+      </button>
+    )
+  }
+  {/* 아래 판과 그 위에 뜨는 버튼(엄빠 사진 정보 수정)을 한 묶음으로: 판 높이가 바뀌어도 버튼이 판 바로 위에 */}
+  <div class="sp-v__dock">
+    <slot />
+    <div class="sp-v__panel">
+      {
+        m.kind === 'video' && (
+          <div class="sp-v__ctrl" hidden>
+            <label class="sp-v__seek-wrap">
+              <span class="sp-vh">재생 위치</span>
+              <input class="sp-v__seek" type="range" min="0" max={m.duration_sec ?? 0} step="0.1" value="0" />
+              <span class="sp-v__time" aria-hidden="true"><span class="sp-v__cur">0:00</span><span class="sp-v__total">{length}</span></span>
+            </label>
+            <button class="sp-v__mute" type="button" aria-pressed="false" aria-label="소리 끄기">
+              <svg class="sp-v__icon-on" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__fill" d="M4 9h4l5-4v14l-5-4H4z" /><path class="sp-v__wave" d="M16.5 8.5a5 5 0 0 1 0 7" /></svg>
+              <svg class="sp-v__icon-off" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__fill" d="M4 9h4l5-4v14l-5-4H4z" /><path class="sp-v__wave" d="M17 9l4 6M21 9l-4 6" /></svg>
+            </button>
+          </div>
+        )
+      }
+      <div class="sp-v__more sp-v__hide">
+        <div class="sp-v__meta">
+          <p class="sp-f__caption">{dayLabel(m.taken_at)}</p>
+          <HeartToggle mediaId={m.id} back={here} action={action} reacts={reacts} />
+        </div>
+        <ReactRow mediaId={m.id} back={here} action={action} reacts={reacts} hideTitle />
+        <SayForm mediaId={m.id} back={here} action={action} child={child} say={say} sentText={sentText} />
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 크게 보기 전용(가족 화면 중 유일한 스크립트). 영상 재생 막대·소리, 옆으로 밀어 넘기기
+  const v = document.querySelector<HTMLElement>('[data-v]');
+  const video = v?.querySelector('video');
+  if (v) v.dataset.js = '';
+  if (v && video) {
+    const $ = <T extends Element>(s: string) => v.querySelector<T>(s)!;
+    const play = $<HTMLButtonElement>('.sp-v__play');
+    const tap = $<HTMLButtonElement>('.sp-v__tap');
+    const ctrl = $<HTMLElement>('.sp-v__ctrl');
+    const seek = $<HTMLInputElement>('.sp-v__seek');
+    const cur = $<HTMLElement>('.sp-v__cur');
+    const total = $<HTMLElement>('.sp-v__total');
+    const mute = $<HTMLButtonElement>('.sp-v__mute');
+    const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+    let dragging = false;
+    const sync = () => {
+      // 스트리밍처럼 길이를 모르면 Infinity: 서버가 준 길이로
+      const d = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Number(seek.max) || 0;
+      seek.max = String(d);
+      if (!dragging) seek.value = String(video.currentTime);
+      v.style.setProperty('--p', `${d ? (video.currentTime / d) * 100 : 0}%`);
+      cur.textContent = fmt(video.currentTime);
+      total.textContent = fmt(d);
+      seek.setAttribute('aria-valuetext', `${fmt(video.currentTime)} / ${fmt(d)}`);
+    };
+    video.controls = false;
+    play.hidden = false;
+    ctrl.hidden = false;
+    sync();
+    video.addEventListener('loadedmetadata', sync);
+    video.addEventListener('timeupdate', sync);
+    play.addEventListener('click', () => void video.play());
+    tap.addEventListener('click', () => video.pause());
+    video.addEventListener('play', () => {
+      v.dataset.playing = '';
+      tap.hidden = false;
+      tap.focus({ preventScroll: true });
+    });
+    const stop = () => {
+      const fromTap = document.activeElement === tap;
+      delete v.dataset.playing;
+      tap.hidden = true;
+      if (fromTap) play.focus({ preventScroll: true });
+    };
+    video.addEventListener('pause', stop);
+    video.addEventListener('ended', stop);
+    seek.addEventListener('pointerdown', () => (dragging = true));
+    addEventListener('pointerup', () => (dragging = false));
+    seek.addEventListener('input', () => {
+      video.currentTime = Number(seek.value);
+      sync();
+    });
+    // 이름은 '소리 끄기'로 두고 눌림 상태만 바꾼다(이름과 눌림이 엇갈려 읽히지 않게)
+    mute.addEventListener('click', () => (video.muted = !video.muted));
+    video.addEventListener('volumechange', () => mute.setAttribute('aria-pressed', String(video.muted)));
+  }
+  // 옆으로 밀기: 가로로 60px 넘게(세로보다 크게) 밀면 ‹ › 링크로. 막대·버튼·입력칸·아래 판에서 시작한 건 제외
+  if (v) {
+    let x0: number | null = null;
+    let y0 = 0;
+    v.addEventListener('pointerdown', (e) => {
+      if (!e.isPrimary) return void (x0 = null);
+      const t = e.target as Element;
+      x0 = t.closest('input, textarea, a, .sp-v__panel, button:not(.sp-v__tap)') ? null : e.clientX;
+      y0 = e.clientY;
+    });
+    v.addEventListener('pointerup', (e) => {
+      if (x0 === null) return;
+      const dx = e.clientX - x0;
+      const dy = e.clientY - y0;
+      x0 = null;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      const a = v.querySelector<HTMLAnchorElement>(dx < 0 ? 'a[rel="next"]' : 'a[rel="prev"]');
+      if (a) location.href = a.href;
+    });
+    v.addEventListener('pointercancel', () => (x0 = null));
+  }
+</script>
