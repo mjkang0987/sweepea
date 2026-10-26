@@ -43,9 +43,9 @@ const KIND = { vaccine: '접종', checkup: '검진' };
 const done = Astro.url.searchParams.get('done');
 ---
 
-<Parent title={`접종·검진 · ${kid.name}`} tab="home">
+<Parent title={`접종·검진 · ${kid.name}`} tab="home" alerts={a.home.new_activity ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
-    <a class="sp-p__back" href="/home"><span aria-hidden="true">‹ </span>앨범</a>
+    <a class="sp-p__back" href="/home">앨범</a>
   </nav>
   <h1 class="sp-p__title">{kid.name} · 생후 {monthsOld(kid.birth_date, today)}개월</h1>
   <p class="sp-p__lead">한 것을 체크하고 저장하면 완료한 날이 기록돼요. 엄마아빠만 봐요.</p>

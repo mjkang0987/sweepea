@@ -25,9 +25,9 @@ const done = Astro.url.searchParams.get('done');
 const doneText: Record<string, string> = { added: '아이를 추가했어요.', saved: '고쳤어요.', health: '저장했어요.', error: '저장하지 못했어요. 다시 눌러 주세요.' };
 ---
 
-<Parent title="아이 · 설정" tab="settings">
+<Parent title="아이 · 설정" tab="settings" alerts={a.home.new_activity ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
-    <a class="sp-p__back" href="/settings"><span aria-hidden="true">‹ </span>설정</a>
+    <a class="sp-p__back" href="/settings">설정</a>
   </nav>
   <h1 class="sp-p__title">아이</h1>
   {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} role={done === 'error' ? 'alert' : undefined} tabindex="-1" autofocus>{doneText[done]}</p>}
@@ -41,7 +41,7 @@ const doneText: Record<string, string> = { added: '아이를 추가했어요.', 
               <span class="sp-p__who-name">{k.name}</span>
               <span class="sp-p__hint">{birthLabel(k.birth_date)} · 생후 {monthsOld(k.birth_date, today)}개월</span>
             </span>
-            <span class="sp-p__row-action">고치기</span>
+            <span class="sp-p__chev" aria-hidden="true">›</span>
           </a>
         </li>
       ))

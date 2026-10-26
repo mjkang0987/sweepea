@@ -28,11 +28,8 @@ const fresh = rows.filter((r) => r.isNew);
 const old = rows.filter((r) => !r.isNew);
 ---
 
-<Parent title="최근 반응 · 스위피" tab="home">
-  <nav class="sp-p__bar" aria-label="뒤로">
-    <a class="sp-p__back" href="/home"><span aria-hidden="true">‹ </span>앨범</a>
-  </nav>
-  <h1 class="sp-p__title">최근 반응</h1>
+<Parent title="알림 · 스위피" tab="alerts" alerts={0}>
+  <h1 class="sp-p__title sp-p__title--large">알림</h1>
   <p class="sp-p__lead">가족이 남긴 하트와 말이에요. 앱이 나오면 알림으로도 알려 드릴게요.</p>
   {
     [

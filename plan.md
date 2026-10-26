@@ -444,6 +444,18 @@
 - 예상 결과(390·1280px, e2e): 디자인과 같은 배치, 재생→메뉴 숨김·진행 선, 화면 누르면 일시정지·메뉴, 막대 끌기, 소리 켜고 끄기, 밀기·‹ ›로 이동, 막대 끌 때는 안 넘어감, 스크립트 끄면 기본 막대·‹ › 링크로 동작, 기존 반응·한마디 e2e 통과
 - 범위 밖(다음): 사진 크게 보기 PC 배치 세부, 넘겨 보기·크게 보기 외 화면
 
+### 30. feature/parent-nav — 부모 화면 이동 표시 정리 (디자인 버전 107, 디자인 시스템 README 18)
+
+- 요구사항(사용자 2026-10-26, 디자인 먼저 고친 뒤 적용)
+  - 아래 탭에 알림 추가: 앨범 · 알림 · 설정. 알림 탭에 새 반응 수 배지. 최근 반응 화면은 알림 탭 첫 화면(큰 제목 "알림", 뒤로가기 없음). 앨범 위 "최근 반응" 줄 삭제
+  - 앨범 위 접종 줄 → 아이 카드: 콩이 + 이름 · 생후 N개월 · 태어난 지 N일 + 다음 일정. 카드 전체가 접종·검진 링크, "다음"·"일정" 글자 없이 오른쪽 꺾쇠만. 위아래 가운데 정렬
+  - 누르면 넘어가는 줄·띠는 오른쪽 꺾쇠 아이콘만: 승인 요청·홈 화면 부탁 띠의 "확인 ›"·"문자 ›", 그룹 비밀번호 "바꾸기", 아이 "고치기" → 꺾쇠. 글자 ›는 같은 모양 선 아이콘으로
+  - 왼쪽 위 뒤로가기는 글자만("설정", "앨범"…, ‹ 없음). 가족 크게 보기 "닫기"도 글자만(어르신이 헷갈리지 않게 한 규칙으로)
+- 구현 방식: `Parent.astro`에 알림 탭과 `alerts` 배지(각 화면이 `a.home.new_activity` 전달, 알림 화면은 0). `.sp-p__chev`는 CSS mask로 선 아이콘, 띠·카드는 인라인 svg(`.sp-p__icon-chev`). 아이 카드 `.sp-p__kid`. 콩이는 지금 있는 `/favicon.svg`(나이별 7단계 그림은 아직 없음)
+- 영향받는 파일: `src/layouts/Parent.astro`, `src/pages/home.astro`, `src/pages/reactions.astro`, 탭 있는 부모 화면 17개(배지 전달·뒤로가기 글자), `src/pages/settings/children/index.astro`, `src/pages/settings/family/groups/[id]/index.astro`, `src/pages/album/[id].astro`(닫기), `src/styles/parent.css`, `plan.md`
+- 예상 결과: 알림 탭·배지·아이 카드·꺾쇠·글자 뒤로가기(스크린샷), reactions·health·install 등 e2e 통과
+- 결과: e2e(reactions·install·health·settings2·groups·members·parent·family·vplay) 통과. 범위 밖: 설정 탭의 승인 배지(디자인엔 있음, 코드엔 원래 없음), 나이별 콩이 그림
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.

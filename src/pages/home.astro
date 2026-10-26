@@ -5,6 +5,7 @@ import { getBackend } from '../lib/backend';
 import { summarize } from '../lib/familyAdmin';
 import { callName, hasBatchim } from '../lib/ko';
 import { splitSchedule } from '../lib/health';
+import { monthsOld } from '../lib/age';
 import { loadParent, seoulToday } from '../lib/parent';
 import { signedMediaUrl } from '../lib/signed';
 
@@ -29,7 +30,9 @@ const [items, admin, healthRows] = await Promise.all([
       const done = new Map(rows.map((d) => [d.item_key, d.done_on]));
       const next = splitSchedule(k.birth_date, today, done).upcoming[0];
       const [, m, d] = next?.start.split('-').map(Number) ?? [];
-      return { id: k.id, name: k.name, next: next ? `${next.item.name} · ${next.state.kind === 'soon' ? `${m}월 ${d}일부터` : '지금 가능'}` : '6개월 안에는 없어요' };
+      // 태어난 지 며칠(서울 날짜 기준, 태어난 날이 1일째)
+      const days = Math.round((Date.parse(today) - Date.parse(k.birth_date)) / 86_400_000) + 1;
+      return { id: k.id, name: k.name, months: monthsOld(k.birth_date, today), days, next: next ? `${next.item.name} · ${next.state.kind === 'soon' ? `${m}월 ${d}일부터` : '지금 가능'}` : '6개월 안에는 없어요' };
     }),
   ).then((r) => r.filter((x) => x !== null)),
 ]);
@@ -48,14 +51,14 @@ for (const m of items) {
 }
 ---
 
-<Parent title="앨범 · 스위피" tab="home" wide>
+<Parent title="앨범 · 스위피" tab="home" alerts={a.home.new_activity ?? 0} wide>
   <h1 class="sp-p__title sp-p__title--large">앨범</h1>
   {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus>지웠어요.</p>}
   {
     s && s.waiting > 0 && (
       <a class="sp-p__alert" href="/settings/family">
         <span class="sp-p__alert-text">{firstWait ? <><strong>{firstWait.display_name}</strong>{ga(firstWait.display_name)} {s.groupName(firstWait.group_id)} 앨범에 들어오려고 해요</> : s.pendingMembers.length === 0 ? <>새 휴대폰 <strong>{s.waiting}대</strong>가 들어오려고 해요</> : <><strong>{s.waiting}명</strong>이 들어오려고 해요</>}</span>
-        <span class="sp-p__alert-action">확인<span aria-hidden="true"> ›</span></span>
+        <svg class="sp-p__icon-chev" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
       </a>
     )
   }
@@ -63,30 +66,20 @@ for (const m of items) {
     helpers.length > 0 && (
       <a class="sp-p__alert" href="/settings/family/sms">
         <span class="sp-p__alert-text"><strong>{helpers[0].display_name}</strong>{helpers.length > 1 ? ` 외 ${helpers.length - 1}명이` : ga(helpers[0].display_name)} 홈 화면에 두기를 부탁했어요</span>
-        <span class="sp-p__alert-action">문자<span aria-hidden="true"> ›</span></span>
+        <svg class="sp-p__icon-chev" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
       </a>
     )
   }
-  <ul class="sp-p__list sp-p__activity">
-    {healthRows.map((h) => (
-      <li>
-        <a class="sp-p__row sp-p__row--tall" href={`/health/${h.id}`}>
-          <span class="sp-p__row-label sp-p__radio-text">
-            <span>접종·검진 · {h.name}</span>
-            <span class="sp-p__hint">다음: {h.next}</span>
-          </span>
-          <span class="sp-p__chev" aria-hidden="true">›</span>
-        </a>
-      </li>
-    ))}
-    <li>
-      <a class="sp-p__row" href="/reactions">
-        <span class="sp-p__row-label">최근 반응</span>
-        {(a.home.new_activity ?? 0) > 0 && <span class="sp-p__badge">새 {a.home.new_activity}</span>}
-        <span class="sp-p__chev" aria-hidden="true">›</span>
-      </a>
-    </li>
-  </ul>
+  {healthRows.map((h) => (
+    <a class="sp-p__kid" href={`/health/${h.id}`}>
+      <img class="sp-p__kid-kongi" src="/favicon.svg" width="64" height="64" alt="" />
+      <span class="sp-p__kid-text">
+        <span class="sp-vh">접종·검진 일정, </span><span class="sp-p__kid-line"><strong class="sp-p__kid-name">{h.name}</strong><span class="sp-p__hint">생후 {h.months}개월 · 태어난 지 {h.days}일</span></span>
+        <span class="sp-p__kid-next">{h.next}</span>
+      </span>
+      <svg class="sp-p__icon-chev" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
+    </a>
+  ))}
   {
     items.length === 0 ? (
       <section class="sp-p__empty" aria-labelledby="empty-title">

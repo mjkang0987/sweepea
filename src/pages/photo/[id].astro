@@ -62,9 +62,9 @@ const done = q.get('done');
 const doneText: Record<string, string> = { saved: '저장했어요.', error: '처리하지 못했어요. 다시 눌러 주세요.' };
 ---
 
-<Parent title={error ? '다시 확인해 주세요 · 사진 정보' : '사진 정보 · 스위피'} tab="home">
+<Parent title={error ? '다시 확인해 주세요 · 사진 정보' : '사진 정보 · 스위피'} tab="home" alerts={a.home.new_activity ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
-    <a class="sp-p__back" href="/home"><span aria-hidden="true">‹ </span>앨범</a>
+    <a class="sp-p__back" href="/home">앨범</a>
   </nav>
   <h1 class="sp-p__title">사진 정보</h1>
   {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} role={done === 'error' ? 'alert' : undefined} tabindex="-1" autofocus>{doneText[done]}</p>}
