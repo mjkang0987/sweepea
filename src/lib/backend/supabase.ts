@@ -137,6 +137,12 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     async comment(pass, id, body) {
       await rpc(pass, 'sp_comment', { p_media_id: id, p_body: body });
     },
+    async parentReact(pass, id, kind, on) {
+      await rpc(pass, 'sp_parent_react', { p_media_id: id, p_kind: kind, p_on: on });
+    },
+    async parentComment(pass, id, body) {
+      await rpc(pass, 'sp_parent_comment', { p_media_id: id, p_body: body });
+    },
     parentAuthorizeUrl(provider, redirectTo, codeChallenge) {
       const q = new URLSearchParams({ provider, redirect_to: redirectTo, code_challenge: codeChallenge, code_challenge_method: 's256' });
       return `${base}/auth/v1/authorize?${q}`;
@@ -233,10 +239,10 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     async mediaInfo(pass, id) {
       const cols = 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key';
       const q = new URLSearchParams({ id: `eq.${id}`, status: 'eq.ready', select: `${cols},media_groups(group_id),media_children(child_id)` });
-      const c = new URLSearchParams({ media_id: `eq.${id}`, deleted_at: 'is.null', order: 'created_at.desc', limit: '1', select: 'body,members(display_name)' });
+      const c = new URLSearchParams({ media_id: `eq.${id}`, deleted_at: 'is.null', order: 'created_at.desc', limit: '1', select: 'body,members(display_name),parents(display_name)' });
       const [rows, cs] = await Promise.all([
         call<(MediaItem & { media_groups: { group_id: string }[]; media_children: { child_id: string }[] })[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access }),
-        call<{ body: string; members: { display_name: string } | null }[]>(`/rest/v1/comments?${c}`, { method: 'GET', token: pass.access }),
+        call<{ body: string; members: { display_name: string } | null; parents: { display_name: string } | null }[]>(`/rest/v1/comments?${c}`, { method: 'GET', token: pass.access }),
       ]);
       const r = rows[0];
       if (!r) return null;
@@ -245,7 +251,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         item,
         group_ids: media_groups.map((g) => g.group_id),
         child_ids: media_children.map((k) => k.child_id),
-        latest: cs[0] ? { name: cs[0].members?.display_name ?? '가족', body: cs[0].body } : null,
+        latest: cs[0] ? { name: cs[0].members?.display_name ?? cs[0].parents?.display_name ?? '가족', body: cs[0].body } : null,
       };
     },
     updateMedia: (pass, id, u) =>

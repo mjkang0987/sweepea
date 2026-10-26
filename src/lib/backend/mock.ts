@@ -110,6 +110,13 @@ function viewer(pass: Pass, mediaId: string): string {
   return d.memberId;
 }
 
+/** 부모 계정 반응·한마디는 구성원 자리에 'p:<계정>'으로 둔다(DB의 parent_user_id 흉내) */
+const parentKey = (pass: Pass) => `p:${pass.access}`;
+function parentMedia(pass: Pass, mediaId: string): void {
+  const fam = parents.get(pass.access)?.familyId;
+  if (!fam || !media.some((y) => y.id === mediaId && y.status === 'ready' && y.family_id === fam)) throw new BackendError('not_allowed', 403, '42501');
+}
+
 export function createMockBackend(): Backend {
   return {
     async signInAnonymously(): Promise<Pass> {
@@ -252,11 +259,29 @@ export function createMockBackend(): Backend {
       }
       comments.push({ mediaId: id, memberId: m, at: Date.now(), body: text });
     },
+    async parentReact(pass, id, kind, on) {
+      parentMedia(pass, id);
+      const k = `${id}|${parentKey(pass)}|${kind}`;
+      if (on) {
+        if (!reactions.has(k)) reactedAt.set(k, Date.now());
+        reactions.add(k);
+      } else reactions.delete(k);
+    },
+    async parentComment(pass, id, body) {
+      parentMedia(pass, id);
+      const text = body.trim();
+      if (text.length < 1 || text.length > 200) throw new BackendError('bad_request', 400, '22023');
+      if (comments.filter((c) => c.memberId === parentKey(pass) && c.at > Date.now() - 86_400_000).length >= 30) {
+        throw new BackendError('too_many_comments', 429, 'PT429');
+      }
+      comments.push({ mediaId: id, memberId: parentKey(pass), at: Date.now(), body: text });
+    },
     async reactionCounts(pass, ids) {
       // 볼 수 있는 사진만(DB의 sp_can_view_media 흉내)
       ids = ids.filter((id) => {
         try {
-          viewer(pass, id);
+          if (parents.has(pass.access)) parentMedia(pass, id);
+          else viewer(pass, id);
           return true;
         } catch {
           return false;
@@ -264,6 +289,7 @@ export function createMockBackend(): Backend {
       });
       const out = new Map<string, ReactionCount>();
       const mineIds = new Set([...devices].filter(([k]) => k.startsWith(`${pass.access}|`)).map(([, d]) => d.memberId));
+      mineIds.add(parentKey(pass));
       const add = (mediaId: string, kind: ReactionCount['kind'], member: string) => {
         const key = `${mediaId}|${kind}`;
         const c = out.get(key) ?? { media_id: mediaId, kind, n: 0, mine: false };
@@ -468,7 +494,7 @@ export function createMockBackend(): Backend {
       if (!x) return null;
       const { status: _s, uploader: _u, groupIds, childIds, bytes: _b, ...item } = x;
       const last = comments.filter((c) => c.mediaId === id).at(-1);
-      return { item, group_ids: [...groupIds], child_ids: [...childIds], latest: last ? { name: members.find((m) => m.id === last.memberId)?.name ?? '가족', body: last.body } : null };
+      return { item, group_ids: [...groupIds], child_ids: [...childIds], latest: last ? { name: last.memberId === parentKey(pass) ? (parents.get(pass.access)?.role === 'dad' ? '아빠' : '엄마') : (members.find((m) => m.id === last.memberId)?.name ?? '가족'), body: last.body } : null };
     },
     async updateMedia(pass, id, u) {
       const fam = parents.get(pass.access)?.familyId;
