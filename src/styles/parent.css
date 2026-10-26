@@ -781,7 +781,7 @@
 }
 .sp-p__radio-row {
   min-height: 3.5rem;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-4);
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -1585,3 +1585,70 @@
   line-height: 1.625rem;
 }
 
+/* 묶음 안 체크·링크 줄(디자인): 왼쪽 제목+부제, 오른쪽 체크·› */
+.sp-p__group-row--check,
+.sp-p__group-row--link {
+  justify-content: space-between;
+  color: var(--label);
+  text-decoration: none;
+  cursor: pointer;
+}
+.sp-p__group-row--check .sp-p__radio-text,
+.sp-p__group-row--link .sp-p__radio-text {
+  flex: 1;
+  min-width: 0;
+}
+.sp-p__group > * + * {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__group-button {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+}
+.sp-p__group-row--link:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: -2px;
+}
+/* 이름 칸: 회색으로 채운 칸(디자인) */
+.sp-p__input--filled {
+  border-color: transparent;
+  background: var(--surface);
+}
+/* '+ 아이 추가'·'+ 그룹 추가': 초록 글자, + 뒤 한 칸 */
+.sp-p__btn--add {
+  gap: 0.25rem;
+  color: var(--pea-ink);
+}
+/* 아이 줄: 콩이 상자, 오른쪽 '고치기' */
+.sp-p__kid-box {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: var(--pea-tint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-p__kid-box-img {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+}
+.sp-p__row-action {
+  flex: none;
+  color: var(--pea-ink);
+  font-weight: 600;
+}
+
+/* 글자 크기 줄: 글은 왼쪽, 라디오는 오른쪽(디자인) */
+.sp-p__radio-row .sp-p__radio-text {
+  flex: 1;
+  min-width: 0;
+}
+.sp-p__btn[hidden] {
+  display: none;
+}

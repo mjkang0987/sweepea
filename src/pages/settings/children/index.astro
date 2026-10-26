@@ -1,6 +1,7 @@
 ---
 // 아이 목록: 이름·생일·생후 개월, 고치기, 아이 추가
 import Parent from '../../../layouts/Parent.astro';
+import AutoSave from '../../../components/AutoSave.astro';
 import { birthLabel, monthsOld } from '../../../lib/age';
 import { BackendError, getBackend } from '../../../lib/backend';
 import { loadParent, seoulToday } from '../../../lib/parent';
@@ -36,27 +37,34 @@ const doneText: Record<string, string> = { added: '아이를 추가했어요.', 
       kids.map((k) => (
         <li>
           <a class="sp-p__row sp-p__row--tall" href={`/settings/children/${k.id}`}>
-            <span class="sp-p__avatar" aria-hidden="true">{k.name.slice(0, 1)}</span>
+            <span class="sp-p__kid-box" aria-hidden="true"><img class="sp-p__kid-box-img" src="/kongi.svg" width="32" height="32" alt="" /></span>
             <span class="sp-p__row-label sp-p__radio-text">
               <span class="sp-p__who-name">{k.name}</span>
               <span class="sp-p__hint">{birthLabel(k.birth_date)} · 생후 {monthsOld(k.birth_date, today)}개월</span>
             </span>
-            <span class="sp-p__chev" aria-hidden="true">›</span>
+            <span class="sp-p__row-action">고치기<span class="sp-vh"> ({k.name})</span></span>
           </a>
         </li>
       ))
     }
   </ul>
-  <a class="sp-p__btn sp-p__btn--quiet sp-p__add" href="/settings/children/new"><span aria-hidden="true">+ </span>아이 추가</a>
+  <a class="sp-p__btn sp-p__btn--quiet sp-p__btn--add sp-p__add" href="/settings/children/new"><span aria-hidden="true">+</span>아이 추가</a>
   <section class="sp-p__section" aria-labelledby="sec-health">
     <h2 class="sp-p__section-title" id="sec-health">접종·검진</h2>
-    <form class="sp-p__form" method="post">
-      <label class="sp-p__check sp-p__check--plain">
-        <input class="sp-p__checkbox" type="checkbox" name="health" value="1" checked={showHealth} aria-describedby="health-note" />
-        앨범에 접종·검진 일정 보기
-      </label>
-      <p class="sp-p__hint" id="health-note">엄마아빠 앨범 위에 아이별 다음 일정이 보여요. 가족 화면에는 보이지 않아요.</p>
-      <button class="sp-p__btn sp-p__btn--quiet" type="submit">저장</button>
+    <form class="sp-p__form sp-p__form--fit" method="post" data-autosave>
+      <ul class="sp-p__group" role="list">
+        <li>
+          <label class="sp-p__group-row sp-p__group-row--check">
+            <span class="sp-p__radio-text">
+              <span class="sp-p__who-name">앨범에 접종·검진 일정 보기</span>
+              <span class="sp-p__hint" id="health-note">부모 앨범 위 아이 카드에 다음 일정이 보여요. 가족 화면에는 보이지 않아요</span>
+            </span>
+            <input class="sp-p__checkbox" type="checkbox" name="health" value="1" checked={showHealth} aria-describedby="health-note" />
+          </label>
+        </li>
+      </ul>
+      <button class="sp-p__btn sp-p__btn--quiet" type="submit" data-autosave-hide>저장</button>
     </form>
   </section>
+  <AutoSave />
 </Parent>

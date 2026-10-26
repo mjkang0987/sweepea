@@ -11,12 +11,12 @@
 
 ## 1. 공통 패턴
 - [x] 하위 화면 머리글(53): 위 줄 '‹ 이전' + 가운데 작은 제목(지금은 아래 큰 제목) — Family, SendSetup, GroupSettings, GroupDetail, PasswordChange, TextSize, ChildSettings, ChildAdd, Storage, Account, Health, MemberDetail(제목 없음)
-- [ ] 묶음 카드 안 행 + 오른쪽 체크·라디오, 고르면 바로 적용('저장' 버튼 없앰) — GroupDetail, ChildSettings, TextSize(라디오 오른쪽)
+- [x] 묶음 카드 안 행(54) + 오른쪽 체크·라디오, 고르면 바로 적용('저장' 버튼 없앰) — GroupDetail, ChildSettings, TextSize(라디오 오른쪽)
 - [ ] 콩이 그림: 상태 화면 가운데 약 128px — GrandExpired·GrandNoLink·GrandClosed(지금 44px), GrandPassword·GrandPending·AccountDeleted·AccountRestore·AccountDelete(우는 콩이) 없음, ChildSettings 아이 행·Health 머리글·ChildAdd 안내 상자
 - [ ] 아래 시트·모달(어두운 배경): GrandInstall, InstallGuide, AccountDelete, AccountDeleteSub
 - [ ] 크게 보기 정보 줄 '생후 N개월'(가족·엄빠·영상·PC). 가족 쪽은 아이 생일 정보 필요(DB)
 - [ ] 가족 앨범 머리글: 오른쪽 위 '홈 화면에 두기' 알약, 문구 '하린이 새 사진 N장 / 오늘 엄마가 올렸어요', 모아 보기 확대 안내문
-- [ ] '+ 그룹 추가'·'+ 아이 추가' 초록 글자, '+ ' 띄어쓰기
+- [x] '+ 그룹 추가'·'+ 아이 추가' 초록 글자(54), '+ ' 띄어쓰기
 - [ ] 가운데 레이어 카드 좌우 여백 20px, 첫 버튼 포커스 테두리(눌러서 연 게 아니면 안 보이게)
 - [ ] 접종 카드: 대표 아이 1장(아이마다 쌓지 않음), 빈 앨범엔 안 보임
 - [ ] 올리기 아이 기본 체크(첫 아이 또는 고른 아이)
@@ -59,11 +59,11 @@
 - [ ] Family: 그룹당 한 줄 요약, 승인 버튼 '외가 가족으로 승인', 아바타 민트, '받은 사진 12장만'
 - [ ] SendSetup: 문자 미리보기·공유 버튼·PC 접기, 사람 행 '홈 화면에 없음/있음', 링크 만든 뒤 목록 유지, 링크 초록
 - [ ] GroupSettings: '그룹을 하나만 남기면…' 안내, 행 높이
-- [ ] GroupDetail: 한 묶음(기본 포함·비밀번호·주소 보내기 행 ›), 이름 칸 회색 채움, 구성원 행 상태(홈 화면·올리기·대기 남은 날)
+- [ ] GroupDetail: ~~한 묶음, 이름 칸 회색 채움~~(54), 구성원 행 '홈 화면에 있음' 상태(설치 여부 정보 필요)
 - [ ] MemberDetail: ~~가운데 제목, 이름 크기~~(53), 내보내기 위치
 - [ ] PasswordChange: 안내 상자 반짝이·글자색, 버튼 위치
-- [ ] TextSize: 행·미리보기 크기
-- [ ] ChildSettings: 콩이 박스, '고치기', 접종 일정 보기를 묶음 안으로
+- [x] TextSize: 행·미리보기 크기(54, 섹션 이름 작은 회색)
+- [x] ChildSettings: 콩이 박스, '고치기', 접종 일정 보기를 묶음 안으로(54)
 - [ ] ChildAdd: 안내 상자 콩이·문구, 버튼 위치
 - [ ] Storage: '/ 5GB 사용' 굵기 (가족 플랜 카드는 결제와 같이)
 - [ ] Account: 제공자 아이콘·부제, 로그아웃·탈퇴하기 한 묶음 목록 행

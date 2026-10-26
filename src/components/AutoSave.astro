@@ -1,0 +1,12 @@
+---
+// 고르면 바로 적용(디자인): data-autosave 폼의 칸이 바뀌면 바로 보낸다(form 속성으로 폼 밖에 둔 칸 포함).
+// 스크립트가 없으면 저장 버튼(data-autosave-hide)으로
+---
+
+<script>
+  document.querySelectorAll<HTMLElement>('form[data-autosave] [data-autosave-hide]').forEach((b) => (b.hidden = true));
+  document.addEventListener('change', (e) => {
+    const form = (e.target as HTMLInputElement).form;
+    if (form?.hasAttribute('data-autosave')) form.requestSubmit();
+  });
+</script>
