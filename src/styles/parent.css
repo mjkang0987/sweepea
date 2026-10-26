@@ -493,9 +493,21 @@
   min-height: var(--target-min);
   display: flex;
   align-items: center;
+  gap: 0.25rem;
   color: var(--pea-ink);
   font-weight: 600;
   text-decoration: none;
+}
+/* 뒤로 가기는 ‹ + 글자(글자만 있으면 누르는 곳으로 안 보인다, 사용자 2026-10-27). 취소 링크는 빼고 */
+.sp-p__back:not(.sp-p__back--cancel)::before {
+  content: '';
+  flex: none;
+  width: 0.55em;
+  height: 0.55em;
+  margin: 0 0.1em 0 0.25em;
+  border-left: 2.4px solid currentColor;
+  border-bottom: 2.4px solid currentColor;
+  transform: rotate(45deg);
 }
 .sp-p__section {
   display: flex;
