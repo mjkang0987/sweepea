@@ -66,6 +66,20 @@ const poster = info.item.poster_key ? await signedMediaUrl(info.item.poster_key)
 const label = `${new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(info.item.taken_at))} ${isVideo ? '영상' : '사진'}`;
 const q = Astro.url.searchParams;
 const confirmDelete = q.get('confirm') === 'delete';
+// 스와이퍼: 앞뒤 20장씩 주소를 미리 서명해 넘긴다(한 시간 동안 같은 주소라 브라우저 캐시를 탄다). 지우기 확인 중엔 넘기지 않는다
+// shortcut: 앞뒤 20장 밖은 끝에서 화살표 링크로 페이지를 새로 연다
+const slides =
+  at < 0 || confirmDelete
+    ? []
+    : await Promise.all(
+        list.slice(Math.max(0, at - 20), at + 21).map(async (m) => ({
+          id: m.id,
+          video: m.kind === 'video',
+          src: await signedMediaUrl(m.view_key),
+          poster: m.poster_key ? await signedMediaUrl(m.poster_key) : undefined,
+          label: `${new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(m.taken_at))} ${m.kind === 'video' ? '영상' : '사진'}`,
+        })),
+      );
 const done = q.get('done');
 const doneText: Record<string, string> = { saved: '저장했어요.', error: '처리하지 못했어요. 다시 눌러 주세요.' };
 ---
@@ -76,29 +90,32 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
   </nav>
   <h1 class="sp-p__title">사진 정보</h1>
   {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} role={done === 'error' ? 'alert' : undefined} tabindex="-1" autofocus>{doneText[done]}</p>}
-  <figure class="sp-p__field">
-    <div class="sp-p__stage" data-stage>
+  <div class="sp-p__field">
+    <div class="sp-p__stage" data-stage data-slides={slides.length > 1 ? JSON.stringify({ k: kq, before: list[Math.max(0, at - 20) - 1]?.id, after: list[at + 21]?.id, slides }) : undefined}>
       {isVideo ? <video class="sp-p__photo" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} /> : <img class="sp-p__photo" src={src} alt={label} draggable="false" />}
-      {prev && (
-        <a class="sp-p__arrow sp-p__arrow--prev" href={`/photo/${prev.id}${kq}`} rel="prev" aria-label={`이전 ${prev.kind === 'video' ? '영상' : '사진'}`}>
+      {(prev || slides.length > 1) && (
+        <a class="sp-p__arrow sp-p__arrow--prev" href={`/photo/${prev?.id ?? id}${kq}`} rel="prev" hidden={!prev} aria-label="이전">
           <svg class="sp-p__arrow-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" /></svg>
         </a>
       )}
-      {next && (
-        <a class="sp-p__arrow sp-p__arrow--next" href={`/photo/${next.id}${kq}`} rel="next" aria-label={`다음 ${next.kind === 'video' ? '영상' : '사진'}`}>
+      {(next || slides.length > 1) && (
+        <a class="sp-p__arrow sp-p__arrow--next" href={`/photo/${next?.id ?? id}${kq}`} rel="next" hidden={!next} aria-label="다음">
           <svg class="sp-p__arrow-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
         </a>
       )}
     </div>
-    {
-      info.latest && (
-        <figcaption class="sp-p__card sp-p__say">
-          <span class="sp-p__say-who"><span class="sp-vh">최근 한마디, </span>{info.latest.name}</span>
-          {info.latest.body}
-        </figcaption>
-      )
-    }
-  </figure>
+    <div data-swap="say">
+      {
+        info.latest && (
+          <p class="sp-p__card sp-p__say">
+            <span class="sp-p__say-who"><span class="sp-vh">최근 한마디, </span>{info.latest.name}</span>
+            {info.latest.body}
+          </p>
+        )
+      }
+    </div>
+  </div>
+  <div data-swap="info">
 
   {
     confirmDelete ? (
@@ -112,7 +129,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
       </section>
     ) : (
       <>
-        <form class="sp-p__form" method="post">
+        <form class="sp-p__form" method="post" action={`/photo/${id}${kq}`}>
           {error && <p class="sp-p__error" role="alert" id="p-err">{error.text}</p>}
           <div class="sp-p__field">
             <label class="sp-p__label" for="date">찍은 날</label>
@@ -151,27 +168,92 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
       </>
     )
   }
+  </div>
 </Parent>
 
 <script>
-  // 옆으로 밀기: 가로로 60px 넘게(세로보다 크게) 밀면 ‹ › 링크로. 스크립트가 없어도 화살표로 넘긴다
+  // 진짜 스와이퍼: 손가락을 따라 옆 사진이 움직이고(CSS 스크롤 스냅), 멈추면 주소를 바꾸고 아래 정보 칸만 새로 받아 바꾼다.
+  // 스크립트가 없으면 사진 한 장 + ‹ › 링크로 페이지를 넘긴다
+  type Slide = { id: string; video: boolean; src: string; poster?: string; label: string };
   const stage = document.querySelector<HTMLElement>('[data-stage]');
-  if (stage) {
-    let x0: number | null = null;
-    let y0 = 0;
-    stage.addEventListener('pointerdown', (e) => {
-      x0 = e.isPrimary && !(e.target as Element).closest('a, video') ? e.clientX : null;
-      y0 = e.clientY;
+  const data = stage?.dataset.slides ? (JSON.parse(stage.dataset.slides) as { k: string; before?: string; after?: string; slides: Slide[] }) : null;
+  if (stage && data) {
+    const here = location.pathname.split('/').pop();
+    let at = data.slides.findIndex((x) => x.id === here);
+    const prev = stage.querySelector<HTMLAnchorElement>('a[rel="prev"]');
+    const next = stage.querySelector<HTMLAnchorElement>('a[rel="next"]');
+    const track = document.createElement('ul');
+    track.className = 'sp-p__track';
+    track.setAttribute('aria-label', '사진 넘겨보기');
+    track.tabIndex = 0;
+    data.slides.forEach((x, i) => {
+      const li = document.createElement('li');
+      li.className = 'sp-p__slide';
+      const near = Math.abs(i - at) <= 1;
+      if (x.video) {
+        const v = Object.assign(document.createElement('video'), { src: x.src, controls: true, playsInline: true, preload: near ? 'metadata' : 'none' });
+        if (x.poster) v.poster = x.poster;
+        v.className = 'sp-p__photo';
+        v.setAttribute('aria-label', x.label);
+        li.appendChild(v);
+      } else {
+        const img = Object.assign(document.createElement('img'), { src: x.src, alt: x.label, draggable: false, decoding: 'async', loading: near ? 'eager' : 'lazy' });
+        img.className = 'sp-p__photo';
+        li.appendChild(img);
+      }
+      track.appendChild(li);
     });
-    stage.addEventListener('pointerup', (e) => {
-      if (x0 === null) return;
-      const dx = e.clientX - x0;
-      const dy = e.clientY - y0;
-      x0 = null;
-      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-      const link = stage.querySelector<HTMLAnchorElement>(dx < 0 ? 'a[rel="next"]' : 'a[rel="prev"]');
-      if (link) location.href = link.href;
+    stage.querySelector('.sp-p__photo')?.replaceWith(track);
+    track.scrollLeft = at * track.clientWidth;
+    let load = 0;
+    const settle = async () => {
+      const i = Math.round(track.scrollLeft / track.clientWidth);
+      if (i === at || !data.slides[i]) return;
+      at = i;
+      const id = data.slides[i].id;
+      track.querySelectorAll('video').forEach((v) => v.pause());
+      const url = `/photo/${id}${data.k}`;
+      history.replaceState(null, '', url);
+      // 창 끝에서는 화살표가 창 밖 사진 페이지 링크로 남는다
+      const p = data.slides[i - 1]?.id ?? (i === 0 ? data.before : undefined);
+      const n = data.slides[i + 1]?.id ?? data.after;
+      if (prev) [prev.hidden, prev.href] = [!p, `/photo/${p}${data.k}`];
+      if (next) [next.hidden, next.href] = [!n || (i < data.slides.length - 1 ? false : !data.after), `/photo/${n}${data.k}`];
+      document.querySelector('.sp-p__toast')?.remove();
+      // 아래 날짜·아이·그룹·한마디는 그 사진 화면을 받아 그 칸만 바꾼다. 늦게 온 응답은 버린다
+      const mine = ++load;
+      const info = document.querySelector<HTMLElement>('[data-swap="info"]');
+      info?.setAttribute('aria-busy', 'true');
+      try {
+        const r = await fetch(url, { credentials: 'same-origin' });
+        if (!r.ok || r.redirected) throw new Error(String(r.status));
+        const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+        if (mine !== load) return;
+        for (const k of ['say', 'info']) {
+          const to = doc.querySelector(`[data-swap="${k}"]`);
+          if (to) document.querySelector(`[data-swap="${k}"]`)?.replaceWith(to);
+        }
+      } catch {
+        if (mine === load) location.href = url;
+      }
+    };
+    let t: ReturnType<typeof setTimeout> | undefined;
+    track.addEventListener('scroll', () => {
+      clearTimeout(t);
+      t = setTimeout(settle, 120);
     });
-    stage.addEventListener('pointercancel', () => (x0 = null));
+    const go = (d: number) => (e: Event) => {
+      const i = at + d;
+      if (!data.slides[i]) return; // 창 끝: 링크대로 페이지를 연다
+      e.preventDefault();
+      track.scrollTo({ left: i * track.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    };
+    prev?.addEventListener('click', go(-1));
+    next?.addEventListener('click', go(1));
+    track.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') go(-1)(e);
+      if (e.key === 'ArrowRight') go(1)(e);
+    });
+    addEventListener('resize', () => (track.scrollLeft = at * track.clientWidth));
   }
 </script>
