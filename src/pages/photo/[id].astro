@@ -73,12 +73,12 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
     <h1 class="sp-p__nav-title">사진 정보 수정</h1>
   </div>
   {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} role={done === 'error' ? 'alert' : undefined} tabindex="-1" autofocus>{doneText[done]}</p>}
-  <div class="sp-p__preview">
-    {isVideo ? <video class="sp-p__preview-media" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} /> : <img class="sp-p__preview-media" src={src} alt={label} />}
+  <div class="sp-p__thumbbox">
+    {isVideo ? <video class="sp-p__thumbbox-media" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} /> : <img class="sp-p__thumbbox-media" src={src} alt={label} />}
     {
       info.latest && (
-        <p class="sp-p__preview-say">
-          <strong class="sp-p__preview-who"><span class="sp-vh">최근 한마디, </span>{info.latest.name}</strong>
+        <p class="sp-p__thumbbox-say">
+          <strong class="sp-p__thumbbox-who"><span class="sp-vh">최근 한마디, </span>{info.latest.name}</strong>
           {info.latest.body}
         </p>
       )
