@@ -23,7 +23,7 @@ select public.sp_create_family('mom', '지우', '하린', '2025-09-17', '0917', 
 select public.sp_add_group('외가', '1234', '외가 비밀번호') as gma \gset
 select public.sp_add_group('친가', '5678') as gpa \gset
 select pg_temp.ok((select groups_enabled from public.families) , '그룹 추가하면 그룹 켜짐');
-select pg_temp.ok(public.sp_parent_home() @> '{"role": "mom", "children": [{"name": "하린"}], "download_allowed": false, "photo_count": 0}', '부모 첫 화면 정보');
+select pg_temp.ok(public.sp_parent_home() @> '{"role": "mom", "children": [{"name": "하린"}], "download_allowed": false, "photo_count": 0, "waiting": 0}', '부모 첫 화면 정보');
 insert into public.members (family_id, group_id, display_name) values
   (:'fam', :'gma', '외할머니'), (:'fam', :'gma', '외할아버지'), (:'fam', :'gma', '하린 아빠'), (:'fam', :'gpa', '할머니');
 select id as m_gm from public.members where display_name = '외할머니' \gset
@@ -123,6 +123,8 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
 select pg_temp.ok((select status = 'pending' from public.devices where requested_name = '모르는사람'), '부모 화면에 승인 대기 기기와 들어가려던 이름이 보임');
+select pg_temp.ok((public.sp_parent_home() ->> 'waiting')::int = (select count(*) from public.devices where status = 'pending') + (select count(*) from public.members where status = 'pending' and pending_until > now()), '설정 탭 배지 수 = 승인 대기 휴대폰 + 기한 안 지난 신청');
+select pg_temp.ok((public.sp_parent_home() ->> 'waiting')::int >= 1, '승인 대기 휴대폰이 배지에 셈');
 select pg_temp.ok(not exists (select 1 from public.members where display_name = '모르는사람'), '틀린 시도로는 구성원이 생기지 않음(이름 선점 방지)');
 update public.devices set status = 'revoked' where requested_name = '모르는사람';
 reset role;
