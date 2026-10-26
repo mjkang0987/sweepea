@@ -575,6 +575,15 @@
 - 영향받는 파일: `public/kongi.svg`(새), `src/components/Notice.astro`, `src/pages/home.astro`, `src/pages/start.astro`, `src/pages/album/index.astro`, `src/pages/login/index.astro`, `plan.md`
 - 확인 필요: 콩이 나이별 7단계 그림은 아직 3단계 하나로 씀
 
+### 41. feature/kakao-login — 부모 카카오 로그인 연결 (진행 중)
+
+- 요구사항(사용자 2026-10-26 "그럼 카카오"): 배포된 사이트에서 부모가 카카오로 로그인
+- 지우님이 할 일: 카카오 개발자 앱 만들기(스위피) → REST API 키·Client Secret → 카카오 로그인 켜기, Redirect URI `https://aemzbelwyyweugxuqgoh.supabase.co/auth/v1/callback`, 동의항목 닉네임(필수 아님 최소) → Supabase Kakao 켜기 + 키 두 개 + "Allow users without an email" → Cloudflare 변수 `PARENT_PROVIDERS=kakao`
+- 구현 방식: 코드는 이미 있음(PKCE, `/login/kakao` → Supabase → `/auth/callback`). 이메일은 받지 않음(비즈 앱 필요, 쓸 데 없음). 카카오가 이메일 범위 때문에 거절하면 authorize 주소에 범위를 직접 지정
+- 영향받는 파일: 필요하면 `src/lib/backend/supabase.ts`(parentAuthorizeUrl), `plan.md`
+- 예상 결과: 지우님 휴대폰으로 배포 주소에서 카카오 로그인 → 처음 설정 → 앨범
+- 확인 필요: 도메인(sweepea.co.kr)은 실제 가족에게 링크 보내기 전에 등록·연결(링크가 주소에 묶이고, 주소가 바뀌면 가족 기기가 다시 들어와야 함). .co.kr은 국내 등록 업체에서 사고 네임서버만 Cloudflare로
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
