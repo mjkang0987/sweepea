@@ -545,6 +545,10 @@
   5. 배포 뒤 확인: 첫 화면·로그인 화면·가족 링크 화면 응답, 사진 전달 경로, 보안 헤더
   6. Supabase Auth 사이트 주소·리다이렉트에 배포 주소 추가(카카오 연결 때 필요)
 - 배포 방법: 지우님이 Cloudflare API 토큰(Workers 스크립트·R2 편집 권한)을 만들어 주면 여기서 `wrangler deploy`. 토큰은 배포 끝나면 지우님이 삭제
+- 진행(2026-10-26): 계정 `Takeaseat.cs@gmail.com's Account`(workers.dev 이름 takeaseat-cs, 기존 Worker tas-proxy 있음). R2 켬(지우님, 무료 구간), 버킷 `sweepea-media`(apac) 만듦, 배포 → **https://sweepea.takeaseat-cs.workers.dev** (매일 18:17 UTC 예약 포함). 시크릿 SUPABASE_URL·SUPABASE_ANON_KEY·MEDIA_URL_SECRET(새로 만듦, 여기 안 남김) 넣음. SITE_ORIGIN은 비움(요청 주소로 링크 만듦, 도메인 연결 때 넣기)
+- 배포 확인: 첫 화면 200, 로그인 200("준비되지 않았어요"), /home → /start, 없는 가족 링크 → 안내 화면, 정적 파일 200
+- 남은 것(지우님): 운영용 secret 키를 Cloudflare에 직접(SUPABASE_SERVICE_ROLE_KEY), Supabase 사이트 주소·리다이렉트, 토큰 삭제
+- 확인 필요: 화면 응답에 보안 헤더(X-Frame-Options/CSP frame-ancestors·Referrer-Policy 등)가 사진 전달(/m)에만 있음. 가족 링크 주소(/i/코드)가 Referer로 새지 않게 다음 이슈에서 공통 헤더 추가
 - 영향받는 파일: `wrangler.jsonc`(필요하면), `index.md`, `plan.md`
 - 확인 필요: Cloudflare 계정·요금제(무료면 요청당 외부 호출 50개 → 정리 작업이 나눠서 돎), sweepea.co.kr 등록·DNS 위치
 
