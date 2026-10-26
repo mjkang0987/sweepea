@@ -1165,3 +1165,163 @@
   position: relative;
   max-height: none;
 }
+
+/* 모아 보기 → 골라서 저장하기 */
+.sp-a__save {
+  align-self: flex-start;
+  min-height: var(--target-senior);
+  padding: 0 var(--space-5) 0 var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--label);
+  font-size: var(--senior-body-size);
+  font-weight: 600;
+  text-decoration: none;
+}
+.sp-a__save-icon {
+  fill: none;
+  stroke: var(--pea-ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sp-s__bar {
+  min-height: var(--target-senior);
+  display: flex;
+  align-items: center;
+}
+.sp-s__back {
+  min-height: var(--target-senior);
+  display: flex;
+  align-items: center;
+  color: var(--pea-ink);
+  font-size: var(--senior-body-size);
+  font-weight: 600;
+  text-decoration: none;
+}
+.sp-s__form,
+.sp-s__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-s__pickset {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.sp-s__pick {
+  position: relative;
+  display: block;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--fill);
+  cursor: pointer;
+}
+/* 체크박스는 화면 읽기·키보드용으로 남기고 모양은 오른쪽 위 동그라미로 */
+.sp-s__check {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.sp-s__mark {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 2.25rem;
+  height: 2.25rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.sp-s__mark-icon {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+.sp-s__pick::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 4px var(--pea);
+  opacity: 0;
+  pointer-events: none;
+}
+.sp-s__pick:has(.sp-s__check:checked)::after {
+  opacity: 1;
+}
+.sp-s__pick:has(.sp-s__check:checked) .sp-s__mark {
+  background: var(--pea);
+}
+.sp-s__pick:has(.sp-s__check:checked) .sp-s__mark-icon {
+  opacity: 1;
+}
+.sp-s__pick:has(.sp-s__check:focus-visible) {
+  outline: 3px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+.sp-s__space {
+  height: calc(var(--target-senior) + var(--space-8));
+}
+.sp-s__go {
+  position: fixed;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--space-3) var(--space-5) max(var(--space-5), env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, var(--bg) 40%);
+}
+.sp-s__go-btn {
+  max-width: 32rem;
+  margin: 0 auto;
+}
+.sp-s__go-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.sp-s__list {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.sp-s__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sp-s__row-img {
+  flex: none;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+.sp-s__row-label {
+  flex: 1;
+  font-size: var(--senior-body-size);
+}
+.sp-s__row-btn {
+  width: auto;
+  flex: none;
+}
+@media (forced-colors: active) {
+  .sp-s__pick:has(.sp-s__check:checked) {
+    outline: 4px solid Highlight;
+  }
+}
