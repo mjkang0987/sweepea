@@ -509,6 +509,15 @@
   font-weight: 700;
   color: var(--label-2);
 }
+/* 섹션 제목 자체가 이동 링크(디자인: '가족 그룹 ›') */
+.sp-p__section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 2.75rem;
+  color: inherit;
+  text-decoration: none;
+}
 .sp-p__list {
   list-style: none;
   margin: 0;
