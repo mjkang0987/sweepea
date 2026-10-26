@@ -111,8 +111,7 @@
   font-size: var(--body-size);
 }
 .sp-p__input--pin {
-  text-align: center;
-  letter-spacing: 0.5em;
+  letter-spacing: 0.3em;
   font-size: var(--title-2-size);
 }
 .sp-p__choices {
