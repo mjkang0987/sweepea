@@ -30,7 +30,7 @@
 | --- | --- |
 | 웹 | Astro 7 서버 렌더링(`output: 'server'`), 필요한 곳만 바닐라 JS |
 | 배포 | Cloudflare Workers (`@astrojs/cloudflare`, `wrangler.jsonc`) |
-| 백엔드 | Supabase (Postgres·Auth), 사진은 Cloudflare R2(바인딩 `MEDIA`, 버킷 `sweepea-media`). 실제 프로젝트는 아직 없음 |
+| 백엔드 | Supabase (Postgres·Auth), 사진은 Cloudflare R2(바인딩 `MEDIA`, 버킷 `sweepea-media`). 실제 프로젝트 `sweepea`(서울, 무료 조직, 마이그레이션 13개 적용). 실제로 개발하려면 `cp .dev.vars.supabase .dev.vars`(git 제외) |
 | 도메인 | sweepea.co.kr (가비아 등록, DNS는 Cloudflare) |
 | Node | 24 (`.nvmrc`). Astro 7은 22.23.4 이상 필요 |
 
