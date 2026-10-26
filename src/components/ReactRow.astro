@@ -15,7 +15,7 @@ interface Props {
   /** 크게 보기는 시안대로 제목을 숨김(화면 읽기엔 남김) */
   hideTitle?: boolean;
 }
-const { mediaId, back, action = `/album/${Astro.props.mediaId}`, reacts, idSuffix = '', hideTitle = false } = Astro.props;
+const { mediaId, back, action = `/album/${mediaId}`, reacts, idSuffix = '', hideTitle = false } = Astro.props;
 const r = reacts.get(mediaId);
 const titleId = `react-title${idSuffix}`;
 ---

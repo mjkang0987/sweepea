@@ -41,10 +41,9 @@ const saveName = `sweepea-${m.taken_at.slice(0, 10)}.${m.kind === 'video' ? 'mp4
 
 <Family title={`${label} · ${i + 1} / ${items.length}`} wide>
   <Fragment set:html={EMOJI_SPRITE} />
-  {/* 시안엔 제목 줄이 없어 화면에선 숨기고 화면 읽기에만 */}
-  <h1 class="sp-vh" id="v-title">{label}</h1>
   <Viewer
     m={m}
+    label={label}
     src={src}
     poster={poster}
     pos={i + 1}

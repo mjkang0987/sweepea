@@ -202,7 +202,7 @@ for (const m of items) {
             {mo.cells.map((c) => (
               <li class="sp-p__cell">
                 <a class="sp-p__cell-link" href={`/view/${c.id}${picked ? `?k=${encodeURIComponent(picked.id)}` : ''}`}>
-                  <img class="sp-p__cell-img" src={c.src} alt={`${c.day} ${c.video ? '영상' : '사진'} 정보`} loading="lazy" decoding="async" />
+                  <img class="sp-p__cell-img" src={c.src} alt={`${c.day} ${c.video ? '영상' : '사진'}`} loading="lazy" decoding="async" />
                 </a>
               </li>
             ))}
