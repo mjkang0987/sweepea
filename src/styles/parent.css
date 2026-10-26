@@ -1368,3 +1368,12 @@
     backdrop-filter: none;
   }
 }
+
+/* 설정 맨 아래 버전: 배포가 올라갔는지 눈으로 확인 */
+.sp-p__version {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  color: var(--label-2);
+}
