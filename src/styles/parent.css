@@ -1388,3 +1388,48 @@
   text-align: left;
 }
 
+
+/* 사진 정보: 이전·다음 화살표(사진 위), 옆으로 밀기 */
+.sp-p__stage {
+  position: relative;
+  touch-action: pan-y;
+}
+.sp-p__arrow {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  transform: translateY(-50%);
+}
+.sp-p__arrow--prev {
+  left: var(--space-2);
+}
+.sp-p__arrow--next {
+  right: var(--space-2);
+}
+.sp-p__arrow:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+.sp-p__arrow-icon {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media (forced-colors: active) {
+  .sp-p__arrow {
+    border: 1px solid ButtonText;
+  }
+  .sp-p__arrow-icon {
+    stroke: ButtonText;
+  }
+}
