@@ -1455,3 +1455,30 @@
     backdrop-filter: none;
   }
 }
+
+/* 크게 보기 스와이퍼(사진): 손가락을 따라 옆 사진이 움직이고 한 장씩 멈춘다 */
+.sp-v__arrow[hidden] {
+  display: none;
+}
+.sp-v__track {
+  display: flex;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  /* .sp-v는 가로 밀기를 막아 둔다(pan-y): 트랙 안에선 가로로 */
+  touch-action: pan-x pinch-zoom;
+}
+.sp-v__track::-webkit-scrollbar {
+  display: none;
+}
+.sp-v__slide {
+  flex: 0 0 100%;
+  height: 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}

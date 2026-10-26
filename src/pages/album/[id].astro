@@ -4,7 +4,7 @@
 import Family from '../../layouts/Family.astro';
 import Viewer from '../../components/Viewer.astro';
 import { EMOJI_SPRITE } from '../../lib/emoji';
-import { albumHref, dayLabel, handleReactPost, loadAlbum, loadReacts } from '../../lib/album';
+import { albumHref, dayLabel, handleReactPost, loadAlbum, loadReacts, slideWindow } from '../../lib/album';
 import { UUID } from '../../lib/media';
 import { signedMediaUrl } from '../../lib/signed';
 
@@ -30,6 +30,7 @@ const src = await signedMediaUrl(m.view_key);
 const poster = m.poster_key ? await signedMediaUrl(m.poster_key) : undefined;
 const label = `${dayLabel(m.taken_at)} ${kid}${what}`;
 const reacts = await loadReacts(pass, [m.id]);
+const slides = await slideWindow(items, i, (x) => albumHref(q, `/album/${x.id}`), (x) => `${dayLabel(x.taken_at)} ${open.length > 1 && !q.f ? `${kids.get(x.family_id)} ` : ''}${x.kind === 'video' ? '영상' : '사진'}`);
 const here = albumHref(q, `/album/${m.id}`);
 const child = kids.get(m.family_id) ?? '아이';
 const say = Astro.url.searchParams.get('say');
@@ -57,5 +58,6 @@ const saveName = `sweepea-${m.taken_at.slice(0, 10)}.${m.kind === 'video' ? 'mp4
     here={here}
     child={child}
     say={sayHere}
+    slides={slides}
   />
 </Family>

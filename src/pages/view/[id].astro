@@ -3,7 +3,7 @@
 import Family from '../../layouts/Family.astro';
 import Viewer from '../../components/Viewer.astro';
 import { EMOJI_SPRITE } from '../../lib/emoji';
-import { applyReactPost, dayLabel, loadReacts } from '../../lib/album';
+import { applyReactPost, dayLabel, loadReacts, slideWindow } from '../../lib/album';
 import { getBackend } from '../../lib/backend';
 import { UUID } from '../../lib/media';
 import { callName } from '../../lib/ko';
@@ -47,6 +47,7 @@ const sayHere = Astro.url.searchParams.get('sm') === m.id || !Astro.url.searchPa
 const child = picked ? callName(picked.name) : kids.length === 1 ? callName(kids[0].name) : '아이';
 const saveName = `sweepea-${m.taken_at.slice(0, 10)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`;
 const view = (x: { id: string }) => `/view/${x.id}${kq}`;
+const slides = await slideWindow(items, i, view, (x) => `${dayLabel(x.taken_at)} ${x.kind === 'video' ? '영상' : '사진'}`);
 ---
 
 <Family title={`${label} · ${i + 1} / ${items.length}`} wide>
@@ -69,6 +70,7 @@ const view = (x: { id: string }) => `/view/${x.id}${kq}`;
     say={sayHere}
     sentText="보냈어요. 가족도 볼 수 있어요."
     toast={Astro.url.searchParams.get('done') === 'saved' ? '사진 정보를 저장했어요.' : undefined}
+    slides={slides}
   >
     <div class="sp-v__float sp-v__hide">
       {

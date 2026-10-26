@@ -4,6 +4,7 @@ import { BackendError, getBackend, REACTION_KINDS, type MediaItem, type MeFamily
 import { currentPass } from './pass';
 import { isOpen } from './families';
 import { callName } from './ko';
+import { signedMediaUrl } from './signed';
 
 export const ZOOMS = [1, 2, 3, 5] as const;
 export type Zoom = (typeof ZOOMS)[number];
@@ -128,4 +129,37 @@ export async function handleReactPost(request: Request, mediaId: string, cookies
   if (!pass) return '/';
   const b = getBackend();
   return applyReactPost(request, mediaId, { react: (id, k, on) => b.react(pass, id, k, on), comment: (id, t) => b.comment(pass, id, t) }, BACK, fallback);
+}
+
+/** 크게 보기 스와이퍼에 넘길 앞뒤 사진(주소는 미리 서명: 한 시간 동안 같은 주소라 브라우저 캐시를 탄다) */
+export interface Slide {
+  id: string;
+  href: string;
+  src: string;
+  poster?: string;
+  video: boolean;
+  label: string;
+}
+// shortcut: 앞뒤 20장까지만 손가락으로 넘김, 그 밖은 끝에서 ‹ › 링크로 페이지를 새로 연다
+export interface SlideWindow {
+  slides: Slide[];
+  /** 창 바로 밖 앞뒤 사진 주소(창 끝에서 ‹ ›가 이 페이지를 연다) */
+  before?: string;
+  after?: string;
+}
+export async function slideWindow(items: MediaItem[], i: number, href: (m: MediaItem) => string, label: (m: MediaItem) => string): Promise<SlideWindow> {
+  const from = Math.max(0, i - 20);
+  const slides = await Promise.all(
+    items.slice(from, i + 21).map(async (m) => ({
+      id: m.id,
+      href: href(m),
+      src: await signedMediaUrl(m.view_key),
+      poster: m.poster_key ? await signedMediaUrl(m.poster_key) : undefined,
+      video: m.kind === 'video',
+      label: label(m),
+    })),
+  );
+  const b = items[from - 1];
+  const a = items[i + 21];
+  return { slides, before: b && href(b), after: a && href(a) };
 }

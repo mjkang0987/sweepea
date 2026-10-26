@@ -4,7 +4,7 @@
 import HeartToggle from './HeartToggle.astro';
 import ReactRow from './ReactRow.astro';
 import SayForm from './SayForm.astro';
-import type { Reacts } from '../lib/album';
+import type { Reacts, SlideWindow } from '../lib/album';
 import { dayLabel } from '../lib/album';
 import type { MediaItem } from '../lib/backend';
 
@@ -30,15 +30,17 @@ interface Props {
   sentText?: string;
   /** 완료 안내(몇 초 뒤 사라짐), 예: 사진 정보 저장 뒤 */
   toast?: string;
+  /** 앞뒤 사진(사진일 때 손가락으로 넘기는 스와이퍼). 영상이면 넘길 때마다 페이지를 연다 */
+  slides?: SlideWindow;
 }
-const { m, label, toast, src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
+const { m, label, toast, slides, src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
 const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 ---
 
 {/* 시안엔 제목 줄이 없어 화면에선 숨기고 화면 읽기에만 */}
 <h1 class="sp-vh" id="v-title">{label}</h1>
-<div class="sp-v" data-v>
+<div class="sp-v" data-v data-slides={m.kind === 'photo' && slides && slides.slides.length > 1 ? JSON.stringify(slides) : undefined} data-id={m.id}>
   {toast && <p class="sp-v__toast" role="status">{toast}</p>}
   <figure class="sp-v__stage">
     {
@@ -55,13 +57,13 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     <p class="sp-v__pos">{pos} / {total}</p>
     {save ? <a class="sp-v__link" href={save.href} download={save.name}>저장<span class="sp-vh"> ({save.label})</span></a> : <span class="sp-v__spacer"></span>}
   </nav>
-  {prev && (
-    <a class="sp-v__arrow sp-v__arrow--prev sp-v__hide" href={prev.href} rel="prev" aria-label={`이전 ${prev.video ? '영상' : '사진'}`}>
+  {(prev || next) && (
+    <a class="sp-v__arrow sp-v__arrow--prev sp-v__hide" href={prev?.href ?? here} rel="prev" hidden={!prev} aria-label={`이전 ${prev?.video ? '영상' : '사진'}`}>
       <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__line" d="M15 5l-7 7 7 7" /></svg>
     </a>
   )}
-  {next && (
-    <a class="sp-v__arrow sp-v__arrow--next sp-v__hide" href={next.href} rel="next" aria-label={`다음 ${next.video ? '영상' : '사진'}`}>
+  {(prev || next) && (
+    <a class="sp-v__arrow sp-v__arrow--next sp-v__hide" href={next?.href ?? here} rel="next" hidden={!next} aria-label={`다음 ${next?.video ? '영상' : '사진'}`}>
       <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__line" d="M9 5l7 7-7 7" /></svg>
     </a>
   )}
@@ -165,8 +167,94 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     mute.addEventListener('click', () => (video.muted = !video.muted));
     video.addEventListener('volumechange', () => mute.setAttribute('aria-pressed', String(video.muted)));
   }
-  // 옆으로 밀기: 가로로 60px 넘게(세로보다 크게) 밀면 ‹ › 링크로. 막대·버튼·입력칸·아래 판에서 시작한 건 제외
-  if (v) {
+  // 스와이퍼(사진일 때): 손가락을 따라 옆 사진이 움직이고(CSS 스크롤 스냅) 한 장씩 멈춘다. 멈추면 주소만 바꾸고
+  // 그 사진 화면을 받아 위 메뉴·아래 판(반응·한마디)만 갈아 끼운다. 영상에 멈추면 그 화면을 새로 연다(재생 막대 때문)
+  type Slide = { id: string; href: string; src: string; poster?: string; video: boolean; label: string };
+  const win: { slides: Slide[]; before?: string; after?: string } | null = v?.dataset.slides ? JSON.parse(v.dataset.slides) : null;
+  const slides = win?.slides ?? null;
+  const stage = v?.querySelector<HTMLElement>('.sp-v__stage');
+  if (v && stage && win && slides) {
+    let at = slides.findIndex((x) => x.id === v.dataset.id);
+    const prev = v.querySelector<HTMLAnchorElement>('a[rel="prev"]');
+    const next = v.querySelector<HTMLAnchorElement>('a[rel="next"]');
+    const track = document.createElement('ul');
+    track.className = 'sp-v__track';
+    track.setAttribute('aria-label', '사진 넘겨보기');
+    slides.forEach((x, i) => {
+      const li = document.createElement('li');
+      li.className = 'sp-v__slide';
+      const img = document.createElement('img');
+      img.className = 'sp-v__media';
+      // 영상은 대표 사진으로 보여 주고, 멈추면 영상 화면을 연다
+      img.src = x.video ? (x.poster ?? '') : x.src;
+      img.alt = i === at ? '' : x.label;
+      img.draggable = false;
+      img.decoding = 'async';
+      img.loading = Math.abs(i - at) <= 1 ? 'eager' : 'lazy';
+      li.appendChild(img);
+      track.appendChild(li);
+    });
+    stage.replaceChildren(track);
+    track.scrollLeft = at * track.clientWidth;
+    v.dataset.swiper = '';
+    const arrows = (i: number) => {
+      // 창(앞뒤 20장) 끝에서는 창 바로 밖 사진 페이지로
+      const p = slides[i - 1]?.href ?? win.before;
+      const n = slides[i + 1]?.href ?? win.after;
+      if (prev) [prev.hidden, prev.href] = [!p, p ?? prev.href];
+      if (next) [next.hidden, next.href] = [!n, n ?? next.href];
+    };
+    let load = 0;
+    const settle = async () => {
+      const i = Math.round(track.scrollLeft / track.clientWidth);
+      if (i === at || !slides[i]) return;
+      at = i;
+      const x = slides[i];
+      if (x.video) return void location.replace(x.href);
+      history.replaceState(null, '', x.href);
+      v.dataset.id = x.id;
+      v.querySelector('.sp-v__toast')?.remove();
+      // 늦게 온 응답은 버린다. 받지 못하면 그 화면을 새로 연다
+      const mine = ++load;
+      try {
+        const r = await fetch(x.href, { credentials: 'same-origin' });
+        if (!r.ok || r.redirected) throw new Error(String(r.status));
+        const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+        if (mine !== load) return;
+        for (const sel of ['.sp-v__bar', '.sp-v__dock']) {
+          const from = doc.querySelector(sel);
+          const to = v.querySelector(sel);
+          if (from && to) to.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
+        }
+        const title = doc.getElementById('v-title')?.textContent;
+        const h = document.getElementById('v-title');
+        if (title && h) h.textContent = title;
+        document.title = doc.title;
+      } catch {
+        if (mine === load) location.replace(x.href);
+      }
+    };
+    let t: ReturnType<typeof setTimeout> | undefined;
+    track.addEventListener('scroll', () => {
+      arrows(Math.round(track.scrollLeft / track.clientWidth));
+      clearTimeout(t);
+      t = setTimeout(settle, 120);
+    });
+    track.addEventListener('scrollend', () => {
+      clearTimeout(t);
+      void settle();
+    });
+    const go = (d: number) => (e: Event) => {
+      if (!slides[at + d]) return; // 창 끝: 링크대로 페이지를 연다
+      e.preventDefault();
+      track.scrollTo({ left: (at + d) * track.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    };
+    prev?.addEventListener('click', go(-1));
+    next?.addEventListener('click', go(1));
+    addEventListener('resize', () => (track.scrollLeft = at * track.clientWidth));
+  }
+  // 옆으로 밀기(스와이퍼가 없을 때, 영상 화면): 가로로 60px 넘게(세로보다 크게) 밀면 ‹ › 링크로. 막대·버튼·입력칸·아래 판에서 시작한 건 제외
+  if (v && !slides) {
     let x0: number | null = null;
     let y0 = 0;
     v.addEventListener('pointerdown', (e) => {
