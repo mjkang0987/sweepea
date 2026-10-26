@@ -35,3 +35,14 @@ export function agoLabel(iso: string, nowMs: number): string {
   if (min < 24 * 60) return `${Math.floor(min / 60)}시간 전`;
   return seenLabel(iso, nowMs);
 }
+
+const NTH = ['첫', '두 번째', '세 번째', '네 번째', '다섯 번째', '여섯 번째', '일곱 번째', '여덟 번째', '아홉 번째', '열 번째'];
+
+/** 오늘이 백일·돌·생일이면 레이어 제목 뒷부분("태어난 지 100일이에요"), 아니면 null. 태어난 날이 1일째(서울 날짜)
+ * shortcut: 2월 29일생은 평년엔 생일 없음, 필요하면 2월 28일로 */
+export function milestone(birth: string, today: string): string | null {
+  if (Math.round((Date.parse(today) - Date.parse(birth)) / 86_400_000) + 1 === 100) return '태어난 지 100일이에요';
+  const years = Number(today.slice(0, 4)) - Number(birth.slice(0, 4));
+  if (years < 1 || today.slice(5) !== birth.slice(5)) return null;
+  return `${NTH[years - 1] ?? `${years}번째`} 생일이에요`;
+}
