@@ -43,9 +43,9 @@ const when = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', h
 const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id === gid && m.status === 'active');
 ---
 
-<Parent title="가족 · 설정" tab="settings">
+<Parent title="가족 · 설정" tab="settings" alerts={a.home.new_activity ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
-    <a class="sp-p__back" href="/settings"><span aria-hidden="true">‹ </span>설정</a>
+    <a class="sp-p__back" href="/settings">설정</a>
   </nav>
   <h1 class="sp-p__title">가족</h1>
   {/* 결과는 페이지가 열릴 때 바로 읽히게 초점을 옮긴다(JS 없이 autofocus) */}
@@ -129,7 +129,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
   <section class="sp-p__section" aria-labelledby="sec-groups">
     <div class="sp-p__group-head">
       <h2 class="sp-p__section-title" id="sec-groups">가족 그룹</h2>
-      <a class="sp-p__chip" href="/settings/family/groups">그룹 관리<span aria-hidden="true"> ›</span></a>
+      <a class="sp-p__chip" href="/settings/family/groups">그룹 관리<svg class="sp-p__icon-chev" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg></a>
     </div>
     <ul class="sp-p__list">
       {

@@ -448,6 +448,7 @@
   backdrop-filter: blur(20px);
 }
 .sp-p__tab {
+  position: relative;
   flex: 1;
   min-height: 3.5rem;
   display: flex;
@@ -462,6 +463,24 @@
 }
 .sp-p__tab[aria-current='page'] {
   color: var(--pea-ink);
+}
+/* 알림 탭의 새 반응 수 */
+.sp-p__tab-badge {
+  position: absolute;
+  top: 0.25rem;
+  left: calc(50% + 0.375rem);
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.3125rem;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--blossom);
+  color: var(--on-pea);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 /* 설정 */
@@ -516,10 +535,31 @@
   gap: var(--space-2);
   color: var(--label-2);
 }
+/* 오른쪽 꺾쇠(선 아이콘). 글자 ›를 같은 모양의 아이콘으로 그린다 */
 .sp-p__chev {
-  color: var(--label-2);
-  font-size: 1.25rem;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0;
+  background-color: var(--label-2);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 5l7 7-7 7' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 5l7 7-7 7' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+@media (forced-colors: active) {
+  .sp-p__chev,
+  .sp-p__cta .sp-p__chev {
+    background-color: CanvasText;
+  }
+}
+.sp-p__icon-chev {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .sp-p__badge {
   padding: 0 var(--space-2);
   border-radius: 999px;
@@ -544,7 +584,7 @@
   right: var(--space-4);
   top: 50%;
   transform: translateY(-50%);
-  color: var(--pea-deep);
+  background-color: var(--pea-deep);
 }
 .sp-p__cta-title {
   font-weight: 700;
@@ -938,10 +978,6 @@
 .sp-p__row--tall {
   padding-block: var(--space-3);
 }
-.sp-p__row-action {
-  color: var(--pea-ink);
-  font-weight: 600;
-}
 .sp-p__add {
   margin-top: var(--space-4);
 }
@@ -1052,14 +1088,47 @@
   min-width: 0;
   font-size: var(--subhead-size);
 }
-.sp-p__alert-action {
-  flex: none;
-  font-size: var(--subhead-size);
-  font-weight: 700;
+/* 앨범 위 아이 카드(콩이·월령·다음 접종). 누르면 접종·검진 일정 */
+.sp-p__kid {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0.875rem;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--label);
+  text-decoration: none;
 }
-/* 앨범 위 '최근 반응' 줄 */
-.sp-p__activity {
-  margin-bottom: var(--space-4);
+.sp-p__kid-kongi {
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  image-rendering: pixelated;
+}
+.sp-p__kid-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+}
+.sp-p__kid-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.375rem;
+}
+.sp-p__kid-name {
+  font-size: var(--headline-size);
+  line-height: var(--headline-line);
+}
+.sp-p__kid-next {
+  font-size: 0.875rem;
+  line-height: 1.1875rem;
+}
+.sp-p__kid .sp-p__icon-chev {
+  color: var(--label-2);
 }
 /* 접종·검진 줄(체크박스 + 이름 + 시기) */
 .sp-p__health {
@@ -1119,6 +1188,9 @@
     padding: 0 var(--space-4);
     gap: var(--space-2);
     font-size: var(--subhead-size);
+  }
+  .sp-p__tab-badge {
+    position: static;
   }
   /* 올리기: 왼쪽 사진, 오른쪽 아이·그룹·보내기 */
   .sp-p--wide .sp-p__form:not([hidden]) {

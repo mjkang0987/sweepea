@@ -48,9 +48,9 @@ const done = Astro.url.searchParams.get('done');
 const doneText: Record<string, string> = { saved: '저장했어요.', password: '비밀번호를 바꿨어요. 이미 들어온 휴대폰은 그대로 봐요.' };
 ---
 
-<Parent title={error ? `다시 확인해 주세요 · ${g.name}` : `${g.name} · 그룹`} tab="settings">
+<Parent title={error ? `다시 확인해 주세요 · ${g.name}` : `${g.name} · 그룹`} tab="settings" alerts={a.home.new_activity ?? 0}>
   <nav class="sp-p__bar" aria-label="뒤로">
-    <a class="sp-p__back" href="/settings/family/groups"><span aria-hidden="true">‹ </span>그룹</a>
+    <a class="sp-p__back" href="/settings/family/groups">그룹</a>
   </nav>
   <h1 class="sp-p__title">{g.name}</h1>
   {done && doneText[done] && <p class="sp-p__toast" tabindex="-1" autofocus>{doneText[done]}</p>}
@@ -75,7 +75,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
           <span class="sp-p__who-name">비밀번호</span>
           <span class="sp-p__hint">{g.password_hint ? `힌트 · ${g.password_hint}` : '힌트 없음'}</span>
         </span>
-        <span class="sp-p__row-action">바꾸기</span>
+        <span class="sp-p__chev" aria-hidden="true">›</span>
       </a>
     </li>
   </ul>
