@@ -1,7 +1,11 @@
 ---
 // 고르면 바로 적용(디자인): data-autosave 폼의 칸이 바뀌면 바로 보낸다(form 속성으로 폼 밖에 둔 칸 포함).
+// 스크립트가 있으면 페이지 이동 없이: 보내고 돌아온 화면의 내용·탭 배지만 갈아 끼우고 결과는 토스트(늘 있는 알림 칸으로 읽기).
 // 스크립트가 없으면 저장 버튼(data-autosave-hide)으로
 ---
+
+<p class="sp-vh" id="as-live" role="status"></p>
+<p class="sp-vh" id="as-urgent" role="alert"></p>
 
 <script>
   document.querySelectorAll<HTMLElement>('form[data-autosave] [data-autosave-hide]').forEach((b) => (b.hidden = true));
@@ -9,4 +13,114 @@
     const form = (e.target as HTMLInputElement).form;
     if (form?.hasAttribute('data-autosave')) form.requestSubmit();
   });
+  const root = document.querySelector<HTMLElement>('.sp-p');
+  const live = document.getElementById('as-live');
+  const urgent = document.getElementById('as-urgent');
+  if (root && live && urgent) {
+    const area: HTMLElement = root;
+    let queue = Promise.resolve();
+    let pending = 0;
+    // 뒤 요청을 기다리느라 그리지 않은 응답(뒤 요청이 실패하면 이걸 그린다)
+    let skipped = '';
+    // 같은 내용을 겹쳐 보내지 않게(글 칸에서 Enter: change와 기본 제출이 둘 다 일어남)
+    let lastSent = '';
+    const say = (t: Element | null) => {
+      if (!t) return;
+      t.removeAttribute('role');
+      // 오류 토스트·고칠 곳 안내는 바로 읽는 칸으로
+      const region = t.matches('.sp-toast--error, .sp-p__error') ? urgent : live;
+      region.textContent = '';
+      setTimeout(() => (region.textContent = t.textContent?.trim() ?? ''), 50);
+    };
+    const fail = () => {
+      area.querySelector('.sp-toast')?.remove();
+      const p = document.createElement('p');
+      p.className = 'sp-toast sp-toast--error';
+      p.innerHTML = '<span class="sp-toast__text">저장하지 못했어요. 다시 해 주세요.</span>';
+      area.insertBefore(p, area.firstChild); // prepend는 Worker 타입(HTMLRewriter)과 겹쳐 타입 검사가 막음
+      say(p);
+    };
+    // 지금 초점이 있는 칸을 새 화면에서 다시 찾을 열쇠(id, 아니면 이름+값, 스위치)
+    const focusKey = () => {
+      const el = document.activeElement as HTMLInputElement | null;
+      if (!el || el === document.body || !area.contains(el)) return '';
+      // 스위치는 값이 바뀌어 있을 수 있어 먼저
+      if (el.matches('.sp-p__switch')) return '.sp-p__switch';
+      if (el.id) return `#${CSS.escape(el.id)}`;
+      return el.name ? `[name="${CSS.escape(el.name)}"][value="${CSS.escape(el.value)}"]` : '';
+    };
+    const draw = (html: string) => {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const from = doc.querySelector('.sp-p');
+      if (!from) return location.reload();
+      const key = focusKey();
+      // 기다리는 동안 글 칸에 이어서 쓰고 있었으면 그 글과 커서를 새 칸에 옮긴다
+      const act = document.activeElement;
+      const typing = act instanceof HTMLInputElement && act.type === 'text' && act.id && area.contains(act) ? { id: act.id, v: act.value, at: act.selectionStart, to: act.selectionEnd } : null;
+      area.replaceChildren(...[...from.childNodes].filter((n) => !(n instanceof Element && (n.id === 'as-live' || n.id === 'as-urgent'))).map((n) => document.importNode(n, true)), live, urgent);
+      area.removeAttribute('aria-busy');
+      area.querySelectorAll<HTMLElement>('form[data-autosave] [data-autosave-hide]').forEach((b) => (b.hidden = true));
+      // ?done=을 떼어 새로 고침해도 안내가 다시 뜨지 않게
+      if (location.search) history.replaceState(history.state, '', location.pathname);
+      const tabs = doc.querySelector('.sp-p__tabs');
+      if (tabs) document.querySelector('.sp-p__tabs')?.replaceWith(document.importNode(tabs, true));
+      document.title = doc.title;
+      const t = typing && area.querySelector<HTMLInputElement>(`#${CSS.escape(typing.id)}`);
+      if (t && typing && t.value !== typing.v) {
+        t.value = typing.v;
+        t.setSelectionRange(typing.at, typing.to);
+      }
+      // 고칠 칸이 있으면 그 칸으로, 아니면 하던 칸으로
+      (area.querySelector<HTMLElement>('[aria-invalid="true"]') ?? (key ? area.querySelector<HTMLElement>(key) : null))?.focus({ preventScroll: true });
+      const err = area.querySelector('.sp-p__error[role="alert"]');
+      say(area.querySelector('.sp-toast') ?? err);
+    };
+    if (new URLSearchParams(location.search).has('done')) history.replaceState(history.state, '', location.pathname);
+    document.addEventListener('submit', (e) => {
+      const form = e.target as HTMLFormElement;
+      if (!form.hasAttribute('data-autosave') || !area.contains(form) || form.method !== 'post') return;
+      e.preventDefault();
+      const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+      const body = new FormData(form);
+      if (btn?.name) body.append(btn.name, btn.value);
+      const sig = form.action + '?' + new URLSearchParams(body as unknown as Record<string, string>).toString();
+      if (pending && sig === lastSent) return;
+      lastSent = sig;
+      // 스위치는 누르는 즉시 바꿔 둔다(응답이 서버 상태로 바로잡음)
+      if (btn?.matches('.sp-p__switch')) {
+        const on = btn.getAttribute('aria-checked') !== 'true';
+        btn.setAttribute('aria-checked', String(on));
+        btn.value = btn.value.replace(/:(on|off)$/, on ? ':off' : ':on');
+      }
+      live.textContent = '';
+      urgent.textContent = '';
+      area.setAttribute('aria-busy', 'true');
+      pending++;
+      queue = queue.then(async () => {
+        let html = '';
+        let url: URL;
+        try {
+          const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin' });
+          if (!r.ok) throw new Error(String(r.status));
+          url = new URL(r.url);
+          html = await r.text();
+        } catch {
+          if (--pending) return fail();
+          // 화면을 서버 상태로 되돌린다: 그리지 않은 성공 응답, 없으면 지금 화면을 다시 받아서
+          const back = skipped || (await fetch(location.pathname, { credentials: 'same-origin' }).then((r) => (r.ok && new URL(r.url).pathname === location.pathname ? r.text() : '')).catch(() => ''));
+          skipped = '';
+          if (back) draw(back);
+          else area.removeAttribute('aria-busy');
+          return fail();
+        }
+        // 로그인이 끝났거나 대상이 없어졌으면 그 화면으로
+        if (url.pathname !== location.pathname) return location.assign(url.href);
+        // 뒤에 바꾼 게 있으면 그리지 않는다(마지막 응답이 최신 화면)
+        if (--pending) return void (skipped = html);
+        skipped = '';
+        draw(html);
+      });
+      queue = queue.catch(() => location.reload());
+    });
+  }
 </script>

@@ -23,7 +23,7 @@ with sync_playwright() as p:
     pg.screenshot(path=D+'h-2.png',full_page=True)
     pg.locator('#sec-done ~ ul input[name=done]').first.uncheck(); pg.get_by_role('button',name='저장').click(); pg.wait_for_url('**done=saved**')
     check(pg.locator('#sec-done ~ ul input[name=done]').count()==1,'체크 풀면 완료에서 빠짐')
-    pg.goto(B+'/settings/children'); pg.get_by_label('앨범에 접종·검진 일정 보기').uncheck(); pg.wait_for_url('**done=health**')
+    pg.goto(B+'/settings/children'); pg.get_by_label('앨범에 접종·검진 일정 보기').uncheck(); pg.wait_for_function("document.getElementById('as-live')?.textContent.trim().length>0")
     pg.goto(B+'/home'); check(pg.locator('a[href^="/health/"]').count()==0,'끄면 앨범 위 줄 사라짐')
     b.close()
 print('ALL OK')

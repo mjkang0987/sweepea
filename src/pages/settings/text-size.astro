@@ -2,6 +2,7 @@
 // 가족 화면 글자 크기: 가족이 처음 들어올 때 크기. 가족이 자기 화면에서 고른 크기가 먼저다
 import Parent from '../../layouts/Parent.astro';
 import AutoSave from '../../components/AutoSave.astro';
+import Toast from '../../components/Toast.astro';
 import { BackendError, getBackend, type TextSizeMode } from '../../lib/backend';
 import { callName } from '../../lib/ko';
 import { loadParent } from '../../lib/parent';
@@ -40,7 +41,7 @@ const doneText: Record<string, string> = { saved: '저장했어요. 다음에 �
     <a class="sp-p__back" href="/settings">설정</a>
     <h1 class="sp-p__nav-title">가족 화면 글자 크기</h1>
   </div>
-  {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[done]}</p>}
+  {done && doneText[done] && <Toast text={doneText[done]} tone={done === 'error' ? 'error' : 'ok'} focus />}
   <form class="sp-p__form sp-p__form--fit sp-p__sizes" method="post" data-autosave>
     <fieldset class="sp-p__fieldset sp-p__field">
       <legend class="sp-p__section-title">처음 들어올 때 크기</legend>
