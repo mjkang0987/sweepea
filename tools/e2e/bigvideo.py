@@ -27,7 +27,7 @@ with sync_playwright() as p:
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=300000)
     parts=[s for s in seen if s==('PUT','multipart')]
     check(len(parts)==3,'130MB → 조각 3개로 보냄 (%d)'%len(parts))
-    check(any(m.startswith('올리는 중…') and '%' in m for m in msgs),'올리는 중 몇 퍼센트 보여 줌 '+str([m for m in msgs if '%' in m][:3]))
+    check(any(m.startswith('올리는 중… 1 / 2 · 영상 ') and m.endswith('%') for m in msgs),'큰 영상 나눠 올릴 땐 그 영상 퍼센트 '+str([m for m in msgs if '%' in m][:3]))
     check(pg.locator('.sp-p__cell-link').count()==2,'영상·사진 둘 다 앨범에')
     pg.goto(B+'/settings/storage'); txt=pg.locator('main').inner_text()
     check('130MB' in txt or '131MB' in txt,'용량에 영상 크기가 잡힘')
