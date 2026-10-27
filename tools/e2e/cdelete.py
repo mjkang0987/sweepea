@@ -14,11 +14,11 @@ with sync_playwright() as p:
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home**',timeout=60000)
     pg.locator('.sp-p__cell-link').first.click(); pg.wait_for_url('**/view/**'); vid=pg.url.split('/view/')[1].split('?')[0]
     pg.fill('#say-body','엄마 한마디'); pg.locator('#say').get_by_role('button',name='보내기').click(); pg.wait_for_function("!document.querySelector('.sp-v__more[aria-busy]')")
-    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_url('**#link')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
     code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
     gp=b.new_context(viewport={'width':390,'height':844}).new_page(); gp.goto(B+'/i/'+code)
     gp.fill('#who-name','외할아버지'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/password**'); gp.fill('#pw','0917'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/wait')
-    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 외할아버지').click(); pg.wait_for_url('**done=member-active**')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 외할아버지').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
     gp.goto(B+'/album/'+vid)
     for t in ['할아버지 첫째','할아버지 둘째']:
         gp.fill('#say-body',t); gp.locator('#say').get_by_role('button',name='보내기').click(); gp.wait_for_function("!document.querySelector('.sp-v__more[aria-busy]')")

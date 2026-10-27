@@ -5,10 +5,12 @@ interface Props {
   tone?: 'ok' | 'error';
   /** 글자 칸 id(시트 설명 연결용) */
   id?: string;
+  /** 페이지가 열릴 때 초점을 옮겨 바로 읽히게(스크립트 없는 폼 결과) */
+  focus?: boolean;
 }
-const { text, tone = 'ok', id } = Astro.props;
+const { text, tone = 'ok', id, focus } = Astro.props;
 ---
 
-<p class:list={['sp-toast', tone === 'error' && 'sp-toast--error']} role={tone === 'error' ? 'alert' : 'status'}>
+<p class:list={['sp-toast', tone === 'error' && 'sp-toast--error']} role={tone === 'error' ? 'alert' : 'status'} tabindex={focus ? -1 : undefined} autofocus={focus}>
   <span class="sp-toast__text" id={id}>{text}</span>
 </p>

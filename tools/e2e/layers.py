@@ -15,7 +15,7 @@ with sync_playwright() as p:
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     upload(pg)
     check(pg.locator('.sp-layer').count()==0,'신청 없으면 레이어 없음')
-    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_url('**#link')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
     code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
     def enter(name):
         x=b.new_context(viewport={'width':390,'height':844}); xp=x.new_page(); xp.goto(B+'/i/'+code)
@@ -33,7 +33,7 @@ with sync_playwright() as p:
     check(dl.count()==1 and '큰이모' in dl.inner_text() and '2명' in dl.inner_text(),'새 신청이 오면 다시(기다리는 사람 수)')
     pg.get_by_role('button',name='확인하기').click(); pg.wait_for_url('**/settings/family')
     check(True,'확인하기 → 가족 설정')
-    pg.get_by_role('button',name='승인 외할머니').click(); pg.wait_for_url('**done=member-active**')
+    pg.get_by_role('button',name='승인 외할머니').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
     # 가족: 승인 뒤 처음
     gp.goto(B+'/album'); dl=gp.get_by_role('dialog')
     check(dl.count()==1 and '엄마아빠가 확인했어요' in dl.inner_text(),'가족: 승인 완료 레이어')

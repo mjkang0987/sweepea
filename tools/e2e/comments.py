@@ -22,11 +22,11 @@ with sync_playwright() as p:
     line=pg.locator('.sp-v__talk')
     check('두 번째 한마디' in line.inner_text() and '엄마' in line.inner_text(),'엄빠: 한 줄에 최근 것')
     # 가족 들이기
-    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_url('**#link')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
     code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
     gp=b.new_context(viewport={'width':390,'height':844}).new_page(); gp.goto(B+'/i/'+code)
     gp.fill('#who-name','외할아버지'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/password**'); gp.fill('#pw','0917'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/wait')
-    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 외할아버지').click(); pg.wait_for_url('**done=member-active**')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 외할아버지').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
     gp.goto(B+'/album/'+vid)
     gp.fill('#say-body','아이고 우리 하린이 많이 컸네 정말 많이 컸어 언제 이렇게 컸니'); gp.locator('#say').get_by_role('button',name='보내기').click(); gp.wait_for_function("!document.querySelector('.sp-v__more[aria-busy]')")
     line=gp.locator('.sp-v__talk')
