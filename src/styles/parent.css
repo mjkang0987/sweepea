@@ -54,7 +54,8 @@
   margin: 0;
   color: var(--label-2);
 }
-.sp-p__lead {
+.sp-p__lead,
+.sp-p__note {
   font-size: var(--subhead-size);
   line-height: var(--subhead-line);
 }
@@ -380,6 +381,11 @@
   font-size: var(--title-2-size);
   line-height: var(--title-2-line);
   font-weight: 700;
+}
+/* 빈 상태 아래 버튼(디자인 SendSetupEmpty): 폭 가득 */
+.sp-p__empty-btn {
+  align-self: stretch;
+  margin-top: var(--space-2);
 }
 .sp-p__month {
   display: flex;
