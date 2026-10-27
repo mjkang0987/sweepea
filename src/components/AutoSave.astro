@@ -57,7 +57,14 @@
       // 기다리는 동안 글 칸에 이어서 쓰고 있었으면 그 글과 커서를 새 칸에 옮긴다
       const act = document.activeElement;
       const typing = act instanceof HTMLInputElement && act.type === 'text' && act.id && area.contains(act) ? { id: act.id, v: act.value, at: act.selectionStart, to: act.selectionEnd } : null;
-      area.replaceChildren(...[...from.childNodes].filter((n) => !(n instanceof Element && (n.id === 'as-live' || n.id === 'as-urgent'))).map((n) => document.importNode(n, true)), live, urgent);
+      // data-autosave-keep: 열려 있는 레이어는 건드리지 않는다(옮기면 모달이 풀림). 닫혀 있으면 새것으로
+      const kept = [...area.querySelectorAll<HTMLDialogElement>(':scope > dialog[data-autosave-keep][open]')];
+      const stay = new Set<Node>([live, urgent, ...kept]);
+      const skip = new Set(['as-live', 'as-urgent', ...kept.map((d) => d.id)]);
+      for (const n of [...area.childNodes]) if (!stay.has(n)) n.remove();
+      const frag = document.createDocumentFragment();
+      for (const n of [...from.childNodes]) if (!(n instanceof Element && skip.has(n.id))) frag.appendChild(document.importNode(n, true));
+      area.insertBefore(frag, area.firstChild);
       area.removeAttribute('aria-busy');
       area.querySelectorAll<HTMLElement>('form[data-autosave] [data-autosave-hide]').forEach((b) => (b.hidden = true));
       // ?done=을 떼어 새로 고침해도 안내가 다시 뜨지 않게
@@ -65,6 +72,8 @@
       const tabs = doc.querySelector('.sp-p__tabs');
       if (tabs) document.querySelector('.sp-p__tabs')?.replaceWith(document.importNode(tabs, true));
       document.title = doc.title;
+      // 화면이 그 자리에 붙인 것(그룹의 링크 카드 등)을 다시 붙일 수 있게 알린다(초점을 찾기 전에)
+      area.dispatchEvent(new Event('autosave:drawn'));
       const t = typing && area.querySelector<HTMLInputElement>(`#${CSS.escape(typing.id)}`);
       if (t && typing && t.value !== typing.v) {
         t.value = typing.v;

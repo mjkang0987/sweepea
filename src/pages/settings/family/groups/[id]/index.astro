@@ -1,5 +1,6 @@
 ---
-// 그룹 상세: 이름·새 사진 기본 포함, 비밀번호(힌트)·바꾸기, 주소 보내기, 구성원, 주소 다시 만들기
+// 그룹 상세: 이름·새 사진 기본 포함, 비밀번호(힌트)·바꾸기, 주소 보내기, 구성원, 주소 다시 만들기.
+// 스크립트가 있으면 주소 보내기·다시 만들기도 이 화면에서(링크 카드를 이 화면에, 다시 만들기는 확인 레이어. 디자인 GroupLinkCard·GroupResetLayer)
 import Parent from '../../../../../layouts/Parent.astro';
 import AutoSave from '../../../../../components/AutoSave.astro';
 import Toast from '../../../../../components/Toast.astro';
@@ -119,7 +120,111 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
   </section>
 
   <form class="sp-p__account-out" method="post" action="/settings/family">
-    <button class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" type="submit" name="do" value={`reset:${g.id}`}>주소 다시 만들기 (예전 주소는 바로 막혀요)</button>
+    <button class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" type="submit" name="do" value={`reset:${g.id}`} aria-haspopup="dialog" data-ask>주소 다시 만들기 (예전 주소는 바로 막혀요)</button>
   </form>
+  {/* 스크립트로 여는 확인(스크립트 없으면 설정 > 가족의 확인 레이어로) */}
+  <dialog class="sp-layer__box sp-layer__modal" id="grp-ask" data-autosave-keep aria-labelledby="grp-ask-t" aria-describedby="grp-ask-d">
+    <h2 class="sp-layer__title" id="grp-ask-t">{g.name} 주소를 다시 만들까요?</h2>
+    <p class="sp-layer__text" id="grp-ask-d">예전 주소는 바로 막히고 새 주소를 만들어요. 이미 들어온 휴대폰은 그대로 봐요. 이 그룹이 같이 들어간 다른 링크도 막혀요.</p>
+    <form class="sp-layer__actions" method="post" action="/settings/family">
+      <input type="hidden" name="confirm" value="1" />
+      <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value={`reset:${g.id}`}>다시 만들기</button>
+      <button class="sp-p__btn sp-p__btn--quiet" type="submit" formmethod="dialog" value="cancel" autofocus>취소</button>
+    </form>
+  </dialog>
   <AutoSave />
 </Parent>
+
+<script>
+  // 주소 보내기·다시 만들기를 이 화면에서: 보내고 돌아온 설정 > 가족 화면의 링크 카드(#link)를 가져와 목록 아래에 붙인다.
+  // 다시 만들기는 먼저 확인 레이어. 스크립트 없거나 옛 브라우저면 지금처럼 설정 > 가족으로
+  const root = document.querySelector<HTMLElement>('.sp-p');
+  const first = document.getElementById('grp-ask') as HTMLDialogElement | null;
+  if (root && first && typeof first.showModal === 'function') {
+    const area: HTMLElement = root;
+    let card: Element | null = null;
+    let busy = false;
+    const place = () => {
+      if (!card || card.isConnected) return;
+      area.querySelector('.sp-p__rows')?.insertAdjacentElement('afterend', card); // after는 Worker 타입과 겹쳐 타입 검사가 막음
+    };
+    const say = (text: string, error = false) => {
+      const region = document.getElementById(error ? 'as-urgent' : 'as-live');
+      if (!region) return;
+      region.textContent = '';
+      setTimeout(() => (region.textContent = text), 50);
+    };
+    const toast = (src: Element | null, text: string) => {
+      area.querySelector('.sp-toast')?.remove();
+      const p = src ? (document.importNode(src, true) as HTMLElement) : document.createElement('p');
+      if (!src) {
+        p.className = 'sp-toast sp-toast--error';
+        p.innerHTML = '<span class="sp-toast__text"></span>';
+        p.firstElementChild!.textContent = text;
+      }
+      p.removeAttribute('role');
+      p.removeAttribute('tabindex');
+      p.removeAttribute('autofocus');
+      area.insertBefore(p, area.firstChild); // prepend는 Worker 타입(HTMLRewriter)과 겹쳐 타입 검사가 막음
+      say(p.textContent?.trim() ?? text, p.classList.contains('sp-toast--error'));
+    };
+    // 확인 레이어는 이름을 저장해 화면이 갈리면 새것(새 이름)이라 그때마다 찾아 붙인다
+    const getAsk = () => document.getElementById('grp-ask') as HTMLDialogElement;
+    const bind = (ask: HTMLDialogElement) => {
+      bound = ask;
+      // 어두운 바깥을 누르면 닫기, 연 버튼이 바뀌었으면 새 버튼으로 초점
+      ask.addEventListener('click', (e) => {
+        if (e.target !== ask) return;
+        const r = ask.getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) ask.close();
+      });
+      ask.addEventListener('close', () => {
+        if (!document.activeElement || document.activeElement === document.body) area.querySelector<HTMLElement>('[data-ask]')?.focus({ preventScroll: true });
+      });
+    };
+    let bound: HTMLDialogElement = first;
+    bind(first);
+    // 이름·기본 포함을 저장해 화면이 갈리면 링크 카드를 다시 붙이고 새 확인 레이어를 잇는다
+    area.addEventListener('autosave:drawn', () => {
+      place();
+      // 열려 있던 레이어는 AutoSave가 그대로 두므로 새것일 때만 잇는다
+      const ask = getAsk();
+      if (ask && ask !== bound) bind(ask);
+    });
+    document.addEventListener('submit', async (e) => {
+      const form = e.target as HTMLFormElement;
+      const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+      if (!area.contains(form) || form.method !== 'post' || new URL(form.action).pathname !== '/settings/family' || !btn?.name) return;
+      e.preventDefault();
+      const ask = getAsk();
+      if (btn.hasAttribute('data-ask')) return ask.showModal();
+      if (form.closest('dialog') === ask) ask.close();
+      if (busy) return; // 보내는 중 두 번 만들지 않게
+      busy = true;
+      const body = new FormData(form);
+      body.append(btn.name, btn.value);
+      try {
+        const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin' });
+        if (!r.ok) throw new Error(String(r.status));
+        const url = new URL(r.url);
+        // 로그인이 끝난 경우 등은 그 화면으로
+        if (url.pathname !== '/settings/family') return location.assign(url.href);
+        const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+        const next = doc.getElementById('link');
+        if (!next) return toast(doc.querySelector('.sp-toast'), '처리하지 못했어요. 다시 눌러 주세요.');
+        area.querySelector('.sp-toast')?.remove();
+        card?.remove();
+        card = document.importNode(next, true);
+        place();
+        const title = document.getElementById('link-title');
+        title?.focus({ preventScroll: true });
+        title?.scrollIntoView({ block: 'nearest' });
+        say(title?.textContent?.trim() ?? '');
+      } catch {
+        toast(null, '처리하지 못했어요. 다시 눌러 주세요.');
+      } finally {
+        busy = false;
+      }
+    });
+  }
+</script>
