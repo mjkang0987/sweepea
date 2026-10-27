@@ -50,7 +50,7 @@ with sync_playwright() as p:
     check('스위피는 원본을 따로 보관하지 않으니' in pg.locator('.sp-p__up-note').inner_text(),'원본·줄임 안내가 보임')
     msgs=pick(pg,[QHD,D+'v.mp4',D+'u0.jpg'])
     pct=[m.split('|')[0] for m in msgs if m.startswith('영상 줄이는 중… 1 / 3 · ')]
-    check(len(pct)>=1 and all(t.endswith('0%') for t in pct),'영상 줄이는 중… 1 / 3 · N%, 10% 단위로만 읽어 줌 '+str(pct))
+    check(any(not t.endswith(' 0%') for t in pct) and all(t.endswith('0%') for t in pct),'영상 줄이는 중… 1 / 3 · N%, 10% 단위로만 읽어 줌 '+str(pct))
     check(len(pct)==len(set(pct)),'같은 글을 거듭 읽어 주지 않음')
     check(len(pct)>0 and all(m.split('|')[1]=='false' and m.split('|')[2]=='줄이는 중' for m in msgs if m.startswith('영상 줄이는 중… 1 / 3 · ')),'줄이는 동안 화면 켜 두기 안내·크기 칸 줄이는 중')
     check(pg.locator('#up-bar').is_hidden(),'다 줄이면 진행 막대 숨김')
@@ -87,6 +87,12 @@ with sync_playwright() as p:
     check(len(sh)>0 and all(m.split('|')[0].endswith('· 0%') for m in sh),'줄이기를 못 하면 퍼센트가 오르지 않고 바로')
     puts,_=send(pg,300000)
     check(len([s for s in puts if s[0]=='multipart'])==3,'원본 그대로 나눠 올리기(조각 3개)')
+    c.close()
+    # 3) 브라우저에 줄이기 기능은 있지만 H.264로 못 만드는 경우: 원본 그대로
+    c,pg=start(b,"VideoEncoder.isConfigSupported=async(c)=>({supported:false,config:c});")
+    pick(pg,[QHD])
+    puts,_=send(pg)
+    check([s[1] for s in puts if s[0]=='view']==[os.path.getsize(QHD)],'H.264를 못 만들면 원본 그대로 '+str([s[1] for s in puts if s[0]=='view']))
     c.close()
     b.close()
 print('FAILS',FAILS)
