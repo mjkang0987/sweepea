@@ -24,7 +24,7 @@ with sync_playwright() as p:
     sw=pg.get_by_role('switch',name='사진 올리기 허용'); check(sw.get_attribute('aria-checked')=='false','처음엔 올리기 꺼짐'); shot('1')
     fam=gp.evaluate("1") and None
     r=g.request.post(B+'/api/media',data={'familyId':pg.locator('#up-form').count() and '' or '00000000-0000-4000-8000-000000000000','kind':'photo','takenAt':'2026-10-20T10:00:00Z','takenAtSource':'exif'})
-    sw.click(); pg.wait_for_url('**done=upload-on**'); check(pg.get_by_role('switch',name='사진 올리기 허용').get_attribute('aria-checked')=='true','올리기 켬')
+    sw.click(); pg.wait_for_function("document.getElementById('mem-live')?.textContent.includes('올릴 수 있어요')"); check(pg.get_by_role('switch',name='사진 올리기 허용').get_attribute('aria-checked')=='true','올리기 켬')
     pg.goto(B+'/settings/family'); check(pg.locator('.sp-p__tag',has_text='올리기').count()==1,'가족 목록에 올리기 표시')
     # 사진 저장하기
     pg.goto(B+'/settings'); dsw=pg.get_by_role('switch',name='가족도 사진 저장하기'); check(dsw.get_attribute('aria-checked')=='false','저장하기 처음엔 꺼짐')
@@ -35,10 +35,11 @@ with sync_playwright() as p:
     pg.goto(B+'/settings/storage'); check('사진 1장' in pg.content() and pg.locator('meter').count()==1,'저장 용량 화면'); shot('3')
     # 내보내기
     pg.goto(B+'/settings/family'); pg.get_by_role('link',name='서아 아빠').click(); pg.wait_for_url('**/member/**')
-    pg.get_by_role('button',name='내 가족 아님 · 내보내기 서아 아빠').click(); pg.wait_for_url('**confirm=**')
+    pg.get_by_role('button',name='내 가족 아님 · 내보내기 서아 아빠').click(); pg.wait_for_selector('#mem-ask[open]')
     check('서아 아빠 내보낼까요?' in pg.content(),'내보내기도 한 번 더 확인')
-    check((pg.locator('#fam-ask').get_attribute('data-cancel') or '').startswith('/settings/family/member/'),'취소하면 구성원 화면으로')
-    pg.locator('#fam-ask').get_by_role('button',name='내보내기').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('처리했어요')")
+    pg.locator('#mem-ask').get_by_role('button',name='취소').click(); check(pg.locator('#mem-ask[open]').count()==0 and '/member/' in pg.url,'취소하면 이 화면 그대로')
+    pg.get_by_role('button',name='내 가족 아님 · 내보내기 서아 아빠').click(); pg.locator('#mem-ask').get_by_role('button',name='내보내기').click(); pg.wait_for_url('**/settings/family**')
+    check('처리했어요' in pg.locator('.sp-toast').inner_text(),'내보내면 설정 > 가족으로 가서 토스트')
     gp.goto(B+'/album'); check('이 휴대폰으로는 볼 수 없어요' in gp.content() or gp.url.endswith('/wait'),'내보낸 사람은 못 봄')
     b.close()
 from PIL import Image
