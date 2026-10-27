@@ -1,21 +1,14 @@
 ---
-// 화면 아래에 떠서 잠시 뒤 사라지는 안내 카드(디자인 GrandHome·ToastSent·ToastError). 보냄은 하트+반짝, 오류는 빨간 느낌표.
-// 하트·반짝 그림은 페이지의 EMOJI_SPRITE를 쓴다
+// 화면 아래에 떠서 잠시 뒤 사라지는 안내 카드(디자인 GrandHome·ToastSent·ToastError). 아이콘 없이 글자만(사용자 2026-10-27)
 interface Props {
   text: string;
   tone?: 'ok' | 'error';
+  /** 글자 칸 id(시트 설명 연결용) */
+  id?: string;
 }
-const { text, tone = 'ok' } = Astro.props;
+const { text, tone = 'ok', id } = Astro.props;
 ---
 
 <p class:list={['sp-toast', tone === 'error' && 'sp-toast--error']} role={tone === 'error' ? 'alert' : 'status'}>
-  {
-    tone === 'error' ? (
-      <span class="sp-toast__bang" aria-hidden="true">!</span>
-    ) : (
-      <svg class="sp-toast__icon sp-r__icon--beat" width="32" height="32" aria-hidden="true" focusable="false"><use href="#e-heart" /></svg>
-    )
-  }
-  <span class="sp-toast__text">{text}</span>
-  {tone === 'ok' && <svg class="sp-toast__tail" width="22" height="22" aria-hidden="true" focusable="false"><use href="#e-sparkle" /></svg>}
+  <span class="sp-toast__text" id={id}>{text}</span>
 </p>
