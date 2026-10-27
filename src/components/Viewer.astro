@@ -378,6 +378,155 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       if (out) sheet.close();
     }
   });
+  // 누르기·보내기·지우기: 페이지를 새로 열지 않고, 받아 온 화면에서 아래 판(.sp-v__more)과 토스트만 갈아 끼운다.
+  // 반응은 누르는 순간 눌림·수를 먼저 바꾼다. 요청은 차례로 보내고 마지막 응답만 그린다(앞선 응답이 뒤 누름을 되돌리지 않게)
+  let queue = Promise.resolve();
+  let pending = 0;
+  const live = document.createElement('p');
+  live.className = 'sp-vh';
+  live.setAttribute('role', 'status');
+  const urgent = document.createElement('p');
+  urgent.className = 'sp-vh';
+  urgent.setAttribute('role', 'alert');
+  v?.appendChild(live);
+  v?.appendChild(urgent);
+  let held: { id?: string; toast: Element; refill?: readonly [string, string] } | null = null;
+  // 결과 안내 띄우기. 글자를 가진 채 끼운 안내는 화면 읽기가 놓치므로, 늘 있는 빈 알림 칸에 글자만 넣어 읽게 한다(오류는 바로 읽는 칸).
+  // 모달 시트가 열려 있으면 그 밖은 가려지고 화면 읽기도 못 읽으므로 시트 안에 띄운다
+  const show = (toast: Element) => {
+    if (!v) return;
+    v.querySelector('.sp-toast')?.remove();
+    const t = document.importNode(toast, true);
+    t.removeAttribute('role');
+    const sheet = v.querySelector<HTMLElement>('#talk[open]');
+    const host = sheet ?? v;
+    const at = sheet?.querySelector('.sp-v__sheet-form') ?? host;
+    at.insertBefore(t, at.firstChild);
+    const region = t.classList.contains('sp-toast--error') ? urgent : live;
+    host.appendChild(region);
+    region.textContent = '';
+    setTimeout(() => (region.textContent = (t.querySelector('.sp-toast__text') ?? t).textContent?.trim() ?? ''), 50);
+  };
+  const failNote = () => {
+    const p = document.createElement('p');
+    p.className = 'sp-toast sp-toast--error';
+    p.innerHTML = '<span class="sp-toast__bang" aria-hidden="true">!</span><span class="sp-toast__text">보내지 못했어요. 다시 해 주세요.</span>';
+    return p;
+  };
+  v?.addEventListener('submit', (e) => {
+    const form = e.target as HTMLFormElement;
+    const more = v.querySelector<HTMLElement>('.sp-v__more');
+    if (!more?.contains(form) || form.method !== 'post') return;
+    const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+    // 누른 버튼을 모르는 옛 브라우저는 원래대로 폼을 보낸다(버튼 값이 곧 할 일)
+    if (!btn && form.querySelector('button[name]')) return;
+    e.preventDefault();
+    const body = new FormData(form);
+    if (btn?.name) body.append(btn.name, btn.value);
+    // 보낸 글은 바로 비운다(응답 전에 다른 걸 눌러도 보낸 글이 되살아나 두 번 보내지 않게)
+    const box = form.querySelector<HTMLInputElement>('.sp-f__input');
+    if (box) box.value = '';
+    const id = v.dataset.id;
+    const fromSheet = !!form.closest('#talk');
+    let focusSel = fromSheet ? '#say-body-talk' : form.id ? `#${form.id} .sp-f__input` : '';
+    if (btn?.classList.contains('sp-r__btn')) {
+      const [k, want] = btn.value.split(':');
+      const n = Math.max(0, Number(btn.querySelector('.sp-r__n')?.textContent ?? 0) + (want === 'on' ? 1 : -1));
+      btn.setAttribute('aria-pressed', String(want === 'on'));
+      btn.value = `${k}:${want === 'on' ? 'off' : 'on'}`;
+      btn.setAttribute('aria-label', (btn.getAttribute('aria-label') ?? '').replace(/\d+개$/, `${n}개`));
+      let num = btn.querySelector('.sp-r__n');
+      if (n && !num) {
+        num = btn.appendChild(document.createElement('span'));
+        num.className = 'sp-r__n';
+        num.setAttribute('aria-hidden', 'true');
+      }
+      if (num) n ? (num.textContent = String(n)) : num.remove();
+      focusSel = `.sp-r__btn[value^="${k}:"]`;
+    } else if (btn) {
+      btn.disabled = true; // 보내는 중 두 번 누르지 않게(응답이 새 판으로 바꾼다)
+      if (btn.name === 'del') focusSel = ''; // 지운 뒤엔 다시 연 시트 제목으로(알림을 읽게)
+    }
+    pending++;
+    more.setAttribute('aria-busy', 'true');
+    const sentText = box ? String(body.get(box.name) ?? '') : '';
+    const boxId = box?.id;
+    queue = queue.then(async () => {
+      let html = '';
+      let failed = false;
+      try {
+        const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin' });
+        if (!r.ok) throw new Error(String(r.status));
+        html = await r.text();
+      } catch {
+        // 반응은 먼저 바꿔 둔 표시가 틀리므로 새로 연다. 글·지우기는 그대로 두고 안내(쓴 글은 돌려줌)
+        if (btn?.classList.contains('sp-r__btn')) return location.reload();
+        failed = true;
+      } finally {
+        pending--;
+      }
+      if (failed) {
+        if (btn) btn.disabled = false;
+        if (v.dataset.id === id) {
+          const el = boxId ? v.querySelector<HTMLInputElement>(`#${boxId}`) : null;
+          if (el && !el.value) el.value = sentText;
+          show(failNote());
+        }
+        if (!pending) for (const el of [more, v.querySelector('.sp-v__more')]) el?.removeAttribute('aria-busy');
+        return;
+      }
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      // 결과 안내는 그리기를 건너뛰어도 기억해 두고 마지막에 띄운다. 실패면 보낸 글을 입력칸에 돌려준다
+      const note = doc.querySelector('.sp-v > .sp-toast');
+      if (note) held = { id, toast: note, refill: (note.classList.contains('sp-toast--error') && boxId && sentText ? [boxId, sentText] : undefined) ?? held?.refill };
+      // 뒤에 누른 게 있으면 그리지 않는다(마지막 응답이 그림)
+      if (pending) return;
+      more.removeAttribute('aria-busy');
+      // 넘기는 동안 판이 새로 갈렸을 수 있어 지금 판을 다시 찾는다. 다른 사진이면 버림
+      const cur = v.querySelector<HTMLElement>('.sp-v__more');
+      // 다른 사진에서 온 안내·글은 쓰지 않는다
+      const keep = held?.id === v.dataset.id ? held : null;
+      held = null;
+      if (v.dataset.id !== id || !cur) return;
+      cur.removeAttribute('aria-busy');
+      const from = doc.querySelector('.sp-v__more');
+      // 출입증이 끝나 로그인 화면이 온 경우 등
+      if (!from) return location.reload();
+      const old = cur.querySelector<HTMLDialogElement>('#talk');
+      const wasOpen = !!old?.open;
+      // 판 밖(화살표·위 메뉴)으로 옮긴 포커스는 건드리지 않는다
+      const act = document.activeElement;
+      const hadFocus = !act || act === document.body || cur.contains(act);
+      // 기다리는 동안 입력칸에 쓰고 있었으면 그 칸·커서로 돌려준다(누른 버튼 대신)
+      const typing = act instanceof HTMLInputElement && cur.contains(act) ? { id: act.id, at: act.selectionStart, to: act.selectionEnd } : null;
+      // 기다리는 동안 새로 쓰던 글은 남긴다
+      const typed = [...cur.querySelectorAll<HTMLInputElement>('.sp-f__input')].map((i) => [i.id, i.value] as const);
+      if (keep?.refill) typed.push(keep.refill);
+      old?.close();
+      cur.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
+      for (const [iid, val] of typed) {
+        const el = val ? cur.querySelector<HTMLInputElement>(`#${iid}`) : null;
+        if (el && !el.value) el.value = val;
+      }
+      v.querySelector('.sp-toast')?.remove();
+      // 시트가 열려 있었거나(시트에서 보냄) 지운 뒤라 서버가 열어 그렸으면 모달로 다시 연다(받아 온 인라인 스크립트는 돌지 않음)
+      const sheet = cur.querySelector<HTMLDialogElement>('#talk');
+      if (sheet && typeof sheet.showModal === 'function' && (wasOpen || sheet.open)) {
+        sheet.close();
+        sheet.classList.remove('sp-v__sheet--inline');
+        sheet.showModal();
+        // 다시 연 시트 밖을 가리킬 땐 시트 제목(autofocus)에 둔다
+        if (!sheet.contains(cur.querySelector(focusSel || ':not(*)'))) focusSel = '';
+      } else if (wasOpen && !focusSel) focusSel = '#say-body'; // 마지막 한마디를 지워 시트가 없어지면 입력칸으로
+      if (keep) show(keep.toast);
+      if (typing) {
+        const el = cur.querySelector<HTMLInputElement>(`#${typing.id}`);
+        el?.focus({ preventScroll: true });
+        el?.setSelectionRange(typing.at, typing.to);
+      } else if (hadFocus && focusSel) cur.querySelector<HTMLElement>(focusSel)?.focus({ preventScroll: true });
+    });
+    queue = queue.catch(() => location.reload());
+  });
   // 옆으로 밀기(스와이퍼가 없을 때, 영상 화면): 가로로 60px 넘게(세로보다 크게) 밀면 ‹ › 링크로. 막대·버튼·입력칸·아래 판에서 시작한 건 제외
   if (v && !slides) {
     let x0: number | null = null;
