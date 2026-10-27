@@ -24,7 +24,7 @@ with sync_playwright() as p:
     # 상세
     pg.goto(B+'/settings/family/groups'); pg.locator('.sp-p__row',has_text='친가').click(); pg.wait_for_url('**/groups/*')
     check('힌트 · 할아버지 생신' in pg.content(),'상세에 힌트'); 
-    pg.fill('#name','할머니댁'); pg.press('#name','Enter'); pg.wait_for_url('**done=saved**'); pg.get_by_label('새 사진에 기본으로 포함').check(); pg.wait_for_url('**done=saved**')
+    pg.fill('#name','할머니댁'); pg.press('#name','Enter'); pg.wait_for_function("document.getElementById('as-live')?.textContent.trim().length>0"); pg.get_by_label('새 사진에 기본으로 포함').check(); pg.wait_for_function("document.getElementById('as-live')?.textContent.trim().length>0")
     check(pg.get_by_role('heading',name='할머니댁').count()==1 and pg.get_by_label('새 사진에 기본으로 포함').is_checked(),'이름·기본 포함 저장'); shot('2')
     gid=pg.url.split('/groups/')[1].split('?')[0]
     # 링크 → 가족 입장 → 상세 구성원

@@ -30,7 +30,7 @@ with sync_playwright() as p:
     pg.goto(B+'/settings'); dsw=pg.get_by_role('switch',name='가족도 사진 저장하기'); check(dsw.get_attribute('aria-checked')=='false','저장하기 처음엔 꺼짐')
     gp.goto(B+'/album'); gp.locator('.sp-a__card-link').first.click(); gp.wait_for_load_state()
     check(gp.get_by_role('link',name='저장').count()==0,'꺼져 있으면 가족 화면에 저장 없음')
-    dsw.click(); pg.wait_for_url('**done=download-on**'); shot('2')
+    dsw.click(); pg.wait_for_function("document.getElementById('as-live')?.textContent.trim().length>0"); shot('2')
     gp.reload(); check(gp.locator('a.sp-v__link[download]').count()==1,'켜면 가족 크게 보기에 저장 링크')
     pg.goto(B+'/settings/storage'); check('사진 1장' in pg.content() and pg.locator('meter').count()==1,'저장 용량 화면'); shot('3')
     # 내보내기

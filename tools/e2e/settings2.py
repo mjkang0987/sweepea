@@ -31,7 +31,7 @@ with sync_playwright() as p:
     t=pg.locator('.sp-p__preview-title'); big=t.evaluate("e=>parseFloat(getComputedStyle(e).fontSize)")
     pg.get_by_label('모두 기본').check(); small=t.evaluate("e=>parseFloat(getComputedStyle(e).fontSize)")
     check(small<big,'미리보기가 고른 크기로 (JS 없이) %.1f→%.1f'%(big,small))
-    pg.get_by_label('모두 아주 크게').check(); pg.wait_for_url('**done=saved**'); shot('3')
+    pg.get_by_label('모두 아주 크게').check(); pg.wait_for_function("document.getElementById('as-live')?.textContent.trim().length>0"); shot('3')
     check(pg.get_by_label('모두 아주 크게').is_checked(),'저장된 크기')
     pg.goto(B+'/settings'); check(pg.get_by_role('link',name='가족 화면 글자 크기 모두 아주 크게').count()==1,'설정에 지금 값')
     pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
