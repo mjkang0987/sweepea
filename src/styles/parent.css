@@ -1481,36 +1481,42 @@
   gap: var(--space-4);
 }
 
-/* 사진 정보 수정: 작은 미리보기(160px) + 최근 한마디 말풍선 */
+/* 사진 정보 수정: 미리보기 200px(디자인 127) — 사진은 잘리지 않게 전체, 남는 곳은 같은 사진을 흐리게 + 최근 한마디 말풍선 */
 .sp-p__thumbbox {
   position: relative;
   height: 12.5rem;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  /* 흐린 층이 둥근 모서리 밖으로 새지 않게(옛 사파리) */
+  isolation: isolate;
   background: var(--fill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+/* 흐림은 가장자리가 투명하게 번지므로 칸보다 40px씩 크게 깔아 가장자리까지 채움 */
 .sp-p__thumbbox-blur {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  inset: -40px;
+  width: calc(100% + 80px);
+  height: calc(100% + 80px);
   object-fit: cover;
   filter: blur(20px) brightness(0.82);
-  transform: scale(1.1);
 }
+/* 사진 크기만큼만(그림자가 사진 둘레에 붙게): 세로 사진은 높이, 파노라마는 폭에 맞춤 */
 .sp-p__thumbbox-media {
   position: relative;
   display: block;
-  /* 사진 크기만큼만(그림자가 사진 둘레에 붙게), 넘치면 칸 폭에 맞춤 */
   width: auto;
+  height: auto;
   max-width: 100%;
-  height: 100%;
-  margin-inline: auto;
-  object-fit: contain;
+  max-height: 100%;
   box-shadow: 0 0 24px rgba(0, 0, 0, 0.18);
 }
 .sp-p__thumbbox-media--video {
   width: 100%;
+  height: 100%;
+  object-fit: contain;
   box-shadow: none;
 }
 .sp-p__thumbbox-say {
