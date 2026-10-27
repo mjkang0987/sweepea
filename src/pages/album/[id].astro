@@ -3,7 +3,6 @@
 // 스크립트가 없어도 ‹ › 링크로 넘기고 영상은 브라우저 기본 재생 막대로 본다
 import Family from '../../layouts/Family.astro';
 import Viewer from '../../components/Viewer.astro';
-import { EMOJI_SPRITE } from '../../lib/emoji';
 import { albumHref, dayLabel, handleReactPost, loadAlbum, loadReacts, slideWindow } from '../../lib/album';
 import { getBackend } from '../../lib/backend';
 import { UUID } from '../../lib/media';
@@ -42,7 +41,6 @@ const saveName = `sweepea-${m.taken_at.slice(0, 10)}.${m.kind === 'video' ? 'mp4
 ---
 
 <Family title={`${label} · ${i + 1} / ${items.length}`} wide>
-  <Fragment set:html={EMOJI_SPRITE} />
   <Viewer
     m={m}
     label={label}

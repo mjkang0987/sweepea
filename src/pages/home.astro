@@ -133,7 +133,7 @@ for (const mo of months) {
       <div class="sp-layer">
         <div class="sp-layer__scrim" aria-hidden="true"></div>
         <dialog class="sp-layer__box" open aria-labelledby="layer-t" aria-describedby="layer-d">
-          <span class="sp-layer__emoji" aria-hidden="true" set:html={EMOJI.sparkle.svg.replace('width="32" height="32"', 'width="40" height="40"')} />
+          <span class="sp-layer__emoji" aria-hidden="true">{EMOJI.sparkle.char}</span>
           <h2 class="sp-layer__title" id="layer-t"><strong>{join.who}</strong>{ga(join.who)} {join.what}</h2>
           <p class="sp-layer__text" id="layer-d">{agoLabel(join.at, now)} 신청했어요.{joins.length > 1 && ` 기다리는 사람이 ${joins.length}명 있어요.`}{join.expires && ' 3일 안에 확인하지 않으면 자동으로 취소돼요.'}</p>
           <form class="sp-layer__actions" method="post">

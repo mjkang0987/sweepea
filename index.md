@@ -4,7 +4,7 @@
 
 ## 현재 상태
 
-- 버전 0.4.15(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 마이그레이션 16개 적용, 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
+- 버전 0.4.16(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 마이그레이션 16개 적용, 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
 - 화면 반응 속도(0.4.11~): 크게 보기의 반응·한마디·지우기는 스크립트가 있으면 페이지 이동 없이 아래 판만 갈아 끼움(반응은 누르는 즉시 표시). 페이지 이동은 겹쳐 넘어감(`@view-transition`). 나머지 화면은 아직 폼 → 페이지 이동(다음 작업).
 - 안내: 결과는 아래에서 떴다 사라지는 토스트(`src/components/Toast.astro`, 아이콘 없이 글자만). 한마디 시트가 열려 있으면 시트 위쪽 바깥에 뜸. 확인은 가운데 레이어(`.sp-layer`, 스크립트로 여는 건 `dialog.sp-layer__modal`) — 사진 지우기가 첫 번째.
 - 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 1~2시간 주소) 완료.
@@ -71,7 +71,7 @@ src/layouts/Parent.astro 부모 화면 뼈대(아래 탭), 스타일 src/styles/
 src/lib/age.ts          생후 개월·생일·백일/돌/생일 당일·남은 시간·지난 시간 표시(단위 검사)
 src/lib/layers.ts       가운데 레이어 '봤음' 기기 쿠키(들어오기 신청·승인·새 사진·백일/생일·저장 공간)
 src/lib/health.ts       접종·검진 권장 일정 표와 날짜 계산(단위 검사)
-src/lib/emoji.ts        반응 도트 이모지와 페이지당 한 번 넣는 sprite
+src/lib/emoji.ts        반응 이모지(기기 기본 이모지 글자)·이름·움직임
 supabase/migrations/    DB 스키마·RLS·권한 함수(sp_*)·입장 RPC. 실제 Supabase에 그대로 적용
 supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stub.sql: auth 흉내, rls.sql: 시나리오, run.sh)
 tools/                  개발 도구: dev.sh(mock 개발 서버), e2e/(화면 흐름 검사 Playwright), design/·render/(디자인 보드 만들기·그려 보기). 쓰는 법은 plan.md '새 세션 인계'
