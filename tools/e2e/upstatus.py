@@ -65,12 +65,36 @@ with sync_playwright() as p:
     for c in pg.locator('input[name=group]').all(): c.uncheck()
     pg.get_by_role('button',name='보내지 않고 올리기만').click()
     check(pg.locator('#up-alert').inner_text()=='보여줄 그룹을 하나 이상 골라 주세요.','그룹 안 고르면 빨간 안내')
+    pg.locator('input[name=group]').first.check()
+    check(pg.evaluate("document.getElementById('up-alert').textContent")=='','그룹을 고르면 그 안내는 지움')
+    # 7) 못 여는 파일이 많으면 목록은 10줄까지(9개 + 외 N개)
+    pg.set_input_files('#up-files',[{'name':f'bad{i}.heic','mimeType':'image/heic','buffer':b'x'} for i in range(12)]); pg.wait_for_function("document.getElementById('up-alert').textContent!==''",timeout=60000)
+    rows=pg.locator('.sp-p__up-alert-item').all_inner_texts()
+    check(len(rows)==10 and rows[-1]=='외 3개' and pg.locator('.sp-p__up-alert-head').inner_text()=='12개는 올릴 수 없어서 뺐어요.','목록 10줄까지 '+str(rows[-2:]))
+    # 8) 저장 용량이 다 차면(507) 남은 칸 모두 못 올림, 다시 누르면 못 올림 표시를 지우고 이어서
+    pg.set_input_files('#up-files',[D+'u0.jpg',D+'u0.jpg']); pg.wait_for_function(ready,timeout=60000)
+    n={'v':0}
+    def full(route):
+        if route.request.method=='PUT' and route.request.url.split('?')[0].endswith('/view'):
+            n['v']+=1
+            if n['v']==2: return route.fulfill(status=507,body='{}')
+        route.continue_()
+    pg.route('**/api/media/**',full)
+    pg.get_by_role('button',name='보내지 않고 올리기만').click()
+    pg.wait_for_function("document.getElementById('up-alert').textContent!==''",timeout=60000)
+    check(pg.evaluate(tags)==['올림','못 올림','못 올림'],'5GB 차면 남은 칸 모두 못 올림 '+str(pg.evaluate(tags)))
+    check(pg.locator('#up-alert').inner_text().startswith('저장 용량 5GB가 다 찼어요. 1장까지'),'5GB 안내 '+pg.locator('#up-alert').inner_text())
+    seen2=[]; pg.expose_function('noteTags2',lambda t: seen2.append(tuple(t)))
+    pg.evaluate("new MutationObserver(()=>noteTags2("+tags+")).observe(document.getElementById('up-grid'),{childList:true,subtree:true})")
+    pg.unroute('**/api/media/**')
+    pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=60000)
+    check(seen2 and seen2[0]==('올림','올리는 중','') ,'다시 누르면 못 올림을 지우고 이어서 '+str(seen2[:2]))
     pg.close()
     # 6) 200장 넘게 고르면 넘은 것도 안내
     pg=start(b)
     pg.set_input_files('#up-files',[D+'u0.jpg']*201); pg.wait_for_function(ready,timeout=180000)
     rows=pg.locator('.sp-p__up-alert-item').all_inner_texts()
-    check(pg.locator('.sp-p__upcell').count()==200 and rows==['200장 넘게 고른 1개 · 한 번에 200장까지'] and pg.locator('.sp-p__up-alert-head').inner_text()=='1개는 올릴 수 없어서 뺐어요.','200장 넘음 안내 '+str(rows))
+    check(pg.locator('.sp-p__upcell').count()==200 and rows==['뒤의 1개 · 한 묶음에 200장까지'] and pg.locator('.sp-p__up-alert-head').inner_text()=='1개는 올릴 수 없어서 뺐어요.','200장 넘음 안내 '+str(rows))
     pg.close()
     b.close()
 print('FAILS',FAILS)
