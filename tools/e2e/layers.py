@@ -25,7 +25,7 @@ with sync_playwright() as p:
     pg.goto(B+'/home'); dl=pg.get_by_role('dialog')
     check(dl.count()==1 and '외할머니가 가족 앨범에 들어오려고 해요' in dl.inner_text(),'부모: 들어오기 신청 레이어')
     pg.screenshot(path=D+'ly-join.png')
-    pg.get_by_role('button',name='나중에').click(); pg.wait_for_url('**/home')
+    with pg.expect_response(lambda r: r.request.method=='POST'): pg.get_by_role('button',name='나중에').click()
     check(pg.get_by_role('dialog').count()==0 and pg.locator('.sp-p__alert').count()==1,'나중에 → 레이어 닫히고 띠는 남음')
     pg.reload(); check(pg.get_by_role('dialog').count()==0,'다시 열어도 안 뜸')
     h,hp=enter('큰이모')

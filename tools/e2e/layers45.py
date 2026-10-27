@@ -1,4 +1,8 @@
 from playwright.sync_api import sync_playwright
+import datetime
+# 날짜는 오늘(서울) 기준으로: 백일 = 오늘이 100번째 날, 돌 = 1년 전 오늘
+T=(datetime.datetime.utcnow()+datetime.timedelta(hours=9)).date()
+D100=str(T-datetime.timedelta(days=99)); DOL=str(T.replace(year=T.year-1)); DOL1=str(T.replace(year=T.year-1)-datetime.timedelta(days=1))
 B='http://localhost:4321'; D='/home/claude/sweepea/tools/shots/'
 fails=[]
 def check(c,m): print(('OK ' if c else 'FAIL ')+m); c or fails.append(m)
@@ -10,7 +14,7 @@ def start(b,birth,scheme='light'):
     return pg
 with sync_playwright() as p:
     b=p.chromium.launch()
-    pg=start(b,'2026-07-19')
+    pg=start(b,D100)
     d=pg.get_by_role('dialog')
     check(d.count()==1 and '태어난 지 100일이에요' in d.inner_text() and '오늘은 하린이' in d.inner_text(),'백일 레이어')
     check(pg.evaluate("document.activeElement.textContent.trim()")=='사진 올리기','첫 버튼에 초점')
@@ -24,12 +28,12 @@ with sync_playwright() as p:
     pg.goto(B+'/home'); check(pg.get_by_role('dialog').count()==0,'둘 다 닫은 뒤 레이어 없음')
     pg.reload(); check(pg.get_by_role('dialog').count()==0,'다시 열어도 없음')
     # 돌 + 사진 올리기, 다크
-    pg2=start(b,'2025-10-26','dark')
+    pg2=start(b,DOL,'dark')
     d=pg2.get_by_role('dialog'); check('첫 생일이에요' in d.inner_text(),'돌 레이어')
     pg2.screenshot(path=D+'ly4-dol-dark.png')
     d.get_by_role('button',name='사진 올리기').click(); pg2.wait_for_url('**/upload')
     pg2.goto(B+'/home'); check('생일' not in (pg2.get_by_role('dialog').inner_text() if pg2.get_by_role('dialog').count() else ''),'올리기 뒤 생일 레이어 없음')
     # 평범한 날
-    pg3=start(b,'2025-10-25'); txt=pg3.get_by_role('dialog').inner_text() if pg3.get_by_role('dialog').count() else ''
+    pg3=start(b,DOL1); txt=pg3.get_by_role('dialog').inner_text() if pg3.get_by_role('dialog').count() else ''
     check('생일' not in txt and '100일' not in txt,'평범한 날은 생일 레이어 없음')
 print('FAILS',fails)
