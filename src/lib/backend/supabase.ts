@@ -239,11 +239,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     async mediaInfo(pass, id) {
       const cols = 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key';
       const q = new URLSearchParams({ id: `eq.${id}`, status: 'eq.ready', select: `${cols},media_groups(group_id),media_children(child_id)` });
-      const c = new URLSearchParams({ media_id: `eq.${id}`, deleted_at: 'is.null', order: 'created_at.desc', limit: '1', select: 'body,members(display_name),parents(display_name)' });
-      const [rows, cs] = await Promise.all([
-        call<(MediaItem & { media_groups: { group_id: string }[]; media_children: { child_id: string }[] })[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access }),
-        call<{ body: string; members: { display_name: string } | null; parents: { display_name: string } | null }[]>(`/rest/v1/comments?${c}`, { method: 'GET', token: pass.access }),
-      ]);
+      const rows = await call<(MediaItem & { media_groups: { group_id: string }[]; media_children: { child_id: string }[] })[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access });
       const r = rows[0];
       if (!r) return null;
       const { media_groups, media_children, ...item } = r;
@@ -251,7 +247,6 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         item,
         group_ids: media_groups.map((g) => g.group_id),
         child_ids: media_children.map((k) => k.child_id),
-        latest: cs[0] ? { name: cs[0].members?.display_name ?? cs[0].parents?.display_name ?? '가족', body: cs[0].body } : null,
       };
     },
     updateMedia: (pass, id, u) =>

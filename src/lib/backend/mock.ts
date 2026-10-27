@@ -306,7 +306,7 @@ export function createMockBackend(): Backend {
         const [mediaId, member, kind] = r.split('|');
         if (ids.includes(mediaId)) add(mediaId, kind as ReactionCount['kind'], member);
       }
-      for (const c of comments) if (ids.includes(c.mediaId)) add(c.mediaId, 'comment', c.memberId);
+      for (const c of comments) if (ids.includes(c.mediaId) && authorName(c.memberId)) add(c.mediaId, 'comment', c.memberId);
       return [...out.values()];
     },
     async mediaComments(pass, id) {
@@ -513,8 +513,7 @@ export function createMockBackend(): Backend {
       const x = media.find((y) => y.id === id && y.status === 'ready' && y.family_id === fam);
       if (!x) return null;
       const { status: _s, uploader: _u, groupIds, childIds, bytes: _b, ...item } = x;
-      const last = comments.filter((c) => c.mediaId === id).at(-1);
-      return { item, group_ids: [...groupIds], child_ids: [...childIds], latest: last ? { name: authorName(last.memberId) ?? '가족', body: last.body } : null };
+      return { item, group_ids: [...groupIds], child_ids: [...childIds] };
     },
     async updateMedia(pass, id, u) {
       const fam = parents.get(pass.access)?.familyId;

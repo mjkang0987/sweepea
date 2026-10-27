@@ -127,8 +127,6 @@ export interface MediaInfo {
   item: MediaItem;
   group_ids: string[];
   child_ids: string[];
-  /** 가장 최근 한마디(지운 것 제외) */
-  latest: { name: string; body: string } | null;
 }
 
 export const REACTION_KINDS = ['heart', 'best', 'good', 'moved', 'sparkle'] as const;
