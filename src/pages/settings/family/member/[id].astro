@@ -84,6 +84,15 @@ const doneText: Record<string, string> = {
     const area: HTMLElement = root;
     let queue = Promise.resolve();
     let pending = 0;
+    // 마지막으로 서버가 그려 준 스위치 상태(연달아 실패하면 여기로 되돌린다)
+    const sw = () => area.querySelector<HTMLButtonElement>('.sp-p__switch');
+    let serverOn = sw()?.getAttribute('aria-checked') === 'true';
+    const showSwitch = (on: boolean) => {
+      const b = sw();
+      if (!b) return;
+      b.setAttribute('aria-checked', String(on));
+      b.value = b.value.replace(/:(on|off)$/, on ? ':off' : ':on');
+    };
     const say = (t: Element | null) => {
       if (!t) return;
       t.removeAttribute('role');
@@ -101,6 +110,10 @@ const doneText: Record<string, string> = {
     };
     // 결과 안내가 붙은 주소(?done=)는 떼어 새로 고침해도 다시 뜨지 않게
     if (new URLSearchParams(location.search).has('done')) history.replaceState(history.state, '', location.pathname);
+    // 레이어를 연 버튼이 그새 새 화면으로 바뀌었으면 새 내보내기 버튼으로 초점을 돌려준다
+    ask.addEventListener('close', () => {
+      if (!document.activeElement || document.activeElement === document.body) area.querySelector<HTMLElement>('[data-ask]')?.focus({ preventScroll: true });
+    });
     // 어두운 바깥을 누르면 닫기
     ask.addEventListener('click', (e) => {
       if (e.target !== ask) return;
@@ -121,9 +134,7 @@ const doneText: Record<string, string> = {
       e.preventDefault();
       const body = new FormData(form);
       body.append(btn.name, btn.value);
-      const on = btn.getAttribute('aria-checked') !== 'true';
-      btn.setAttribute('aria-checked', String(on));
-      btn.value = btn.value.replace(/:(on|off)$/, on ? ':off' : ':on');
+      showSwitch(btn.getAttribute('aria-checked') !== 'true');
       live.textContent = '';
       urgent.textContent = '';
       area.setAttribute('aria-busy', 'true');
@@ -137,10 +148,9 @@ const doneText: Record<string, string> = {
           url = new URL(r.url);
           html = await r.text();
         } catch {
-          // 바꿔 둔 스위치를 되돌린다(뒤에 누른 게 있으면 그 응답이 바로잡음)
+          // 남은 요청이 없으면 마지막으로 서버가 그려 준 상태로 되돌린다(뒤에 누른 게 있으면 그 응답이 바로잡음)
           if (!--pending) {
-            btn.setAttribute('aria-checked', String(!on));
-            btn.value = btn.value.replace(/:(on|off)$/, on ? ':on' : ':off');
+            showSwitch(serverOn);
             area.removeAttribute('aria-busy');
           }
           return fail();
@@ -159,7 +169,8 @@ const doneText: Record<string, string> = {
         if (location.search) history.replaceState(history.state, '', location.pathname);
         const tabs = doc.querySelector('.sp-p__tabs');
         if (tabs) document.querySelector('.sp-p__tabs')?.replaceWith(document.importNode(tabs, true));
-        if (hadFocus) area.querySelector<HTMLElement>('.sp-p__switch')?.focus({ preventScroll: true });
+        serverOn = sw()?.getAttribute('aria-checked') === 'true';
+        if (hadFocus) sw()?.focus({ preventScroll: true });
         say(area.querySelector('.sp-toast'));
       });
       queue = queue.catch(() => location.reload());
