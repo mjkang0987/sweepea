@@ -889,6 +889,8 @@
   aspect-ratio: 1;
 }
 .sp-p__upbtn {
+  /* 줄 안 요소면 아래에 글자 여백이 붙어 위아래 간격만 벌어진다 */
+  display: block;
   width: 100%;
   height: 100%;
   padding: 0;
