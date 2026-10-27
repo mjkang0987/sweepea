@@ -553,6 +553,38 @@ select public.sp_parent_react(:'m3', 'heart', true);
 reset role;
 update public.families set delete_after = null where id = :'fam';
 
+-- ── 한마디 목록(크게 보기): 볼 수 있는 사진이면 승인된 가족·엄빠 한마디를 본다
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_parent_comment(:'m3', '엄마 한마디');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) >= 2 from public.sp_media_comments(:'m3')), '가족도 한마디 목록을 봄(외할머니 + 엄마)');
+select pg_temp.ok((select name = '지우' and not mine from public.sp_media_comments(:'m3') where body = '엄마 한마디'), '엄마 한마디는 엄마 이름, 내 것 아님');
+select pg_temp.ok(not exists (select 1 from public.sp_media_comments(:'m2')), '안 보이는 사진 한마디는 없음');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok((select mine from public.sp_media_comments(:'m3') where body = '엄마 한마디'), '엄마가 보면 내 것');
+reset role;
+-- 승인 대기는 볼 수 있는 사진이어도 목록을 못 봄(가족 명단을 못 보는 것과 같게)
+select m.status as km_status, coalesce(m.pending_until::text, '') as km_until, d.status as km_dev from public.members m join public.devices d on d.member_id = m.id and d.auth_user_id = :'AU' where m.display_name = '큰이모' \gset
+update public.members set status = 'pending', pending_until = now() + interval '1 day' where display_name = '큰이모';
+update public.devices set status = 'active' where auth_user_id = :'AU' and member_id = (select id from public.members where display_name = '큰이모');
+select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
+set role authenticated;
+select id as km_media from public.media limit 1 \gset
+reset role;
+insert into public.comments (media_id, parent_user_id, body) values (:'km_media', :'P', '대기 중엔 안 보여야 함');
+select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_can_view_media(:'km_media') and not exists (select 1 from public.sp_media_comments(:'km_media')), '승인 대기는 사진은 봐도 한마디 목록은 못 봄');
+reset role;
+update public.members set status = :'km_status', pending_until = nullif(:'km_until', '')::timestamptz where display_name = '큰이모';
+update public.devices set status = :'km_dev' where auth_user_id = :'AU' and member_id = (select id from public.members where display_name = '큰이모');
+delete from public.comments where parent_user_id = :'P';
+
 -- ── 탈퇴 유예: 가족 화면은 바로 닫힘
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;

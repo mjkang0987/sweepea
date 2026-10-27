@@ -11,8 +11,11 @@ const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const b = getBackend();
 const id = Astro.params.id ?? '';
-const info = /^[0-9a-f-]{36}$/.test(id) ? await b.mediaInfo(a.pass, id) : null;
+const ok = /^[0-9a-f-]{36}$/.test(id);
+const [info, comments] = ok ? await Promise.all([b.mediaInfo(a.pass, id), b.mediaComments(a.pass, id)]) : [null, []];
 if (!info) return Astro.redirect('/home');
+// 최근 한마디(크게 보기 목록과 같은 기준: 승인된 가족·엄빠 것)
+const latest = comments[0];
 const groups = (await b.familyAdmin(a.pass)).groups;
 const kids = a.home.children ?? [];
 // 크게 보기로 돌아갈 때 고른 아이(?k=)를 이어 준다
@@ -76,10 +79,10 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
   <div class="sp-p__thumbbox">
     {isVideo ? <video class="sp-p__thumbbox-media" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} /> : <img class="sp-p__thumbbox-media" src={src} alt={label} />}
     {
-      info.latest && (
+      latest && (
         <p class="sp-p__thumbbox-say">
-          <strong class="sp-p__thumbbox-who"><span class="sp-vh">최근 한마디, </span>{info.latest.name}</strong>
-          {info.latest.body}
+          <strong class="sp-p__thumbbox-who"><span class="sp-vh">최근 한마디, </span>{latest.name}</strong>
+          {latest.body}
         </p>
       )
     }

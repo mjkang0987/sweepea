@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, MediaItem, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
+import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, MediaComment, MediaItem, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -239,11 +239,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     async mediaInfo(pass, id) {
       const cols = 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key';
       const q = new URLSearchParams({ id: `eq.${id}`, status: 'eq.ready', select: `${cols},media_groups(group_id),media_children(child_id)` });
-      const c = new URLSearchParams({ media_id: `eq.${id}`, deleted_at: 'is.null', order: 'created_at.desc', limit: '1', select: 'body,members(display_name),parents(display_name)' });
-      const [rows, cs] = await Promise.all([
-        call<(MediaItem & { media_groups: { group_id: string }[]; media_children: { child_id: string }[] })[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access }),
-        call<{ body: string; members: { display_name: string } | null; parents: { display_name: string } | null }[]>(`/rest/v1/comments?${c}`, { method: 'GET', token: pass.access }),
-      ]);
+      const rows = await call<(MediaItem & { media_groups: { group_id: string }[]; media_children: { child_id: string }[] })[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access });
       const r = rows[0];
       if (!r) return null;
       const { media_groups, media_children, ...item } = r;
@@ -251,7 +247,6 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         item,
         group_ids: media_groups.map((g) => g.group_id),
         child_ids: media_children.map((k) => k.child_id),
-        latest: cs[0] ? { name: cs[0].members?.display_name ?? cs[0].parents?.display_name ?? '가족', body: cs[0].body } : null,
       };
     },
     updateMedia: (pass, id, u) =>
@@ -282,6 +277,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         p_password: f.password,
         p_hint: f.hint ?? null,
       }),
+    mediaComments: (pass, id) => rpc<MediaComment[]>(pass, 'sp_media_comments', { p_media_id: id }),
     reactionCounts: (pass, ids) => (ids.length ? rpc<ReactionCount[]>(pass, 'sp_reaction_counts', { p_media_ids: ids }) : Promise.resolve([])),
   };
 }
