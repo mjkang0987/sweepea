@@ -1671,3 +1671,47 @@
   scroll-snap-align: center;
   scroll-snap-stop: always;
 }
+
+/* 사진만 보기(사진을 한 번 누름, 디자인 157): 위 메뉴·화살표·재생 버튼·아래 판·토스트를 숨기고 검은 바탕에 사진만 */
+.sp-v[data-bare] {
+  background: #000000;
+}
+.sp-v[data-bare] .sp-v__bar,
+.sp-v[data-bare] .sp-v__arrow,
+.sp-v[data-bare] .sp-v__play,
+.sp-v[data-bare] .sp-v__dock,
+.sp-v[data-bare] > .sp-toast {
+  display: none;
+}
+/* 키보드로 오면 보이는 '메뉴 숨기기/보이기' 버튼(평소엔 화면 읽기에만) */
+.sp-v__ui:focus-visible {
+  top: max(var(--space-3), env(safe-area-inset-top));
+  left: 50%;
+  z-index: 2;
+  width: auto;
+  height: auto;
+  min-height: 3rem;
+  margin: 0;
+  padding: 0 var(--space-4);
+  overflow: visible;
+  clip: auto;
+  transform: translateX(-50%);
+  border-radius: var(--radius-full);
+  background: var(--panel-item);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  color: var(--label);
+  font: inherit;
+  font-size: var(--senior-caption-size);
+  font-weight: 600;
+  /* 다른 크게 보기 버튼과 같은 포커스 테두리(고대비 모드에서도 경계가 보이게) */
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-v__ui:focus-visible {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

@@ -223,7 +223,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       const fromTap = document.activeElement === tap;
       delete v.dataset.playing;
       tap.hidden = true;
-      if (fromTap) play.focus({ preventScroll: true });
+      // 사진만 보는 중이면 재생 버튼이 숨어 있으니 메뉴 버튼으로
+      if (fromTap) ('bare' in v.dataset ? v.querySelector<HTMLElement>('.sp-v__ui') : play)?.focus({ preventScroll: true });
     };
     video.addEventListener('pause', stop);
     video.addEventListener('ended', stop);
@@ -348,6 +349,38 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     next?.addEventListener('click', go(1));
     addEventListener('resize', () => (track.scrollLeft = at * track.clientWidth));
   }
+  // 사진만 보기: 사진을 한 번 누르면 위 메뉴·아래 판·화살표·영상 막대를 숨기고(검은 바탕), 다시 누르면 돌아온다.
+  // 사진 칸을 덮는 버튼은 손가락 넘기기를 막아서 쓰지 않고, 키보드·화면 읽기용 버튼은 포커스하면 보인다. Esc로도 돌아온다
+  if (v && stage) {
+    const ui = document.createElement('button');
+    ui.type = 'button';
+    ui.className = 'sp-vh sp-v__ui';
+    const bare = (on: boolean) => {
+      // 토스트는 지운다(숨겼다 다시 보이면 사라짐 움직임이 처음부터 돌아 지난 안내가 또 뜬다)
+      if (on) v.querySelector('.sp-v > .sp-toast')?.remove();
+      if (on) v.dataset.bare = '';
+      else delete v.dataset.bare;
+      ui.textContent = on ? '메뉴 보이기' : '메뉴 숨기기';
+    };
+    bare(false);
+    v.insertBefore(ui, v.firstChild);
+    ui.addEventListener('click', () => bare(!('bare' in v.dataset)));
+    // 재생 중 누르기는 일시정지 버튼(.sp-v__tap)이 받는다('일시정지하고 메뉴 보기'라 메뉴도 돌려준다)
+    v.querySelector('.sp-v__tap')?.addEventListener('click', () => bare(false));
+    // PC에서 마우스로 끌다 놓은 것은 누름이 아니다. 빠르게 두 번 누르면(확대하려는 손짓) 깜빡이지 않게 두 번째는 버린다
+    let down = { x: 0, y: 0 };
+    // 이벤트 시각은 페이지를 연 때부터 세므로, 열자마자 누른 첫 누름이 버려지지 않게
+    let last = -Infinity;
+    stage.addEventListener('pointerdown', (e) => e.isPrimary && (down = { x: e.clientX, y: e.clientY }));
+    stage.addEventListener('click', (e) => {
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10 || e.timeStamp - last < 300) return;
+      last = e.timeStamp;
+      bare(!('bare' in v.dataset));
+    });
+    addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && 'bare' in v.dataset) bare(false);
+    });
+  }
   // 한마디 결과 안내(say=…·sm)는 한 번만: 새로 고침해도 토스트가 다시 안 뜨게 주소에서 뗀다
   {
     const u = new URL(location.href);
@@ -400,7 +433,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     t.removeAttribute('role');
     const sheet = v.querySelector<HTMLElement>('#talk[open]');
     const host = sheet ?? v;
-    host.insertBefore(t, host.firstChild);
+    // 사진만 보는 중엔 화면 토스트는 넣지 않고 읽기만(숨겨 둔 토스트는 메뉴를 다시 켤 때 뒤늦게 뜬다)
+    if (sheet || !('bare' in v.dataset)) host.insertBefore(t, host.firstChild);
     const region = t.classList.contains('sp-toast--error') ? urgent : live;
     host.appendChild(region);
     region.textContent = '';
