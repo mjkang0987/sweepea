@@ -223,7 +223,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       const fromTap = document.activeElement === tap;
       delete v.dataset.playing;
       tap.hidden = true;
-      if (fromTap) play.focus({ preventScroll: true });
+      // 사진만 보는 중이면 재생 버튼이 숨어 있으니 메뉴 버튼으로
+      if (fromTap) ('bare' in v.dataset ? v.querySelector<HTMLElement>('.sp-v__ui') : play)?.focus({ preventScroll: true });
     };
     video.addEventListener('pause', stop);
     video.addEventListener('ended', stop);
@@ -366,11 +367,13 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     ui.addEventListener('click', () => bare(!('bare' in v.dataset)));
     // 재생 중 누르기는 일시정지 버튼(.sp-v__tap)이 받는다('일시정지하고 메뉴 보기'라 메뉴도 돌려준다)
     v.querySelector('.sp-v__tap')?.addEventListener('click', () => bare(false));
-    // PC에서 마우스로 끌다 놓은 것은 누름이 아니다
+    // PC에서 마우스로 끌다 놓은 것은 누름이 아니다. 빠르게 두 번 누르면(확대하려는 손짓) 깜빡이지 않게 두 번째는 버린다
     let down = { x: 0, y: 0 };
-    stage.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
+    let last = 0;
+    stage.addEventListener('pointerdown', (e) => e.isPrimary && (down = { x: e.clientX, y: e.clientY }));
     stage.addEventListener('click', (e) => {
-      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10) return;
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10 || e.timeStamp - last < 300) return;
+      last = e.timeStamp;
       bare(!('bare' in v.dataset));
     });
     addEventListener('keydown', (e) => {
@@ -429,7 +432,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     t.removeAttribute('role');
     const sheet = v.querySelector<HTMLElement>('#talk[open]');
     const host = sheet ?? v;
-    host.insertBefore(t, host.firstChild);
+    // 사진만 보는 중엔 화면 토스트는 넣지 않고 읽기만(숨겨 둔 토스트는 메뉴를 다시 켤 때 뒤늦게 뜬다)
+    if (sheet || !('bare' in v.dataset)) host.insertBefore(t, host.firstChild);
     const region = t.classList.contains('sp-toast--error') ? urgent : live;
     host.appendChild(region);
     region.textContent = '';

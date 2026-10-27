@@ -1704,6 +1704,9 @@
   font: inherit;
   font-size: var(--senior-caption-size);
   font-weight: 600;
+  /* 다른 크게 보기 버튼과 같은 포커스 테두리(고대비 모드에서도 경계가 보이게) */
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
 }
 @media (prefers-reduced-transparency: reduce) {
   .sp-v__ui:focus-visible {
