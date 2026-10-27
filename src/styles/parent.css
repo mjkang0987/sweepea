@@ -145,6 +145,34 @@
   flex-direction: column;
   gap: var(--space-2);
 }
+/* 저장 같은 주요 버튼은 탭바 바로 위 막대에 고정(디자인 151, 사용자 2026-10-27). 넓은 화면은 탭이 위라 맨 아래 */
+.sp-p__savebar {
+  position: fixed;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: calc(3.5rem + 1px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--space-3) max(var(--space-5), calc((100% - 32rem) / 2 + var(--space-5)));
+  border-top: 1px solid var(--separator);
+  background: var(--bar);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+/* 막대가 있으면 토스트는 막대 위 12px(막대 높이 77px) */
+.sp-p:has(.sp-p__savebar) .sp-toast {
+  bottom: calc(3.5rem + 1px + 77px + 12px + env(safe-area-inset-bottom));
+}
+@media (min-width: 64rem) {
+  .sp-p__savebar {
+    bottom: 0;
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  }
+  .sp-p:has(.sp-p__savebar) .sp-toast {
+    bottom: calc(77px + 12px + env(safe-area-inset-bottom));
+  }
+}
 .sp-p__btn,
 .sp-p__login {
   box-sizing: border-box;

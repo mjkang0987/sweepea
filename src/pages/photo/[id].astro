@@ -137,7 +137,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
     </li>
     </ul>
     <p class="sp-p__hint" id="group-note">그룹을 빼면 그 가족 화면에서 바로 사라져요.</p>
-    <button class="sp-p__btn" type="submit" name="do" value="save">저장</button>
+    <div class="sp-p__savebar"><button class="sp-p__btn" type="submit" name="do" value="save">저장</button></div>
   </form>
   {/* 스크립트가 있으면 이 화면 위 레이어(showModal), 없으면 주소로 같은 레이어를 연 채 다시 그린다 */}
   <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" href={`/photo/${id}${kq ? `${kq}&` : '?'}confirm=delete`} aria-haspopup="dialog" data-del-open>{isVideo ? '영상' : '사진'} 지우기</a>
