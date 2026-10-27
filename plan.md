@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-27 기준, dev 0.4.14 배포됨)
+## 새 세션 인계 (2026-10-27 기준, dev 0.4.15 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
 
 ### 지금 상태
 
-- dev = 0.4.14, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- dev = 0.4.15, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 16개 모두 적용. 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v142, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
