@@ -65,6 +65,8 @@ const poster = info.item.poster_key ? await signedMediaUrl(info.item.poster_key)
 const label = `${new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(info.item.taken_at))} ${isVideo ? '영상' : '사진'}`;
 const q = Astro.url.searchParams;
 const confirmDelete = q.get('confirm') === 'delete';
+const what = isVideo ? '영상' : '사진';
+const delText = '가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요.';
 const done = q.get('done');
 const doneText: Record<string, string> = { saved: '저장했어요.', error: '처리하지 못했어요. 다시 눌러 주세요.' };
 ---
@@ -89,63 +91,91 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
       )
     }
   </div>
+  <form class="sp-p__form sp-p__form--fit" method="post">
+    {error && <p class="sp-p__error" role="alert" id="p-err">{error.text}</p>}
+    {/* 디자인: 한 묶음 목록(찍은 날 줄 · 아이 · 보여줄 그룹) */}
+    <ul class="sp-p__rows" role="list">
+    <li class="sp-p__rows-item">
+      <label class="sp-p__rows-label" for="date">찍은 날</label>
+      <input class="sp-p__inline-date" id="date" name="date" type="date" required min="2000-01-01" max={seoulToday()} value={date} aria-invalid={error?.field === 'date' ? 'true' : undefined} aria-describedby={error?.field === 'date' ? 'p-err' : undefined} />
+    </li>
+    {
+      kids.length > 0 && (
+        <li class="sp-p__rows-item sp-p__rows-item--stack">
+        <fieldset class="sp-p__fieldset sp-p__field">
+          <legend class="sp-p__rows-label sp-p__rows-legend">아이</legend>
+          <div class="sp-p__checks">
+            {kids.map((k) => (
+              <label class="sp-p__check">
+                <input class="sp-p__checkbox" type="checkbox" name="child" value={k.id} checked={childIds.includes(k.id)} />
+                {k.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        </li>
+      )
+    }
+    <li class="sp-p__rows-item sp-p__rows-item--stack">
+    <fieldset class="sp-p__fieldset sp-p__field" aria-describedby={error?.field === 'group' ? 'group-note p-err' : 'group-note'}>
+      <legend class="sp-p__rows-label sp-p__rows-legend">보여줄 그룹</legend>
+      <div class="sp-p__checks">
+        {groups.map((g) => (
+          <label class="sp-p__check">
+            <input class="sp-p__checkbox" type="checkbox" name="group" value={g.id} checked={groupIds.includes(g.id)} />
+            {g.name}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+    </li>
+    </ul>
+    <p class="sp-p__hint" id="group-note">그룹을 빼면 그 가족 화면에서 바로 사라져요.</p>
+    <button class="sp-p__btn" type="submit" name="do" value="save">저장</button>
+  </form>
+  {/* 스크립트가 있으면 이 화면 위 레이어(showModal), 없으면 주소로 같은 레이어를 연 채 다시 그린다 */}
+  <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" href={`/photo/${id}${kq ? `${kq}&` : '?'}confirm=delete`} aria-haspopup="dialog" data-del-open>{isVideo ? '영상' : '사진'} 지우기</a>
+  {/* 디자인 PhotoDeleteLayer: 가운데 레이어, 지우기(빨강)·취소 */}
   {
     confirmDelete ? (
-      <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
-        <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>이 {isVideo ? '영상' : '사진'}을 지울까요?</h2>
-        <p class="sp-p__lead">가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요.</p>
-        <form class="sp-p__pair" method="post">
-          <a class="sp-p__btn sp-p__btn--quiet" href={`/photo/${id}${kq}`}>취소</a>
-          <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value="delete">지우기</button>
-        </form>
-      </section>
+      <div class="sp-layer">
+        <div class="sp-layer__scrim" aria-hidden="true"></div>
+        <dialog class="sp-layer__box" open aria-labelledby="del-t" aria-describedby="del-d">
+          <h2 class="sp-layer__title" id="del-t">이 {what}을 지울까요?</h2>
+          <p class="sp-layer__text" id="del-d">{delText}</p>
+          <form class="sp-layer__actions" method="post">
+            <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value="delete">지우기</button>
+            <a class="sp-p__btn sp-p__btn--quiet" href={`/photo/${id}${kq}`} autofocus>취소</a>
+          </form>
+        </dialog>
+      </div>
     ) : (
-      <>
-        <form class="sp-p__form sp-p__form--fit" method="post">
-          {error && <p class="sp-p__error" role="alert" id="p-err">{error.text}</p>}
-          {/* 디자인: 한 묶음 목록(찍은 날 줄 · 아이 · 보여줄 그룹) */}
-          <ul class="sp-p__rows" role="list">
-          <li class="sp-p__rows-item">
-            <label class="sp-p__rows-label" for="date">찍은 날</label>
-            <input class="sp-p__inline-date" id="date" name="date" type="date" required min="2000-01-01" max={seoulToday()} value={date} aria-invalid={error?.field === 'date' ? 'true' : undefined} aria-describedby={error?.field === 'date' ? 'p-err' : undefined} />
-          </li>
-          {
-            kids.length > 0 && (
-              <li class="sp-p__rows-item sp-p__rows-item--stack">
-              <fieldset class="sp-p__fieldset sp-p__field">
-                <legend class="sp-p__rows-label sp-p__rows-legend">아이</legend>
-                <div class="sp-p__checks">
-                  {kids.map((k) => (
-                    <label class="sp-p__check">
-                      <input class="sp-p__checkbox" type="checkbox" name="child" value={k.id} checked={childIds.includes(k.id)} />
-                      {k.name}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-              </li>
-            )
-          }
-          <li class="sp-p__rows-item sp-p__rows-item--stack">
-          <fieldset class="sp-p__fieldset sp-p__field" aria-describedby={error?.field === 'group' ? 'group-note p-err' : 'group-note'}>
-            <legend class="sp-p__rows-label sp-p__rows-legend">보여줄 그룹</legend>
-            <div class="sp-p__checks">
-              {groups.map((g) => (
-                <label class="sp-p__check">
-                  <input class="sp-p__checkbox" type="checkbox" name="group" value={g.id} checked={groupIds.includes(g.id)} />
-                  {g.name}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          </li>
-          </ul>
-          <p class="sp-p__hint" id="group-note">그룹을 빼면 그 가족 화면에서 바로 사라져요.</p>
-          <button class="sp-p__btn" type="submit" name="do" value="save">저장</button>
+      <dialog class="sp-layer__box sp-layer__modal" id="del" aria-labelledby="del-t" aria-describedby="del-d">
+        <h2 class="sp-layer__title" id="del-t">이 {what}을 지울까요?</h2>
+        <p class="sp-layer__text" id="del-d">{delText}</p>
+        <form class="sp-layer__actions" method="post">
+          <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value="delete">지우기</button>
+          {/* 닫기는 브라우저 기본(method=dialog) */}
+          <button class="sp-p__btn sp-p__btn--quiet" type="submit" formmethod="dialog" value="cancel" autofocus>취소</button>
         </form>
-        <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" href={`/photo/${id}${kq ? `${kq}&` : '?'}confirm=delete#confirm`}>{isVideo ? '영상' : '사진'} 지우기</a>
-      </>
+      </dialog>
     )
   }
 </Parent>
 
+<script>
+  // 사진 지우기: 링크 대신 이 화면 위 레이어로(스크립트 없으면 링크대로 ?confirm=delete)
+  const del = document.getElementById('del') as HTMLDialogElement | null;
+  if (del && typeof del.showModal === 'function') {
+    document.querySelector('[data-del-open]')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      del.showModal();
+    });
+    // 어두운 바깥을 누르면 닫기
+    del.addEventListener('click', (e) => {
+      if (e.target !== del) return;
+      const r = del.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) del.close();
+    });
+  }
+</script>
