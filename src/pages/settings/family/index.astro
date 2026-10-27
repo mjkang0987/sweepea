@@ -60,14 +60,14 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
     <a class="sp-p__back" href="/settings">설정</a>
     <h1 class="sp-p__nav-title">가족</h1>
   </div>
-  {shownDone && doneText[shownDone] && <Toast text={doneText[shownDone]} tone={['error', 'gone', 'conflict'].includes(shownDone) ? 'error' : 'ok'} />}
+  {shownDone && doneText[shownDone] && <Toast text={doneText[shownDone]} tone={['error', 'gone', 'conflict'].includes(shownDone) ? 'error' : 'ok'} focus />}
   {/* 스크립트로 바꾼 결과를 읽어 주는 늘 있는 알림 칸 */}
   <p class="sp-vh" id="fam-live" role="status"></p>
   <p class="sp-vh" id="fam-urgent" role="alert"></p>
   {/* 되돌릴 수 없는 동작 확인(디자인 FamilyRejectLayer·FamilyRevokeLayer). 스크립트가 없을 때 ?confirm=으로 연 채 그린다 */}
   {
     ask && (
-      <div class="sp-layer" id="confirm">
+      <div class="sp-layer" id="confirm" data-cancel={cKind === 'reset' ? `/settings/family/groups/${cId}` : cActive ? `/settings/family/member/${cId}` : '/settings/family'}>
         <div class="sp-layer__scrim" aria-hidden="true"></div>
         <dialog class="sp-layer__box" open aria-labelledby="confirm-t" aria-describedby="confirm-d">
           <h2 class="sp-layer__title" id="confirm-t">{ask.title}</h2>
@@ -197,67 +197,114 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
 <script>
   // 그 자리에서: 이 화면 폼은 fetch로 보내고 돌아온 화면의 내용·탭 배지만 갈아 끼운다(하얀 깜빡임·스크롤 처음으로 없이).
   // 거절·내 가족 아님은 먼저 확인 레이어. 스크립트가 없거나 옛 브라우저면 지금처럼 폼 → 페이지 이동
-  const page = document.querySelector<HTMLElement>('.sp-p');
+  const root = document.querySelector<HTMLElement>('.sp-p');
   const live = document.getElementById('fam-live');
   const urgent = document.getElementById('fam-urgent');
-  let queue = Promise.resolve();
-  let focusId = '';
-  let pending = 0;
-  // 새로 그린 토스트는 늘 있는 알림 칸으로 읽힌다(새로 넣은 role 요소는 화면 읽기가 놓칠 수 있어서)
-  const say = (t: Element | null) => {
-    if (!t || !live || !urgent) return;
-    t.removeAttribute('role');
-    const region = t.classList.contains('sp-toast--error') ? urgent : live;
-    region.textContent = '';
-    setTimeout(() => (region.textContent = t.textContent?.trim() ?? ''), 50);
-  };
-  const fail = () => {
-    page?.querySelector('.sp-toast')?.remove();
-    const p = document.createElement('p');
-    p.className = 'sp-toast sp-toast--error';
-    p.innerHTML = '<span class="sp-toast__text">처리하지 못했어요. 다시 눌러 주세요.</span>';
-    page?.prepend(p);
-    say(p);
-  };
-  if (page && live && urgent) {
+  const box = document.getElementById('fam-ask') as HTMLDialogElement | null;
+  if (root && live && urgent && box && typeof box.showModal === 'function') {
+    const area: HTMLElement = root;
+    const ask: HTMLDialogElement = box;
+    let queue = Promise.resolve();
+    let focusId = '';
+    let pending = 0;
+    // 뒤 요청을 기다리느라 그리지 않은 응답(뒤 요청이 실패하면 이걸 그린다)
+    let skipped = '';
+    // 새로 그린 토스트는 늘 있는 알림 칸으로 읽힌다(새로 넣은 role 요소는 화면 읽기가 놓칠 수 있어서)
+    const say = (t: Element | null) => {
+      if (!t) return;
+      t.removeAttribute('role');
+      const region = t.classList.contains('sp-toast--error') ? urgent : live;
+      region.textContent = '';
+      setTimeout(() => (region.textContent = t.textContent?.trim() ?? ''), 50);
+    };
+    const fail = () => {
+      area.querySelector('.sp-toast')?.remove();
+      const p = document.createElement('p');
+      p.className = 'sp-toast sp-toast--error';
+      p.innerHTML = '<span class="sp-toast__text">처리하지 못했어요. 다시 눌러 주세요.</span>';
+      area.insertBefore(p, area.firstChild); // prepend는 Worker 타입(HTMLRewriter)과 겹쳐 타입 검사가 막음
+      say(p);
+    };
+    const openAsk = (title: string, text: string, ok: string, value: string, cancel = '') => {
+      ask.querySelector('#ask-t')!.textContent = title;
+      ask.querySelector('#ask-d')!.textContent = text;
+      const b = ask.querySelector<HTMLButtonElement>('button[name="do"]')!;
+      b.value = value;
+      b.textContent = ok;
+      ask.dataset.cancel = cancel;
+      ask.showModal();
+    };
     // 결과 안내가 붙은 주소(?done=)는 떼어 새로 고침해도 다시 뜨지 않게
     if (new URLSearchParams(location.search).has('done')) history.replaceState(history.state, '', location.pathname);
-    // 어두운 바깥을 누르면 닫기(사진 지우기 레이어와 같게). 레이어는 화면을 갈아 끼우면 새것이라 문서에서 받는다
-    document.addEventListener('click', (e) => {
-      const box = e.target;
-      if (!(box instanceof HTMLDialogElement) || box.id !== 'fam-ask') return;
-      const r = box.getBoundingClientRect();
-      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) box.close();
+    // 다른 화면(구성원 내보내기·그룹 주소 다시 만들기)에서 ?confirm=으로 온 확인은 같은 모달로 올린다(Esc·초점 가두기). 취소하면 원래 화면으로
+    const server = area.querySelector<HTMLElement>('#confirm');
+    if (server) {
+      const go = server.querySelector<HTMLButtonElement>('button[name="do"]')!;
+      openAsk(server.querySelector('#confirm-t')?.textContent ?? '', server.querySelector('#confirm-d')?.textContent ?? '', go.textContent ?? '', go.value, server.dataset.cancel);
+      server.remove();
+    }
+    ask.addEventListener('close', () => {
+      const back = ask.dataset.cancel;
+      ask.dataset.cancel = '';
+      if (back) return location.assign(back);
+      // 레이어를 연 버튼이 그새 새 화면으로 바뀌었으면 같은 일을 하는 새 버튼(없으면 그 칸 제목)으로 초점을 돌려준다
+      if (document.activeElement && document.activeElement !== document.body) return;
+      const v = ask.querySelector<HTMLButtonElement>('button[name="do"]')!.value;
+      const to = [...area.querySelectorAll<HTMLButtonElement>('button[name="do"]')].find((x) => x.value === v && !ask.contains(x)) ?? document.getElementById(focusId);
+      to?.focus({ preventScroll: true });
     });
+    // 어두운 바깥을 누르면 닫기(사진 지우기 레이어와 같게)
+    ask.addEventListener('click', (e) => {
+      if (e.target !== ask) return;
+      const r = ask.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) ask.close();
+    });
+    const draw = (html: string, want: string) => {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const from = doc.querySelector('.sp-p');
+      if (!from) return location.reload();
+      // 알림 칸·확인 레이어는 그대로 둔다(열려 있는 확인 레이어가 사라지지 않게)
+      const keep = new Set(['fam-live', 'fam-urgent', 'fam-ask']);
+      area.replaceChildren(...[...from.childNodes].filter((n) => !(n instanceof Element && keep.has(n.id))).map((n) => document.importNode(n, true)), live, urgent, ask);
+      area.removeAttribute('aria-busy');
+      // ?confirm=·?done=을 떼어 새로 고침해도 확인·안내가 다시 뜨지 않게
+      if (location.search) history.replaceState(history.state, '', location.pathname);
+      const tabs = doc.querySelector('.sp-p__tabs');
+      if (tabs) document.querySelector('.sp-p__tabs')?.replaceWith(document.importNode(tabs, true));
+      // 확인 레이어를 새로 열어 둔 동안은 초점을 건드리지 않는다
+      if (!ask.open) {
+        const target = document.getElementById(want) ?? area.querySelector<HTMLElement>('.sp-p__nav-title');
+        if (target && !target.hasAttribute('tabindex') && !target.matches('a, button')) target.tabIndex = -1;
+        target?.focus({ preventScroll: true });
+      }
+      say(area.querySelector('.sp-toast'));
+    };
     document.addEventListener('submit', (e) => {
       const form = e.target as HTMLFormElement;
       const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
-      if (!page.contains(form) || form.method !== 'post' || new URL(form.action).pathname !== '/settings/family') return;
+      if (!area.contains(form) || form.method !== 'post' || new URL(form.action).pathname !== '/settings/family') return;
       // 누른 버튼을 모르는 옛 브라우저는 원래대로(버튼 값이 곧 할 일)
       if (!btn?.name) return;
-      const box = page.querySelector<HTMLDialogElement>('#fam-ask');
       if (btn.dataset.askTitle) {
-        if (!box || typeof box.showModal !== 'function') return;
         e.preventDefault();
-        box.querySelector('#ask-t')!.textContent = btn.dataset.askTitle;
-        box.querySelector('#ask-d')!.textContent = btn.dataset.askText ?? '';
-        const ok = box.querySelector<HTMLButtonElement>('button[name="do"]')!;
-        ok.value = btn.value;
-        ok.textContent = btn.dataset.askOk ?? '';
         focusId = btn.closest('section')?.querySelector('h2')?.id ?? '';
-        box.showModal();
+        openAsk(btn.dataset.askTitle, btn.dataset.askText ?? '', btn.dataset.askOk ?? '', btn.value);
         return;
       }
       e.preventDefault();
       const body = new FormData(form);
       body.append(btn.name, btn.value);
-      if (form.closest('dialog') === box) box?.close();
-      else focusId = btn.value.startsWith('share:') ? 'link-title' : (btn.closest('section')?.querySelector('h2')?.id ?? '');
-      const want = focusId;
+      // 링크를 만들면(다시 만들기 포함) 새 링크 카드로, 확인 레이어에서 보냈으면 레이어를 연 버튼의 칸으로, 아니면 누른 버튼의 칸으로
+      const fromAsk = form.closest('dialog') === ask;
+      if (fromAsk) {
+        ask.dataset.cancel = '';
+        ask.close();
+      } else focusId = btn.closest('section')?.querySelector('h2')?.id ?? '';
+      const want = /^(share|reset):/.test(btn.value) ? 'link-title' : focusId;
       live.textContent = '';
       urgent.textContent = '';
       btn.disabled = true; // 보내는 중 두 번 누르지 않게(응답이 새 화면으로 바꾼다)
-      page.setAttribute('aria-busy', 'true');
+      area.setAttribute('aria-busy', 'true');
       pending++;
       queue = queue.then(async () => {
         let html = '';
@@ -270,26 +317,21 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
         } catch {
           pending--;
           btn.disabled = false;
-          if (!pending) page.removeAttribute('aria-busy');
+          if (!pending) {
+            // 앞 요청이 성공했는데 그리지 않았으면 그 화면을 먼저 그린다(처리된 카드가 남지 않게)
+            if (skipped) draw(skipped, want);
+            else area.removeAttribute('aria-busy');
+            skipped = '';
+            if (!fromAsk && btn.isConnected) btn.focus({ preventScroll: true });
+          }
           return fail();
         }
-        // 뒤에 누른 게 있으면 그리지 않는다(마지막 응답이 최신 화면을 그림)
-        if (--pending) return;
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const from = doc.querySelector('.sp-p');
         // 로그인이 끝나 다른 화면이 온 경우 등은 그 화면으로
-        if (url.pathname !== '/settings/family' || !from) return location.assign(url.href);
-        page.replaceChildren(...[...from.childNodes].filter((n) => !(n instanceof Element && (n.id === 'fam-live' || n.id === 'fam-urgent'))).map((n) => document.importNode(n, true)), live, urgent);
-        page.removeAttribute('aria-busy');
-        // ?confirm=·?done=을 떼어 새로 고침해도 확인·안내가 다시 뜨지 않게
-        if (location.search) history.replaceState(history.state, '', location.pathname);
-        const tabs = doc.querySelector('.sp-p__tabs');
-        if (tabs) document.querySelector('.sp-p__tabs')?.replaceWith(document.importNode(tabs, true));
-        // 확인하던 대상이 그새 처리돼 서버가 확인 레이어를 그렸으면(?confirm=) 그 레이어 취소로
-        const target = page.querySelector<HTMLElement>('#confirm [autofocus]') ?? document.getElementById(want) ?? page.querySelector<HTMLElement>('.sp-p__nav-title');
-        if (target && !target.hasAttribute('tabindex') && !target.matches('a, button')) target.tabIndex = -1;
-        target?.focus({ preventScroll: true });
-        say(page.querySelector('.sp-toast'));
+        if (url.pathname !== '/settings/family') return location.assign(url.href);
+        // 뒤에 누른 게 있으면 그리지 않는다(마지막 응답이 최신 화면을 그림)
+        if (--pending) return void (skipped = html);
+        skipped = '';
+        draw(html, want);
       });
       queue = queue.catch(() => location.reload());
     });
