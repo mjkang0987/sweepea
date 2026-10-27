@@ -12,6 +12,9 @@ as $$
   where c.media_id = p_media_id and c.deleted_at is null
     and (m.id is not null or p.user_id is not null)
     and public.sp_can_view_media(p_media_id)
+    -- 승인 대기(받은 공유 묶음만 봄)는 가족 명단을 못 보듯 남의 이름·한마디도 못 본다
+    and exists (select 1 from public.media x where x.id = p_media_id
+                and (public.sp_device_active(x.family_id) or x.family_id = public.sp_parent_family()))
   order by c.created_at desc
   limit 100
 $$;
