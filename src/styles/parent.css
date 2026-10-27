@@ -54,7 +54,8 @@
   margin: 0;
   color: var(--label-2);
 }
-.sp-p__lead {
+.sp-p__lead,
+.sp-p__note {
   font-size: var(--subhead-size);
   line-height: var(--subhead-line);
 }
