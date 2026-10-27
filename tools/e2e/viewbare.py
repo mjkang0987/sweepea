@@ -8,6 +8,9 @@ def check(c,msg):
     print('ok' if c else 'FAIL',msg)
     if not c: FAILS.append(msg)
 bare="'bare' in document.querySelector('.sp-v').dataset"
+def tap(pg,x,y):
+    pg.wait_for_timeout(350)  # 빠른 두 번째 누름은 버리므로 사이를 둔다
+    pg.mouse.click(x,y)
 shown="['.sp-v__bar','.sp-v__dock','a[rel=next]'].map(s=>{const e=document.querySelector(s);return !!e&&e.checkVisibility()})"
 with sync_playwright() as p:
     b=p.chromium.launch()
@@ -25,16 +28,19 @@ with sync_playwright() as p:
     # 1) 사진: 누르면 사진만
     pg.goto(B+'/view/'+photos[0]); pg.wait_for_selector('.sp-v__track')
     check(pg.evaluate(shown)==[True,True,True] and not pg.evaluate(bare),'처음엔 메뉴·판·화살표 보임')
-    pg.mouse.click(195,420)
+    tap(pg,195,420)
     check(pg.evaluate(bare) and pg.evaluate(shown)==[False,False,False],'사진을 누르면 메뉴·판·화살표 숨김')
     check(pg.evaluate("getComputedStyle(document.querySelector('.sp-v')).backgroundColor")=='rgb(0, 0, 0)','바탕은 검정')
     check(pg.locator('.sp-v__ui').inner_text()=='메뉴 보이기','버튼 이름이 메뉴 보이기로')
     pg.screenshot(path=D+'../shots/viewbare.png') if os.path.isdir(D+'../shots') else None
-    pg.mouse.click(195,420)
+    tap(pg,195,420)
     # 마우스로 끌다 놓으면 전환하지 않음
     pg.mouse.move(150,420); pg.mouse.down(); pg.mouse.move(260,420,steps=5); pg.mouse.up()
     check(not pg.evaluate(bare),'마우스로 끌다 놓으면 그대로')
-    pg.mouse.click(195,420)
+    pg.wait_for_timeout(350); pg.mouse.click(195,420); pg.wait_for_timeout(80); pg.mouse.click(195,420)
+    check(pg.evaluate(bare),'빠르게 두 번 누르면 두 번째는 버림(깜빡이지 않음)')
+    tap(pg,195,420)
+    tap(pg,195,420)
     # 2) 넘겨도 사진만 유지
     # 지금 사진 옆의 사진(영상이면 그 화면을 새로 여니 사진인 칸으로)
     k,nid=pg.evaluate("(()=>{const w=JSON.parse(document.querySelector('.sp-v').dataset.slides),at=w.slides.findIndex(x=>x.id===document.querySelector('.sp-v').dataset.id);const k=w.slides.findIndex((x,i)=>i>at&&!x.video);return [k,w.slides[k].id]})()")
@@ -45,7 +51,7 @@ with sync_playwright() as p:
     check(pg.evaluate('window.__same')==1,'넘기기는 페이지 다시 안 부름')
     check(pg.evaluate(bare) and pg.evaluate(shown)[:2]==[False,False],'넘겨도 사진만 유지')
     # 3) 다시 누르면 돌아옴(판은 넘긴 사진 것)
-    pg.mouse.click(195,420)
+    tap(pg,195,420)
     check(not pg.evaluate(bare) and pg.evaluate(shown)[:2]==[True,True],'다시 누르면 돌아옴')
     check(pg.locator('.sp-v__pos').inner_text()!=pos0,'위 메뉴는 넘긴 사진 기준')
     # 4) 키보드: 포커스하면 보이는 버튼, Enter로 숨기고 Esc로 돌아옴
@@ -59,12 +65,12 @@ with sync_playwright() as p:
     check(not pg.evaluate(bare) and ui.inner_text()=='메뉴 숨기기','Esc로 돌아옴')
     # 7) 영상: 멈춘 상태에서 누르면 사진만(재생 버튼도 숨김), 재생 중엔 누르면 일시정지
     pg.goto(B+'/view/'+vids[0]); pg.wait_for_selector('.sp-v__play:not([hidden])')
-    pg.mouse.click(195,300)
+    tap(pg,195,300)
     check(pg.evaluate(bare) and pg.locator('.sp-v__play').is_hidden() and pg.locator('.sp-v__ctrl').is_hidden(),'영상 멈춤: 누르면 재생 버튼·막대까지 숨김')
-    pg.mouse.click(195,300)
+    tap(pg,195,300)
     check(not pg.evaluate(bare) and pg.locator('.sp-v__play').is_visible(),'다시 누르면 돌아옴')
     pg.locator('.sp-v__play').click(); pg.wait_for_function("'playing' in document.querySelector('.sp-v').dataset",timeout=5000)
-    pg.mouse.click(195,300); pg.wait_for_function("document.querySelector('video').paused",timeout=5000)
+    tap(pg,195,300); pg.wait_for_function("document.querySelector('video').paused",timeout=5000)
     check(not pg.evaluate(bare),'재생 중 누르면 일시정지만(사진만 아님)')
     # 키보드로 숨긴 뒤 일시정지 버튼('일시정지하고 메뉴 보기')을 누르면 메뉴도 돌아옴
     pg.locator('.sp-v__play').click(); pg.wait_for_function("'playing' in document.querySelector('.sp-v').dataset",timeout=5000)
@@ -75,7 +81,7 @@ with sync_playwright() as p:
     # 토스트가 있던 화면: 사진만을 켰다 끄면 지난 안내가 다시 뜨지 않음
     pg.goto(B+'/view/'+photos[0]+'?done=saved'); pg.wait_for_selector('.sp-v__track')
     had=pg.locator('.sp-v > .sp-toast').count()
-    pg.mouse.click(195,420); pg.mouse.click(195,420)
+    tap(pg,195,420); tap(pg,195,420)
     check(had==1 and pg.locator('.sp-v > .sp-toast').count()==0,'사진만을 켜면 토스트는 지움(다시 안 뜸) had=%d'%had)
     b.close()
 print('FAILS',FAILS)
