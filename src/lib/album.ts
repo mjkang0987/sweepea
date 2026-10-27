@@ -5,6 +5,7 @@ import { currentPass } from './pass';
 import { isOpen } from './families';
 import { callName } from './ko';
 import { signedMediaUrl } from './signed';
+import { UUID } from './media';
 
 export const ZOOMS = [1, 2, 3, 5] as const;
 export type Zoom = (typeof ZOOMS)[number];
@@ -83,6 +84,8 @@ const BACK = /^\/album(\/[0-9a-f-]{36})?(\?[A-Za-z0-9=&%._-]*)?(#[A-Za-z0-9_-]+)
 export interface ReactOps {
   react(mediaId: string, kind: ReactionKind, on: boolean): Promise<void>;
   comment(mediaId: string, body: string): Promise<void>;
+  /** 한마디 지우기(쓴 사람만, DB가 막음) */
+  deleteComment(commentId: string): Promise<void>;
 }
 
 /** 반응·한마디 폼 처리 공통. back은 back 정규식에 맞는 주소만(열린 이동 방지), 아니면 fallback */
@@ -94,7 +97,15 @@ export async function applyReactPost(request: Request, mediaId: string, ops: Rea
   try {
     const react = String(form.get('react') ?? '');
     const body = form.get('body');
-    if (react) {
+    const del = String(form.get('del') ?? '');
+    if (del) {
+      // 지운 뒤엔 시트를 다시 열어 둔다(#talk) + 안내
+      if (UUID.test(del)) {
+        await ops.deleteComment(del);
+        to.searchParams.set('say', 'deleted');
+      }
+      to.hash = 'talk';
+    } else if (react) {
       const [kind, on] = react.split(':');
       if ((REACTION_KINDS as readonly string[]).includes(kind) && (on === 'on' || on === 'off')) {
         await ops.react(mediaId, kind as ReactionKind, on === 'on');
@@ -128,7 +139,7 @@ export async function handleReactPost(request: Request, mediaId: string, cookies
   const pass = await currentPass(cookies);
   if (!pass) return '/';
   const b = getBackend();
-  return applyReactPost(request, mediaId, { react: (id, k, on) => b.react(pass, id, k, on), comment: (id, t) => b.comment(pass, id, t) }, BACK, fallback);
+  return applyReactPost(request, mediaId, { react: (id, k, on) => b.react(pass, id, k, on), comment: (id, t) => b.comment(pass, id, t), deleteComment: (id) => b.deleteComment(pass, id) }, BACK, fallback);
 }
 
 /** 크게 보기 스와이퍼에 넘길 앞뒤 사진(주소는 미리 서명: 한 시간 동안 같은 주소라 브라우저 캐시를 탄다) */
