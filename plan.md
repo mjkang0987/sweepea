@@ -822,6 +822,15 @@
 - 고침: Toast 부품(디자인 GrandHome 카드: 반투명, 18px 모서리, 60px, 보냄=하트+반짝 role=status 4초, 오류=빨간 느낌표 role=alert 6초), 크게 보기에선 판 바로 위 12px, 넘겨 보기는 화면 아래. 문구는 lib/say. 크게 보기 스크립트가 주소에서 say·sm 뗌. 동작 줄이기면 움직임 없이 사라짐. 오류 토스트 디자인 보드 ToastError, 크게 보기 보냄 ToastSent 추가
 - 검수: toast.py(오류·보냄·판 위 12px·4/6초 뒤 사라짐·새로 고침·동작 줄이기), vplay·photo·pview·comments·cdelete·sheetios 통과, 나란히 캡처(toast-cmp)
 
+### 67. feature/instant-actions — 크게 보기 누르기·페이지 넘김 빠르게 (진행 중)
+
+- 원인(사용자 "너무 느린데", "페이지 전환 쓰레기"): 하트·반응·한마디·지우기가 모두 폼 POST → 같은 페이지로 이동 → 전체 다시 그리기. 누를 때마다 하얗게 깜빡이고 판·스크롤이 처음으로
+- 구현: 크게 보기 스크립트가 `.sp-v__more` 안 폼 제출을 가로채 fetch(같은 폼 데이터+누른 버튼) → 돌아온 페이지에서 `.sp-v__more`와 토스트만 갈아 끼움. 반응은 누르는 즉시 눌림·수를 바꿔 두고(낙관적), 요청은 차례로 보냄. 실패하면 페이지를 새로 엶. 넘기는 중 바뀐 사진이면 버림. 시트가 열려 있었거나 지운 뒤(서버가 open으로 그림)면 새 시트를 showModal
+- 페이지 이동: base.css `@view-transition { navigation: auto }`(움직임 줄이기면 끔) — 하얀 깜빡임 대신 겹쳐 넘어감. 지원 안 하는 브라우저는 지금과 같음
+- 스크립트 없으면 지금처럼 폼 POST. 화면 모양 변경 없음(디자인 캔버스 변경 없음)
+- 영향 파일: src/components/Viewer.astro, src/styles/base.css
+- 미리 받기(prefetch)는 뺌: GET에 부작용 있는 주소(/m, /auth, 로그아웃 등)와 서버 부담 때문에 따로 판단
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
