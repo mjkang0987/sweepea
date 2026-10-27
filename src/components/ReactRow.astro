@@ -1,5 +1,5 @@
 ---
-// "눌러서 바로 보내기" 반응 5개. JS 없이 폼 POST, 버튼 값에 켤지 끌지를 담는다(다시 누르면 취소)
+// "눌러서 바로 보내기" 반응 5개(슬랙처럼 알약 + 수). JS 없이 폼 POST, 버튼 값에 켤지 끌지를 담는다(다시 누르면 취소)
 import { REACTION_KINDS } from '../lib/backend';
 import { EMOJI } from '../lib/emoji';
 import type { Reacts } from '../lib/album';
@@ -27,11 +27,13 @@ const titleId = `react-title${idSuffix}`;
     {
       REACTION_KINDS.map((k) => {
         const on = r?.mine.has(k) ?? false;
+        const n = r?.counts[k] ?? 0;
         return (
-          <button class="sp-r__btn" type="submit" name="react" value={`${k}:${on ? 'off' : 'on'}`} aria-pressed={on ? 'true' : 'false'} aria-label={EMOJI[k].label}>
+          <button class="sp-r__btn" type="submit" name="react" value={`${k}:${on ? 'off' : 'on'}`} aria-pressed={on ? 'true' : 'false'} aria-label={`${EMOJI[k].label} ${n}개`}>
             <span class={`sp-r__icon sp-r__icon--${EMOJI[k].anim}`}>
-              <svg class="sp-r__svg" width="28" height="28" aria-hidden="true" focusable="false"><use href={`#e-${k}`} /></svg>
+              <svg class="sp-r__svg" width="20" height="20" aria-hidden="true" focusable="false"><use href={`#e-${k}`} /></svg>
             </span>
+            {n > 0 && <span class="sp-r__n" aria-hidden="true">{n}</span>}
           </button>
         );
       })
