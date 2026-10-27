@@ -12,7 +12,7 @@ def cell(bg,cover=False,video=False):
     b='3px solid var(--pea)' if cover else '0'
     v='<span style="position: absolute; right: 6px; bottom: 6px; padding: 1px 6px; border-radius: 6px; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; line-height: 18px; font-weight: 600;">0:22</span>' if video else ''
     return f'<li style="position: relative; aspect-ratio: 1; border-radius: 10px; box-sizing: border-box; border: {b}; background: var({bg});">{v}</li>'
-NOTE='''    <p style="margin: -4px 0 0; font-size: 15px; line-height: 21px; color: var(--label-2);">사진·영상은 앨범에서 보기 좋은 크기로 줄여서 올려요(영상은 1080p). <strong style="color: var(--label); font-weight: 600;">원본은 스위피에 올라가지 않으니 폰에서 지우지 마세요.</strong></p>\n'''
+NOTE='''    <p style="margin: -4px 0 0; font-size: 15px; line-height: 21px; color: var(--label-2);">사진·영상은 앨범에서 보기 좋은 크기로 줄여서 올려요(영상은 1080p, 줄일 수 없으면 그대로). <strong style="color: var(--label); font-weight: 600;">스위피는 원본을 따로 보관하지 않으니 원본은 폰에서 지우지 마세요.</strong></p>\n'''
 def status(text,hint,pct):
     h=f'<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--label-2);">{hint}</p>' if hint else ''
     return f'''    <div style="display: flex; flex-direction: column; gap: 8px;">
