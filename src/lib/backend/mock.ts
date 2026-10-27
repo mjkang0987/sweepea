@@ -112,6 +112,11 @@ function viewer(pass: Pass, mediaId: string): string {
 
 /** 부모 계정 반응·한마디는 구성원 자리에 'p:<계정>'으로 둔다(DB의 parent_user_id 흉내) */
 const parentKey = (pass: Pass) => `p:${pass.access}`;
+// 한마디 쓴 사람 이름: 부모 키면 엄마·아빠, 아니면 승인된 구성원 이름(내보낸 사람은 null)
+function authorName(id: string): string | null {
+  if (id.startsWith('p:')) return parents.get(id.slice(2))?.role === 'dad' ? '아빠' : '엄마';
+  return members.find((m) => m.id === id && m.status === 'active')?.name ?? null;
+}
 function parentMedia(pass: Pass, mediaId: string): void {
   const fam = parents.get(pass.access)?.familyId;
   if (!fam || !media.some((y) => y.id === mediaId && y.status === 'ready' && y.family_id === fam)) throw new BackendError('not_allowed', 403, '42501');
@@ -304,6 +309,21 @@ export function createMockBackend(): Backend {
       for (const c of comments) if (ids.includes(c.mediaId)) add(c.mediaId, 'comment', c.memberId);
       return [...out.values()];
     },
+    async mediaComments(pass, id) {
+      try {
+        if (parents.has(pass.access)) parentMedia(pass, id);
+        else viewer(pass, id);
+      } catch {
+        return [];
+      }
+      const mine = new Set([...devices].filter(([k]) => k.startsWith(`${pass.access}|`)).map(([, d]) => d.memberId));
+      mine.add(parentKey(pass));
+      return comments
+        .filter((c) => c.mediaId === id && authorName(c.memberId))
+        .map((c) => ({ name: authorName(c.memberId)!, body: c.body, created_at: new Date(c.at).toISOString(), mine: mine.has(c.memberId) }))
+        .reverse()
+        .slice(0, 100);
+    },
     parentAuthorizeUrl(_provider, redirectTo) {
       // 개발용: 제공자 화면 없이 바로 돌아온다
       return `${redirectTo}?code=dev-${crypto.randomUUID()}`;
@@ -494,7 +514,7 @@ export function createMockBackend(): Backend {
       if (!x) return null;
       const { status: _s, uploader: _u, groupIds, childIds, bytes: _b, ...item } = x;
       const last = comments.filter((c) => c.mediaId === id).at(-1);
-      return { item, group_ids: [...groupIds], child_ids: [...childIds], latest: last ? { name: last.memberId === parentKey(pass) ? (parents.get(pass.access)?.role === 'dad' ? '아빠' : '엄마') : (members.find((m) => m.id === last.memberId)?.name ?? '가족'), body: last.body } : null };
+      return { item, group_ids: [...groupIds], child_ids: [...childIds], latest: last ? { name: authorName(last.memberId) ?? '가족', body: last.body } : null };
     },
     async updateMedia(pass, id, u) {
       const fam = parents.get(pass.access)?.familyId;

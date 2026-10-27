@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, MediaItem, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
+import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, MediaComment, MediaItem, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -282,6 +282,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         p_password: f.password,
         p_hint: f.hint ?? null,
       }),
+    mediaComments: (pass, id) => rpc<MediaComment[]>(pass, 'sp_media_comments', { p_media_id: id }),
     reactionCounts: (pass, ids) => (ids.length ? rpc<ReactionCount[]>(pass, 'sp_reaction_counts', { p_media_ids: ids }) : Promise.resolve([])),
   };
 }
