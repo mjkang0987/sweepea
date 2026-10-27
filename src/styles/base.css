@@ -61,6 +61,11 @@
   justify-content: center;
   padding: var(--space-5);
 }
+/* display를 준 클래스라 hidden 속성을 다시 살린다(겹쳐서 나중에 띄울 레이어) */
+.sp-layer[hidden],
+.sp-layer__scrim[hidden] {
+  display: none;
+}
 .sp-layer__scrim {
   position: absolute;
   inset: 0;
