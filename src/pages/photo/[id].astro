@@ -53,6 +53,8 @@ if (Astro.request.method === 'POST') {
       // 날짜만 바꾸고 시각(서울)은 그대로. 오늘로 바꿔 미래 시각이 되면 지금으로
       const at = new Date(Math.min(Date.parse(`${date}T${taken.time}+09:00`), Date.now())).toISOString();
       await b.updateMedia(a.pass, id, { takenAt: at, childIds, groupIds });
+      // 그 자리에서 저장(스크립트)은 결과만 알려 준다(크게 보기를 그리면 그 화면 사정으로 /home에 가거나 실패할 수 있어서)
+      if (Astro.request.headers.get('x-sp-inplace') === '1') return new Response(null, { status: 204 });
       return Astro.redirect(`/view/${id}${kq ? `${kq}&` : '?'}done=saved`, 303);
     } catch (e) {
       if (!(e instanceof BackendError)) throw e;
@@ -182,7 +184,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
       if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) del.close();
     });
   }
-  // 저장은 그 자리에서(디자인 PhotoSavedToast): fetch로 보내 성공하면(서버는 크게 보기로 돌려보냄) 이 화면 그대로 토스트,
+  // 저장은 그 자리에서(디자인 PhotoSavedToast): 표시 헤더를 붙여 fetch로 보내 성공하면(서버는 204) 이 화면 그대로 토스트,
   // 고칠 게 있으면(서버가 이 화면을 다시 그림) 폼만 갈아 끼운다. 스크립트 없으면 지금처럼 크게 보기로
   const live = document.getElementById('ph-live');
   const urgent = document.getElementById('ph-urgent');
@@ -222,10 +224,10 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
     const body = new FormData(form);
     body.append(btn.name, btn.value);
     try {
-      const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin' });
+      const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin', headers: { 'x-sp-inplace': '1' } });
       if (!r.ok) throw new Error(String(r.status));
       const to = new URL(r.url);
-      if (to.pathname.startsWith('/view/')) {
+      if (r.status === 204) {
         // 저장됨: 남아 있던 고칠 곳 안내를 지운다
         form.querySelector('#p-err')?.remove();
         form.querySelectorAll('[aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid'));
@@ -245,7 +247,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
         err?.removeAttribute('role');
         say(err?.textContent?.trim() ?? '', true);
         // 고칠 칸으로(그룹이면 첫 칸)
-        document.querySelector<HTMLElement>('.sp-p__form [aria-invalid="true"], .sp-p__form fieldset[aria-describedby~="p-err"] input')?.focus();
+        (document.querySelector<HTMLElement>('.sp-p__form [aria-invalid="true"], .sp-p__form fieldset[aria-describedby~="p-err"] input') ?? document.querySelector<HTMLElement>('.sp-p__form button[value="save"]'))?.focus();
       } else location.assign(to.href); // 로그인이 끝난 경우 등
     } catch {
       toast('저장하지 못했어요. 다시 눌러 주세요.', true);
