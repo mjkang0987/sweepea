@@ -47,7 +47,8 @@ const delNote = deleted ? '한마디를 지웠어요.' : say === 'delerror' ? '�
 // 지운 뒤: 남은 한마디가 있으면 시트를 연 채로(안내는 시트 안), 다 지웠으면 화면 안내
 const sheetOpen = !!delNote && !!first;
 // 화면 아래 토스트: 사진 정보 저장 > 다 지움 안내 > 한마디 보낸 결과
-const note = toast ? { text: toast, tone: 'ok' as const } : delNote ? { text: delNote, tone: say === 'delerror' ? ('error' as const) : ('ok' as const) } : sayNote(say, sentText);
+// 지운 안내가 먼저(시트 설명으로 연결되므로)
+const note = delNote ? { text: delNote, tone: say === 'delerror' ? ('error' as const) : ('ok' as const) } : toast ? { text: toast, tone: 'ok' as const } : sayNote(say, sentText);
 const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 ---
 
