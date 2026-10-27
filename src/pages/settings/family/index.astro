@@ -1,6 +1,7 @@
 ---
-// 설정 > 가족: 승인 기다리는 사람·새 기기, 가족 그룹과 링크 만들기. JS 없이 폼 POST(PRG)
+// 설정 > 가족: 승인 기다리는 사람·새 기기, 가족 그룹과 링크 만들기. 폼 POST(PRG), 스크립트가 있으면 페이지 이동 없이 그 자리에서
 import Parent from '../../../layouts/Parent.astro';
+import Toast from '../../../components/Toast.astro';
 import { getBackend } from '../../../lib/backend';
 import { handleFamilyPost, LINK_COOKIE, shareUrl, smsHref, summarize } from '../../../lib/familyAdmin';
 import { callName } from '../../../lib/ko';
@@ -21,12 +22,23 @@ const link = /^[A-Za-z0-9]{8}$/.test(linkCode ?? '') ? shareUrl(Astro.url.origin
 const linkGroup = s.groupName(linkGid ?? null);
 // 되돌릴 수 없는 동작 확인
 const [cKind, cId, cStatus] = (q.get('confirm') ?? '').split(':');
+// 확인 레이어 글(서버 레이어·스크립트 레이어 같이 씀)
+const deviceName = (d: (typeof s.pendingDevices)[number]) => d.requested_name ?? s.memberName(d.requested_member_id ?? d.member_id) ?? '이름 없는';
+const GONE_TEXT = '그 휴대폰은 다시 들어올 수 없어요. 되돌릴 수 없어요.';
+const askReject = (name: string) => ({ title: `${name} 거절할까요?`, text: GONE_TEXT, ok: '거절' });
+const askRevoke = (name: string) => ({ title: `${name} 휴대폰을 내 가족 아님으로 할까요?`, text: GONE_TEXT, ok: '내 가족 아님' });
+const askData = (a: { title: string; text: string; ok: string }) => ({ 'data-ask-title': a.title, 'data-ask-text': a.text, 'data-ask-ok': a.ok, 'aria-haspopup': 'dialog' as const });
 const cName =
   cKind === 'member' ? admin.members.find((m) => m.id === cId && m.status !== 'rejected')?.display_name :
   cKind === 'reset' ? admin.groups.find((g) => g.id === cId)?.name :
-  cKind === 'device' ? (() => { const d = s.pendingDevices.find((x) => x.id === cId); return d && (d.requested_name ?? s.memberName(d.requested_member_id ?? d.member_id) ?? '새 휴대폰'); })() : undefined;
+  cKind === 'device' ? (() => { const d = s.pendingDevices.find((x) => x.id === cId); return d && deviceName(d); })() : undefined;
 const cActive = cKind === 'member' && admin.members.some((m) => m.id === cId && m.status === 'active');
 const confirmAsk = cName && ((cKind === 'member' && cStatus === 'rejected') || (cKind === 'device' && cStatus === 'revoked') || cKind === 'reset');
+const ask = !confirmAsk ? null :
+  cKind === 'reset' ? { title: `${cName} 주소를 다시 만들까요?`, text: '예전 주소는 바로 막히고 새 주소를 만들어요. 이미 들어온 휴대폰은 그대로 봐요. 이 그룹이 같이 들어간 다른 링크도 막혀요.', ok: '다시 만들기' } :
+  cKind === 'device' ? askRevoke(cName) :
+  cActive ? { title: `${cName} 내보낼까요?`, text: '이 사람의 휴대폰은 더 이상 들어올 수 없고, 남긴 반응과 한마디는 가족 화면에서 빠져요. 반응·한마디 기록이 남아 있으면 같은 이름은 다시 쓸 수 없어요. 그룹 비밀번호를 아는 사람이면 다른 이름으로 다시 요청할 수 있지만 승인해야 들어와요.', ok: '내보내기' } :
+  askReject(cName);
 // 확인하려던 대상이 그새 처리됐으면 '이미 처리됨'으로
 const done = q.get('done') ?? (q.get('confirm') ? 'pending-check' : null);
 const shownDone = done === 'pending-check' ? (confirmAsk ? null : 'gone') : done;
@@ -48,21 +60,37 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
     <a class="sp-p__back" href="/settings">설정</a>
     <h1 class="sp-p__nav-title">가족</h1>
   </div>
-  {/* 결과는 페이지가 열릴 때 바로 읽히게 초점을 옮긴다(JS 없이 autofocus) */}
-  {shownDone && doneText[shownDone] && <p class:list={['sp-p__toast', ['error', 'gone', 'conflict'].includes(shownDone) && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[shownDone]}</p>}
+  {shownDone && doneText[shownDone] && <Toast text={doneText[shownDone]} tone={['error', 'gone', 'conflict'].includes(shownDone) ? 'error' : 'ok'} />}
+  {/* 스크립트로 바꾼 결과를 읽어 주는 늘 있는 알림 칸 */}
+  <p class="sp-vh" id="fam-live" role="status"></p>
+  <p class="sp-vh" id="fam-urgent" role="alert"></p>
+  {/* 되돌릴 수 없는 동작 확인(디자인 FamilyRejectLayer·FamilyRevokeLayer). 스크립트가 없을 때 ?confirm=으로 연 채 그린다 */}
   {
-    confirmAsk && (
-      <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
-        <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>{cKind === 'reset' ? `${cName} 주소를 다시 만들까요?` : cKind === 'member' ? `${cName} ${cActive ? '내보낼까요' : '거절할까요'}?` : `${cName} 휴대폰을 내 가족 아님으로 할까요?`}</h2>
-        <p class="sp-p__lead">{cKind === 'reset' ? '예전 주소는 바로 막히고 새 주소를 만들어요. 이미 들어온 휴대폰은 그대로 봐요. 이 그룹이 같이 들어간 다른 링크도 막혀요.' : cActive ? '이 사람의 휴대폰은 더 이상 들어올 수 없고, 남긴 반응과 한마디는 가족 화면에서 빠져요. 반응·한마디 기록이 남아 있으면 같은 이름은 다시 쓸 수 없어요. 그룹 비밀번호를 아는 사람이면 다른 이름으로 다시 요청할 수 있지만 승인해야 들어와요.' : '그 휴대폰은 다시 들어올 수 없어요. 되돌릴 수 없어요.'}</p>
-        <form class="sp-p__pair" method="post" action="/settings/family">
-          <a class="sp-p__btn sp-p__btn--quiet" href={cKind === 'reset' ? `/settings/family/groups/${cId}` : cActive ? `/settings/family/member/${cId}` : '/settings/family'}>취소</a>
-          <input type="hidden" name="confirm" value="1" />
-          <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value={q.get('confirm')}>{cKind === 'reset' ? '다시 만들기' : cKind === 'member' ? (cActive ? '내보내기' : '거절') : '내 가족 아님'}</button>
-        </form>
-      </section>
+    ask && (
+      <div class="sp-layer" id="confirm">
+        <div class="sp-layer__scrim" aria-hidden="true"></div>
+        <dialog class="sp-layer__box" open aria-labelledby="confirm-t" aria-describedby="confirm-d">
+          <h2 class="sp-layer__title" id="confirm-t">{ask.title}</h2>
+          <p class="sp-layer__text" id="confirm-d">{ask.text}</p>
+          <form class="sp-layer__actions" method="post" action="/settings/family">
+            <input type="hidden" name="confirm" value="1" />
+            <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value={q.get('confirm')}>{ask.ok}</button>
+            <a class="sp-p__btn sp-p__btn--quiet" href={cKind === 'reset' ? `/settings/family/groups/${cId}` : cActive ? `/settings/family/member/${cId}` : '/settings/family'} autofocus>취소</a>
+          </form>
+        </dialog>
+      </div>
     )
   }
+  {/* 스크립트로 여는 확인 레이어: 누른 버튼의 data-ask-* 글로 채운다. 취소는 브라우저 기본(method=dialog) */}
+  <dialog class="sp-layer__box sp-layer__modal" id="fam-ask" aria-labelledby="ask-t" aria-describedby="ask-d">
+    <h2 class="sp-layer__title" id="ask-t"></h2>
+    <p class="sp-layer__text" id="ask-d"></p>
+    <form class="sp-layer__actions" method="post" action="/settings/family">
+      <input type="hidden" name="confirm" value="1" />
+      <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value=""></button>
+      <button class="sp-p__btn sp-p__btn--quiet" type="submit" formmethod="dialog" value="cancel" autofocus>취소</button>
+    </form>
+  </dialog>
 
   <a class="sp-p__cta" href="/settings/family/sms">
     <span class="sp-p__cta-title">문자로 공유하기</span>
@@ -73,7 +101,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
   {
     link && (
       <section class="sp-p__card" id="link" aria-labelledby="link-title">
-        <h2 class="sp-p__card-title" id="link-title">{linkGroup} 링크를 만들었어요</h2>
+        <h2 class="sp-p__card-title" id="link-title" tabindex="-1">{linkGroup} 링크를 만들었어요</h2>
         <label class="sp-p__label" for="link-url">주소(길게 눌러 복사)</label>
         <input class="sp-p__input" id="link-url" type="url" readonly value={link} />
         <a class="sp-p__btn" href={smsHref(`${kid} 사진 보시라고 주소 보내요. 누르면 바로 볼 수 있어요.\n${link}`)}>문자로 보내기</a>
@@ -83,7 +111,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
   }
 
   <section class="sp-p__section" aria-labelledby="sec-wait">
-    <h2 class="sp-p__section-title" id="sec-wait">승인 기다리는 사람 · {s.pendingMembers.length}</h2>
+    <h2 class="sp-p__section-title" id="sec-wait" tabindex="-1">승인 기다리는 사람 · {s.pendingMembers.length}</h2>
     {s.pendingMembers.length === 0 && <p class="sp-p__hint sp-p__empty-note">지금은 없어요.</p>}
     {
       s.pendingMembers.map((m) => (
@@ -97,7 +125,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
           </div>
           <p class="sp-p__lead">승인 전에는 받은 사진만 볼 수 있어요. 3일 안에 승인하지 않으면 자동으로 취소돼요.</p>
           <form class="sp-p__pair" method="post" action="/settings/family">
-            <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value={`member:${m.id}:rejected`}>거절<span class="sp-vh"> {m.display_name}</span></button>
+            <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value={`member:${m.id}:rejected`} {...askData(askReject(m.display_name))}>거절<span class="sp-vh"> {m.display_name}</span></button>
             <button class="sp-p__btn" type="submit" name="do" value={`member:${m.id}:active`}>{s.groupName(m.group_id) === '가족' ? '' : `${s.groupName(m.group_id)} 가족으로 `}승인<span class="sp-vh"> {m.display_name}</span></button>
           </form>
         </article>
@@ -108,7 +136,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
   {
     s.pendingDevices.length > 0 && (
       <section class="sp-p__section" aria-labelledby="sec-dev">
-        <h2 class="sp-p__section-title" id="sec-dev">새로 들어온 기기 · {s.pendingDevices.length}</h2>
+        <h2 class="sp-p__section-title" id="sec-dev" tabindex="-1">새로 들어온 기기 · {s.pendingDevices.length}</h2>
         {s.pendingDevices.map((d) => {
           const name = d.requested_name ?? s.memberName(d.requested_member_id ?? d.member_id) ?? '이름 없음';
           return (
@@ -116,7 +144,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
               <h3 class="sp-p__who-name" id={`pd-${d.id}`}>{name} · 새 휴대폰</h3>
               <p class="sp-p__hint">확인을 기다리는 새 휴대폰이에요 · {when.format(new Date(d.created_at))}</p>
               <form class="sp-p__pair" method="post" action="/settings/family">
-                <button class="sp-p__btn sp-p__btn--danger" type="submit" name="do" value={`device:${d.id}:revoked`}>내 가족 아님<span class="sp-vh"> {name}</span></button>
+                <button class="sp-p__btn sp-p__btn--danger" type="submit" name="do" value={`device:${d.id}:revoked`} {...askData(askRevoke(deviceName(d)))}>내 가족 아님<span class="sp-vh"> {name}</span></button>
                 <button class="sp-p__btn" type="submit" name="do" value={`device:${d.id}:active`}>승인<span class="sp-vh"> {name}</span></button>
               </form>
             </article>
@@ -165,3 +193,105 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
     </ul>
   </section>
 </Parent>
+
+<script>
+  // 그 자리에서: 이 화면 폼은 fetch로 보내고 돌아온 화면의 내용·탭 배지만 갈아 끼운다(하얀 깜빡임·스크롤 처음으로 없이).
+  // 거절·내 가족 아님은 먼저 확인 레이어. 스크립트가 없거나 옛 브라우저면 지금처럼 폼 → 페이지 이동
+  const page = document.querySelector<HTMLElement>('.sp-p');
+  const live = document.getElementById('fam-live');
+  const urgent = document.getElementById('fam-urgent');
+  let queue = Promise.resolve();
+  let focusId = '';
+  let pending = 0;
+  // 새로 그린 토스트는 늘 있는 알림 칸으로 읽힌다(새로 넣은 role 요소는 화면 읽기가 놓칠 수 있어서)
+  const say = (t: Element | null) => {
+    if (!t || !live || !urgent) return;
+    t.removeAttribute('role');
+    const region = t.classList.contains('sp-toast--error') ? urgent : live;
+    region.textContent = '';
+    setTimeout(() => (region.textContent = t.textContent?.trim() ?? ''), 50);
+  };
+  const fail = () => {
+    page?.querySelector('.sp-toast')?.remove();
+    const p = document.createElement('p');
+    p.className = 'sp-toast sp-toast--error';
+    p.innerHTML = '<span class="sp-toast__text">처리하지 못했어요. 다시 눌러 주세요.</span>';
+    page?.prepend(p);
+    say(p);
+  };
+  if (page && live && urgent) {
+    // 결과 안내가 붙은 주소(?done=)는 떼어 새로 고침해도 다시 뜨지 않게
+    if (new URLSearchParams(location.search).has('done')) history.replaceState(history.state, '', location.pathname);
+    // 어두운 바깥을 누르면 닫기(사진 지우기 레이어와 같게). 레이어는 화면을 갈아 끼우면 새것이라 문서에서 받는다
+    document.addEventListener('click', (e) => {
+      const box = e.target;
+      if (!(box instanceof HTMLDialogElement) || box.id !== 'fam-ask') return;
+      const r = box.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) box.close();
+    });
+    document.addEventListener('submit', (e) => {
+      const form = e.target as HTMLFormElement;
+      const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+      if (!page.contains(form) || form.method !== 'post' || new URL(form.action).pathname !== '/settings/family') return;
+      // 누른 버튼을 모르는 옛 브라우저는 원래대로(버튼 값이 곧 할 일)
+      if (!btn?.name) return;
+      const box = page.querySelector<HTMLDialogElement>('#fam-ask');
+      if (btn.dataset.askTitle) {
+        if (!box || typeof box.showModal !== 'function') return;
+        e.preventDefault();
+        box.querySelector('#ask-t')!.textContent = btn.dataset.askTitle;
+        box.querySelector('#ask-d')!.textContent = btn.dataset.askText ?? '';
+        const ok = box.querySelector<HTMLButtonElement>('button[name="do"]')!;
+        ok.value = btn.value;
+        ok.textContent = btn.dataset.askOk ?? '';
+        focusId = btn.closest('section')?.querySelector('h2')?.id ?? '';
+        box.showModal();
+        return;
+      }
+      e.preventDefault();
+      const body = new FormData(form);
+      body.append(btn.name, btn.value);
+      if (form.closest('dialog') === box) box?.close();
+      else focusId = btn.value.startsWith('share:') ? 'link-title' : (btn.closest('section')?.querySelector('h2')?.id ?? '');
+      const want = focusId;
+      live.textContent = '';
+      urgent.textContent = '';
+      btn.disabled = true; // 보내는 중 두 번 누르지 않게(응답이 새 화면으로 바꾼다)
+      page.setAttribute('aria-busy', 'true');
+      pending++;
+      queue = queue.then(async () => {
+        let html = '';
+        let url: URL;
+        try {
+          const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin' });
+          if (!r.ok) throw new Error(String(r.status));
+          url = new URL(r.url);
+          html = await r.text();
+        } catch {
+          pending--;
+          btn.disabled = false;
+          if (!pending) page.removeAttribute('aria-busy');
+          return fail();
+        }
+        // 뒤에 누른 게 있으면 그리지 않는다(마지막 응답이 최신 화면을 그림)
+        if (--pending) return;
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const from = doc.querySelector('.sp-p');
+        // 로그인이 끝나 다른 화면이 온 경우 등은 그 화면으로
+        if (url.pathname !== '/settings/family' || !from) return location.assign(url.href);
+        page.replaceChildren(...[...from.childNodes].filter((n) => !(n instanceof Element && (n.id === 'fam-live' || n.id === 'fam-urgent'))).map((n) => document.importNode(n, true)), live, urgent);
+        page.removeAttribute('aria-busy');
+        // ?confirm=·?done=을 떼어 새로 고침해도 확인·안내가 다시 뜨지 않게
+        if (location.search) history.replaceState(history.state, '', location.pathname);
+        const tabs = doc.querySelector('.sp-p__tabs');
+        if (tabs) document.querySelector('.sp-p__tabs')?.replaceWith(document.importNode(tabs, true));
+        // 확인하던 대상이 그새 처리돼 서버가 확인 레이어를 그렸으면(?confirm=) 그 레이어 취소로
+        const target = page.querySelector<HTMLElement>('#confirm [autofocus]') ?? document.getElementById(want) ?? page.querySelector<HTMLElement>('.sp-p__nav-title');
+        if (target && !target.hasAttribute('tabindex') && !target.matches('a, button')) target.tabIndex = -1;
+        target?.focus({ preventScroll: true });
+        say(page.querySelector('.sp-toast'));
+      });
+      queue = queue.catch(() => location.reload());
+    });
+  }
+</script>
