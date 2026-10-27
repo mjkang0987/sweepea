@@ -60,8 +60,8 @@ with sync_playwright() as p:
     n0=len(msgs)
     puts,rows=send(pg)
     up=[m.split('|')[0] for m in msgs[n0:] if m.startswith('올리는 중…')]
-    check(any(u.endswith('· 100%') for u in up) and any(u.startswith('올리는 중… 3 / 3 · ') for u in up),'올릴 때도 퍼센트(사진 포함, 마지막 100%) '+str(up[:2]+up[-1:]))
-    check(any(x.startswith('v') for x in bars) and bars and bars[-1].startswith('h'),'올릴 때 진행 막대 보였다가 끝나면 숨김 '+str(bars[-3:]))
+    check(up and all('%' not in u for u in up) and '올리는 중… 3 / 3' in up,'올릴 때는 분수만, 퍼센트 없음(한 번에 올리는 사진·줄인 영상) '+str(up))
+    check(any(x.startswith('v') and 0<int(x[1:])<100 for x in bars) and bars and bars[-1].startswith('h'),'올릴 때 진행 막대 보였다가 끝나면 숨김 '+str(bars[-3:]))
     views=[s for s in puts if s[0]=='view']
     check(not any(s[0]=='multipart' for s in puts),'나눠 올리기 없이 한 번에')
     check(len(views)==3 and any(v[1]==os.path.getsize(D+'v.mp4') for v in views),'작은 영상은 원본 그대로 '+str([v[1] for v in views]))
@@ -84,7 +84,7 @@ with sync_playwright() as p:
     c,pg=start(b,'delete window.VideoEncoder; delete window.VideoDecoder;')
     msgs=pick(pg,[BIG])
     sh=[m for m in msgs if '줄이는 중' in m]
-    check(len(sh)>0 and all(m.split('|')[0].endswith('· 0%') for m in sh),'줄이기를 못 하면 퍼센트가 오르지 않고 바로')
+    check(len(sh)>0 and all('%' not in m.split('|')[0] and not m.startswith('영상') for m in sh),'줄이기를 못 하면 분수만(퍼센트·영상 줄이는 중 없음) '+str([m.split('|')[0] for m in sh]))
     puts,_=send(pg,300000)
     check(len([s for s in puts if s[0]=='multipart'])==3,'원본 그대로 나눠 올리기(조각 3개)')
     c.close()
