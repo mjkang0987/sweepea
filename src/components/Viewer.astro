@@ -382,6 +382,10 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
   // 반응은 누르는 순간 눌림·수를 먼저 바꾼다. 요청은 차례로 보내고 마지막 응답만 그린다(앞선 응답이 뒤 누름을 되돌리지 않게)
   let queue = Promise.resolve();
   let pending = 0;
+  const live = document.createElement('p');
+  live.className = 'sp-vh';
+  live.setAttribute('role', 'status');
+  v?.appendChild(live);
   v?.addEventListener('submit', (e) => {
     const form = e.target as HTMLFormElement;
     const more = v.querySelector<HTMLElement>('.sp-v__more');
@@ -392,6 +396,9 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     e.preventDefault();
     const body = new FormData(form);
     if (btn?.name) body.append(btn.name, btn.value);
+    // 보낸 글은 바로 비운다(응답 전에 다른 걸 눌러도 보낸 글이 되살아나 두 번 보내지 않게)
+    const box = form.querySelector<HTMLInputElement>('.sp-f__input');
+    if (box) box.value = '';
     const id = v.dataset.id;
     const hadFocus = more.contains(document.activeElement);
     const fromSheet = !!form.closest('#talk');
@@ -416,7 +423,6 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     }
     pending++;
     more.setAttribute('aria-busy', 'true');
-    const sent = body.get('body');
     queue = queue.then(async () => {
       let html: string;
       try {
@@ -440,25 +446,41 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       const wasOpen = !!old?.open;
       old?.close();
       // 기다리는 동안 새로 쓰던 글은 남긴다(보낸 글과 같으면 비움)
-      const typed = [...more.querySelectorAll<HTMLInputElement>('.sp-f__input')].map((i) => [i.id, i.value, form.contains(i)] as const);
+      const typed = [...more.querySelectorAll<HTMLInputElement>('.sp-f__input')].map((i) => [i.id, i.value] as const);
+      // 기다리는 동안 입력칸에 쓰고 있었으면 그 칸·커서로 돌려준다(누른 버튼 대신)
+      const act = document.activeElement;
+      const typing = act instanceof HTMLInputElement && more.contains(act) ? { id: act.id, at: act.selectionStart, to: act.selectionEnd } : null;
       more.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
-      for (const [iid, val, mineForm] of typed) {
-        const el = val && !(mineForm && val === sent) ? more.querySelector<HTMLInputElement>(`#${iid}`) : null;
+      for (const [iid, val] of typed) {
+        const el = val ? more.querySelector<HTMLInputElement>(`#${iid}`) : null;
         if (el) el.value = val;
       }
       v.querySelector('.sp-toast')?.remove();
       const toast = doc.querySelector('.sp-v > .sp-toast');
-      if (toast) v.insertBefore(document.importNode(toast, true), v.firstChild);
+      if (toast) {
+        // 글자를 가진 채 끼운 안내는 화면 읽기가 놓치므로, 늘 있는 빈 알림 칸에 글자만 넣어 읽게 한다
+        const t = document.importNode(toast, true);
+        t.removeAttribute('role');
+        v.insertBefore(t, v.firstChild);
+        live.textContent = '';
+        setTimeout(() => (live.textContent = t.textContent?.trim() ?? ''), 50);
+      }
       // 시트가 열려 있었거나(시트에서 보냄) 지운 뒤라 서버가 열어 그렸으면 모달로 다시 연다(받아 온 인라인 스크립트는 돌지 않음)
       const sheet = more.querySelector<HTMLDialogElement>('#talk');
       if (sheet && typeof sheet.showModal === 'function' && (wasOpen || sheet.open)) {
         sheet.close();
         sheet.classList.remove('sp-v__sheet--inline');
         sheet.showModal();
-        if (!sheet.contains(more.querySelector(focusSel || ':not(*)'))) return;
-      }
-      if (hadFocus && focusSel) more.querySelector<HTMLElement>(focusSel)?.focus({ preventScroll: true });
+        if (!typing && !sheet.contains(more.querySelector(focusSel || ':not(*)'))) return;
+      } else if (wasOpen && !focusSel) focusSel = '#say-body'; // 마지막 한마디를 지워 시트가 없어지면 입력칸으로
+      if (typing) {
+        const el = more.querySelector<HTMLInputElement>(`#${typing.id}`);
+        el?.focus({ preventScroll: true });
+        el?.setSelectionRange(typing.at, typing.to);
+      } else if (hadFocus && focusSel) more.querySelector<HTMLElement>(focusSel)?.focus({ preventScroll: true });
     });
+    // 그리다 예외가 나도 다음 누름이 막히지 않게(새로 연다)
+    queue = queue.catch(() => location.reload());
   });
   // 옆으로 밀기(스와이퍼가 없을 때, 영상 화면): 가로로 60px 넘게(세로보다 크게) 밀면 ‹ › 링크로. 막대·버튼·입력칸·아래 판에서 시작한 건 제외
   if (v && !slides) {
