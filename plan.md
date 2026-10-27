@@ -843,6 +843,11 @@
 - 페이지 전환: @view-transition을 @media 밖 맨 위로, 움직임 줄이기는 애니메이션만 끔. 사용자 오류는 여기서 재현 못 함(헤드리스 크롬) — 실기기 확인 필요
 - 영향 파일: Toast.astro, Viewer.astro, family.css, base.css
 
+### 69. fix/sheet-toast-pos — 시트 토스트가 한마디를 가림 (완료, dev 머지 0.4.13, 디자인 142)
+
+- 사용자: "댓글창에서 토스트가 뜨면서 가리는 현상"
+- 시트가 열려 있으면 토스트를 시트 위쪽 바깥(어두운 곳)에 12px 띄움. 시트는 overflow: visible(목록은 따로 굴러감). 디자인 CommentSheetToast·Deleted도 같은 자리로
+
 ### 다음(사용자 2026-10-27)
 
 - 사진 지우기를 레이어로("이 사진을 지울까요?")

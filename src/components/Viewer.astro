@@ -166,7 +166,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
         }
         {
           sheetOpen && (
-            <script is:inline set:html="(function(){var d=document.getElementById('talk');if(d&&typeof d.showModal==='function'){d.close();d.classList.remove('sp-v__sheet--inline');d.showModal();var t=document.querySelector('.sp-v > .sp-toast'),f=d.querySelector('.sp-v__sheet-form');if(t&&f)f.insertBefore(t,f.firstChild);}})();" />
+            <script is:inline set:html="(function(){var d=document.getElementById('talk');if(d&&typeof d.showModal==='function'){d.close();d.classList.remove('sp-v__sheet--inline');d.showModal();var t=document.querySelector('.sp-v > .sp-toast');if(t)d.insertBefore(t,d.firstChild);}})();" />
           )
         }
         <SayForm mediaId={m.id} back={here} action={action} child={child} />
@@ -400,8 +400,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     t.removeAttribute('role');
     const sheet = v.querySelector<HTMLElement>('#talk[open]');
     const host = sheet ?? v;
-    const at = sheet?.querySelector('.sp-v__sheet-form') ?? host;
-    at.insertBefore(t, at.firstChild);
+    host.insertBefore(t, host.firstChild);
     const region = t.classList.contains('sp-toast--error') ? urgent : live;
     host.appendChild(region);
     region.textContent = '';
