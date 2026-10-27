@@ -115,6 +115,9 @@ const kid = callName(kids[0]?.name ?? '아이');
   const MB = 1024 * 1024;
   const MAX_ITEMS = 200;
   const VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
+  // 영상 원본은 이보다 크면 나눠 올린다(Worker 요청 한도 100MB), 한 편 최대 2GB(lib/media BIG_VIDEO)
+  const SINGLE_MAX = 90 * MB;
+  const VIDEO_MAX = 2048 * MB;
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
   const form = $<HTMLFormElement>('up-form');
   const input = $<HTMLInputElement>('up-files');
@@ -189,7 +192,7 @@ const kid = callName(kids[0]?.name ?? '아이');
 
   async function video(file: File): Promise<Item> {
     if (!VIDEO_TYPES.includes(file.type)) throw new Error('type');
-    if (file.size > 100 * MB) throw new Error('too_large');
+    if (file.size > VIDEO_MAX) throw new Error('too_large');
     const v = document.createElement('video');
     v.muted = true;
     v.playsInline = true;
@@ -284,7 +287,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       }
     }
     busy = false;
-    say(skipped ? `${skipped}개는 올릴 수 없어요(지원하지 않는 형식이거나 100MB 넘는 영상).` : '');
+    say(skipped ? `${skipped}개는 올릴 수 없어요(지원하지 않는 형식이거나 2GB 넘는 영상).` : '');
     input.value = '';
     render();
   });
@@ -299,8 +302,39 @@ const kid = callName(kids[0]?.name ?? '아이');
     if (!r.ok) throw new HttpError(r.status);
     return r.json() as Promise<T>;
   }
-  const put = async (id: string, part: string, blob: Blob) =>
-    (await api<{ key: string }>(`/api/media/${id}/${part}`, { method: 'PUT', body: blob, headers: { 'content-type': blob.type || 'application/octet-stream' } })).key;
+  const put = async (id: string, part: string, blob: Blob, progress?: (done: number) => void) =>
+    part === 'view' && blob.size > SINGLE_MAX
+      ? putBig(id, blob, progress)
+      : (await api<{ key: string }>(`/api/media/${id}/${part}`, { method: 'PUT', body: blob, headers: { 'content-type': blob.type || 'application/octet-stream' } })).key;
+
+  // 큰 영상: 조각마다 보내고(실패한 조각은 두 번까지 다시) 끝에 합친다. 그만두면 올리던 조각은 버린다
+  async function putBig(id: string, blob: Blob, progress?: (done: number) => void): Promise<string> {
+    const url = `/api/media/${id}/multipart`;
+    const json = { 'content-type': 'application/json' };
+    const { key, uploadId, partSize } = await api<{ key: string; uploadId: string; partSize: number }>(url, {
+      method: 'POST', headers: json, body: JSON.stringify({ action: 'create', type: blob.type, size: blob.size }),
+    });
+    try {
+      const parts: { partNumber: number; etag: string }[] = [];
+      for (let n = 1, at = 0; at < blob.size; n++, at += partSize) {
+        const q = new URLSearchParams({ key, upload: uploadId, n: String(n) });
+        for (let tries = 0; ; tries++) {
+          try {
+            const { etag } = await api<{ etag: string }>(`${url}?${q}`, { method: 'PUT', body: blob.slice(at, at + partSize), headers: { 'content-type': 'application/octet-stream' } });
+            parts.push({ partNumber: n, etag });
+            break;
+          } catch (err) {
+            if (tries >= 2 || (err instanceof HttpError && err.status !== 400 && err.status < 500)) throw err;
+          }
+        }
+        progress?.(Math.min(1, (at + partSize) / blob.size));
+      }
+      return (await api<{ key: string }>(url, { method: 'POST', headers: json, body: JSON.stringify({ action: 'complete', key, uploadId, parts }) })).key;
+    } catch (err) {
+      fetch(url, { method: 'POST', headers: json, body: JSON.stringify({ action: 'abort', key, uploadId }) }).catch(() => {});
+      throw err;
+    }
+  }
 
   // 오래된 사파리는 e.submitter가 없어 누른 버튼을 따로 기억한다
   buttons.forEach((b) => b.addEventListener('click', () => (lastMode = b.value)));
@@ -335,7 +369,8 @@ const kid = callName(kids[0]?.name ?? '아이');
           })
         ).id;
         try {
-          const keys: Record<string, string> = { view: await put(it.id, 'view', it.view), thumb: await put(it.id, 'thumb', it.thumb) };
+          const label = `올리는 중… ${n + 1} / ${order.length}`;
+          const keys: Record<string, string> = { view: await put(it.id, 'view', it.view, (p) => say(`${label} · 영상 ${Math.round(p * 100)}%`)), thumb: await put(it.id, 'thumb', it.thumb) };
           if (it.poster) keys.poster = await put(it.id, 'poster', it.poster);
           await api(`/api/media/${it.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(keys) });
         } catch (err) {
