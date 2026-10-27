@@ -242,7 +242,7 @@ select pg_temp.ok(public.sp_enter(:'code_pa', '0002', :'m_pgm') ->> 'result' = '
 select pg_temp.ok((select status = 'active' from public.devices), '오타로 승인 대기로 떨어지지 않음');
 reset role;
 
--- 한마디: 고치면 시각 남김, 지우기는 함수로(본인·부모)
+-- 한마디: 고치면 시각 남김, 지우기는 함수로(쓴 사람만, 2026-10-27부터 엄빠도 남의 것은 못 지움)
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
 set role authenticated;
 select id as c1 from public.comments limit 1 \gset
@@ -254,9 +254,35 @@ select pg_temp.ok(not exists (select 1 from public.comments where id = :'c1'), '
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(엄빠도 남의 한마디는 못 지움)'
+select public.sp_delete_comment(:'c2');
+\set ON_ERROR_STOP 1
+reset role;
+select pg_temp.ok((select deleted_at is null from public.comments where id = :'c2'), '엄빠는 가족 한마디를 못 지움');
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
 select public.sp_delete_comment(:'c2');
 reset role;
-select pg_temp.ok((select deleted_at is not null from public.comments where id = :'c2'), '부모가 지움');
+select pg_temp.ok((select deleted_at is not null from public.comments where id = :'c2'), '쓴 사람은 지움');
+-- 다른 가족(외할아버지)·다른 집 부모도 못 지움
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_comment(:'m3', '외할머니 것') as c3 \gset
+reset role;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(남의 한마디)'
+select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_delete_comment(:'c3');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_delete_comment(:'c3');
+reset role;
+\set ON_ERROR_STOP 1
+select pg_temp.ok((select deleted_at is null from public.comments where id = :'c3'), '다른 가족·다른 집 부모는 못 지움');
+delete from public.comments where id = :'c3';
 
 -- 거절하면 그 기기도 막힌다
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
@@ -560,13 +586,14 @@ select public.sp_parent_comment(:'m3', '엄마 한마디');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
 set role authenticated;
-select pg_temp.ok((select count(*) >= 2 from public.sp_media_comments(:'m3')), '가족도 한마디 목록을 봄(외할머니 + 엄마)');
-select pg_temp.ok((select name = '지우' and not mine from public.sp_media_comments(:'m3') where body = '엄마 한마디'), '엄마 한마디는 엄마 이름, 내 것 아님');
-select pg_temp.ok(not exists (select 1 from public.sp_media_comments(:'m2')), '안 보이는 사진 한마디는 없음');
+select pg_temp.ok((select count(*) >= 2 from public.sp_comment_list(:'m3')), '가족도 한마디 목록을 봄(외할머니 + 엄마)');
+select pg_temp.ok((select name = '지우' and not mine from public.sp_comment_list(:'m3') where body = '엄마 한마디'), '엄마 한마디는 엄마 이름, 내 것 아님');
+select pg_temp.ok(not exists (select 1 from public.sp_comment_list(:'m2')), '안 보이는 사진 한마디는 없음');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
-select pg_temp.ok((select mine from public.sp_media_comments(:'m3') where body = '엄마 한마디'), '엄마가 보면 내 것');
+select pg_temp.ok((select mine from public.sp_comment_list(:'m3') where body = '엄마 한마디'), '엄마가 보면 내 것');
+select pg_temp.ok((select bool_and(id is not null) from public.sp_comment_list(:'m3')), '목록에 지울 때 쓸 id');
 reset role;
 -- 승인 대기는 볼 수 있는 사진이어도 목록을 못 봄(가족 명단을 못 보는 것과 같게)
 select m.status as km_status, coalesce(m.pending_until::text, '') as km_until, d.status as km_dev from public.members m join public.devices d on d.member_id = m.id and d.auth_user_id = :'AU' where m.display_name = '큰이모' \gset
@@ -579,7 +606,7 @@ reset role;
 insert into public.comments (media_id, parent_user_id, body) values (:'km_media', :'P', '대기 중엔 안 보여야 함');
 select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
 set role authenticated;
-select pg_temp.ok(public.sp_can_view_media(:'km_media') and not exists (select 1 from public.sp_media_comments(:'km_media')), '승인 대기는 사진은 봐도 한마디 목록은 못 봄');
+select pg_temp.ok(public.sp_can_view_media(:'km_media') and not exists (select 1 from public.sp_comment_list(:'km_media')), '승인 대기는 사진은 봐도 한마디 목록은 못 봄');
 reset role;
 update public.members set status = :'km_status', pending_until = nullif(:'km_until', '')::timestamptz where display_name = '큰이모';
 update public.devices set status = :'km_dev' where auth_user_id = :'AU' and member_id = (select id from public.members where display_name = '큰이모');

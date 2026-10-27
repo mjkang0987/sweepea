@@ -241,6 +241,8 @@ export interface Backend {
   reactionCounts(pass: Pass, mediaIds: string[]): Promise<ReactionCount[]>;
   /** 크게 보기 한마디 목록(최근 것부터, 볼 수 있는 사진만, 승인된 가족·엄빠 것) */
   mediaComments(pass: Pass, mediaId: string): Promise<MediaComment[]>;
+  /** 한마디 지우기(쓴 사람만) */
+  deleteComment(pass: Pass, commentId: string): Promise<void>;
   /** 부모 로그인 시작 주소(Supabase OAuth, PKCE) */
   parentAuthorizeUrl(provider: string, redirectTo: string, codeChallenge: string): string;
   /** 로그인 뒤 돌아온 코드를 세션으로 바꾼다. 실패하면 null */
@@ -306,6 +308,7 @@ export interface Backend {
 }
 
 export interface MediaComment {
+  id: string;
   name: string;
   body: string;
   created_at: string;

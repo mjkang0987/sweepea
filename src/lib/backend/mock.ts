@@ -73,7 +73,8 @@ const parents = new Map<string, { familyId: string; role: 'mom' | 'dad' }>();
 // 가족도 사진 저장하기(가족방별)
 const downloads: Record<string, boolean> = {};
 const used: Record<string, number> = {};
-const comments: { mediaId: string; memberId: string; at: number; body: string }[] = [];
+// 지운 한마디는 deleted로 남김(DB처럼 하루 30개 한도엔 셈)
+const comments: { id: string; mediaId: string; memberId: string; at: number; body: string; deleted?: boolean }[] = [];
 const familyOf = (s: Share) => groups.find((g) => g.id === s.groupIds[0])!.familyId;
 const key = (pass: Pass, familyId: string) => `${pass.access}|${familyId}`;
 function meOf(d: Device | undefined): EntryMe | null {
@@ -96,6 +97,7 @@ function activityOf(familyId: string): ActivityItem[] {
     if (who && t !== undefined) out.push({ type: 'reaction', kind: kind as ReactionKind, body: null, at: new Date(reactedAt.get(k) ?? 0).toISOString(), who, media_id: mediaId, thumb_key: t });
   }
   for (const c of comments) {
+    if (c.deleted) continue;
     const who = name(c.memberId), t = thumb(c.mediaId);
     if (who && t !== undefined) out.push({ type: 'comment', kind: null, body: c.body, at: new Date(c.at).toISOString(), who, media_id: c.mediaId, thumb_key: t });
   }
@@ -116,6 +118,14 @@ const parentKey = (pass: Pass) => `p:${pass.access}`;
 function authorName(id: string): string | null {
   if (id.startsWith('p:')) return parents.get(id.slice(2))?.role === 'dad' ? '아빠' : '엄마';
   return members.find((m) => m.id === id && m.status === 'active')?.name ?? null;
+}
+// 내가 쓴 한마디로 칠 작성자(DB sp_device_members처럼 활성 기기·승인된 구성원, 그리고 내 부모 계정)
+function myAuthors(pass: Pass): Set<string> {
+  const out = new Set<string>([parentKey(pass)]);
+  for (const [k, d] of devices) {
+    if (k.startsWith(`${pass.access}|`) && d.status === 'active' && d.memberId && members.find((m) => m.id === d.memberId)?.status === 'active') out.add(d.memberId);
+  }
+  return out;
 }
 function parentMedia(pass: Pass, mediaId: string): void {
   const fam = parents.get(pass.access)?.familyId;
@@ -262,7 +272,7 @@ export function createMockBackend(): Backend {
       if (comments.filter((c) => c.memberId === m && c.at > Date.now() - 86_400_000).length >= 30) {
         throw new BackendError('too_many_comments', 429, 'PT429');
       }
-      comments.push({ mediaId: id, memberId: m, at: Date.now(), body: text });
+      comments.push({ id: crypto.randomUUID(), mediaId: id, memberId: m, at: Date.now(), body: text });
     },
     async parentReact(pass, id, kind, on) {
       parentMedia(pass, id);
@@ -279,7 +289,7 @@ export function createMockBackend(): Backend {
       if (comments.filter((c) => c.memberId === parentKey(pass) && c.at > Date.now() - 86_400_000).length >= 30) {
         throw new BackendError('too_many_comments', 429, 'PT429');
       }
-      comments.push({ mediaId: id, memberId: parentKey(pass), at: Date.now(), body: text });
+      comments.push({ id: crypto.randomUUID(), mediaId: id, memberId: parentKey(pass), at: Date.now(), body: text });
     },
     async reactionCounts(pass, ids) {
       // 볼 수 있는 사진만(DB의 sp_can_view_media 흉내)
@@ -306,8 +316,14 @@ export function createMockBackend(): Backend {
         const [mediaId, member, kind] = r.split('|');
         if (ids.includes(mediaId)) add(mediaId, kind as ReactionCount['kind'], member);
       }
-      for (const c of comments) if (ids.includes(c.mediaId) && authorName(c.memberId)) add(c.mediaId, 'comment', c.memberId);
+      for (const c of comments) if (!c.deleted && ids.includes(c.mediaId) && authorName(c.memberId)) add(c.mediaId, 'comment', c.memberId);
       return [...out.values()];
+    },
+    async deleteComment(pass, commentId) {
+      const mine = myAuthors(pass);
+      const c = comments.find((x) => x.id === commentId && !x.deleted && mine.has(x.memberId));
+      if (!c) throw new BackendError('not_allowed', 403, '42501');
+      c.deleted = true;
     },
     async mediaComments(pass, id) {
       try {
@@ -316,11 +332,10 @@ export function createMockBackend(): Backend {
       } catch {
         return [];
       }
-      const mine = new Set([...devices].filter(([k]) => k.startsWith(`${pass.access}|`)).map(([, d]) => d.memberId));
-      mine.add(parentKey(pass));
+      const mine = myAuthors(pass);
       return comments
-        .filter((c) => c.mediaId === id && authorName(c.memberId))
-        .map((c) => ({ name: authorName(c.memberId)!, body: c.body, created_at: new Date(c.at).toISOString(), mine: mine.has(c.memberId) }))
+        .filter((c) => !c.deleted && c.mediaId === id && authorName(c.memberId))
+        .map((c) => ({ id: c.id, name: authorName(c.memberId)!, body: c.body, created_at: new Date(c.at).toISOString(), mine: mine.has(c.memberId) }))
         .reverse()
         .slice(0, 100);
     },
