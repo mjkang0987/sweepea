@@ -586,14 +586,14 @@ select public.sp_parent_comment(:'m3', '엄마 한마디');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
 set role authenticated;
-select pg_temp.ok((select count(*) >= 2 from public.sp_media_comments(:'m3')), '가족도 한마디 목록을 봄(외할머니 + 엄마)');
-select pg_temp.ok((select name = '지우' and not mine from public.sp_media_comments(:'m3') where body = '엄마 한마디'), '엄마 한마디는 엄마 이름, 내 것 아님');
-select pg_temp.ok(not exists (select 1 from public.sp_media_comments(:'m2')), '안 보이는 사진 한마디는 없음');
+select pg_temp.ok((select count(*) >= 2 from public.sp_comment_list(:'m3')), '가족도 한마디 목록을 봄(외할머니 + 엄마)');
+select pg_temp.ok((select name = '지우' and not mine from public.sp_comment_list(:'m3') where body = '엄마 한마디'), '엄마 한마디는 엄마 이름, 내 것 아님');
+select pg_temp.ok(not exists (select 1 from public.sp_comment_list(:'m2')), '안 보이는 사진 한마디는 없음');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
-select pg_temp.ok((select mine from public.sp_media_comments(:'m3') where body = '엄마 한마디'), '엄마가 보면 내 것');
-select pg_temp.ok((select bool_and(id is not null) from public.sp_media_comments(:'m3')), '목록에 지울 때 쓸 id');
+select pg_temp.ok((select mine from public.sp_comment_list(:'m3') where body = '엄마 한마디'), '엄마가 보면 내 것');
+select pg_temp.ok((select bool_and(id is not null) from public.sp_comment_list(:'m3')), '목록에 지울 때 쓸 id');
 reset role;
 -- 승인 대기는 볼 수 있는 사진이어도 목록을 못 봄(가족 명단을 못 보는 것과 같게)
 select m.status as km_status, coalesce(m.pending_until::text, '') as km_until, d.status as km_dev from public.members m join public.devices d on d.member_id = m.id and d.auth_user_id = :'AU' where m.display_name = '큰이모' \gset
@@ -606,7 +606,7 @@ reset role;
 insert into public.comments (media_id, parent_user_id, body) values (:'km_media', :'P', '대기 중엔 안 보여야 함');
 select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
 set role authenticated;
-select pg_temp.ok(public.sp_can_view_media(:'km_media') and not exists (select 1 from public.sp_media_comments(:'km_media')), '승인 대기는 사진은 봐도 한마디 목록은 못 봄');
+select pg_temp.ok(public.sp_can_view_media(:'km_media') and not exists (select 1 from public.sp_comment_list(:'km_media')), '승인 대기는 사진은 봐도 한마디 목록은 못 봄');
 reset role;
 update public.members set status = :'km_status', pending_until = nullif(:'km_until', '')::timestamptz where display_name = '큰이모';
 update public.devices set status = :'km_dev' where auth_user_id = :'AU' and member_id = (select id from public.members where display_name = '큰이모');

@@ -277,7 +277,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         p_password: f.password,
         p_hint: f.hint ?? null,
       }),
-    mediaComments: (pass, id) => rpc<MediaComment[]>(pass, 'sp_media_comments', { p_media_id: id }),
+    mediaComments: (pass, id) => rpc<MediaComment[]>(pass, 'sp_comment_list', { p_media_id: id }),
     deleteComment: (pass, id) => rpc<void>(pass, 'sp_delete_comment', { p_comment_id: id }),
     reactionCounts: (pass, ids) => (ids.length ? rpc<ReactionCount[]>(pass, 'sp_reaction_counts', { p_media_ids: ids }) : Promise.resolve([])),
   };

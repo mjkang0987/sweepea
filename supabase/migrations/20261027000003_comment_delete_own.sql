@@ -9,9 +9,8 @@ begin
   if not found then raise exception 'not_allowed' using errcode = '42501'; end if;
 end $$;
 
--- 한마디 목록에 지울 때 쓸 id를 더한다(돌려주는 열이 바뀌어 지우고 다시 만듦. 조건은 20261027000002와 같음)
-drop function public.sp_media_comments(uuid);
-create function public.sp_media_comments(p_media_id uuid)
+-- 한마디 목록에 지울 때 쓸 id를 더한 새 함수(돌려주는 열이 바뀌어 같은 이름으로는 못 고침. 옛 sp_media_comments는 배포 전 코드가 쓰므로 그대로 두고, 다음 정리 때 지운다)
+create function public.sp_comment_list(p_media_id uuid)
 returns table (id uuid, name text, body text, created_at timestamptz, mine boolean)
 language sql stable security definer set search_path = ''
 as $$
@@ -28,5 +27,5 @@ as $$
   order by c.created_at desc
   limit 100
 $$;
-revoke execute on function public.sp_media_comments(uuid) from public, anon, authenticated;
-grant execute on function public.sp_media_comments(uuid) to authenticated;
+revoke execute on function public.sp_comment_list(uuid) from public, anon, authenticated;
+grant execute on function public.sp_comment_list(uuid) to authenticated;
