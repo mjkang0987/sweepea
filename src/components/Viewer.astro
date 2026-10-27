@@ -385,7 +385,12 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
   const live = document.createElement('p');
   live.className = 'sp-vh';
   live.setAttribute('role', 'status');
+  const urgent = document.createElement('p');
+  urgent.className = 'sp-vh';
+  urgent.setAttribute('role', 'alert');
   v?.appendChild(live);
+  v?.appendChild(urgent);
+  let held: { toast: Element; refill?: readonly [string, string] } | null = null;
   v?.addEventListener('submit', (e) => {
     const form = e.target as HTMLFormElement;
     const more = v.querySelector<HTMLElement>('.sp-v__more');
@@ -400,7 +405,6 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     const box = form.querySelector<HTMLInputElement>('.sp-f__input');
     if (box) box.value = '';
     const id = v.dataset.id;
-    const hadFocus = more.contains(document.activeElement);
     const fromSheet = !!form.closest('#talk');
     let focusSel = fromSheet ? '#say-body-talk' : form.id ? `#${form.id} .sp-f__input` : '';
     if (btn?.classList.contains('sp-r__btn')) {
@@ -423,6 +427,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     }
     pending++;
     more.setAttribute('aria-busy', 'true');
+    const sentText = box ? String(body.get(box.name) ?? '') : '';
+    const boxId = box?.id;
     queue = queue.then(async () => {
       let html: string;
       try {
@@ -434,52 +440,62 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       } finally {
         pending--;
       }
-      // 뒤에 누른 게 있거나 그 사이 다른 사진으로 넘겼으면 그리지 않는다
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      // 결과 안내는 그리기를 건너뛰어도 기억해 두고 마지막에 띄운다. 실패면 보낸 글을 입력칸에 돌려준다
+      const note = doc.querySelector('.sp-v > .sp-toast');
+      if (note) held = { toast: note, refill: (note.classList.contains('sp-toast--error') && boxId && sentText ? [boxId, sentText] : undefined) ?? held?.refill };
+      // 뒤에 누른 게 있으면 그리지 않는다(마지막 응답이 그림)
       if (pending) return;
       more.removeAttribute('aria-busy');
-      if (v.dataset.id !== id) return;
-      const doc = new DOMParser().parseFromString(html, 'text/html');
+      // 넘기는 동안 판이 새로 갈렸을 수 있어 지금 판을 다시 찾는다. 다른 사진이면 버림
+      const cur = v.querySelector<HTMLElement>('.sp-v__more');
+      const keep = held;
+      held = null;
+      if (v.dataset.id !== id || !cur) return;
+      cur.removeAttribute('aria-busy');
       const from = doc.querySelector('.sp-v__more');
       // 출입증이 끝나 로그인 화면이 온 경우 등
       if (!from) return location.reload();
-      const old = more.querySelector<HTMLDialogElement>('#talk');
+      const old = cur.querySelector<HTMLDialogElement>('#talk');
       const wasOpen = !!old?.open;
-      old?.close();
-      // 기다리는 동안 새로 쓰던 글은 남긴다(보낸 글과 같으면 비움)
-      const typed = [...more.querySelectorAll<HTMLInputElement>('.sp-f__input')].map((i) => [i.id, i.value] as const);
-      // 기다리는 동안 입력칸에 쓰고 있었으면 그 칸·커서로 돌려준다(누른 버튼 대신)
+      // 판 밖(화살표·위 메뉴)으로 옮긴 포커스는 건드리지 않는다
       const act = document.activeElement;
-      const typing = act instanceof HTMLInputElement && more.contains(act) ? { id: act.id, at: act.selectionStart, to: act.selectionEnd } : null;
-      more.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
+      const hadFocus = !act || act === document.body || cur.contains(act);
+      // 기다리는 동안 입력칸에 쓰고 있었으면 그 칸·커서로 돌려준다(누른 버튼 대신)
+      const typing = act instanceof HTMLInputElement && cur.contains(act) ? { id: act.id, at: act.selectionStart, to: act.selectionEnd } : null;
+      // 기다리는 동안 새로 쓰던 글은 남긴다
+      const typed = [...cur.querySelectorAll<HTMLInputElement>('.sp-f__input')].map((i) => [i.id, i.value] as const);
+      if (keep?.refill) typed.push(keep.refill);
+      old?.close();
+      cur.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
       for (const [iid, val] of typed) {
-        const el = val ? more.querySelector<HTMLInputElement>(`#${iid}`) : null;
-        if (el) el.value = val;
+        const el = val ? cur.querySelector<HTMLInputElement>(`#${iid}`) : null;
+        if (el && !el.value) el.value = val;
       }
       v.querySelector('.sp-toast')?.remove();
-      const toast = doc.querySelector('.sp-v > .sp-toast');
-      if (toast) {
-        // 글자를 가진 채 끼운 안내는 화면 읽기가 놓치므로, 늘 있는 빈 알림 칸에 글자만 넣어 읽게 한다
-        const t = document.importNode(toast, true);
+      if (keep) {
+        // 글자를 가진 채 끼운 안내는 화면 읽기가 놓치므로, 늘 있는 빈 알림 칸에 글자만 넣어 읽게 한다(오류는 바로 읽는 칸)
+        const t = document.importNode(keep.toast, true);
         t.removeAttribute('role');
         v.insertBefore(t, v.firstChild);
-        live.textContent = '';
-        setTimeout(() => (live.textContent = t.textContent?.trim() ?? ''), 50);
+        const region = t.classList.contains('sp-toast--error') ? urgent : live;
+        region.textContent = '';
+        setTimeout(() => (region.textContent = (t.querySelector('.sp-toast__text') ?? t).textContent?.trim() ?? ''), 50);
       }
       // 시트가 열려 있었거나(시트에서 보냄) 지운 뒤라 서버가 열어 그렸으면 모달로 다시 연다(받아 온 인라인 스크립트는 돌지 않음)
-      const sheet = more.querySelector<HTMLDialogElement>('#talk');
+      const sheet = cur.querySelector<HTMLDialogElement>('#talk');
       if (sheet && typeof sheet.showModal === 'function' && (wasOpen || sheet.open)) {
         sheet.close();
         sheet.classList.remove('sp-v__sheet--inline');
         sheet.showModal();
-        if (!typing && !sheet.contains(more.querySelector(focusSel || ':not(*)'))) return;
+        if (!typing && !sheet.contains(cur.querySelector(focusSel || ':not(*)'))) return;
       } else if (wasOpen && !focusSel) focusSel = '#say-body'; // 마지막 한마디를 지워 시트가 없어지면 입력칸으로
       if (typing) {
-        const el = more.querySelector<HTMLInputElement>(`#${typing.id}`);
+        const el = cur.querySelector<HTMLInputElement>(`#${typing.id}`);
         el?.focus({ preventScroll: true });
         el?.setSelectionRange(typing.at, typing.to);
-      } else if (hadFocus && focusSel) more.querySelector<HTMLElement>(focusSel)?.focus({ preventScroll: true });
+      } else if (hadFocus && focusSel) cur.querySelector<HTMLElement>(focusSel)?.focus({ preventScroll: true });
     });
-    // 그리다 예외가 나도 다음 누름이 막히지 않게(새로 연다)
     queue = queue.catch(() => location.reload());
   });
   // 옆으로 밀기(스와이퍼가 없을 때, 영상 화면): 가로로 60px 넘게(세로보다 크게) 밀면 ‹ › 링크로. 막대·버튼·입력칸·아래 판에서 시작한 건 제외
