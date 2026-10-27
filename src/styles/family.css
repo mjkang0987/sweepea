@@ -1095,7 +1095,7 @@
 }
 /* 스크립트가 없으면 #talk로(또는 지운 뒤 서버가 연 채로) 판 안에 그대로 펼쳐진다(입력칸은 판 것 하나만) */
 .sp-v__sheet:target:not([open]),
-.sp-v__sheet[open]:not(:modal) {
+.sp-v__sheet--inline {
   position: static;
   display: flex;
   flex-direction: column;
@@ -1104,7 +1104,7 @@
   box-shadow: none;
 }
 .sp-v__sheet:target:not([open]) .sp-v__sheet-form,
-.sp-v__sheet[open]:not(:modal) .sp-v__sheet-form {
+.sp-v__sheet--inline .sp-v__sheet-form {
   display: none;
 }
 .sp-v__sheet-grab {

@@ -124,13 +124,13 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
         {/* 아래에서 올라오는 시트. 스크립트가 있으면 showModal, 없으면 #talk(:target)로 판 안에 펼쳐진다 */}
         {
           first && (
-            <dialog class="sp-v__sheet" id="talk" aria-labelledby="talk-title" aria-describedby={sheetOpen ? 'talk-note' : undefined} open={sheetOpen}>
+            <dialog class:list={['sp-v__sheet', sheetOpen && 'sp-v__sheet--inline']} id="talk" aria-labelledby="talk-title" aria-describedby={sheetOpen ? 'talk-note' : undefined} open={sheetOpen}>
               <span class="sp-v__sheet-grab" aria-hidden="true"></span>
               <div class="sp-v__sheet-head">
                 <h2 class="sp-v__sheet-title" id="talk-title" tabindex="-1" autofocus>한마디 {comments.length}개</h2>
                 <a class="sp-v__sheet-close" href="#" data-talk-close>닫기</a>
               </div>
-              {delNote && <p class="sp-v__sheet-note" id="talk-note" role="status">{delNote}</p>}
+              {delNote && <p class="sp-v__sheet-note" id="talk-note">{delNote}</p>}
               <ul class="sp-v__sheet-list">
                 {comments.map((c) => (
                   <li class="sp-v__sheet-item">
@@ -156,6 +156,11 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
                 <SayForm mediaId={m.id} back={here} action={action} child={child} say={null} idSuffix="-talk" />
               </div>
             </dialog>
+          )
+        }
+        {
+          sheetOpen && (
+            <script is:inline set:html="(function(){var d=document.getElementById('talk');if(d&&typeof d.showModal==='function'){d.close();d.classList.remove('sp-v__sheet--inline');d.showModal();}})();" />
           )
         }
         <SayForm mediaId={m.id} back={here} action={action} child={child} say={say} sentText={sentText} />
@@ -337,13 +342,10 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     next?.addEventListener('click', go(1));
     addEventListener('resize', () => (track.scrollLeft = at * track.clientWidth));
   }
-  // 한마디를 지우고 돌아오면 서버가 시트를 열어(open) 그린다: 모달로 바꿔 열고, 새로 고침해도 안내가 다시 안 뜨게 주소에서 say를 뗀다
+  // 한마디 지운 안내(say=deleted·delerror)는 한 번만: 새로 고침해도 다시 안 뜨게 주소에서 뗀다(시트는 바로 아래 인라인 스크립트가 모달로 바꿈)
   {
-    const sheet = v?.querySelector<HTMLDialogElement>('#talk');
-    if (sheet?.open && typeof sheet.showModal === 'function' && !sheet.matches(':modal')) {
-      sheet.close();
-      sheet.showModal();
-      const u = new URL(location.href);
+    const u = new URL(location.href);
+    if (u.searchParams.get('say') === 'deleted' || u.searchParams.get('say') === 'delerror') {
       u.searchParams.delete('say');
       history.replaceState(history.state, '', u.pathname + u.search + u.hash);
     }
