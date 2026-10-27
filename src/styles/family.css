@@ -1089,6 +1089,8 @@
 .sp-v__sheet[open] {
   display: flex;
   flex-direction: column;
+  /* 위에 띄운 토스트가 잘리지 않게(목록은 따로 굴러감) */
+  overflow: visible;
 }
 .sp-v__sheet::backdrop {
   background: rgba(0, 0, 0, 0.45);
@@ -1658,15 +1660,13 @@
 .sp-v .sp-toast {
   bottom: calc(var(--dock-h, 16rem) + 12px);
 }
-/* 시트에서 보낸 뒤: 열린 시트 안 입력칸 바로 위(시트 밖은 가려지므로) */
-.sp-v__sheet-form {
-  position: relative;
-}
-.sp-v .sp-v__sheet-form .sp-toast {
+/* 시트가 열려 있을 때: 시트 위쪽 바깥(어두운 곳)에 띄워 한마디를 가리지 않게(디자인 CommentSheetToast·Deleted).
+   토스트는 시트 안에 있어야 모달 밖처럼 가려지지 않고 화면 읽기도 읽는다 */
+.sp-v .sp-v__sheet > .sp-toast {
   position: absolute;
   left: 20px;
   right: 20px;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 12px);
 }
 /* 오류는 조금 더 오래 */
 .sp-toast--error {
