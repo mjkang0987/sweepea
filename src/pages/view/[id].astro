@@ -23,7 +23,7 @@ const kq = picked ? `?k=${encodeURIComponent(picked.id)}` : '';
 if (Astro.request.method === 'POST') {
   const pass = a.pass;
   const back = /^\/view\/[0-9a-f-]{36}(\?[A-Za-z0-9=&%._-]*)?(#[A-Za-z0-9_-]+)?$/;
-  const ops = { react: (m: string, k: Parameters<typeof b.parentReact>[2], on: boolean) => b.parentReact(pass, m, k, on), comment: (m: string, t: string) => b.parentComment(pass, m, t) };
+  const ops = { react: (m: string, k: Parameters<typeof b.parentReact>[2], on: boolean) => b.parentReact(pass, m, k, on), comment: (m: string, t: string) => b.parentComment(pass, m, t), deleteComment: (c: string) => b.deleteComment(pass, c) };
   return Astro.redirect(await applyReactPost(Astro.request, id, ops, back, `/view/${id}${kq}`), 303);
 }
 // shortcut: 앨범과 같이 최근 200장 안에서만 넘김

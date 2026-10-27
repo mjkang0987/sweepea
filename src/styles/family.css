@@ -1149,6 +1149,7 @@
   list-style: none;
 }
 .sp-v__sheet-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1162,6 +1163,8 @@
   margin: 0;
 }
 .sp-v__sheet-who {
+  /* 오른쪽 '지우기'와 안 겹치게 */
+  padding-right: 3.5rem;
   font-size: var(--subhead-size);
   line-height: var(--subhead-line);
 }
@@ -1176,6 +1179,63 @@
   line-height: 1.6875rem;
   word-break: keep-all;
   overflow-wrap: anywhere;
+}
+/* 지우기(내 한마디): '지우기'는 이름 줄 오른쪽에 겹쳐 두고(줄 높이는 그대로, 누를 자리 44px), 펼치면 아래에 확인 상자 */
+.sp-v__sheet-del-toggle {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--label-2);
+  font-size: var(--subhead-size);
+  cursor: pointer;
+  list-style: none;
+}
+.sp-v__sheet-del-toggle::-webkit-details-marker {
+  display: none;
+}
+.sp-v__sheet-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--fill);
+}
+.sp-v__sheet-confirm-text {
+  flex: 1;
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-v__sheet-confirm-btn {
+  min-height: 2.75rem;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--danger);
+  color: var(--bg);
+  font-family: inherit;
+  font-size: var(--subhead-size);
+  font-weight: 700;
+  cursor: pointer;
+}
+.sp-v__sheet-confirm-btn:focus-visible,
+.sp-v__sheet-del-toggle:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+.sp-v__sheet-note {
+  margin: 0 20px 4px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-size: var(--subhead-size);
 }
 .sp-v__sheet-form {
   padding: 12px 20px max(34px, env(safe-area-inset-bottom));
