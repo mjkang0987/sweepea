@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-27 기준, dev 0.4.25 배포됨)
+## 새 세션 인계 (2026-10-27 기준, dev 0.4.26 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
 
 ### 지금 상태
 
-- dev = 0.4.25, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- dev = 0.4.26, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 16개 적용, **17번째 `20261027000004_finish_quota.sql`(완료 때 5GB 한도)는 사용자 확인 기다림**(적용 전에도 앱은 동작, 한도만 시작 때 확인). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v154, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
@@ -999,6 +999,12 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 검사: `tools/e2e/shrink.py`(21개, ffmpeg로 만든 세로 회전 H.264+AAC 2560x1440 → 1080x1920 h264·aac·재생, 작은 영상 원본, 줄이기 없는 브라우저·H.264 못 만드는 브라우저는 원본), bigvideo(줄이기 끈 브라우저로 나눠 올리기), editshot, 단위 24, astro check 0
 - 아이폰 시험 결과(사용자): iOS 18.7, 4K 22초 96MB → 720p 6.6MB 46초, 1080p도 시간 비슷
 - 같이 발견: upload.py '처음엔 0장'은 mock 고정 가족에 사진이 이미 있어 실패(서버 API 검사라 이번 화면 변경과 무관, 다음에 확인)
+
+### 81. fix/upload-grid-gap — 올리기 사진 칸 간격 (완료, dev 머지 0.4.26)
+
+- 원인(사용자 "사진 사이 여백 조정", "좌우 상하 달라"): 칸 안 버튼이 줄 안 요소라 칸마다 아래에 글자 여백 5px가 붙어 좌우 4px·상하 9px
+- 고침: `.sp-p__upbtn`을 block으로 → 좌우·상하 4px(디자인 보드와 같음). 다른 정사각형 칸(앨범·레이어 썸네일)은 이미 block
+- 검사: `tools/e2e/upgrid.py`(폰 4칸·PC 6칸, 고치기 전엔 실패)
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
