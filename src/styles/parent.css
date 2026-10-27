@@ -1431,6 +1431,16 @@
   }
 }
 
+/* 토스트(base.css)는 아래 탭바 위 12px에(디자인 FamilyApprovedToast). 넓은 화면은 탭이 위라 기본 자리 */
+.sp-p--tabbed .sp-toast {
+  bottom: calc(3.5rem + 13px + env(safe-area-inset-bottom));
+}
+@media (min-width: 64rem) {
+  .sp-p--tabbed .sp-toast {
+    bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
 /* 설정 맨 아래 버전: 배포가 올라갔는지 눈으로 확인 */
 .sp-p__version {
   margin: 1.5rem 0 0;
