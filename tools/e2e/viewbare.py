@@ -30,6 +30,11 @@ with sync_playwright() as p:
     check(pg.evaluate("getComputedStyle(document.querySelector('.sp-v')).backgroundColor")=='rgb(0, 0, 0)','바탕은 검정')
     check(pg.locator('.sp-v__ui').inner_text()=='메뉴 보이기','버튼 이름이 메뉴 보이기로')
     pg.screenshot(path=D+'../shots/viewbare.png') if os.path.isdir(D+'../shots') else None
+    pg.mouse.click(195,420)
+    # 마우스로 끌다 놓으면 전환하지 않음
+    pg.mouse.move(150,420); pg.mouse.down(); pg.mouse.move(260,420,steps=5); pg.mouse.up()
+    check(not pg.evaluate(bare),'마우스로 끌다 놓으면 그대로')
+    pg.mouse.click(195,420)
     # 2) 넘겨도 사진만 유지
     # 지금 사진 옆의 사진(영상이면 그 화면을 새로 여니 사진인 칸으로)
     k,nid=pg.evaluate("(()=>{const w=JSON.parse(document.querySelector('.sp-v').dataset.slides),at=w.slides.findIndex(x=>x.id===document.querySelector('.sp-v').dataset.id);const k=w.slides.findIndex((x,i)=>i>at&&!x.video);return [k,w.slides[k].id]})()")
@@ -61,5 +66,16 @@ with sync_playwright() as p:
     pg.locator('.sp-v__play').click(); pg.wait_for_function("'playing' in document.querySelector('.sp-v').dataset",timeout=5000)
     pg.mouse.click(195,300); pg.wait_for_function("document.querySelector('video').paused",timeout=5000)
     check(not pg.evaluate(bare),'재생 중 누르면 일시정지만(사진만 아님)')
+    # 키보드로 숨긴 뒤 일시정지 버튼('일시정지하고 메뉴 보기')을 누르면 메뉴도 돌아옴
+    pg.locator('.sp-v__play').click(); pg.wait_for_function("'playing' in document.querySelector('.sp-v').dataset",timeout=5000)
+    pg.locator('.sp-v__ui').focus(); pg.keyboard.press('Enter')
+    check(pg.evaluate(bare),'재생 중 버튼으로 숨김')
+    pg.locator('.sp-v__tap').focus(); pg.keyboard.press('Enter'); pg.wait_for_function("document.querySelector('video').paused",timeout=5000)
+    check(not pg.evaluate(bare),'일시정지 버튼은 메뉴도 돌려줌')
+    # 토스트가 있던 화면: 사진만을 켰다 끄면 지난 안내가 다시 뜨지 않음
+    pg.goto(B+'/view/'+photos[0]+'?done=saved'); pg.wait_for_selector('.sp-v__track')
+    had=pg.locator('.sp-v > .sp-toast').count()
+    pg.mouse.click(195,420); pg.mouse.click(195,420)
+    check(had==1 and pg.locator('.sp-v > .sp-toast').count()==0,'사진만을 켜면 토스트는 지움(다시 안 뜸) had=%d'%had)
     b.close()
 print('FAILS',FAILS)
