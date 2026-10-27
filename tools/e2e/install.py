@@ -32,11 +32,11 @@ with sync_playwright() as p:
     pp.fill('#pw','0917'); pp.get_by_role('button',name='시작하기').click(); pp.wait_for_url('**/home')
     pp.goto(B+'/upload'); pp.set_input_files('#up-files',[D+'u0.jpg']); pp.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=30000)
     pp.get_by_role('button',name='보내지 않고 올리기만').click(); pp.wait_for_url('**/home',timeout=30000)
-    pp.goto(B+'/settings/family'); pp.get_by_role('button',name='링크 만들기 (가족)').click(); pp.wait_for_url('**#link')
+    pp.goto(B+'/settings/family'); pp.get_by_role('button',name='링크 만들기 (가족)').click(); pp.wait_for_selector('#link-url')
     code=pp.locator('#link-url').input_value().rsplit('/',1)[1]
     k=b.new_context(viewport={'width':390,'height':844},user_agent=KAKAO).new_page(); k.goto(B+'/i/'+code)
     k.fill('#who-name','할머니'); k.get_by_role('button',name='들어가기').click(); k.wait_for_url('**/password**'); k.fill('#pw','0917'); k.get_by_role('button',name='들어가기').click(); k.wait_for_url('**/wait')
-    pp.goto(B+'/settings/family'); pp.get_by_role('button',name='승인 할머니').click(); pp.wait_for_url('**done=member-active**')
+    pp.goto(B+'/settings/family'); pp.get_by_role('button',name='승인 할머니').click(); pp.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
     k.goto(B+'/album'); k.get_by_role('button',name='엄마아빠에게 부탁하기').click(); k.wait_for_url('**/album**')
     pp.goto(B+'/home'); al=pp.locator('.sp-p__alert'); check(al.count()==1 and '할머니가 홈 화면에 두기를 부탁했어요' in al.inner_text() and al.get_attribute('href')=='/settings/family/sms','부모 앨범 위 띠에 부탁 보임')
     pp.goto(B+'/reactions'); check('부탁' not in pp.locator('main').inner_text(),'최근 반응엔 부탁 없음')

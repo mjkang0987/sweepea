@@ -15,11 +15,11 @@ with sync_playwright() as p:
     pg.goto(B+'/settings/family/groups/new'); pg.fill('#name','친가'); pg.fill('#pw','5678'); pg.get_by_label('새 사진에 기본으로 포함').uncheck(); pg.get_by_role('button',name='추가').click(); pg.wait_for_url('**done=added**')
     pg.goto(B+'/upload'); pg.set_input_files('#up-files',[D+'u0.jpg']); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=30000)
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=30000)
-    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_url('**#link')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
     code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
     g=b.new_context(viewport={'width':390,'height':844}); gp=g.new_page(); gp.goto(B+'/i/'+code)
     gp.fill('#who-name','이모'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/password**'); gp.fill('#pw','0917'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/wait')
-    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 이모').click(); pg.wait_for_url('**done=member-active**')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 이모').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
     gp.goto(B+'/album'); check(gp.locator('.sp-a__card-link').count()==1,'가족 앨범에 1장')
     # 사진 정보
     pg.goto(B+'/home'); pg.locator('.sp-p__cell-link').first.click(); pg.wait_for_url('**/view/**'); pg.get_by_role('link',name='사진 정보 수정').click(); pg.wait_for_url('**/photo/**')

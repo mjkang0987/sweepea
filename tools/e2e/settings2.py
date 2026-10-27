@@ -34,7 +34,7 @@ with sync_playwright() as p:
     pg.get_by_label('모두 아주 크게').check(); pg.wait_for_url('**done=saved**'); shot('3')
     check(pg.get_by_label('모두 아주 크게').is_checked(),'저장된 크기')
     pg.goto(B+'/settings'); check(pg.get_by_role('link',name='가족 화면 글자 크기 모두 아주 크게').count()==1,'설정에 지금 값')
-    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_url('**#link')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
     code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
     g=b.new_context(viewport={'width':390,'height':844}); gp=g.new_page(); gp.goto(B+'/i/'+code)
     check(gp.locator('.sp-size-xlarge').count()>=1 and gp.get_by_label('아주 크게').is_checked(),'누구세요 화면부터 아주 크게')

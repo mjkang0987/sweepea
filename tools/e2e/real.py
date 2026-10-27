@@ -32,14 +32,14 @@ with sync_playwright() as p:
     pg.get_by_role('navigation',name='아이 고르기').get_by_role('link',name='하린').click(); pg.wait_for_url('**k=**'); check(pg.locator('.sp-p__cell').count()==1,'하린 탭 1장')
     pg.screenshot(path=S+'real-home.png')
     # 링크 → 가족 입장
-    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_url('**#link')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
     code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
     g=b.new_context(viewport={'width':390,'height':844}); gp=g.new_page(); gp.goto(B+'/i/'+code)
     gp.fill('#who-name','외할머니'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/password**'); gp.fill('#pw','0917'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/wait',timeout=30000)
     check(True,'가족 새 이름 → 승인 기다림')
     pg.goto(B+'/settings'); tab=pg.locator('.sp-p__tabs a[href="/settings"]')
     check(tab.get_attribute('aria-label')=='설정, 승인 기다리는 사람 1명','설정 탭 배지(waiting) 1')
-    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 외할머니').click(); pg.wait_for_url('**done=member-active**')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 외할머니').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
     gp.goto(B+'/album'); gp.wait_for_load_state()
     import re
     check('/album' in gp.url and gp.locator('.sp-a__card, .sp-a__cell, .sp-a__slide').count()>=1,'승인 뒤 가족 앨범에 사진 ('+gp.url+')')
