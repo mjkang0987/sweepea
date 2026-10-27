@@ -54,6 +54,16 @@ with sync_playwright() as p:
     pg.evaluate('window.__same=1')
     pg.locator('#sec-done ~ ul label', has_text=name).locator('input[name=done]').uncheck(); pg.wait_for_function("document.getElementById('as-live')?.textContent.includes('저장했어요')")
     check(pg.evaluate('window.__same')==1 and name not in pg.locator('#sec-done ~ ul .sp-p__who-name').all_inner_texts(),'완료에서 풀면 그 자리에서 빠짐')
+    # 체크했다가 바로 풀면 마지막 선택(풀림)대로
+    cdp=pg.context.new_cdp_session(pg); cdp.send('Network.enable'); cdp.send('Network.emulateNetworkConditions',{'offline':False,'latency':600,'downloadThroughput':-1,'uploadThroughput':-1})
+    nb=pg.locator('#sec-next ~ ul input[name=done]').first; nm=nb.evaluate("e=>e.closest('label').querySelector('.sp-p__who-name').textContent")
+    nb.check(); nb.uncheck()
+    pg.wait_for_function("!document.querySelector('.sp-p[aria-busy]') && document.getElementById('as-live').textContent.includes('저장했어요')",timeout=60000)
+    cdp.send('Network.emulateNetworkConditions',{'offline':False,'latency':0,'downloadThroughput':-1,'uploadThroughput':-1})
+    pg.reload(); check(nm not in pg.locator('#sec-done ~ ul .sp-p__who-name').all_inner_texts(),'체크 후 바로 풀면 완료에 안 남음 (%s)'%nm)
+    # 글자 크기를 키워도 막대·토스트·여백이 맞음
+    pg.goto(B+'/settings/children/new'); pg.evaluate("document.documentElement.style.fontSize='24px'"); pg.wait_for_timeout(200)
+    bar_ok(pg,'글자 크게(24px)')
     # 스크립트 없이: 저장 버튼
     q=b.new_context(viewport={'width':390,'height':844},java_script_enabled=False,storage_state=c.storage_state()).new_page()
     q.goto(B+href); check(q.get_by_role('button',name='저장').is_visible(),'스크립트 없으면 접종 저장 버튼')
