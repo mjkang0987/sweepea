@@ -110,6 +110,21 @@
   flex-direction: column;
   gap: var(--space-2);
 }
+/* 스크립트로 여는 레이어(showModal): 화면 가운데, 바깥은 어둡게. 닫혀 있을 땐 숨김(.sp-layer__box의 flex가 덮지 않게) */
+.sp-layer__modal {
+  position: fixed;
+  inset: 0;
+  width: calc(100% - 2 * var(--space-5));
+  height: fit-content;
+  max-height: calc(100% - 2 * var(--space-5));
+  margin: auto;
+}
+.sp-layer__modal:not([open]) {
+  display: none;
+}
+.sp-layer__modal::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
 /* 가족(어르신): 글자·버튼 크게, 버튼 하나 */
 .sp-layer__box--senior {
   max-width: 24rem;
