@@ -44,7 +44,7 @@ with sync_playwright() as p:
     # 주소 다시 만들기
     pg.goto(B+'/settings/family/groups/'+gid); pg.get_by_role('button',name='주소 다시 만들기 (예전 주소는 바로 막혀요)').click(); pg.wait_for_url('**confirm=reset**')
     check('할머니댁 주소를 다시 만들까요?' in pg.content(),'다시 만들기 확인'); shot('4')
-    pg.locator('#confirm').get_by_role('button',name='다시 만들기').click(); pg.wait_for_selector('#link-url')
+    pg.locator('#fam-ask').get_by_role('button',name='다시 만들기').click(); pg.wait_for_selector('#link-url')
     code2=pg.locator('#link-url').input_value().rsplit('/',1)[1]; check(code2!=code,'새 주소')
     x=b.new_context().new_page(); x.goto(B+'/i/'+code); check('/i/' in x.url and ('없' in x.content() or '찾을 수' in x.content()),'예전 주소는 막힘')
     x.goto(B+'/i/'+code2); check(x.locator('#who-name').count()==1,'새 주소는 열림')

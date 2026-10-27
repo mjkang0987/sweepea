@@ -75,6 +75,12 @@ with sync_playwright() as p:
     pg.locator('#fam-ask').get_by_role('button',name='내 가족 아님').click()
     pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('내 가족이 아니라고')")
     check(pg.evaluate('window.__same')==1 and pg.locator('#sec-dev').count()==0,'내 가족 아님 그 자리에서, 기기 칸 없어짐')
+    # 다른 화면에서 온 확인(?confirm=)도 같은 모달, Esc·취소면 원래 화면으로
+    pg.goto(B+'/settings/family'); pg.get_by_role('link',name='외할머니').click(); pg.wait_for_url('**/member/**')
+    pg.get_by_role('button',name='내 가족 아님 · 내보내기 외할머니').click(); pg.wait_for_selector('#fam-ask[open]')
+    check(pg.locator('#confirm').count()==0 and pg.locator('#ask-t').inner_text()=='외할머니 내보낼까요?','내보내기 확인도 모달')
+    pg.keyboard.press('Escape'); pg.wait_for_url('**/member/**')
+    check('/member/' in pg.url,'Esc로 닫으면 구성원 화면으로')
     # 빠르게 두 번: 차례로 보내고 마지막 응답이 그림
     enter(b,code,'고모'); enter(b,code,'삼촌2')
     pg.goto(B+'/settings/family')

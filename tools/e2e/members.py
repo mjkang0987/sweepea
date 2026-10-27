@@ -37,8 +37,8 @@ with sync_playwright() as p:
     pg.goto(B+'/settings/family'); pg.get_by_role('link',name='서아 아빠').click(); pg.wait_for_url('**/member/**')
     pg.get_by_role('button',name='내 가족 아님 · 내보내기 서아 아빠').click(); pg.wait_for_url('**confirm=**')
     check('서아 아빠 내보낼까요?' in pg.content(),'내보내기도 한 번 더 확인')
-    check(pg.locator('#confirm').get_by_role('link',name='취소').get_attribute('href').startswith('/settings/family/member/'),'취소하면 구성원 화면으로')
-    pg.locator('#confirm').get_by_role('button',name='내보내기').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('처리했어요')")
+    check((pg.locator('#fam-ask').get_attribute('data-cancel') or '').startswith('/settings/family/member/'),'취소하면 구성원 화면으로')
+    pg.locator('#fam-ask').get_by_role('button',name='내보내기').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('처리했어요')")
     gp.goto(B+'/album'); check('이 휴대폰으로는 볼 수 없어요' in gp.content() or gp.url.endswith('/wait'),'내보낸 사람은 못 봄')
     b.close()
 from PIL import Image
