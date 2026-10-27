@@ -40,8 +40,12 @@ export async function withUploader<T>(cookies: AstroCookies, fn: (pass: Pass) =>
 
 const MB = 1024 * 1024;
 const IMAGE = { types: ['image/jpeg', 'image/webp', 'image/png'], max: 15 * MB };
-// shortcut: Workers 요청 한도 100MB라 영상도 100MB까지. 앱에서 큰 원본을 올릴 때 R2 서명 URL로 바꾼다
+// Workers 요청 한도 100MB라 한 번에 넣는 영상은 100MB까지. 더 큰 원본은 BIG_VIDEO 조각으로(api/media/[id]/multipart)
 const VIDEO = { types: ['video/mp4', 'video/quicktime'], max: 100 * MB };
+
+/** 큰 영상 원본은 나눠서(api/media/[id]/multipart): 조각 50MB(R2는 마지막 빼고 같은 크기·5MB 이상), 한 편 2GB까지.
+ *  shortcut: 무료 가족방이 5GB라 2GB로 둠, 결제 플랜이 생기면 같이 정한다 */
+export const BIG_VIDEO = { part: 50 * MB, max: 2 * 1024 * MB };
 
 export const PARTS: Record<MediaKind, Record<string, { types: string[]; max: number }>> = {
   photo: { view: IMAGE, thumb: IMAGE },

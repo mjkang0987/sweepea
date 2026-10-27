@@ -11,11 +11,11 @@ AS=()
 # initdb는 root로 못 돌리므로 root면 postgres 사용자로 실행
 if [ "$(id -u)" = "0" ]; then AS=(runuser -u postgres --); chown postgres "$WORK"; fi
 
-cleanup() { "${AS[@]}" "$PG_BIN/pg_ctl" -D "$WORK/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$WORK"; }
+cleanup() { ${AS[@]+"${AS[@]}"} "$PG_BIN/pg_ctl" -D "$WORK/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$WORK"; }
 trap cleanup EXIT
 
-"${AS[@]}" "$PG_BIN/initdb" -D "$WORK/data" -U postgres --auth=trust -E UTF8 >/dev/null
-"${AS[@]}" "$PG_BIN/pg_ctl" -D "$WORK/data" -o "-p $PORT -k $WORK -c listen_addresses=''" -l "$WORK/log" -w start >/dev/null
+${AS[@]+"${AS[@]}"} "$PG_BIN/initdb" -D "$WORK/data" -U postgres --auth=trust -E UTF8 >/dev/null
+${AS[@]+"${AS[@]}"} "$PG_BIN/pg_ctl" -D "$WORK/data" -o "-p $PORT -k $WORK -c listen_addresses=''" -l "$WORK/log" -w start >/dev/null
 
 PSQL=("$PG_BIN/psql" -h "$WORK" -p "$PORT" -U postgres -v ON_ERROR_STOP=1 -q -X)
 "${PSQL[@]}" -d postgres -c 'create database sweepea' >/dev/null
@@ -25,6 +25,6 @@ if ! "${PSQL[@]}" -d sweepea -f "$ROOT/supabase/tests/rls.sql" >"$WORK/out" 2>&1
 [ -n "${SHOW_OUT:-}" ] && grep -E "^psql.*ERROR|아래 에러" "$WORK/out"
 n=$(grep -c '^psql.*ERROR' "$WORK/out" || true)
 # rls.sql에 적은 의도된 거부(에러) 개수와 같아야 한다
-if [ "$n" -ne 61 ]; then echo "의도된 거부가 61건이어야 하는데 ${n}건"; grep -E '^psql.*ERROR|아래 에러' "$WORK/out"; exit 1; fi
+if [ "$n" -ne 62 ]; then echo "의도된 거부가 62건이어야 하는데 ${n}건"; grep -E '^psql.*ERROR|아래 에러' "$WORK/out"; exit 1; fi
 echo "의도된 거부 ${n}건 확인"
 echo "DB 검사 통과"

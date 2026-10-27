@@ -942,3 +942,18 @@ select public.sp_create_media(:'fam3', 'photo', now(), 'exif');
 \set ON_ERROR_STOP 1
 reset role;
 update public.families set storage_used_bytes = 0 where id = :'fam3';
+-- 완료 때도 5GB 한도(큰 영상 나눠 올리기, 20261027000004): 시작은 됐어도 완료하면 넘으면 거절
+update public.families set storage_used_bytes = 5368709120 - 500 where id = :'fam3';
+set role authenticated;
+select public.sp_create_media(:'fam3', 'video', now(), 'file') as q1 \gset
+reset role;
+set role service_role;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(완료하면 5GB를 넘음)'
+select public.sp_finish_upload(:'q1', 'x/v', 'x/t', 'x/p', 1000);
+\set ON_ERROR_STOP 1
+select pg_temp.ok(public.sp_finish_upload(:'q1', 'x/v', 'x/t', 'x/p', 400), '완료해도 5GB 안이면 완료');
+reset role;
+select pg_temp.ok((select storage_used_bytes = 5368709120 - 100 from public.families where id = :'fam3'), '완료한 크기만 더함');
+select pg_temp.ok((select status = 'ready' from public.media where id = :'q1'), '거절된 완료는 되돌려지고 다시 완료하면 ready');
+update public.families set storage_used_bytes = 0 where id = :'fam3';
