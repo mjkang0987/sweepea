@@ -22,6 +22,8 @@
     let pending = 0;
     // 뒤 요청을 기다리느라 그리지 않은 응답(뒤 요청이 실패하면 이걸 그린다)
     let skipped = '';
+    // 같은 내용을 겹쳐 보내지 않게(글 칸에서 Enter: change와 기본 제출이 둘 다 일어남)
+    let lastSent = '';
     const say = (t: Element | null) => {
       if (!t) return;
       t.removeAttribute('role');
@@ -42,15 +44,19 @@
     const focusKey = () => {
       const el = document.activeElement as HTMLInputElement | null;
       if (!el || el === document.body || !area.contains(el)) return '';
+      // 스위치는 값이 바뀌어 있을 수 있어 먼저
+      if (el.matches('.sp-p__switch')) return '.sp-p__switch';
       if (el.id) return `#${CSS.escape(el.id)}`;
-      if (el.name) return `[name="${CSS.escape(el.name)}"][value="${CSS.escape(el.value)}"]`;
-      return el.matches('.sp-p__switch') ? '.sp-p__switch' : '';
+      return el.name ? `[name="${CSS.escape(el.name)}"][value="${CSS.escape(el.value)}"]` : '';
     };
     const draw = (html: string) => {
       const doc = new DOMParser().parseFromString(html, 'text/html');
       const from = doc.querySelector('.sp-p');
       if (!from) return location.reload();
       const key = focusKey();
+      // 기다리는 동안 글 칸에 이어서 쓰고 있었으면 그 글과 커서를 새 칸에 옮긴다
+      const act = document.activeElement;
+      const typing = act instanceof HTMLInputElement && act.type === 'text' && act.id && area.contains(act) ? { id: act.id, v: act.value, at: act.selectionStart, to: act.selectionEnd } : null;
       area.replaceChildren(...[...from.childNodes].filter((n) => !(n instanceof Element && (n.id === 'as-live' || n.id === 'as-urgent'))).map((n) => document.importNode(n, true)), live, urgent);
       area.removeAttribute('aria-busy');
       area.querySelectorAll<HTMLElement>('form[data-autosave] [data-autosave-hide]').forEach((b) => (b.hidden = true));
@@ -59,6 +65,11 @@
       const tabs = doc.querySelector('.sp-p__tabs');
       if (tabs) document.querySelector('.sp-p__tabs')?.replaceWith(document.importNode(tabs, true));
       document.title = doc.title;
+      const t = typing && area.querySelector<HTMLInputElement>(`#${CSS.escape(typing.id)}`);
+      if (t && typing && t.value !== typing.v) {
+        t.value = typing.v;
+        t.setSelectionRange(typing.at, typing.to);
+      }
       // 고칠 칸이 있으면 그 칸으로, 아니면 하던 칸으로
       (area.querySelector<HTMLElement>('[aria-invalid="true"]') ?? (key ? area.querySelector<HTMLElement>(key) : null))?.focus({ preventScroll: true });
       const err = area.querySelector('.sp-p__error[role="alert"]');
@@ -72,6 +83,9 @@
       const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
       const body = new FormData(form);
       if (btn?.name) body.append(btn.name, btn.value);
+      const sig = form.action + '?' + new URLSearchParams(body as unknown as Record<string, string>).toString();
+      if (pending && sig === lastSent) return;
+      lastSent = sig;
       // 스위치는 누르는 즉시 바꿔 둔다(응답이 서버 상태로 바로잡음)
       if (btn?.matches('.sp-p__switch')) {
         const on = btn.getAttribute('aria-checked') !== 'true';
