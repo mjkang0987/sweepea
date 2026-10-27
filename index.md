@@ -20,6 +20,7 @@
 - 탈퇴하기(`/settings/account` 확인 체크, 구독 중이면 막음)·작별(`/goodbye`)·되살리기(`/restore`, 유예 중 부모 화면은 여기로, 남은 시간 안내) 완료. 3일 유예 뒤 실제 삭제는 예약 작업(13번, 출시 전 필수).
 - 부모 시작(`/start` 소개, `/login`·`/auth/callback` OAuth PKCE, `/setup` 처음 설정, `/home` 앨범, `/settings` 자리) 완료. 부모 세션은 쿠키 `sp_parent`(가족 기기 `sp_pass`와 따로).
 - 조부모 앨범(`/album` 넘겨 보기·모아 보기, `/album/<id>` 크게 보기, 집 고르기)과 하트·반응·한마디(폼 POST, `sp_react`·`sp_comment`) 완료.
+- 크게 보기 한마디 목록(0.4.0): 판 안에 최근 한마디 말풍선 하나 + '한마디 N개 모두 보기'(네이티브 details). 볼 수 있는 사진이면 엄빠·승인된 가족 모두 봄(`sp_media_comments`, 승인 대기는 못 봄, 최근 100개). 엄빠 사진 정보 수정 화면의 최근 한마디도 같은 함수 첫 줄.
 - 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. mock 백엔드로 동작 확인, 앨범은 자리만. 기기 하나로 여러 가족방에 들어간다(가족방마다 승인·차단 따로). 다음 이슈는 plan.md 참고.
 - 첫 화면(`/`)은 심볼과 이름만 있는 임시 페이지. 클라이언트 JS 0KB.
 - 로컬 Lighthouse(모바일, 기본 스로틀링): LCP 약 0.7초, CLS 0, 접근성 100점.
@@ -62,7 +63,7 @@ src/pages/i/[code]/     누구세요(index) → 비밀번호(password)
 src/pages/wait.astro    승인 기다림 / 500.astro
 src/pages/album/        앨범(index: 넘겨 보기·모아 보기, [id]: 크게 보기). 쿼리 f(집)·v(보기)·z(칸)
 src/lib/album.ts        앨범 쿼리 읽기·링크·목록 불러오기, 반응 수·반응 폼 처리
-src/components/        ReactRow(반응 5개)·HeartToggle·SayForm(한마디)·Notice
+src/components/        Viewer(크게 보기, 가족·엄빠 공통)·ReactRow(반응 5개)·HeartToggle·SayForm(한마디)·Notice
 src/lib/parent.ts       부모 로그인 제공자·PKCE·부모 화면 진입(loadParent)
 src/layouts/Parent.astro 부모 화면 뼈대(아래 탭), 스타일 src/styles/parent.css(.sp-p*)
 src/lib/age.ts          생후 개월·생일·백일/돌/생일 당일·남은 시간·지난 시간 표시(단위 검사)
