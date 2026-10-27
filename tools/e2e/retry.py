@@ -1,6 +1,6 @@
 # 올리다 끊기면 다시 눌러 이어 올리기(중복 없음)
 from playwright.sync_api import sync_playwright
-B='http://localhost:4321'; D='/home/claude/sweepea/tools/e2e/'
+B='http://localhost:4321'; D=__import__('os').path.dirname(__import__('os').path.abspath(__file__))+'/'
 def check(c,msg):
     if not c: raise SystemExit('FAIL '+msg)
     print('ok',msg)
@@ -19,8 +19,8 @@ with sync_playwright() as p:
         else: route.continue_()
     pg.route('**/api/media/*/view',fail_once)
     pg.get_by_role('button',name='보내지 않고 올리기만').click()
-    pg.wait_for_function("document.getElementById('up-status').textContent.includes('이어서')",timeout=30000)
-    check('2장까지 올렸어요' in pg.locator('#up-status').text_content(),'끊기면 몇 장까지 올렸는지 안내')
+    pg.wait_for_function("document.getElementById('up-alert').textContent.includes('이어서')",timeout=30000)
+    check('2장까지 올렸어요' in pg.locator('#up-alert').text_content(),'끊기면 몇 장까지 올렸는지 빨간 안내로')
     pg.unroute('**/api/media/*/view')
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=30000)
     check(pg.locator('.sp-p__cell').count()==3,'다시 눌러도 중복 없이 3장')

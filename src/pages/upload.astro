@@ -70,6 +70,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     </div>
     <p class="sp-p__note sp-p__up-note">사진·영상은 앨범에서 보기 좋은 크기로 줄여서 올려요(영상은 1080p, 줄일 수 없으면 그대로). <strong class="sp-p__note-strong">스위피는 원본을 따로 보관하지 않으니 원본은 폰에서 지우지 마세요.</strong></p>
 
+    <div class="sp-p__toast sp-p__toast--error sp-p__toast--live" id="up-alert" role="alert"></div>
     <p class="sp-p__toast sp-p__toast--live" id="up-status" role="status"></p>
     <div class="sp-p__up-progress" id="up-progress" hidden>
       <progress class="sp-p__progress" id="up-bar" max="100" value="0" aria-label="진행률"></progress>
@@ -116,6 +117,8 @@ const kid = callName(kids[0]?.name ?? '아이');
     /** 올리기 중 만든 사진 행. 실패 뒤 다시 누르면 같은 행에 이어서 넣는다 */
     id?: string;
     done?: boolean;
+    /** 칸 표시: 지금 올리는 중이거나 이번에 못 올림 */
+    state?: 'sending' | 'fail';
   };
   const MB = 1024 * 1024;
   const MAX_ITEMS = 200;
@@ -144,9 +147,31 @@ const kid = callName(kids[0]?.name ?? '아이');
   // 한 번 올리기 시작하면 아이·그룹을 고정(이어 올릴 때 묶음 안에서 공개 범위가 섞이지 않게)
   let locked: { groupIds: string[]; childIds: string[] } | null = null;
   const choices = [...form.querySelectorAll<HTMLInputElement>('.sp-p__checkbox')];
+  const NO_GROUP = '보여줄 그룹을 하나 이상 골라 주세요.';
 
   // 상태 칸은 늘 있고(화면 읽기가 바로 읽게) 비었을 때만 CSS로 숨긴다
   const say = (text: string) => (status.textContent = text);
+  // 못 올린 안내는 진행 글과 따로 빨간 칸에(role=alert). 고를 때 뺀 파일은 이름·이유 목록
+  const alertBox = $('up-alert');
+  const warn = (head = '', rows: string[] = []) => {
+    if (!head) return alertBox.replaceChildren();
+    const p = document.createElement('p');
+    p.className = 'sp-p__up-alert-head';
+    p.textContent = head;
+    const ul = document.createElement('ul');
+    ul.className = 'sp-p__up-alert-list';
+    // 화면 읽기가 끝없이 읽지 않고 버튼이 밀려나지 않게 10줄까지
+    for (const r of rows.length > 10 ? [...rows.slice(0, 9), `외 ${rows.length - 9}개`] : rows) {
+      const li = document.createElement('li');
+      li.className = 'sp-p__up-alert-item';
+      li.textContent = r;
+      ul.appendChild(li);
+    }
+    alertBox.replaceChildren(p, ...(rows.length ? [ul] : []));
+  };
+  const TAG = { done: '올림', sending: '올리는 중', fail: '못 올림' } as const;
+  // 그룹을 고르면 '그룹을 골라 주세요'만 지운다(고를 때 뺀 파일 목록 같은 다른 안내는 둔다)
+  for (const c of choices) if (c.name === 'group') c.addEventListener('change', () => alertBox.textContent === NO_GROUP && warn());
   // 줄이기·올리기 진행: 막대는 묶음 전체 기준. 퍼센트 글은 영상 하나의 진행(줄이기·나눠 올리기)일 때만
   // (사진은 '3 / 12'와 같은 말이라 빼 달라고 함)
   const bar = $<HTMLProgressElement>('up-bar');
@@ -189,6 +214,8 @@ const kid = callName(kids[0]?.name ?? '아이');
   }
 
   async function photo(file: File): Promise<Item> {
+    // 끌어다 놓기는 아무 파일이나 올 수 있다(종류를 모르는 파일은 열어 보고 판단)
+    if (file.type && !file.type.startsWith('image/')) throw new Error('type');
     const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
     const { view, thumb } = await viewAndThumb(bmp, bmp.width, bmp.height, 2048);
     bmp.close();
@@ -292,6 +319,23 @@ const kid = callName(kids[0]?.name ?? '아이');
     }
   }
 
+  /** 칸 상태(표시·버튼 이름)만 바꾼다. 올리는 동안은 칸을 새로 그리지 않고 이것만(아이폰에서 썸네일이 깜빡이지 않게) */
+  function paint(i: number) {
+    const li = grid.children[i];
+    const b = li?.querySelector('.sp-p__upbtn');
+    if (!li || !b) return;
+    const it = items[i];
+    const tag = it.done ? 'done' : it.state;
+    b.setAttribute('aria-label', `${i + 1}번째 ${it.kind === 'video' ? '영상' : '사진'} 대표${tag ? `, ${TAG[tag]}` : ''}`);
+    li.querySelector('.sp-p__uptag')?.remove();
+    if (!tag) return;
+    const t = document.createElement('span');
+    t.className = `sp-p__uptag sp-p__uptag--${tag}`;
+    t.setAttribute('aria-hidden', 'true');
+    t.textContent = TAG[tag];
+    li.appendChild(t);
+  }
+
   function render(focus?: number) {
     grid.hidden = items.length === 0;
     $('up-cover-hint').hidden = items.length < 2;
@@ -306,7 +350,6 @@ const kid = callName(kids[0]?.name ?? '아이');
         b.disabled = busy;
         // 눌림 상태는 aria-pressed가 말해 주므로 이름엔 대표 여부를 넣지 않는다
         b.setAttribute('aria-pressed', String(i === cover));
-        b.setAttribute('aria-label', `${i + 1}번째 ${it.kind === 'video' ? '영상' : '사진'} 대표`);
         b.addEventListener('click', () => {
           cover = i;
           render(i);
@@ -320,6 +363,7 @@ const kid = callName(kids[0]?.name ?? '아이');
         return li;
       }),
     );
+    items.forEach((_, i) => paint(i));
     if (focus !== undefined) grid.querySelectorAll<HTMLButtonElement>('.sp-p__upbtn')[focus]?.focus();
     const bytes = items.reduce((n, it) => n + it.view.size + it.thumb.size + (it.poster?.size ?? 0), 0);
     $('up-size').textContent = shrinking ? '줄이는 중' : items.length ? `보기 좋은 크기 · ${(bytes / MB).toFixed(1)}MB` : '고르면 보여요';
@@ -361,14 +405,22 @@ const kid = callName(kids[0]?.name ?? '아이');
   });
   input.addEventListener('change', async () => {
     if (busy) return;
-    const files = [...(input.files ?? [])].slice(0, Math.max(0, MAX_ITEMS - items.length));
-    if (!files.length) return;
+    const all = [...(input.files ?? [])];
+    if (!all.length) return;
+    const files = all.slice(0, Math.max(0, MAX_ITEMS - items.length));
+    const over = all.length - files.length;
+    warn();
+    if (!files.length) {
+      input.value = '';
+      warn(`한 묶음에 ${MAX_ITEMS}장까지라 고른 ${over}개를 뺐어요.`);
+      return;
+    }
     busy = true;
     shrinking = typeof VideoEncoder === 'function' && files.some((f) => f.type.startsWith('video/'));
     $('up-shrink-hint').hidden = !shrinking;
     render();
     if (shrinking) keepAwake();
-    let skipped = 0;
+    const skipped: string[] = [];
     for (const [i, f] of files.entries()) {
       const label = `${shrinking && f.type.startsWith('video/') ? '영상 ' : ''}줄이는 중… ${i + 1} / ${files.length}`;
       step(label, i / files.length);
@@ -376,8 +428,9 @@ const kid = callName(kids[0]?.name ?? '아이');
         items.push(await (f.type.startsWith('video/') ? video(f, (p) => step(label, (i + p) / files.length, p)) : photo(f)));
         // 다 줄인 것부터 바로 보이게
         render();
-      } catch {
-        skipped++;
+      } catch (err) {
+        const why = err instanceof Error && err.message === 'type' ? '지원하지 않는 형식' : err instanceof Error && err.message === 'too_large' ? '2GB 넘는 영상' : '열 수 없는 파일';
+        skipped.push(`${f.name} · ${why}`);
       }
     }
     letSleep();
@@ -385,7 +438,11 @@ const kid = callName(kids[0]?.name ?? '아이');
     busy = false;
     shrinking = false;
     $('up-shrink-hint').hidden = true;
-    say(skipped ? `${skipped}개는 올릴 수 없어요(지원하지 않는 형식이거나 2GB 넘는 영상).` : '');
+    say('');
+    const count = skipped.length + over;
+    // 200장 줄은 맨 앞에(목록을 10줄로 자를 때 '외 N개'가 파일 수와 맞게)
+    if (over) skipped.unshift(`뒤의 ${over}개 · 한 묶음에 ${MAX_ITEMS}장까지`);
+    if (count) warn(`${count}개는 올릴 수 없어서 뺐어요.`, skipped);
     input.value = '';
     render();
   });
@@ -441,11 +498,16 @@ const kid = callName(kids[0]?.name ?? '아이');
     e.preventDefault();
     if (busy) return;
     const mode = (e.submitter as HTMLButtonElement | null)?.value ?? lastMode;
+    // 실패하면 누른 버튼으로 포커스를 돌려준다(누르는 순간 잠겨 포커스가 빠진다)
+    const pressed = buttons.find((b) => b.value === mode);
     const { groupIds, childIds } = locked ?? {
       groupIds: choices.filter((x) => x.name === 'group' && x.checked).map((x) => x.value),
       childIds: choices.filter((x) => x.name === 'child' && x.checked).map((x) => x.value),
     };
-    if (!groupIds.length) return say('보여줄 그룹을 하나 이상 골라 주세요.');
+    if (!groupIds.length) return warn(NO_GROUP);
+    warn();
+    // 지난번 못 올림 표시는 지우고 다시(이어 올리는 동안 남은 칸이 실패로 보이지 않게)
+    for (const it of items) if (it.state === 'fail') it.state = undefined;
     locked = { groupIds, childIds };
     busy = true;
     keepAwake();
@@ -461,6 +523,8 @@ const kid = callName(kids[0]?.name ?? '아이');
         const it = items[i];
         if (it.done) continue;
         const label = `올리는 중… ${n + 1} / ${order.length}`;
+        it.state = 'sending';
+        paint(i);
         step(label, sent / total);
         it.id ??= (
           await api<{ id: string }>('/api/media', {
@@ -483,6 +547,8 @@ const kid = callName(kids[0]?.name ?? '아이');
           if (!(err instanceof HttpError && (err.status === 404 || err.status === 409))) throw err;
         }
         it.done = true;
+        it.state = undefined;
+        paint(i);
         sent += sizeOf(it);
         step(label, sent / total);
       }
@@ -490,15 +556,23 @@ const kid = callName(kids[0]?.name ?? '아이');
       letSleep();
       prog.hidden = true;
       busy = false;
+      // 용량이 다 차면 남은 것도 못 올라가므로 모두 못 올림
+      const full = err instanceof HttpError && err.status === 507;
+      for (const it of items) if (it.state === 'sending' || (full && !it.done)) it.state = 'fail';
       render();
+      say('');
       const n = items.filter((x) => x.done).length;
-      return say(
+      const upTo = n ? `${n}장까지 올렸어요. ` : '';
+      warn(
         err instanceof HttpError && err.status === 401
-          ? '로그인이 끝났어요. 다시 로그인한 뒤 올려 주세요.'
+          ? `로그인이 끝났어요. ${upTo}다시 로그인한 뒤 올려 주세요.`
           : err instanceof HttpError && err.status === 507
-          ? `저장 용량 5GB가 다 찼어요. ${n}장까지 올렸어요. 가족은 지금까지 올린 사진을 계속 볼 수 있어요.`
-          : `${n}장까지 올렸어요. 다시 누르면 나머지를 이어서 올려요.`,
+          ? `저장 용량 5GB가 다 찼어요. ${upTo}가족은 지금까지 올린 사진을 계속 볼 수 있어요.`
+          : `${err instanceof TypeError ? '인터넷 연결이 끊겼어요. ' : ''}${n ? `${upTo}다시 누르면 나머지를 이어서 올려요.` : '다시 누르면 처음부터 올려요.'}`,
       );
+      // 안내를 넣은 뒤 포커스(화면 읽기가 알림과 버튼 이름을 섞어 읽지 않게)
+      pressed?.focus();
+      return;
     }
     letSleep();
     prog.hidden = true;
