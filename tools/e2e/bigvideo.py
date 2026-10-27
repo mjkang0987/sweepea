@@ -14,6 +14,8 @@ def check(c,msg):
 with sync_playwright() as p:
     b=p.chromium.launch()
     c=b.new_context(viewport={'width':390,'height':844}); pg=c.new_page()
+    # 영상 줄이기(80)를 못 하는 브라우저처럼: 원본 그대로 나눠 올리는 길을 본다
+    pg.add_init_script('delete window.VideoEncoder; delete window.VideoDecoder;')
     pg.goto(B+'/login/dev'); pg.wait_for_url('**/setup')
     pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
@@ -25,7 +27,7 @@ with sync_playwright() as p:
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=300000)
     parts=[s for s in seen if s==('PUT','multipart')]
     check(len(parts)==3,'130MB → 조각 3개로 보냄 (%d)'%len(parts))
-    check(any('영상 ' in m and '%' in m for m in msgs),'올리는 중 영상 몇 퍼센트 보여 줌 '+str([m for m in msgs if '%' in m][:3]))
+    check(any(m.startswith('올리는 중…') and '%' in m for m in msgs),'올리는 중 몇 퍼센트 보여 줌 '+str([m for m in msgs if '%' in m][:3]))
     check(pg.locator('.sp-p__cell-link').count()==2,'영상·사진 둘 다 앨범에')
     pg.goto(B+'/settings/storage'); txt=pg.locator('main').inner_text()
     check('130MB' in txt or '131MB' in txt,'용량에 영상 크기가 잡힘')
