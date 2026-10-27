@@ -3,6 +3,8 @@
 // 스크립트가 없어도 ‹ › 링크로 넘기고 영상은 브라우저 기본 재생 막대로 본다
 import ReactRow from './ReactRow.astro';
 import SayForm from './SayForm.astro';
+import Toast from './Toast.astro';
+import { sayNote } from '../lib/say';
 import type { Reacts, SlideWindow } from '../lib/album';
 import { dayLabel } from '../lib/album';
 import type { MediaComment, MediaItem } from '../lib/backend';
@@ -44,14 +46,15 @@ const deleted = say === 'deleted';
 const delNote = deleted ? '한마디를 지웠어요.' : say === 'delerror' ? '지우지 못했어요. 다시 해 주세요.' : null;
 // 지운 뒤: 남은 한마디가 있으면 시트를 연 채로(안내는 시트 안), 다 지웠으면 화면 안내
 const sheetOpen = !!delNote && !!first;
-const note = toast ?? (delNote && !first ? delNote : undefined);
+// 화면 아래 토스트: 사진 정보 저장 > 다 지움 안내 > 한마디 보낸 결과
+const note = toast ? { text: toast, tone: 'ok' as const } : delNote && !first ? { text: delNote, tone: say === 'delerror' ? ('error' as const) : ('ok' as const) } : sayNote(say, sentText);
 const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 ---
 
 {/* 시안엔 제목 줄이 없어 화면에선 숨기고 화면 읽기에만 */}
 <h1 class="sp-vh" id="v-title">{label}</h1>
 <div class="sp-v" data-v data-slides={m.kind === 'photo' && slides && slides.slides.length > 1 ? JSON.stringify(slides) : undefined} data-id={m.id}>
-  {note && <p class="sp-v__toast" role="status">{note}</p>}
+  {note && <Toast text={note.text} tone={note.tone} />}
   <figure class="sp-v__stage">
     {
       m.kind === 'video' ? (
@@ -156,7 +159,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
                 ))}
               </ul>
               <div class="sp-v__sheet-form">
-                <SayForm mediaId={m.id} back={here} action={action} child={child} say={null} idSuffix="-talk" />
+                <SayForm mediaId={m.id} back={here} action={action} child={child} idSuffix="-talk" />
               </div>
             </dialog>
           )
@@ -166,7 +169,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
             <script is:inline set:html="(function(){var d=document.getElementById('talk');if(d&&typeof d.showModal==='function'){d.close();d.classList.remove('sp-v__sheet--inline');d.showModal();}})();" />
           )
         }
-        <SayForm mediaId={m.id} back={here} action={action} child={child} say={say} sentText={sentText} />
+        <SayForm mediaId={m.id} back={here} action={action} child={child} />
       </div>
     </div>
   </div>
@@ -299,7 +302,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       if (x.video) return void location.replace(x.href);
       history.replaceState(null, '', x.href);
       v.dataset.id = x.id;
-      v.querySelector('.sp-v__toast')?.remove();
+      v.querySelector('.sp-toast')?.remove();
       // 새 내용이 올 때까지 위 메뉴·아래 판은 못 누르게(지난 사진에 반응하지 않게)
       // 넘기는 중에 연 시트는 닫는다(판이 바뀌면 열린 채로 사라짐)
       v.querySelector<HTMLDialogElement>('#talk')?.close();
@@ -345,11 +348,12 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     next?.addEventListener('click', go(1));
     addEventListener('resize', () => (track.scrollLeft = at * track.clientWidth));
   }
-  // 한마디 지운 안내(say=deleted·delerror)는 한 번만: 새로 고침해도 다시 안 뜨게 주소에서 뗀다(시트는 바로 아래 인라인 스크립트가 모달로 바꿈)
+  // 한마디 결과 안내(say=…·sm)는 한 번만: 새로 고침해도 토스트가 다시 안 뜨게 주소에서 뗀다
   {
     const u = new URL(location.href);
-    if (u.searchParams.get('say') === 'deleted' || u.searchParams.get('say') === 'delerror') {
+    if (u.searchParams.has('say') || u.searchParams.has('sm')) {
       u.searchParams.delete('say');
+      u.searchParams.delete('sm');
       history.replaceState(history.state, '', u.pathname + u.search + u.hash);
     }
   }
