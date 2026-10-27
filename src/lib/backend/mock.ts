@@ -253,6 +253,8 @@ export function createMockBackend(): Backend {
     async finishUpload(id, keys, bytes) {
       const x = media.find((y) => y.id === id && y.status === 'uploading');
       if (!x) return false;
+      // 완료 때도 무료 5GB 한도(마이그레이션 20261027000004와 같게)
+      if ((used[x.family_id] ?? 0) + bytes > 5 * 1024 ** 3) throw new BackendError('storage_full', 507, 'PT507');
       Object.assign(x, { status: 'ready', view_key: keys.view, thumb_key: keys.thumb, poster_key: keys.poster, bytes });
       used[x.family_id] = (used[x.family_id] ?? 0) + bytes;
       return true;

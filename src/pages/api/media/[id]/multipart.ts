@@ -5,6 +5,9 @@ import { env } from 'cloudflare:workers';
 import { getBackend } from '../../../../lib/backend';
 import { BIG_VIDEO, PARTS, UUID, backendErrorResponse, isMediaKey, json, newMediaKey, withUploader } from '../../../../lib/media';
 
+// 한 편 최대 크기를 넘는 조각 번호는 받지 않는다(2GB ÷ 50MB = 41)
+const MAX_PARTS = Math.ceil(BIG_VIDEO.max / BIG_VIDEO.part);
+
 /** 올린 사람의 올리는 중인 영상인지. 아니면 오류 응답 */
 async function videoTarget(cookies: Parameters<APIRoute>[0]['cookies'], id: string) {
   if (!UUID.test(id)) return json(404, { error: 'not_found' });
@@ -38,7 +41,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       await up.abort().catch(() => undefined);
       return json(200, { ok: true });
     }
-    if (body?.action !== 'complete' || !Array.isArray(body.parts) || body.parts.length < 1 || body.parts.length > 10_000) return json(400, { error: 'bad_request' });
+    if (body?.action !== 'complete' || !Array.isArray(body.parts) || body.parts.length < 1 || body.parts.length > MAX_PARTS) return json(400, { error: 'bad_request' });
     const parts = body.parts.map((p) => ({ partNumber: Number((p as Record<string, unknown>)?.partNumber), etag: String((p as Record<string, unknown>)?.etag ?? '') }));
     if (parts.some((p, i) => p.partNumber !== i + 1 || !p.etag)) return json(400, { error: 'bad_request' });
     let size: number;
@@ -66,7 +69,7 @@ export const PUT: APIRoute = async ({ params, request, cookies, url }) => {
     const key = url.searchParams.get('key');
     const uploadId = url.searchParams.get('upload') ?? '';
     const n = Number(url.searchParams.get('n'));
-    if (!isMediaKey(key, target.family_id, id, 'view') || !uploadId || !Number.isInteger(n) || n < 1 || n > 10_000) return json(400, { error: 'bad_request' });
+    if (!isMediaKey(key, target.family_id, id, 'view') || !uploadId || !Number.isInteger(n) || n < 1 || n > MAX_PARTS) return json(400, { error: 'bad_request' });
     const length = Number(request.headers.get('content-length'));
     if (!Number.isInteger(length) || length <= 0) return json(411, { error: 'length_required' });
     if (length > BIG_VIDEO.part) return json(413, { error: 'too_large' });

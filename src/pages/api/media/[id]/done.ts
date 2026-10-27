@@ -1,7 +1,7 @@
 // 올리기 끝: 본문 {view, thumb, poster?}는 PUT이 돌려준 키. 이 사진의 키인지, R2에 있는지 확인하고 잰 크기로 완료 처리(서버 전용 함수)
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { getBackend } from '../../../../lib/backend';
+import { BackendError, getBackend } from '../../../../lib/backend';
 import { PARTS, UUID, backendErrorResponse, isMediaKey, json, withUploader } from '../../../../lib/media';
 
 export const POST: APIRoute = async ({ params, request, cookies }) => {
@@ -21,7 +21,14 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
     if (missing.length) return json(409, { error: 'missing_parts', missing });
     const bytes = heads.reduce((n, h) => n + h!.size, 0);
     const k = (p: string) => keys[parts.indexOf(p)] as string;
-    const ok = await backend.finishUpload(id, { view: k('view'), thumb: k('thumb'), poster: target.kind === 'video' ? k('poster') : null }, bytes);
+    let ok: boolean;
+    try {
+      ok = await backend.finishUpload(id, { view: k('view'), thumb: k('thumb'), poster: target.kind === 'video' ? k('poster') : null }, bytes);
+    } catch (e) {
+      // 완료하면 5GB를 넘는다(507): 올린 파일은 바로 지운다(남겨 두면 정리 작업 전까지 요금)
+      if (e instanceof BackendError && e.status === 507) await env.MEDIA.delete(keys.filter(Boolean) as string[]).catch(() => undefined);
+      throw e;
+    }
     if (!ok) return json(409, { error: 'already_done' });
     // 다시 올리느라 남은 예전 파일(PUT마다 새 키)은 바로 지운다. 실패해도 완료는 그대로(남은 건 용량에 안 잡힌다)
     const keep = new Set(keys.filter(Boolean) as string[]);
