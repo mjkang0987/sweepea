@@ -406,6 +406,7 @@ const kid = callName(kids[0]?.name ?? '아이');
   input.addEventListener('change', async () => {
     if (busy) return;
     const all = [...(input.files ?? [])];
+    if (!all.length) return;
     const files = all.slice(0, Math.max(0, MAX_ITEMS - items.length));
     const over = all.length - files.length;
     warn();
@@ -439,7 +440,8 @@ const kid = callName(kids[0]?.name ?? '아이');
     $('up-shrink-hint').hidden = true;
     say('');
     const count = skipped.length + over;
-    if (over) skipped.push(`뒤의 ${over}개 · 한 묶음에 ${MAX_ITEMS}장까지`);
+    // 200장 줄은 맨 앞에(목록을 10줄로 자를 때 '외 N개'가 파일 수와 맞게)
+    if (over) skipped.unshift(`뒤의 ${over}개 · 한 묶음에 ${MAX_ITEMS}장까지`);
     if (count) warn(`${count}개는 올릴 수 없어서 뺐어요.`, skipped);
     input.value = '';
     render();
@@ -496,6 +498,8 @@ const kid = callName(kids[0]?.name ?? '아이');
     e.preventDefault();
     if (busy) return;
     const mode = (e.submitter as HTMLButtonElement | null)?.value ?? lastMode;
+    // 실패하면 누른 버튼으로 포커스를 돌려준다(누르는 순간 잠겨 포커스가 빠진다)
+    const pressed = buttons.find((b) => b.value === mode);
     const { groupIds, childIds } = locked ?? {
       groupIds: choices.filter((x) => x.name === 'group' && x.checked).map((x) => x.value),
       childIds: choices.filter((x) => x.name === 'child' && x.checked).map((x) => x.value),
@@ -556,6 +560,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       const full = err instanceof HttpError && err.status === 507;
       for (const it of items) if (it.state === 'sending' || (full && !it.done)) it.state = 'fail';
       render();
+      pressed?.focus();
       say('');
       const n = items.filter((x) => x.done).length;
       return warn(
@@ -563,7 +568,7 @@ const kid = callName(kids[0]?.name ?? '아이');
           ? '로그인이 끝났어요. 다시 로그인한 뒤 올려 주세요.'
           : err instanceof HttpError && err.status === 507
           ? `저장 용량 5GB가 다 찼어요. ${n}장까지 올렸어요. 가족은 지금까지 올린 사진을 계속 볼 수 있어요.`
-          : `${err instanceof TypeError ? '인터넷 연결이 끊겼어요. ' : ''}${n}장까지 올렸어요. 다시 누르면 나머지를 이어서 올려요.`,
+          : `${err instanceof TypeError ? '인터넷 연결이 끊겼어요. ' : ''}${n ? `${n}장까지 올렸어요. 다시 누르면 나머지를 이어서 올려요.` : '다시 누르면 처음부터 올려요.'}`,
       );
     }
     letSleep();

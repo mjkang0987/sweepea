@@ -901,6 +901,12 @@
   font-size: var(--footnote-size);
   line-height: var(--footnote-line);
   font-weight: 700;
+  /* 좁은 화면(320px 칸 약 67px)·큰 글씨에서 두 줄로 꺾여 사진을 가리지 않게 한 줄로 자른다 */
+  max-width: calc(100% - 12px - 12px);
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   pointer-events: none;
 }
 .sp-p__uptag--done {
