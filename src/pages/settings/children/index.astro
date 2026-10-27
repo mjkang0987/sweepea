@@ -2,6 +2,7 @@
 // 아이 목록: 이름·생일·생후 개월, 고치기, 아이 추가
 import Parent from '../../../layouts/Parent.astro';
 import AutoSave from '../../../components/AutoSave.astro';
+import Toast from '../../../components/Toast.astro';
 import { birthLabel, monthsOld } from '../../../lib/age';
 import { BackendError, getBackend } from '../../../lib/backend';
 import { loadParent, seoulToday } from '../../../lib/parent';
@@ -31,7 +32,7 @@ const doneText: Record<string, string> = { added: '아이를 추가했어요.', 
     <a class="sp-p__back" href="/settings">설정</a>
     <h1 class="sp-p__nav-title">아이</h1>
   </div>
-  {done && doneText[done] && <p class:list={['sp-p__toast', done === 'error' && 'sp-p__toast--error']} role={done === 'error' ? 'alert' : undefined} tabindex="-1" autofocus>{doneText[done]}</p>}
+  {done && doneText[done] && <Toast text={doneText[done]} tone={done === 'error' ? 'error' : 'ok'} focus />}
   <ul class="sp-p__list">
     {
       kids.map((k) => (

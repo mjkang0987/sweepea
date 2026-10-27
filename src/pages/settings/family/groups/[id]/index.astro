@@ -2,6 +2,7 @@
 // 그룹 상세: 이름·새 사진 기본 포함, 비밀번호(힌트)·바꾸기, 주소 보내기, 구성원, 주소 다시 만들기
 import Parent from '../../../../../layouts/Parent.astro';
 import AutoSave from '../../../../../components/AutoSave.astro';
+import Toast from '../../../../../components/Toast.astro';
 import { seenLabel } from '../../../../../lib/age';
 import { BackendError, getBackend } from '../../../../../lib/backend';
 import { loadParent } from '../../../../../lib/parent';
@@ -54,7 +55,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
     <a class="sp-p__back" href="/settings/family/groups">그룹</a>
     <h1 class="sp-p__nav-title">{g.name}</h1>
   </div>
-  {done && doneText[done] && <p class="sp-p__toast" tabindex="-1" autofocus>{doneText[done]}</p>}
+  {done && doneText[done] && <Toast text={doneText[done]} focus />}
   {/* 디자인: 이름 칸 + 한 묶음(기본 포함 체크 · 비밀번호 › · 주소 보내기 ›). 이름·체크는 바꾸면 바로 저장 */}
   <form class="sp-p__form sp-p__form--fit" id="g-form" method="post" data-autosave>
     {error && <p class="sp-p__error" role="alert" id="g-err">{error}</p>}
