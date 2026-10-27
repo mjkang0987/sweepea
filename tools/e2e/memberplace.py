@@ -44,6 +44,17 @@ with sync_playwright() as p:
     s3=pg.get_by_role('switch',name='사진 올리기 허용'); s3.click(); s3.click(); pg.wait_for_function("!document.querySelector('.sp-p[aria-busy]')"); pg.wait_for_timeout(200)
     check(pg.get_by_role('switch',name='사진 올리기 허용').get_attribute('aria-checked')=='true','두 번 다 실패해도 서버 상태(켜짐)로')
     pg.unroute('**/member/**')
+    # 앞 요청은 성공(그리기 건너뜀), 뒤 요청만 실패 → 서버 상태(앞 요청 결과)로
+    n=[0]
+    def flaky(r):
+        if r.request.method!='POST': return r.continue_()
+        n[0]+=1
+        return r.continue_() if n[0]==1 else r.abort()
+    pg.route('**/member/**',flaky)
+    s4=pg.get_by_role('switch',name='사진 올리기 허용'); s4.click(); s4.click(); pg.wait_for_function("!document.querySelector('.sp-p[aria-busy]')"); pg.wait_for_timeout(200)
+    shown=pg.get_by_role('switch',name='사진 올리기 허용').get_attribute('aria-checked')
+    pg.unroute('**/member/**'); pg.reload(); pg.evaluate('window.__same=1')
+    check(shown==pg.get_by_role('switch',name='사진 올리기 허용').get_attribute('aria-checked')=='false','앞은 성공·뒤는 실패해도 화면=서버(꺼짐)')
     # 내보내기: 이 화면 위 레이어
     pg.get_by_role('button',name='내 가족 아님 · 내보내기 서아 아빠').click(); pg.wait_for_selector('#mem-ask[open]')
     check(pg.evaluate('window.__same')==1 and pg.locator('#mem-ask-t').inner_text()=='서아 아빠 내보낼까요?','내보내기 확인 레이어(이 화면 그대로)')

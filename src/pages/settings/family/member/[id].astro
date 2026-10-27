@@ -157,9 +157,12 @@ const doneText: Record<string, string> = {
         }
         // 이 사람이 없어졌거나 로그인이 끝났으면 그 화면으로
         if (url.pathname !== location.pathname) return location.assign(url.href);
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        // 그리지 않는 응답이라도 서버 상태는 기억한다(뒤 요청이 실패하면 이 상태로 되돌리게)
+        const got = doc.querySelector('.sp-p__switch')?.getAttribute('aria-checked');
+        if (got) serverOn = got === 'true';
         // 뒤에 누른 게 있으면 그리지 않는다(마지막 응답이 최신 화면)
         if (--pending) return;
-        const doc = new DOMParser().parseFromString(html, 'text/html');
         const from = doc.querySelector('.sp-p');
         if (!from) return location.reload();
         const keep = new Set(['mem-live', 'mem-urgent', 'mem-ask']);
@@ -169,7 +172,6 @@ const doneText: Record<string, string> = {
         if (location.search) history.replaceState(history.state, '', location.pathname);
         const tabs = doc.querySelector('.sp-p__tabs');
         if (tabs) document.querySelector('.sp-p__tabs')?.replaceWith(document.importNode(tabs, true));
-        serverOn = sw()?.getAttribute('aria-checked') === 'true';
         if (hadFocus) sw()?.focus({ preventScroll: true });
         say(area.querySelector('.sp-toast'));
       });
