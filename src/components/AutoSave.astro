@@ -74,6 +74,8 @@
       (area.querySelector<HTMLElement>('[aria-invalid="true"]') ?? (key ? area.querySelector<HTMLElement>(key) : null))?.focus({ preventScroll: true });
       const err = area.querySelector('.sp-p__error[role="alert"]');
       say(area.querySelector('.sp-toast') ?? err);
+      // 화면이 그 자리에 붙인 것(그룹의 링크 카드 등)을 다시 붙일 수 있게 알린다
+      area.dispatchEvent(new Event('autosave:drawn'));
     };
     if (new URLSearchParams(location.search).has('done')) history.replaceState(history.state, '', location.pathname);
     document.addEventListener('submit', (e) => {
