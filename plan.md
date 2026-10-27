@@ -2,28 +2,28 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-27 기준, dev 0.4.15 배포됨)
+## 새 세션 인계 (2026-10-27 기준, dev 0.4.17 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
 
 ### 지금 상태
 
-- dev = 0.4.15, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- dev = 0.4.17, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 16개 모두 적용. 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
-- 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v142, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
+- 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v145, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
 
 ### 다음 할 일 (순서대로)
 
 1. **페이지 이동 줄이기**(사용자 "왜 다 페이지전환일까", 2026-10-27). 확인은 레이어, 같은 화면 동작은 그 자리에서 반영 + 토스트, 스크립트 없으면 지금처럼 폼. 각각 디자인 보드 먼저, 작은 브랜치로
-   1. 설정 › 가족(`/settings/family`): 승인·거절·내 가족 아님·링크 만들기 그 자리에서, 거절·내 가족 아님 확인은 레이어
+   1. ~~설정 › 가족~~ 완료(71, 0.4.17). 다른 화면에서 `?confirm=`으로 오는 확인(구성원 내보내기·그룹 주소 다시 만들기)도 이 화면에서 모달로 뜸 → 4·5번에서 각 화면 안 레이어로 옮길지 정하기
    2. 사진 정보 수정 저장(`/photo/<id>`): 그 자리에서 + "저장했어요" 토스트
    3. 홈 레이어(`/home` 들어오기 신청·백일/생일·저장 공간): 닫기·나중에는 그 자리에서 닫힘, 다른 화면 가는 버튼만 이동
    4. 가족 한 명(`/settings/family/member/<id>`): 올리기 권한 스위치 그 자리에서, 내보내기 확인 레이어
    5. 설정 첫 화면 원본 저장 스위치, 그룹(이름 저장·공유·주소 다시 만들기 확인 레이어), 아이·글자 크기·건강 기록 저장
    6. 계정: 로그아웃·탈퇴 확인 레이어 / 조부모 설치 안내 버튼(부탁하기·알겠어요·다음에) 그 자리에서
    - 그대로 둠: 로그인·비밀번호·처음 설정·올리기처럼 다음 화면으로 가는 흐름
-   - 참고 구현: 크게 보기 `src/components/Viewer.astro`의 submit 가로채기(차례로 보내기·마지막 응답만 그림·토스트는 늘 있는 알림 칸으로 읽기), 사진 지우기 레이어 `src/pages/photo/[id].astro`(`dialog.sp-layer__modal` + `formmethod="dialog"` 취소)
+   - 참고 구현: 설정 › 가족 `src/pages/settings/family/index.astro`의 스크립트(fetch → `.sp-p`·탭바 갈아 끼우기, 확인 모달 `#fam-ask`, 알림 칸 `#fam-live`·`#fam-urgent`)가 엄빠 화면 기본형. 크게 보기 `src/components/Viewer.astro`의 submit 가로채기(차례로 보내기·마지막 응답만 그림·토스트는 늘 있는 알림 칸으로 읽기), 사진 지우기 레이어 `src/pages/photo/[id].astro`(`dialog.sp-layer__modal` + `formmethod="dialog"` 취소)
 2. **사진·영상 찍은 날짜**: 지금은 JPEG만 EXIF, HEIC·PNG·영상은 파일 시각(아이폰에선 고른 시각일 수 있음). HEIC EXIF·MP4 생성 시각(mvhd) 읽기. 아이폰 사파리가 HEIC를 JPEG로 바꿀 때 찍은 날짜가 남는지는 실기기 확인 필요(`src/pages/upload.astro` photo()/video())
 3. **사진 많을 때(대기 중 질문)**: 사용자가 "내리면 자동으로 더"를 골랐고, 60장씩·상한 없음으로 제안했지만 답을 아직 못 받음. 시작 전에 확인
 4. 옛 함수 `sp_media_comments` 지우기: DROP이 필요해 적용 도구로 안 됨 → 사용자가 Supabase SQL 편집기에서 직접 실행하도록 안내
@@ -899,6 +899,21 @@
 - 스크립트 없으면 ?confirm=delete로 같은 레이어를 연 채 다시 그림(홈 레이어와 같은 .sp-layer 구조). 예전 경고 카드는 없앰
 - base.css .sp-layer__modal(가운데·바깥 어둡게·닫혀 있으면 숨김)
 
+
+### 71. feature/family-inplace — 설정 › 가족 그 자리에서 (완료, dev 머지 0.4.17, 디자인 144)
+
+- 요구사항(다음 할 일 1-1): 승인·거절·내 가족 아님·링크 만들기를 페이지 이동 없이 그 자리에서. 거절·내 가족 아님 확인은 가운데 레이어. 결과 안내는 토스트. 스크립트 없으면 지금처럼 폼
+- 디자인: FamilyRejectLayer·FamilyRevokeLayer(가운데 레이어, 빨강 버튼·취소), FamilyApprovedToast(탭바 위 12px 토스트) 추가
+- 구현
+  - 토스트(`Toast.astro`) CSS를 family.css → base.css로(엄빠·가족 공통), 엄빠 탭 화면은 탭바 위(parent.css)
+  - `/settings/family`: 결과 안내를 Toast로(오류도 토스트), 서버 확인 카드(`?confirm=`)를 `.sp-layer` 레이어로(사진 지우기와 같은 구조)
+  - 스크립트: 거절·내 가족 아님 버튼은 `dialog.sp-layer__modal`을 열고(취소는 `formmethod="dialog"`), 이 화면 폼 제출은 fetch로 보내 돌아온 화면의 내용(`main`)과 탭 배지만 갈아 끼움. 차례로 보내기, 안내는 늘 있는 알림 칸으로 읽기, 실패하면 오류 토스트
+- 영향 파일: `src/pages/settings/family/index.astro`, `src/styles/base.css`, `src/styles/family.css`, `src/styles/parent.css`, `tools/design/familylayer.py`, `tools/e2e/famplace.py`
+- 예상 결과: 누르면 하얗게 깜빡이지 않고 카드가 빠지거나 링크 카드가 생기며 토스트. 스크립트 끄면 지금처럼 동작
+- 리뷰 3회 반영: 타입 오류(Worker 타입의 Element.prepend와 겹침 → insertBefore), 열린 확인 레이어는 갈아 끼우기에서 뺌, `?confirm=`으로 온 확인도 모달로(취소·Esc면 원래 화면), 스크립트 없을 때 결과 토스트에 초점(Toast `focus`), 다시 만들기 뒤 링크 카드로 초점, 실패하면 누른 버튼으로 초점·건너뛴 성공 화면 먼저 그림, 연 버튼이 바뀌었으면 새 버튼으로 초점
+- 검사: `tools/e2e/famplace.py`(28개, 스크립트 있음·없음), family·members·groups·layers·badge·toast·instant 통과. 검사 도우미 layerfix는 확인 레이어(#confirm)를 건드리지 않음
+- 주의: `tools/dev.sh`·대부분 e2e 파일 경로가 `/home/claude/sweepea`로 박혀 있음 → 다른 컴퓨터에선 경로를 바꿔 실행(famplace.py는 상대 경로)
+- 디자인과 다른 점(이번 범위 밖, 그대로 둠): 새 기기 줄(디자인은 한 줄 + '내 가족 아님'만, 코드는 카드 + 승인 버튼), 그룹 목록(디자인은 그룹 상세로 가는 줄, 코드는 '링크 만들기' + 들어온 사람 목록)
 
 ### 72. fix/emoji-native — 반응 이모지를 기기 기본 이모지로 (완료, dev 머지 0.4.16, 디자인 145)
 
