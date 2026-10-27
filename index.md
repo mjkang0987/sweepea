@@ -63,7 +63,7 @@ src/pages/i/[code]/     누구세요(index) → 비밀번호(password)
 src/pages/wait.astro    승인 기다림 / 500.astro
 src/pages/album/        앨범(index: 넘겨 보기·모아 보기, [id]: 크게 보기). 쿼리 f(집)·v(보기)·z(칸)
 src/lib/album.ts        앨범 쿼리 읽기·링크·목록 불러오기, 반응 수·반응 폼 처리
-src/components/        Viewer(크게 보기, 가족·엄빠 공통)·ReactRow(반응 알약·수)·SayForm(한마디)·Notice
+src/components/        Viewer(크게 보기, 가족·엄빠 공통. 반응·한마디·지우기는 스크립트가 있으면 페이지 이동 없이 판만 갈아 끼움)·ReactRow(반응 알약·수)·SayForm(한마디)·Notice
 src/lib/parent.ts       부모 로그인 제공자·PKCE·부모 화면 진입(loadParent)
 src/layouts/Parent.astro 부모 화면 뼈대(아래 탭), 스타일 src/styles/parent.css(.sp-p*)
 src/lib/age.ts          생후 개월·생일·백일/돌/생일 당일·남은 시간·지난 시간 표시(단위 검사)

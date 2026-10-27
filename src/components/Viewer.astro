@@ -390,7 +390,29 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
   urgent.setAttribute('role', 'alert');
   v?.appendChild(live);
   v?.appendChild(urgent);
-  let held: { toast: Element; refill?: readonly [string, string] } | null = null;
+  let held: { id?: string; toast: Element; refill?: readonly [string, string] } | null = null;
+  // 결과 안내 띄우기. 글자를 가진 채 끼운 안내는 화면 읽기가 놓치므로, 늘 있는 빈 알림 칸에 글자만 넣어 읽게 한다(오류는 바로 읽는 칸).
+  // 모달 시트가 열려 있으면 그 밖은 가려지고 화면 읽기도 못 읽으므로 시트 안에 띄운다
+  const show = (toast: Element) => {
+    if (!v) return;
+    v.querySelector('.sp-toast')?.remove();
+    const t = document.importNode(toast, true);
+    t.removeAttribute('role');
+    const sheet = v.querySelector<HTMLElement>('#talk[open]');
+    const host = sheet ?? v;
+    const at = sheet?.querySelector('.sp-v__sheet-form') ?? host;
+    at.insertBefore(t, at.firstChild);
+    const region = t.classList.contains('sp-toast--error') ? urgent : live;
+    host.appendChild(region);
+    region.textContent = '';
+    setTimeout(() => (region.textContent = (t.querySelector('.sp-toast__text') ?? t).textContent?.trim() ?? ''), 50);
+  };
+  const failNote = () => {
+    const p = document.createElement('p');
+    p.className = 'sp-toast sp-toast--error';
+    p.innerHTML = '<span class="sp-toast__bang" aria-hidden="true">!</span><span class="sp-toast__text">보내지 못했어요. 다시 해 주세요.</span>';
+    return p;
+  };
   v?.addEventListener('submit', (e) => {
     const form = e.target as HTMLFormElement;
     const more = v.querySelector<HTMLElement>('.sp-v__more');
@@ -430,26 +452,40 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     const sentText = box ? String(body.get(box.name) ?? '') : '';
     const boxId = box?.id;
     queue = queue.then(async () => {
-      let html: string;
+      let html = '';
+      let failed = false;
       try {
         const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin' });
         if (!r.ok) throw new Error(String(r.status));
         html = await r.text();
       } catch {
-        return location.reload();
+        // 반응은 먼저 바꿔 둔 표시가 틀리므로 새로 연다. 글·지우기는 그대로 두고 안내(쓴 글은 돌려줌)
+        if (btn?.classList.contains('sp-r__btn')) return location.reload();
+        failed = true;
       } finally {
         pending--;
+      }
+      if (failed) {
+        if (btn) btn.disabled = false;
+        if (v.dataset.id === id) {
+          const el = boxId ? v.querySelector<HTMLInputElement>(`#${boxId}`) : null;
+          if (el && !el.value) el.value = sentText;
+          show(failNote());
+        }
+        if (!pending) for (const el of [more, v.querySelector('.sp-v__more')]) el?.removeAttribute('aria-busy');
+        return;
       }
       const doc = new DOMParser().parseFromString(html, 'text/html');
       // 결과 안내는 그리기를 건너뛰어도 기억해 두고 마지막에 띄운다. 실패면 보낸 글을 입력칸에 돌려준다
       const note = doc.querySelector('.sp-v > .sp-toast');
-      if (note) held = { toast: note, refill: (note.classList.contains('sp-toast--error') && boxId && sentText ? [boxId, sentText] : undefined) ?? held?.refill };
+      if (note) held = { id, toast: note, refill: (note.classList.contains('sp-toast--error') && boxId && sentText ? [boxId, sentText] : undefined) ?? held?.refill };
       // 뒤에 누른 게 있으면 그리지 않는다(마지막 응답이 그림)
       if (pending) return;
       more.removeAttribute('aria-busy');
       // 넘기는 동안 판이 새로 갈렸을 수 있어 지금 판을 다시 찾는다. 다른 사진이면 버림
       const cur = v.querySelector<HTMLElement>('.sp-v__more');
-      const keep = held;
+      // 다른 사진에서 온 안내·글은 쓰지 않는다
+      const keep = held?.id === v.dataset.id ? held : null;
       held = null;
       if (v.dataset.id !== id || !cur) return;
       cur.removeAttribute('aria-busy');
@@ -473,23 +509,16 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
         if (el && !el.value) el.value = val;
       }
       v.querySelector('.sp-toast')?.remove();
-      if (keep) {
-        // 글자를 가진 채 끼운 안내는 화면 읽기가 놓치므로, 늘 있는 빈 알림 칸에 글자만 넣어 읽게 한다(오류는 바로 읽는 칸)
-        const t = document.importNode(keep.toast, true);
-        t.removeAttribute('role');
-        v.insertBefore(t, v.firstChild);
-        const region = t.classList.contains('sp-toast--error') ? urgent : live;
-        region.textContent = '';
-        setTimeout(() => (region.textContent = (t.querySelector('.sp-toast__text') ?? t).textContent?.trim() ?? ''), 50);
-      }
       // 시트가 열려 있었거나(시트에서 보냄) 지운 뒤라 서버가 열어 그렸으면 모달로 다시 연다(받아 온 인라인 스크립트는 돌지 않음)
       const sheet = cur.querySelector<HTMLDialogElement>('#talk');
       if (sheet && typeof sheet.showModal === 'function' && (wasOpen || sheet.open)) {
         sheet.close();
         sheet.classList.remove('sp-v__sheet--inline');
         sheet.showModal();
-        if (!typing && !sheet.contains(cur.querySelector(focusSel || ':not(*)'))) return;
+        // 다시 연 시트 밖을 가리킬 땐 시트 제목(autofocus)에 둔다
+        if (!sheet.contains(cur.querySelector(focusSel || ':not(*)'))) focusSel = '';
       } else if (wasOpen && !focusSel) focusSel = '#say-body'; // 마지막 한마디를 지워 시트가 없어지면 입력칸으로
+      if (keep) show(keep.toast);
       if (typing) {
         const el = cur.querySelector<HTMLInputElement>(`#${typing.id}`);
         el?.focus({ preventScroll: true });

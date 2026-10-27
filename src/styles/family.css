@@ -1666,6 +1666,16 @@
 .sp-v .sp-toast {
   bottom: calc(var(--dock-h, 16rem) + 12px);
 }
+/* 시트에서 보낸 뒤: 열린 시트 안 입력칸 바로 위(시트 밖은 가려지므로) */
+.sp-v__sheet-form {
+  position: relative;
+}
+.sp-v .sp-v__sheet-form .sp-toast {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: calc(100% + 8px);
+}
 /* 오류는 조금 더 오래 */
 .sp-toast--error {
   animation-duration: 6s;
