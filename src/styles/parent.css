@@ -1484,16 +1484,34 @@
 /* 사진 정보 수정: 작은 미리보기(160px) + 최근 한마디 말풍선 */
 .sp-p__thumbbox {
   position: relative;
-  height: 10rem;
+  height: 12.5rem;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--fill);
 }
-.sp-p__thumbbox-media {
-  display: block;
+.sp-p__thumbbox-blur {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  filter: blur(20px) brightness(0.82);
+  transform: scale(1.1);
+}
+.sp-p__thumbbox-media {
+  position: relative;
+  display: block;
+  /* 사진 크기만큼만(그림자가 사진 둘레에 붙게), 넘치면 칸 폭에 맞춤 */
+  width: auto;
+  max-width: 100%;
+  height: 100%;
+  margin-inline: auto;
+  object-fit: contain;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.18);
+}
+.sp-p__thumbbox-media--video {
+  width: 100%;
+  box-shadow: none;
 }
 .sp-p__thumbbox-say {
   position: absolute;
