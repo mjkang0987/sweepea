@@ -23,5 +23,5 @@ with sync_playwright() as p:
     check(d['x']+d['width']<=g['x']+g['width'] and pg.get_by_role('heading',level=1).inner_text()=='사진 정보 수정','날짜는 묶음 안, 제목 위 줄')
     sv=pg.get_by_role('button',name='저장').bounding_box(); de=pg.get_by_role('link',name='사진 지우기').bounding_box()
     check(de['y']-(sv['y']+sv['height'])<40,'지우기가 저장 바로 아래 %d'%(de['y']-(sv['y']+sv['height'])))
-    pg.fill('#date','2026-01-02'); pg.get_by_label('도윤').check(); pg.get_by_role('button',name='저장').click(); pg.wait_for_url('**/view/**done=saved**'); check(True,'저장 → 크게 보기')
+    pg.fill('#date','2026-01-02'); pg.get_by_label('도윤').check(); pg.get_by_role('button',name='저장').click(); pg.wait_for_function("document.getElementById('ph-live')?.textContent.includes('저장했어요')"); check(True,'저장 → 그 자리에서 토스트')
 print('FAILS',fails)
