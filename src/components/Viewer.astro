@@ -47,14 +47,14 @@ const delNote = deleted ? '한마디를 지웠어요.' : say === 'delerror' ? '�
 // 지운 뒤: 남은 한마디가 있으면 시트를 연 채로(안내는 시트 안), 다 지웠으면 화면 안내
 const sheetOpen = !!delNote && !!first;
 // 화면 아래 토스트: 사진 정보 저장 > 다 지움 안내 > 한마디 보낸 결과
-const note = toast ? { text: toast, tone: 'ok' as const } : delNote && !first ? { text: delNote, tone: say === 'delerror' ? ('error' as const) : ('ok' as const) } : sayNote(say, sentText);
+const note = toast ? { text: toast, tone: 'ok' as const } : delNote ? { text: delNote, tone: say === 'delerror' ? ('error' as const) : ('ok' as const) } : sayNote(say, sentText);
 const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 ---
 
 {/* 시안엔 제목 줄이 없어 화면에선 숨기고 화면 읽기에만 */}
 <h1 class="sp-vh" id="v-title">{label}</h1>
 <div class="sp-v" data-v data-slides={m.kind === 'photo' && slides && slides.slides.length > 1 ? JSON.stringify(slides) : undefined} data-id={m.id}>
-  {note && <Toast text={note.text} tone={note.tone} />}
+  {note && <Toast text={note.text} tone={note.tone} id={sheetOpen ? 'talk-note' : undefined} />}
   <figure class="sp-v__stage">
     {
       m.kind === 'video' ? (
@@ -133,7 +133,6 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
                 <h2 class="sp-v__sheet-title" id="talk-title" tabindex="-1" autofocus>한마디 {comments.length}개</h2>
                 <a class="sp-v__sheet-close" href="#" data-talk-close>닫기</a>
               </div>
-              {delNote && <p class="sp-v__sheet-note" id="talk-note">{delNote}</p>}
               <ul class="sp-v__sheet-list">
                 {comments.map((c) => (
                   <li class="sp-v__sheet-item">
@@ -166,7 +165,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
         }
         {
           sheetOpen && (
-            <script is:inline set:html="(function(){var d=document.getElementById('talk');if(d&&typeof d.showModal==='function'){d.close();d.classList.remove('sp-v__sheet--inline');d.showModal();}})();" />
+            <script is:inline set:html="(function(){var d=document.getElementById('talk');if(d&&typeof d.showModal==='function'){d.close();d.classList.remove('sp-v__sheet--inline');d.showModal();var t=document.querySelector('.sp-v > .sp-toast'),f=d.querySelector('.sp-v__sheet-form');if(t&&f)f.insertBefore(t,f.firstChild);}})();" />
           )
         }
         <SayForm mediaId={m.id} back={here} action={action} child={child} />
@@ -410,7 +409,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
   const failNote = () => {
     const p = document.createElement('p');
     p.className = 'sp-toast sp-toast--error';
-    p.innerHTML = '<span class="sp-toast__bang" aria-hidden="true">!</span><span class="sp-toast__text">보내지 못했어요. 다시 해 주세요.</span>';
+    p.innerHTML = '<span class="sp-toast__text">보내지 못했어요. 다시 해 주세요.</span>';
     return p;
   };
   v?.addEventListener('submit', (e) => {

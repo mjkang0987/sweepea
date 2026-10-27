@@ -1244,14 +1244,6 @@
   outline: 2px solid var(--pea-ink);
   outline-offset: 2px;
 }
-.sp-v__sheet-note {
-  margin: 0 20px 4px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--pea-tint);
-  color: var(--pea-deep);
-  font-size: var(--subhead-size);
-}
 .sp-v__sheet-form {
   padding: 12px 20px max(34px, env(safe-area-inset-bottom));
   border-top: 0.5px solid var(--separator);
@@ -1679,30 +1671,6 @@
 /* 오류는 조금 더 오래 */
 .sp-toast--error {
   animation-duration: 6s;
-}
-.sp-toast__icon {
-  flex: none;
-  width: 2rem;
-  height: 2rem;
-}
-.sp-toast__tail {
-  flex: none;
-  width: 1.375rem;
-  height: 1.375rem;
-}
-.sp-toast__bang {
-  flex: none;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  background: var(--danger);
-  color: var(--bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  font-weight: 800;
-  line-height: 1;
 }
 .sp-toast__text {
   flex: 1;
