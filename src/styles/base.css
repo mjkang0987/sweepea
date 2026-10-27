@@ -269,9 +269,15 @@
   }
 }
 
-/* 페이지 이동: 하얗게 깜빡이지 않고 겹쳐 넘어가게(지원하는 브라우저만, 움직임 줄이기면 끔) */
-@media (prefers-reduced-motion: no-preference) {
-  @view-transition {
-    navigation: auto;
+/* 페이지 이동: 하얗게 깜빡이지 않고 겹쳐 넘어가게(지원하는 브라우저만). 켜기는 조건 없이 맨 위에(@media 안일 때 크롬에서
+   'ViewTransition opt-in disabled' 오류 보고, 2026-10-27). 움직임 줄이기면 애니메이션만 끈다 */
+@view-transition {
+  navigation: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
   }
 }
