@@ -8,7 +8,6 @@ import { sayNote } from '../../lib/say';
 import InstallGuide from '../../components/InstallGuide.astro';
 import { callName } from '../../lib/ko';
 import { INSTALL_COOKIE } from '../../lib/install';
-import { EMOJI_SPRITE } from '../../lib/emoji';
 import { albumHref, dayLabel, loadAlbum, loadReacts, ZOOMS } from '../../lib/album';
 import { signedMediaUrl } from '../../lib/signed';
 import { PHOTOS_SEEN, WAITED, seenAt, setLayerCookie } from '../../lib/layers';
@@ -80,7 +79,6 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 ---
 
 <Family title={title} wide={q.v !== 'swipe'}>
-  <Fragment set:html={EMOJI_SPRITE} />
   {sayToast && <Toast text={sayToast.text} tone={sayToast.tone} />}
   {
     (approved || fresh.length > 0) && (

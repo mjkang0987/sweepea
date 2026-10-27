@@ -2,7 +2,6 @@
 // 엄빠 크게 보기: 조부모와 같은 화면(반응·한마디 남기기·저장) + 사진 정보 수정 버튼. 순서는 앨범과 같음(아이를 골랐으면 ?k=)
 import Family from '../../layouts/Family.astro';
 import Viewer from '../../components/Viewer.astro';
-import { EMOJI_SPRITE } from '../../lib/emoji';
 import { applyReactPost, dayLabel, loadReacts, slideWindow } from '../../lib/album';
 import { getBackend } from '../../lib/backend';
 import { UUID } from '../../lib/media';
@@ -49,7 +48,6 @@ const slides = await slideWindow(items, i, view, (x) => `${dayLabel(x.taken_at)}
 ---
 
 <Family title={`${label} · ${i + 1} / ${items.length}`} wide>
-  <Fragment set:html={EMOJI_SPRITE} />
   <Viewer
     m={m}
     label={label}
