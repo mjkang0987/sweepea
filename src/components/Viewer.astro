@@ -369,7 +369,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     v.querySelector('.sp-v__tap')?.addEventListener('click', () => bare(false));
     // PC에서 마우스로 끌다 놓은 것은 누름이 아니다. 빠르게 두 번 누르면(확대하려는 손짓) 깜빡이지 않게 두 번째는 버린다
     let down = { x: 0, y: 0 };
-    let last = 0;
+    // 이벤트 시각은 페이지를 연 때부터 세므로, 열자마자 누른 첫 누름이 버려지지 않게
+    let last = -Infinity;
     stage.addEventListener('pointerdown', (e) => e.isPrimary && (down = { x: e.clientX, y: e.clientY }));
     stage.addEventListener('click', (e) => {
       if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10 || e.timeStamp - last < 300) return;

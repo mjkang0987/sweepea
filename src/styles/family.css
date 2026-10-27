@@ -1696,7 +1696,7 @@
   overflow: visible;
   clip: auto;
   transform: translateX(-50%);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--panel-item);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
