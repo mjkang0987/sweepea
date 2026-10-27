@@ -24,6 +24,14 @@ with sync_playwright() as p:
     # 이름을 저장해 화면이 갈려도 카드는 남음
     pg.fill('#name','외가'); pg.press('#name','Enter'); pg.wait_for_function("document.getElementById('as-live')?.textContent.includes('저장했어요')")
     check(pg.locator('#link-url').input_value()==first and pg.locator('#link').count()==1,'이름 저장 뒤에도 링크 카드 그대로')
+    # 이름 저장 응답을 기다리는 동안 연 확인 레이어는 그대로
+    import time
+    pg.route('**/groups/*',lambda r: (time.sleep(0.8), r.continue_()) if r.request.method=='POST' else r.continue_())
+    pg.fill('#name','외가집'); pg.get_by_role('button',name='주소 다시 만들기 (예전 주소는 바로 막혀요)').click(); pg.wait_for_selector('#grp-ask[open]')
+    pg.wait_for_function("document.getElementById('as-live')?.textContent.includes('저장했어요')"); pg.wait_for_timeout(200)
+    check(pg.locator('#grp-ask[open]').count()==1 and pg.evaluate("!!document.activeElement.closest('#grp-ask')"),'저장 응답이 와도 열린 확인 레이어·초점 그대로')
+    pg.keyboard.press('Escape'); pg.unroute('**/groups/*')
+    pg.fill('#name','외가'); pg.press('#name','Enter'); pg.wait_for_function("document.getElementById('as-live')?.textContent.includes('저장했어요')")
     # 다시 만들기: 확인 레이어 → 새 링크
     pg.get_by_role('button',name='주소 다시 만들기 (예전 주소는 바로 막혀요)').click(); pg.wait_for_selector('#grp-ask[open]')
     check(pg.locator('#grp-ask-t').inner_text()=='외가 주소를 다시 만들까요?' and pg.evaluate("document.activeElement.textContent")=='취소','다시 만들기 확인 레이어, 초점은 취소')
