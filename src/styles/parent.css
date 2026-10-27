@@ -886,7 +886,41 @@
   gap: 4px;
 }
 .sp-p__upcell {
+  position: relative;
   aspect-ratio: 1;
+}
+/* 칸 상태(올리는 중·올림·못 올림): 면 색 바탕이라 사진 위에서도 밝은/어두운 테마 모두 글자가 읽힌다 */
+.sp-p__uptag {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--label);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+  font-weight: 700;
+  pointer-events: none;
+}
+.sp-p__uptag--done {
+  color: var(--pea-ink);
+}
+.sp-p__uptag--fail {
+  color: var(--danger);
+}
+.sp-p__up-alert-head {
+  margin: 0;
+}
+.sp-p__up-alert-list {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+  font-weight: 400;
+}
+.sp-p__up-alert-item {
+  overflow-wrap: anywhere;
 }
 .sp-p__upbtn {
   /* 줄 안 요소면 아래에 글자 여백이 붙어 위아래 간격만 벌어진다 */
