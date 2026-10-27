@@ -553,6 +553,23 @@ select public.sp_parent_react(:'m3', 'heart', true);
 reset role;
 update public.families set delete_after = null where id = :'fam';
 
+-- ── 한마디 목록(크게 보기): 볼 수 있는 사진이면 승인된 가족·엄빠 한마디를 본다
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_parent_comment(:'m3', '엄마 한마디');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok((select count(*) >= 2 from public.sp_media_comments(:'m3')), '가족도 한마디 목록을 봄(외할머니 + 엄마)');
+select pg_temp.ok((select name = '지우' and not mine from public.sp_media_comments(:'m3') where body = '엄마 한마디'), '엄마 한마디는 엄마 이름, 내 것 아님');
+select pg_temp.ok(not exists (select 1 from public.sp_media_comments(:'m2')), '안 보이는 사진 한마디는 없음');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok((select mine from public.sp_media_comments(:'m3') where body = '엄마 한마디'), '엄마가 보면 내 것');
+reset role;
+delete from public.comments where parent_user_id = :'P';
+
 -- ── 탈퇴 유예: 가족 화면은 바로 닫힘
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
