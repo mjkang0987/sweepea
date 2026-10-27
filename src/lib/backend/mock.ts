@@ -119,6 +119,14 @@ function authorName(id: string): string | null {
   if (id.startsWith('p:')) return parents.get(id.slice(2))?.role === 'dad' ? '아빠' : '엄마';
   return members.find((m) => m.id === id && m.status === 'active')?.name ?? null;
 }
+// 내가 쓴 한마디로 칠 작성자(DB sp_device_members처럼 활성 기기·승인된 구성원, 그리고 내 부모 계정)
+function myAuthors(pass: Pass): Set<string> {
+  const out = new Set<string>([parentKey(pass)]);
+  for (const [k, d] of devices) {
+    if (k.startsWith(`${pass.access}|`) && d.status === 'active' && d.memberId && members.find((m) => m.id === d.memberId)?.status === 'active') out.add(d.memberId);
+  }
+  return out;
+}
 function parentMedia(pass: Pass, mediaId: string): void {
   const fam = parents.get(pass.access)?.familyId;
   if (!fam || !media.some((y) => y.id === mediaId && y.status === 'ready' && y.family_id === fam)) throw new BackendError('not_allowed', 403, '42501');
@@ -312,8 +320,7 @@ export function createMockBackend(): Backend {
       return [...out.values()];
     },
     async deleteComment(pass, commentId) {
-      const mine = new Set([...devices].filter(([k, d]) => k.startsWith(`${pass.access}|`) && d.status === 'active').map(([, d]) => d.memberId));
-      mine.add(parentKey(pass));
+      const mine = myAuthors(pass);
       const c = comments.find((x) => x.id === commentId && !x.deleted && mine.has(x.memberId));
       if (!c) throw new BackendError('not_allowed', 403, '42501');
       c.deleted = true;
@@ -325,8 +332,7 @@ export function createMockBackend(): Backend {
       } catch {
         return [];
       }
-      const mine = new Set([...devices].filter(([k]) => k.startsWith(`${pass.access}|`)).map(([, d]) => d.memberId));
-      mine.add(parentKey(pass));
+      const mine = myAuthors(pass);
       return comments
         .filter((c) => !c.deleted && c.mediaId === id && authorName(c.memberId))
         .map((c) => ({ id: c.id, name: authorName(c.memberId)!, body: c.body, created_at: new Date(c.at).toISOString(), mine: mine.has(c.memberId) }))

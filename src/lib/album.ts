@@ -99,12 +99,13 @@ export async function applyReactPost(request: Request, mediaId: string, ops: Rea
     const body = form.get('body');
     const del = String(form.get('del') ?? '');
     if (del) {
-      // 지운 뒤엔 시트를 다시 열어 둔다(#talk) + 안내
+      // 지운 뒤엔 시트를 열어 둔 채로 돌아온다(say=deleted면 서버가 시트를 열어서 그림, #talk는 쓰지 않음)
+      to.hash = '';
+      to.searchParams.set('say', 'delerror');
       if (UUID.test(del)) {
         await ops.deleteComment(del);
         to.searchParams.set('say', 'deleted');
       }
-      to.hash = 'talk';
     } else if (react) {
       const [kind, on] = react.split(':');
       if ((REACTION_KINDS as readonly string[]).includes(kind) && (on === 'on' || on === 'off')) {
@@ -125,6 +126,7 @@ export async function applyReactPost(request: Request, mediaId: string, ops: Rea
     if (!(e instanceof BackendError)) throw e;
     if (e.status === 401) return '/';
     // 반응 실패는 조용히, 한마디 실패는 알려 준다(429 하루 한도, 그 밖은 승인 대기·볼 수 없는 사진 등)
+    // 지우기 실패(이미 지움·권한 없음 등)는 say=delerror 그대로 시트에서 알림
     if (form.get('body') !== null) {
       to.searchParams.set('say', e.status === 429 ? 'limit' : 'error');
       to.searchParams.set('sm', mediaId);

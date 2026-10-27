@@ -41,7 +41,10 @@ const now = Date.now();
 const first = comments[0];
 // 한마디를 지우고 돌아옴: 남은 게 있으면 다시 연 시트 안에, 다 지웠으면 화면 안내로
 const deleted = say === 'deleted';
-const note = toast ?? (deleted && !first ? '한마디를 지웠어요.' : undefined);
+const delNote = deleted ? '한마디를 지웠어요.' : say === 'delerror' ? '지우지 못했어요. 다시 해 주세요.' : null;
+// 지운 뒤: 남은 한마디가 있으면 시트를 연 채로(안내는 시트 안), 다 지웠으면 화면 안내
+const sheetOpen = !!delNote && !!first;
+const note = toast ?? (delNote && !first ? delNote : undefined);
 const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 ---
 
@@ -121,13 +124,13 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
         {/* 아래에서 올라오는 시트. 스크립트가 있으면 showModal, 없으면 #talk(:target)로 판 안에 펼쳐진다 */}
         {
           first && (
-            <dialog class="sp-v__sheet" id="talk" aria-labelledby="talk-title">
+            <dialog class="sp-v__sheet" id="talk" aria-labelledby="talk-title" aria-describedby={sheetOpen ? 'talk-note' : undefined} open={sheetOpen}>
               <span class="sp-v__sheet-grab" aria-hidden="true"></span>
               <div class="sp-v__sheet-head">
                 <h2 class="sp-v__sheet-title" id="talk-title" tabindex="-1" autofocus>한마디 {comments.length}개</h2>
                 <a class="sp-v__sheet-close" href="#" data-talk-close>닫기</a>
               </div>
-              {deleted && <p class="sp-v__sheet-note" role="status">한마디를 지웠어요.</p>}
+              {delNote && <p class="sp-v__sheet-note" id="talk-note" role="status">{delNote}</p>}
               <ul class="sp-v__sheet-list">
                 {comments.map((c) => (
                   <li class="sp-v__sheet-item">
@@ -334,12 +337,15 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     next?.addEventListener('click', go(1));
     addEventListener('resize', () => (track.scrollLeft = at * track.clientWidth));
   }
-  // 한마디를 지우고 돌아오면(#talk) 시트를 모달로 다시 연다. 주소의 #talk는 떼서 :target 펼침과 겹치지 않게
-  if (location.hash === '#talk') {
+  // 한마디를 지우고 돌아오면 서버가 시트를 열어(open) 그린다: 모달로 바꿔 열고, 새로 고침해도 안내가 다시 안 뜨게 주소에서 say를 뗀다
+  {
     const sheet = v?.querySelector<HTMLDialogElement>('#talk');
-    if (sheet && typeof sheet.showModal === 'function') {
-      history.replaceState(history.state, '', location.pathname + location.search);
+    if (sheet?.open && typeof sheet.showModal === 'function' && !sheet.matches(':modal')) {
+      sheet.close();
       sheet.showModal();
+      const u = new URL(location.href);
+      u.searchParams.delete('say');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
     }
   }
   // 한마디 시트: 한 줄을 누르면 아래에서 올라오고, 닫기·바깥(어두운 곳)·Esc로 닫는다. 판이 넘길 때마다 바뀌므로 위임으로 받는다

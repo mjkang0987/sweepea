@@ -265,6 +265,24 @@ set role authenticated;
 select public.sp_delete_comment(:'c2');
 reset role;
 select pg_temp.ok((select deleted_at is not null from public.comments where id = :'c2'), '쓴 사람은 지움');
+-- 다른 가족(외할아버지)·다른 집 부모도 못 지움
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_comment(:'m3', '외할머니 것') as c3 \gset
+reset role;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 2줄은 의도된 거부(남의 한마디)'
+select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_delete_comment(:'c3');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_delete_comment(:'c3');
+reset role;
+\set ON_ERROR_STOP 1
+select pg_temp.ok((select deleted_at is null from public.comments where id = :'c3'), '다른 가족·다른 집 부모는 못 지움');
+delete from public.comments where id = :'c3';
 
 -- 거절하면 그 기기도 막힌다
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
