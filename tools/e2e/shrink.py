@@ -53,10 +53,10 @@ with sync_playwright() as p:
     check(any(not t.endswith(' 0%') for t in pct) and all(t.endswith('0%') for t in pct),'영상 줄이는 중… 1 / 3 · N%, 10% 단위로만 읽어 줌 '+str(pct))
     check(len(pct)==len(set(pct)),'같은 글을 거듭 읽어 주지 않음')
     check(len(pct)>0 and all(m.split('|')[1]=='false' and m.split('|')[2]=='줄이는 중' for m in msgs if m.startswith('영상 줄이는 중… 1 / 3 · ')),'줄이는 동안 화면 켜 두기 안내·크기 칸 줄이는 중')
-    check(pg.locator('#up-bar').is_hidden(),'다 줄이면 진행 막대 숨김')
+    check(pg.locator('#up-progress').is_hidden() and pg.locator('#up-bar').is_hidden(),'다 줄이면 진행 막대 숨김')
     check(pg.locator('#up-shrink-hint').is_hidden() and 'MB' in pg.locator('#up-size').inner_text(),'다 줄이면 안내 숨김·크기 보임 ('+pg.locator('#up-size').inner_text()+')')
     bars=[]; pg.expose_function('noteBar',lambda v: bars.append(v))
-    pg.evaluate("new MutationObserver(()=>{const b=document.getElementById('up-bar');noteBar((b.hidden?'h':'v')+b.value)}).observe(document.getElementById('up-bar'),{attributes:true})")
+    pg.evaluate("new MutationObserver(()=>{const w=document.getElementById('up-progress'),b=document.getElementById('up-bar');noteBar((w.hidden?'h':'v')+b.value)}).observe(document.getElementById('up-progress'),{attributes:true,subtree:true})")
     n0=len(msgs)
     puts,rows=send(pg)
     up=[m.split('|')[0] for m in msgs[n0:] if m.startswith('올리는 중…')]
