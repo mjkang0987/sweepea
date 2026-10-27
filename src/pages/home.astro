@@ -310,7 +310,7 @@ for (const mo of months) {
     box.addEventListener('cancel', (e) => {
       e.preventDefault();
       const b = later(box);
-      if (b) box.querySelector('form')?.requestSubmit(b);
+      b?.click(); // requestSubmit이 없는 사파리 15.4~15.6도 되게
     });
     box.addEventListener('submit', (e) => {
       const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
