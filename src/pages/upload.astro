@@ -147,15 +147,17 @@ const kid = callName(kids[0]?.name ?? '아이');
 
   // 상태 칸은 늘 있고(화면 읽기가 바로 읽게) 비었을 때만 CSS로 숨긴다
   const say = (text: string) => (status.textContent = text);
-  // 줄이기·올리기 진행: 퍼센트와 막대는 묶음 전체 기준
+  // 줄이기·올리기 진행: 막대는 묶음 전체 기준. 퍼센트 글은 영상 하나의 진행(줄이기·나눠 올리기)일 때만
+  // (사진은 '3 / 12'와 같은 말이라 빼 달라고 함)
   const bar = $<HTMLProgressElement>('up-bar');
   const prog = $('up-progress');
   // 화면 읽기가 계속 읽지 않게 글은 10% 단위·단계가 바뀔 때만, 막대는 늘
-  const step = (text: string, frac: number) => {
-    const n = Math.max(0, Math.min(100, Math.floor(frac * 100)));
+  const pct = (f: number) => Math.max(0, Math.min(100, Math.floor(f * 100)));
+  const step = (text: string, frac: number, video?: number, tag = '') => {
     prog.hidden = false;
-    bar.value = n;
-    const t = `${text} · ${n === 100 ? 100 : Math.floor(n / 10) * 10}%`;
+    bar.value = pct(frac);
+    const v = video === undefined ? -1 : pct(video);
+    const t = v < 0 ? text : `${text} · ${tag}${v === 100 ? 100 : Math.floor(v / 10) * 10}%`;
     if (status.textContent !== t) say(t);
   };
 
@@ -371,7 +373,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       const label = `${shrinking && f.type.startsWith('video/') ? '영상 ' : ''}줄이는 중… ${i + 1} / ${files.length}`;
       step(label, i / files.length);
       try {
-        items.push(await (f.type.startsWith('video/') ? video(f, (p) => step(label, (i + p) / files.length)) : photo(f)));
+        items.push(await (f.type.startsWith('video/') ? video(f, (p) => step(label, (i + p) / files.length, p)) : photo(f)));
         // 다 줄인 것부터 바로 보이게
         render();
       } catch {
@@ -471,7 +473,7 @@ const kid = callName(kids[0]?.name ?? '아이');
           })
         ).id;
         try {
-          const keys: Record<string, string> = { view: await put(it.id, 'view', it.view, (p) => step(label, (sent + p * it.view.size) / total)) };
+          const keys: Record<string, string> = { view: await put(it.id, 'view', it.view, (p) => step(label, (sent + p * it.view.size) / total, p, '영상 ')) };
           step(label, (sent + it.view.size) / total);
           keys.thumb = await put(it.id, 'thumb', it.thumb);
           if (it.poster) keys.poster = await put(it.id, 'poster', it.poster);
