@@ -2,15 +2,15 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-27 기준, dev 0.4.23 배포됨)
+## 새 세션 인계 (2026-10-27 기준, dev 0.4.24 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
 
 ### 지금 상태
 
-- dev = 0.4.23, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- dev = 0.4.24, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
-- 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 16개 모두 적용. 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
+- 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 16개 적용, **17번째 `20261027000004_finish_quota.sql`(완료 때 5GB 한도)는 사용자 확인 기다림**(적용 전에도 앱은 동작, 한도만 시작 때 확인). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v151, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
 
 ### 다음 할 일 (순서대로)
@@ -32,7 +32,7 @@
 
 ### 사용자 요청 대기열 (2026-10-27 저녁, 1번 다음에 이 순서로)
 
-A. **큰 영상 올리기**: 영상은 원본을 Worker로 보내는데 Worker 요청 한도 100MB라 100MB 넘는 영상은 빠짐(사용자가 12장 중 영상 4개 못 올림). R2 나눠 올리기(Worker 바인딩 createMultipartUpload·uploadPart·complete, 50MB 조각)로 바꾸기. 새 비밀 값 필요 없음. `src/lib/media.ts:43`, `src/pages/upload.astro`, `src/pages/api/media/`
+A. ~~**큰 영상 올리기**~~ 완료(79, 0.4.24): 영상은 원본을 Worker로 보내는데 Worker 요청 한도 100MB라 100MB 넘는 영상은 빠짐(사용자가 12장 중 영상 4개 못 올림). R2 나눠 올리기(Worker 바인딩 createMultipartUpload·uploadPart·complete, 50MB 조각)로 바꾸기. 새 비밀 값 필요 없음. `src/lib/media.ts:43`, `src/pages/upload.astro`, `src/pages/api/media/`
 B. **올리기 화면 알아보기 쉽게**: 무엇이 올라가는 중·다 됐는지·왜 못 올렸는지(파일별) 한눈에. "올리는 중" 뒤 "못 올린다" 안내가 알림처럼 안 보여 불편함 → 토스트/파일별 상태. 디자인 보드 먼저
 C. **사진 보기 한 번 누르면 사진만**: 크게 보기에서 화면을 한 번 누르면 위 메뉴·아래 판(반응·한마디)·화살표·영상 막대가 사라지고 사진만, 다시 누르면 돌아옴. 디자인 보드 먼저
 D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<아이>`) 저장 버튼이 맨 아래라 찾기 힘듦 → 저장 같은 아래 버튼은 탭바 바로 위에 고정(사용자 제안). 같은 버튼 쓰는 설정 화면도 같이. 디자인 보드 먼저
@@ -974,6 +974,15 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 구현: `.sp-p__savebar`(탭바 위 고정 막대, 넓은 화면은 맨 아래), Parent `savebar` → `sp-p--savebar`(막대 높이 `--savebar-h` rem만큼 아래 여백, 토스트는 막대 위 12px). 적용: 사진 정보 수정·아이 고치기/추가·그룹 추가·그룹 비밀번호. 접종은 AutoSave(data-autosave) + 바꾼 칸만 보내기(`toggle=키:on|off`, 스크립트 없으면 예전처럼 저장 버튼·전체 폼). AutoSave는 펼친 `details[id]` 유지
 - 리뷰 3회: 체크했다 바로 풀면 완료로 남음(→ 바꾼 칸만 보내기, 폼이 새것이 되면 놓치던 것도 고침), 막대 높이 px 고정(→ rem), `:has()` 없는 브라우저(→ 레이아웃 표시), 토스트 자리가 탭바 규칙에 덮임(→ 우선순위)
 - 검사: `tools/e2e/savebar.py`(22개, 지연 600ms에서 체크 후 바로 풀기, 글자 24px), health·photo·photosave·settings2·groups·editshot·autosave·groupplace 통과
+
+### 79. feature/video-multipart — 큰 영상 나눠 올리기 (완료, dev 머지 0.4.24, 화면 모양 변경 없음)
+
+- 원인(사용자 "영상 4개 크다고 안 올라갔네"): 영상 원본을 Worker로 보내는데 Worker 요청 한도가 100MB라 100MB 넘는 영상은 고를 때 빠졌음
+- 구현: `api/media/[id]/multipart`(R2 multipart: 만들기 → 50MB 조각 PUT → 합치기, 그만두면 abort). 한 편 2GB·조각 41개까지(`BIG_VIDEO`). 올리기 화면은 90MB 넘는 영상만 이 길로(조각마다 두 번까지 다시), '올리는 중… n / 전체 · 영상 38%'. 합친 키는 지금처럼 done으로
+- 리뷰 3회: 2GB 영상으로 5GB 한도를 크게 넘길 수 있음(→ 완료 때도 한도, 마이그레이션 `20261027000004_finish_quota.sql` + mock, 거절되면 올린 파일 바로 지움), 조각 번호 제한(→ 41), 동시에 완료하면 한도를 넘을 수 있음(→ 확인과 더하기를 한 문장으로, 넘으면 예외로 함께 되돌림)
+- 검사: `tools/e2e/bigvideo.py`(12개, 재생되는 130MB 파일 → 조각 3개·재생·용량·API 거절), upload, 단위 24, DB(PG18에서, 의도한 거부 62건 — run.sh를 macOS bash에서도 돌게, `LANG=C LC_ALL=C PG_BIN=/opt/homebrew/opt/postgresql@18/bin npm run test:db`)
+- 남은 것(사용자): 운영 DB에 마이그레이션 적용 확인, R2 버킷 `sweepea-media`에 '끝나지 않은 multipart는 1일 뒤 중단' 수명 주기 규칙 확인·추가(여기선 Cloudflare 로그인이 없어 못 봄. 끝내지 않은 조각은 목록에 안 나와 매일 정리 작업이 못 지움)
+- 같이 발견(이번과 무관, dev에서도 실패): upscreen.py 'EXIF 찍은 날로 월 묶음', vplay.py '한마디 보냄 토스트'. 다음에 원인 확인
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 

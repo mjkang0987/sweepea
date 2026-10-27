@@ -4,10 +4,10 @@
 
 ## 현재 상태
 
-- 버전 0.4.23(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 마이그레이션 16개 적용, 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
+- 버전 0.4.24(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 마이그레이션 16개 적용, 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
 - 화면 반응 속도(0.4.11~): 크게 보기의 반응·한마디·지우기는 스크립트가 있으면 페이지 이동 없이 아래 판만 갈아 끼움(반응은 누르는 즉시 표시). 페이지 이동은 겹쳐 넘어감(`@view-transition`). 설정 › 가족(0.4.17~)도 승인·거절·내 가족 아님·링크 만들기를 그 자리에서(확인은 모달 레이어), 사진 정보 수정 저장(0.4.18~)도 그 자리에서 '저장했어요' 토스트, 홈 가운데 레이어(0.4.19~)는 모달로 뜨고 닫기·나중에는 그 자리에서(한 번에 하나씩 이어서), 가족 한 명(0.4.20~)은 올리기 허용 스위치 그 자리에서·내보내기 확인 레이어, 바로 저장 화면들(0.4.21~, 공용 `AutoSave`: 설정 스위치·글자 크기·아이 접종 보기·그룹)도 그 자리에서 + 토스트, 그룹 주소 보내기·다시 만들기(0.4.22~)는 그룹 화면에 링크 카드·확인 레이어, 접종은 체크하면 바로 저장(0.4.23~), 입력 화면 저장 버튼은 탭바 위 막대 고정(`.sp-p__savebar`, Parent `savebar`). 나머지 화면은 아직 폼 → 페이지 이동(다음 작업).
 - 안내: 결과는 아래에서 떴다 사라지는 토스트(`src/components/Toast.astro`, 아이콘 없이 글자만, CSS는 base.css로 엄빠·가족 공통, 엄빠 탭 화면은 탭바 위). 한마디 시트가 열려 있으면 시트 위쪽 바깥에 뜸. 확인은 가운데 레이어(`.sp-layer`, 스크립트로 여는 건 `dialog.sp-layer__modal`) — 사진 지우기가 첫 번째.
-- 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 1~2시간 주소) 완료.
+- 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 1~2시간 주소) 완료. 100MB 넘는 영상 원본은 `/api/media/<id>/multipart`로 50MB씩 나눠 올림(0.4.24~, 한 편 2GB). 완료 때도 무료 5GB 한도(마이그레이션 17, 운영 적용은 사용자 확인 뒤).
 - 부모 올리기(`/upload`: 기기에서 줄이기·EXIF 찍은 날·대표 사진·아이·그룹, 올린 뒤 공유 링크 `POST /api/shares`) 완료. 부모 화면은 JS 사용, 가족 화면은 0KB 유지(예외: 크게 보기 `/album/[id]`만 작은 스크립트 — 영상 재생 막대·소리·옆으로 밀기, 없어도 ‹ › 링크·기본 재생 막대로 동작. 골라서 저장하기 `/album/save`도 작은 스크립트 — 고른 수·공유 창/내려받기, 없으면 고른 사진마다 저장 링크).
 - 설정 > 가족(`/settings/family` 승인·거절·새 기기·그룹 링크 — 스크립트가 있으면 그 자리에서, `/settings/family/sms` 한 사람용 문자 링크) 완료.
 - 설정: 구성원 상세(`/settings/family/member/<id>` 사진 올리기 허용·내보내기), 가족도 사진 저장하기(`/settings`, 켜면 가족 크게 보기에 저장 링크), 저장 용량(`/settings/storage`) 완료.
@@ -56,7 +56,7 @@ src/lib/backend/        백엔드 계약(types.ts), supabase.ts(fetch로 Auth·R
 src/lib/pass.ts         출입증 쿠키(sp_pass, httpOnly)·글자 크기 쿠키(sp_size)
 src/lib/families.ts     가족방 상태 분류(들어감·승인 대기)
 src/lib/media.ts        사진 파일 규칙(종류별 부분·형식·크기), R2 키
-src/pages/api/media/    올리기 API: POST(행) → PUT <id>/<부분>(파일) → POST <id>/done(완료)
+src/pages/api/media/    올리기 API: POST(행) → PUT <id>/<부분>(파일, 큰 영상은 <id>/multipart 조각) → POST <id>/done(완료)
 src/lib/signed.ts       사진 주소 서명·확인(HMAC, MEDIA_URL_SECRET)
 src/pages/m/            사진·영상 전달(서명 확인 → R2, Range)
 worker-configuration.d.ts  `npm run types`(wrangler types)로 만든 Worker 타입
