@@ -378,6 +378,88 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       if (out) sheet.close();
     }
   });
+  // 누르기·보내기·지우기: 페이지를 새로 열지 않고, 받아 온 화면에서 아래 판(.sp-v__more)과 토스트만 갈아 끼운다.
+  // 반응은 누르는 순간 눌림·수를 먼저 바꾼다. 요청은 차례로 보내고 마지막 응답만 그린다(앞선 응답이 뒤 누름을 되돌리지 않게)
+  let queue = Promise.resolve();
+  let pending = 0;
+  v?.addEventListener('submit', (e) => {
+    const form = e.target as HTMLFormElement;
+    const more = v.querySelector<HTMLElement>('.sp-v__more');
+    if (!more?.contains(form) || form.method !== 'post') return;
+    const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+    // 누른 버튼을 모르는 옛 브라우저는 원래대로 폼을 보낸다(버튼 값이 곧 할 일)
+    if (!btn && form.querySelector('button[name]')) return;
+    e.preventDefault();
+    const body = new FormData(form);
+    if (btn?.name) body.append(btn.name, btn.value);
+    const id = v.dataset.id;
+    const hadFocus = more.contains(document.activeElement);
+    const fromSheet = !!form.closest('#talk');
+    let focusSel = fromSheet ? '#say-body-talk' : form.id ? `#${form.id} .sp-f__input` : '';
+    if (btn?.classList.contains('sp-r__btn')) {
+      const [k, want] = btn.value.split(':');
+      const n = Math.max(0, Number(btn.querySelector('.sp-r__n')?.textContent ?? 0) + (want === 'on' ? 1 : -1));
+      btn.setAttribute('aria-pressed', String(want === 'on'));
+      btn.value = `${k}:${want === 'on' ? 'off' : 'on'}`;
+      btn.setAttribute('aria-label', (btn.getAttribute('aria-label') ?? '').replace(/\d+개$/, `${n}개`));
+      let num = btn.querySelector('.sp-r__n');
+      if (n && !num) {
+        num = btn.appendChild(document.createElement('span'));
+        num.className = 'sp-r__n';
+        num.setAttribute('aria-hidden', 'true');
+      }
+      if (num) n ? (num.textContent = String(n)) : num.remove();
+      focusSel = `.sp-r__btn[value^="${k}:"]`;
+    } else if (btn) {
+      btn.disabled = true; // 보내는 중 두 번 누르지 않게(응답이 새 판으로 바꾼다)
+      if (btn.name === 'del') focusSel = ''; // 지운 뒤엔 다시 연 시트 제목으로(알림을 읽게)
+    }
+    pending++;
+    more.setAttribute('aria-busy', 'true');
+    const sent = body.get('body');
+    queue = queue.then(async () => {
+      let html: string;
+      try {
+        const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin' });
+        if (!r.ok) throw new Error(String(r.status));
+        html = await r.text();
+      } catch {
+        return location.reload();
+      } finally {
+        pending--;
+      }
+      // 뒤에 누른 게 있거나 그 사이 다른 사진으로 넘겼으면 그리지 않는다
+      if (pending) return;
+      more.removeAttribute('aria-busy');
+      if (v.dataset.id !== id) return;
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const from = doc.querySelector('.sp-v__more');
+      // 출입증이 끝나 로그인 화면이 온 경우 등
+      if (!from) return location.reload();
+      const old = more.querySelector<HTMLDialogElement>('#talk');
+      const wasOpen = !!old?.open;
+      old?.close();
+      // 기다리는 동안 새로 쓰던 글은 남긴다(보낸 글과 같으면 비움)
+      const typed = [...more.querySelectorAll<HTMLInputElement>('.sp-f__input')].map((i) => [i.id, i.value, form.contains(i)] as const);
+      more.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
+      for (const [iid, val, mineForm] of typed) {
+        const el = val && !(mineForm && val === sent) ? more.querySelector<HTMLInputElement>(`#${iid}`) : null;
+        if (el) el.value = val;
+      }
+      v.querySelector('.sp-toast')?.remove();
+      const toast = doc.querySelector('.sp-v > .sp-toast');
+      if (toast) v.insertBefore(document.importNode(toast, true), v.firstChild);
+      // 시트가 열려 있었거나(시트에서 보냄) 지운 뒤라 서버가 열어 그렸으면 모달로 다시 연다(받아 온 인라인 스크립트는 돌지 않음)
+      const sheet = more.querySelector<HTMLDialogElement>('#talk');
+      if (sheet && typeof sheet.showModal === 'function' && (wasOpen || sheet.open)) {
+        sheet.close();
+        sheet.classList.remove('sp-v__sheet--inline');
+        sheet.showModal();
+        if (!sheet.contains(more.querySelector(focusSel || ':not(*)'))) return;
+      }
+      if (hadFocus && focusSel) more.querySelector<HTMLElement>(focusSel)?.focus({ preventScroll: true });
+    });
+  });
   // 옆으로 밀기(스와이퍼가 없을 때, 영상 화면): 가로로 60px 넘게(세로보다 크게) 밀면 ‹ › 링크로. 막대·버튼·입력칸·아래 판에서 시작한 건 제외
   if (v && !slides) {
     let x0: number | null = null;
