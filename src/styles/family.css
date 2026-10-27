@@ -1640,34 +1640,99 @@
 }
 
 /* 크게 보기 완료 안내(사진 정보 저장 뒤): 위 메뉴 아래에 떠서 몇 초 뒤 사라짐 */
-.sp-v__toast {
-  position: absolute;
-  z-index: 3;
-  left: 50%;
-  top: calc(4.5rem + env(safe-area-inset-top));
-  width: max-content;
-  max-width: calc(100% - 2 * var(--space-5));
+/* 토스트(디자인 GrandHome·ToastSent·ToastError): 화면 아래 반투명 카드, 잠시 뒤 사라짐. 크게 보기에선 아래 판 바로 위 */
+.sp-toast {
+  position: fixed;
+  z-index: 20;
+  left: max(20px, calc((100% - 32rem) / 2));
+  right: max(20px, calc((100% - 32rem) / 2));
+  bottom: calc(24px + env(safe-area-inset-bottom));
   box-sizing: border-box;
+  min-height: 60px;
   margin: 0;
-  padding: var(--space-3) var(--space-5);
-  border-radius: 999px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
   background: var(--glass-clear);
   color: var(--label);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
   box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator), 0 10px 28px rgba(0, 0, 0, 0.16);
-  font-weight: 600;
-  text-align: center;
   pointer-events: none;
-  animation: sp-toast 4s ease-out forwards;
+  animation: sp-toast-card 4s ease-out forwards;
+}
+.sp-v .sp-toast {
+  bottom: calc(var(--dock-h, 16rem) + 12px);
+}
+/* 오류는 조금 더 오래 */
+.sp-toast--error {
+  animation-duration: 6s;
+}
+.sp-toast__icon {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+}
+.sp-toast__tail {
+  flex: none;
+  width: 1.375rem;
+  height: 1.375rem;
+}
+.sp-toast__bang {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--danger);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.sp-toast__text {
+  flex: 1;
+  font-size: 1.1875rem;
+  line-height: 1.625rem;
+  font-weight: 600;
+  word-break: keep-all;
+}
+@keyframes sp-toast-card {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  6%,
+  88% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes sp-toast-card-still {
+  0%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sp-v__toast {
-    animation-name: sp-toast-still;
+  .sp-toast {
+    animation-name: sp-toast-card-still;
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .sp-v__toast {
+  .sp-toast {
     background: var(--fill);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;

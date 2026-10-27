@@ -3,6 +3,8 @@
 import Family from '../../layouts/Family.astro';
 import ReactRow from '../../components/ReactRow.astro';
 import SayForm from '../../components/SayForm.astro';
+import Toast from '../../components/Toast.astro';
+import { sayNote } from '../../lib/say';
 import InstallGuide from '../../components/InstallGuide.astro';
 import { callName } from '../../lib/ko';
 import { INSTALL_COOKIE } from '../../lib/install';
@@ -28,6 +30,8 @@ const { pass, open, kids, q, items } = a;
 // 한마디 결과는 보낸 카드에만(sm=사진 id)
 const say = Astro.url.searchParams.get('say');
 const sayFor = Astro.url.searchParams.get('sm');
+// 한마디 보낸 결과는 카드 아래 상자 대신 화면 아래 토스트로(디자인)
+const sayToast = sayFor ? sayNote(say) : null;
 const reacts = await loadReacts(pass, items.map((m) => m.id));
 const here = albumHref(q);
 const many = open.length > 1;
@@ -77,6 +81,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 
 <Family title={title} wide={q.v !== 'swipe'}>
   <Fragment set:html={EMOJI_SPRITE} />
+  {sayToast && <Toast text={sayToast.text} tone={sayToast.tone} />}
   {
     (approved || fresh.length > 0) && (
       <div class="sp-layer">
@@ -167,7 +172,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
               <div class="sp-a__slide-react">
                 {/* 돌아올 때 같은 카드가 가운데에 오게 #p-<id> */}
                 <ReactRow mediaId={c.id} back={`${here}#p-${c.id}`} reacts={reacts} idSuffix={`-${c.n}`} />
-                <SayForm mediaId={c.id} back={`${here}#p-${c.id}`} child={c.kid || '아이'} say={sayFor === c.id ? say : null} idSuffix={`-${c.n}`} />
+                <SayForm mediaId={c.id} back={`${here}#p-${c.id}`} child={c.kid || '아이'} idSuffix={`-${c.n}`} />
               </div>
             </li>
           ))}
