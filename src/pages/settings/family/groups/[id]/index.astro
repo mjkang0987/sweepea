@@ -123,7 +123,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
     <button class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" type="submit" name="do" value={`reset:${g.id}`} aria-haspopup="dialog" data-ask>주소 다시 만들기 (예전 주소는 바로 막혀요)</button>
   </form>
   {/* 스크립트로 여는 확인(스크립트 없으면 설정 > 가족의 확인 레이어로) */}
-  <dialog class="sp-layer__box sp-layer__modal" id="grp-ask" aria-labelledby="grp-ask-t" aria-describedby="grp-ask-d">
+  <dialog class="sp-layer__box sp-layer__modal" id="grp-ask" data-autosave-keep aria-labelledby="grp-ask-t" aria-describedby="grp-ask-d">
     <h2 class="sp-layer__title" id="grp-ask-t">{g.name} 주소를 다시 만들까요?</h2>
     <p class="sp-layer__text" id="grp-ask-d">예전 주소는 바로 막히고 새 주소를 만들어요. 이미 들어온 휴대폰은 그대로 봐요. 이 그룹이 같이 들어간 다른 링크도 막혀요.</p>
     <form class="sp-layer__actions" method="post" action="/settings/family">
@@ -171,6 +171,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
     // 확인 레이어는 이름을 저장해 화면이 갈리면 새것(새 이름)이라 그때마다 찾아 붙인다
     const getAsk = () => document.getElementById('grp-ask') as HTMLDialogElement;
     const bind = (ask: HTMLDialogElement) => {
+      bound = ask;
       // 어두운 바깥을 누르면 닫기, 연 버튼이 바뀌었으면 새 버튼으로 초점
       ask.addEventListener('click', (e) => {
         if (e.target !== ask) return;
@@ -181,11 +182,14 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
         if (!document.activeElement || document.activeElement === document.body) area.querySelector<HTMLElement>('[data-ask]')?.focus({ preventScroll: true });
       });
     };
+    let bound: HTMLDialogElement = first;
     bind(first);
     // 이름·기본 포함을 저장해 화면이 갈리면 링크 카드를 다시 붙이고 새 확인 레이어를 잇는다
     area.addEventListener('autosave:drawn', () => {
       place();
-      bind(getAsk());
+      // 열려 있던 레이어는 AutoSave가 그대로 두므로 새것일 때만 잇는다
+      const ask = getAsk();
+      if (ask && ask !== bound) bind(ask);
     });
     document.addEventListener('submit', async (e) => {
       const form = e.target as HTMLFormElement;
@@ -194,9 +198,9 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
       e.preventDefault();
       const ask = getAsk();
       if (btn.hasAttribute('data-ask')) return ask.showModal();
+      if (form.closest('dialog') === ask) ask.close();
       if (busy) return; // 보내는 중 두 번 만들지 않게
       busy = true;
-      if (form.closest('dialog') === ask) ask.close();
       const body = new FormData(form);
       body.append(btn.name, btn.value);
       try {
