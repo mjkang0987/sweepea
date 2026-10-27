@@ -1,6 +1,8 @@
 ---
-// 구성원 상세: 사진 올리기 허용(이 사람의 승인된 기기에만), 내 가족 아님·내보내기(한 번 더 확인)
+// 구성원 상세: 사진 올리기 허용(이 사람의 승인된 기기에만), 내 가족 아님·내보내기(한 번 더 확인).
+// 스크립트가 있으면 스위치는 그 자리에서, 내보내기 확인은 이 화면 위 레이어(디자인 MemberRemoveLayer·MemberUploadToast)
 import Parent from '../../../../layouts/Parent.astro';
+import Toast from '../../../../components/Toast.astro';
 import { getBackend } from '../../../../lib/backend';
 import { handleFamilyPost } from '../../../../lib/familyAdmin';
 import { loadParent } from '../../../../lib/parent';
@@ -40,7 +42,10 @@ const doneText: Record<string, string> = {
       <p class="sp-p__hint">{group} · 휴대폰 {devices.length}대{lastSeen && ` · ${seenLabel(lastSeen, Date.now())}`}</p>
     </div>
   </div>
-  {done && doneText[done] && <p class:list={['sp-p__toast', ['gone', 'error'].includes(done) && 'sp-p__toast--error']} tabindex="-1" autofocus>{doneText[done]}</p>}
+  {done && doneText[done] && <Toast text={doneText[done]} tone={['gone', 'error'].includes(done) ? 'error' : 'ok'} focus />}
+  {/* 스크립트로 바꾼 결과를 읽어 주는 늘 있는 알림 칸 */}
+  <p class="sp-vh" id="mem-live" role="status"></p>
+  <p class="sp-vh" id="mem-urgent" role="alert"></p>
 
   <form class="sp-p__panel" method="post">
     <div class="sp-p__panel-row sp-p__panel-line">
@@ -54,6 +59,123 @@ const doneText: Record<string, string> = {
   <p class="sp-p__hint" id="up-note">{devices.length === 0 ? '들어와 있는 휴대폰이 없어요. 휴대폰으로 들어온 뒤에 켤 수 있어요.' : '지금 들어와 있는 휴대폰에만 적용돼요. 새 휴대폰으로 들어오면 꺼진 채로 보이니 다시 켜 주세요.'}</p>
 
   <form class="sp-p__bottom" method="post" action="/settings/family">
-    <button class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" type="submit" name="do" value={`member:${m.id}:rejected`}>내 가족 아님 · 내보내기<span class="sp-vh"> {m.display_name}</span></button>
+    <button class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" type="submit" name="do" value={`member:${m.id}:rejected`} aria-haspopup="dialog" data-ask>내 가족 아님 · 내보내기<span class="sp-vh"> {m.display_name}</span></button>
   </form>
+  {/* 스크립트로 여는 내보내기 확인(스크립트 없으면 설정 > 가족의 확인 레이어로). 내보내면 설정 > 가족으로 가서 결과 토스트 */}
+  <dialog class="sp-layer__box sp-layer__modal" id="mem-ask" aria-labelledby="mem-ask-t" aria-describedby="mem-ask-d">
+    <h2 class="sp-layer__title" id="mem-ask-t">{m.display_name} 내보낼까요?</h2>
+    <p class="sp-layer__text" id="mem-ask-d">이 사람의 휴대폰은 더 이상 들어올 수 없고, 남긴 반응과 한마디는 가족 화면에서 빠져요. 반응·한마디 기록이 남아 있으면 같은 이름은 다시 쓸 수 없어요. 그룹 비밀번호를 아는 사람이면 다른 이름으로 다시 요청할 수 있지만 승인해야 들어와요.</p>
+    <form class="sp-layer__actions" method="post" action="/settings/family">
+      <input type="hidden" name="confirm" value="1" />
+      <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value={`member:${m.id}:rejected`}>내보내기</button>
+      <button class="sp-p__btn sp-p__btn--quiet" type="submit" formmethod="dialog" value="cancel" autofocus>취소</button>
+    </form>
+  </dialog>
 </Parent>
+
+<script>
+  // 그 자리에서: 사진 올리기 허용 스위치는 fetch로 보내고 돌아온 화면의 내용·탭 배지만 갈아 끼운다(누르는 즉시 스위치를 바꿔 둠).
+  // 내보내기는 이 화면 위 확인 레이어 → 내보내면 설정 > 가족으로 이동. 스크립트 없거나 옛 브라우저면 지금처럼 폼
+  const root = document.querySelector<HTMLElement>('.sp-p');
+  const live = document.getElementById('mem-live');
+  const urgent = document.getElementById('mem-urgent');
+  const ask = document.getElementById('mem-ask') as HTMLDialogElement | null;
+  if (root && live && urgent && ask && typeof ask.showModal === 'function') {
+    const area: HTMLElement = root;
+    let queue = Promise.resolve();
+    let pending = 0;
+    // 마지막으로 서버가 그려 준 스위치 상태(연달아 실패하면 여기로 되돌린다)
+    const sw = () => area.querySelector<HTMLButtonElement>('.sp-p__switch');
+    let serverOn = sw()?.getAttribute('aria-checked') === 'true';
+    const showSwitch = (on: boolean) => {
+      const b = sw();
+      if (!b) return;
+      b.setAttribute('aria-checked', String(on));
+      b.value = b.value.replace(/:(on|off)$/, on ? ':off' : ':on');
+    };
+    const say = (t: Element | null) => {
+      if (!t) return;
+      t.removeAttribute('role');
+      const region = t.classList.contains('sp-toast--error') ? urgent : live;
+      region.textContent = '';
+      setTimeout(() => (region.textContent = t.textContent?.trim() ?? ''), 50);
+    };
+    const fail = () => {
+      area.querySelector('.sp-toast')?.remove();
+      const p = document.createElement('p');
+      p.className = 'sp-toast sp-toast--error';
+      p.innerHTML = '<span class="sp-toast__text">처리하지 못했어요. 다시 눌러 주세요.</span>';
+      area.insertBefore(p, area.firstChild); // prepend는 Worker 타입(HTMLRewriter)과 겹쳐 타입 검사가 막음
+      say(p);
+    };
+    // 결과 안내가 붙은 주소(?done=)는 떼어 새로 고침해도 다시 뜨지 않게
+    if (new URLSearchParams(location.search).has('done')) history.replaceState(history.state, '', location.pathname);
+    // 레이어를 연 버튼이 그새 새 화면으로 바뀌었으면 새 내보내기 버튼으로 초점을 돌려준다
+    ask.addEventListener('close', () => {
+      if (!document.activeElement || document.activeElement === document.body) area.querySelector<HTMLElement>('[data-ask]')?.focus({ preventScroll: true });
+    });
+    // 어두운 바깥을 누르면 닫기
+    ask.addEventListener('click', (e) => {
+      if (e.target !== ask) return;
+      const r = ask.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) ask.close();
+    });
+    document.addEventListener('submit', (e) => {
+      const form = e.target as HTMLFormElement;
+      const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+      if (!area.contains(form) || !btn?.name) return;
+      if (btn.hasAttribute('data-ask')) {
+        e.preventDefault();
+        ask.showModal();
+        return;
+      }
+      // 스위치만 그 자리에서(내보내기 확인·취소는 브라우저 기본)
+      if (!btn.matches('.sp-p__switch')) return;
+      e.preventDefault();
+      const body = new FormData(form);
+      body.append(btn.name, btn.value);
+      showSwitch(btn.getAttribute('aria-checked') !== 'true');
+      live.textContent = '';
+      urgent.textContent = '';
+      area.setAttribute('aria-busy', 'true');
+      pending++;
+      queue = queue.then(async () => {
+        let html = '';
+        let url: URL;
+        try {
+          const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin' });
+          if (!r.ok) throw new Error(String(r.status));
+          url = new URL(r.url);
+          html = await r.text();
+        } catch {
+          // 남은 요청이 없으면 마지막으로 서버가 그려 준 상태로 되돌린다(뒤에 누른 게 있으면 그 응답이 바로잡음)
+          if (!--pending) {
+            showSwitch(serverOn);
+            area.removeAttribute('aria-busy');
+          }
+          return fail();
+        }
+        // 이 사람이 없어졌거나 로그인이 끝났으면 그 화면으로
+        if (url.pathname !== location.pathname) return location.assign(url.href);
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        // 그리지 않는 응답이라도 서버 상태는 기억한다(뒤 요청이 실패하면 이 상태로 되돌리게)
+        const got = doc.querySelector('.sp-p__switch')?.getAttribute('aria-checked');
+        if (got) serverOn = got === 'true';
+        // 뒤에 누른 게 있으면 그리지 않는다(마지막 응답이 최신 화면)
+        if (--pending) return;
+        const from = doc.querySelector('.sp-p');
+        if (!from) return location.reload();
+        const keep = new Set(['mem-live', 'mem-urgent', 'mem-ask']);
+        const hadFocus = document.activeElement === btn;
+        area.replaceChildren(...[...from.childNodes].filter((n) => !(n instanceof Element && keep.has(n.id))).map((n) => document.importNode(n, true)), live, urgent, ask);
+        area.removeAttribute('aria-busy');
+        if (location.search) history.replaceState(history.state, '', location.pathname);
+        const tabs = doc.querySelector('.sp-p__tabs');
+        if (tabs) document.querySelector('.sp-p__tabs')?.replaceWith(document.importNode(tabs, true));
+        if (hadFocus) sw()?.focus({ preventScroll: true });
+        say(area.querySelector('.sp-toast'));
+      });
+      queue = queue.catch(() => location.reload());
+    });
+  }
+</script>
