@@ -70,9 +70,9 @@ const kid = callName(kids[0]?.name ?? '아이');
     </div>
     <p class="sp-p__note sp-p__up-note">사진·영상은 앨범에서 보기 좋은 크기로 줄여서 올려요(영상은 1080p, 줄일 수 없으면 그대로). <strong class="sp-p__note-strong">스위피는 원본을 따로 보관하지 않으니 원본은 폰에서 지우지 마세요.</strong></p>
 
-    <div class="sp-p__up-status">
-      <p class="sp-p__toast sp-p__toast--live" id="up-status" role="status"></p>
-      <progress class="sp-p__progress" id="up-bar" max="100" value="0" aria-label="진행률" hidden></progress>
+    <p class="sp-p__toast sp-p__toast--live" id="up-status" role="status"></p>
+    <div class="sp-p__up-progress" id="up-progress" hidden>
+      <progress class="sp-p__progress" id="up-bar" max="100" value="0" aria-label="진행률"></progress>
       <p class="sp-p__hint" id="up-shrink-hint" hidden>영상을 보기 좋은 크기로 줄이고 있어요. 다 줄일 때까지 이 화면을 켜 두세요.</p>
     </div>
 
@@ -138,6 +138,8 @@ const kid = callName(kids[0]?.name ?? '아이');
   let cover = 0;
   let busy = false;
   let shrinking = false;
+  // 줄이기가 마지막으로 진행된 때(멈춤 감시)
+  let beat = 0;
   let lastMode = 'share';
   // 한 번 올리기 시작하면 아이·그룹을 고정(이어 올릴 때 묶음 안에서 공개 범위가 섞이지 않게)
   let locked: { groupIds: string[]; childIds: string[] } | null = null;
@@ -147,10 +149,11 @@ const kid = callName(kids[0]?.name ?? '아이');
   const say = (text: string) => (status.textContent = text);
   // 줄이기·올리기 진행: 퍼센트와 막대는 묶음 전체 기준
   const bar = $<HTMLProgressElement>('up-bar');
+  const prog = $('up-progress');
   // 화면 읽기가 계속 읽지 않게 글은 10% 단위·단계가 바뀔 때만, 막대는 늘
   const step = (text: string, frac: number) => {
     const n = Math.max(0, Math.min(100, Math.floor(frac * 100)));
-    bar.hidden = false;
+    prog.hidden = false;
     bar.value = n;
     const t = `${text} · ${n === 100 ? 100 : Math.floor(n / 10) * 10}%`;
     if (status.textContent !== t) say(t);
@@ -233,10 +236,12 @@ const kid = callName(kids[0]?.name ?? '아이');
         audio: { codec: 'aac' },
       });
       if (!conv.isValid || conv.discardedTracks.some((d) => d.track === video || d.track === audio)) return null;
-      let last = Date.now();
-      conv.onProgress = (p) => ((last = Date.now()), progress(p));
-      // 인코더가 응답 없이 멈추면(화면 밖 등) 1분 뒤 그만두고 원본으로
-      const dog = setInterval(() => Date.now() - last > 60_000 && void conv.cancel(), 5000);
+      beat = Date.now();
+      conv.onProgress = (p) => ((beat = Date.now()), progress(p));
+      // 인코더가 응답 없이 멈추면 그만두고 원본으로. 소리가 먼저 끝난 영상은 남은 화면을 만드는 동안 진행이 안 오르므로
+      // 넉넉히(영상 길이의 3배, 최소 1분) 기다린다. 다른 앱에 다녀오면 다시 센다(visibilitychange)
+      const limit = Math.max(60_000, sec * 3000);
+      const dog = setInterval(() => Date.now() - beat > limit && void conv.cancel(), 5000);
       try {
         await conv.execute();
       } finally {
@@ -348,7 +353,9 @@ const kid = callName(kids[0]?.name ?? '아이');
   };
   // 다른 앱에 다녀오면 브라우저가 풀어 버리므로 다시 건다
   document.addEventListener('visibilitychange', () => {
-    if (awake && document.visibilityState === 'visible') keepAwake();
+    if (document.visibilityState !== 'visible') return;
+    beat = Date.now();
+    if (awake) keepAwake();
   });
   input.addEventListener('change', async () => {
     if (busy) return;
@@ -361,7 +368,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     if (shrinking) keepAwake();
     let skipped = 0;
     for (const [i, f] of files.entries()) {
-      const label = `${f.type.startsWith('video/') ? '영상 ' : ''}줄이는 중… ${i + 1} / ${files.length}`;
+      const label = `${shrinking && f.type.startsWith('video/') ? '영상 ' : ''}줄이는 중… ${i + 1} / ${files.length}`;
       step(label, i / files.length);
       try {
         items.push(await (f.type.startsWith('video/') ? video(f, (p) => step(label, (i + p) / files.length)) : photo(f)));
@@ -372,7 +379,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       }
     }
     letSleep();
-    bar.hidden = true;
+    prog.hidden = true;
     busy = false;
     shrinking = false;
     $('up-shrink-hint').hidden = true;
@@ -479,7 +486,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       }
     } catch (err) {
       letSleep();
-      bar.hidden = true;
+      prog.hidden = true;
       busy = false;
       render();
       const n = items.filter((x) => x.done).length;
@@ -492,7 +499,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       );
     }
     letSleep();
-    bar.hidden = true;
+    prog.hidden = true;
     if (mode !== 'share') return location.assign('/home');
     const ids = order.map((i) => items[i].id!);
     say('보낼 주소를 만드는 중…');
