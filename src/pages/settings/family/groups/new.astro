@@ -35,7 +35,7 @@ if (Astro.request.method === 'POST') {
 }
 ---
 
-<Parent title={error ? '다시 확인해 주세요 · 그룹 추가' : '그룹 추가 · 가족'} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+<Parent title={error ? '다시 확인해 주세요 · 그룹 추가' : '그룹 추가 · 가족'} tab="settings" savebar alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings/family/groups">그룹</a>
     <h1 class="sp-p__nav-title">그룹 추가</h1>

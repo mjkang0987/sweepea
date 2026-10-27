@@ -24,8 +24,13 @@ if (Astro.request.method === 'POST') {
   // 화면을 그릴 때 체크돼 있던 것만 풀 수 있다(그 사이 다른 쪽에서 체크한 기록은 지우지 않게)
   const was = new Set(form.getAll('was').map(String).filter((k) => shown.has(k)));
   const before = new Set((await b.healthDone(a.pass, kid.id)).map((d) => d.item_key));
+  // 바로 저장(스크립트)은 바꾼 칸 하나만 보낸다(toggle=키:on|off). 체크했다 바로 풀어도 마지막 선택대로, 다른 쪽 기록은 건드리지 않게
+  const [tKey, tWant] = String(form.get('toggle') ?? '').split(':');
+  const one = valid.has(tKey) && (tWant === 'on' || tWant === 'off');
+  const add = one ? (tWant === 'on' && !before.has(tKey) ? [tKey] : []) : [...checked].filter((k) => !before.has(k));
+  const remove = one ? (tWant === 'off' && before.has(tKey) ? [tKey] : []) : [...was].filter((k) => before.has(k) && !checked.has(k));
   try {
-    await b.setHealthDone(a.pass, a.home.family_id!, kid.id, [...checked].filter((k) => !before.has(k)), [...was].filter((k) => before.has(k) && !checked.has(k)), today);
+    await b.setHealthDone(a.pass, a.home.family_id!, kid.id, add, remove, today);
     return Astro.redirect(`${here}?done=saved`, 303);
   } catch (e) {
     if (!(e instanceof BackendError)) throw e;
@@ -54,7 +59,8 @@ const done = Astro.url.searchParams.get('done');
   <p class="sp-p__lead">한 것을 체크하면 완료한 날이 기록돼요. 엄마아빠만 봐요.</p>
   {done === 'saved' && <Toast text="저장했어요." focus />}
   {done === 'error' && <Toast text="저장하지 못했어요. 다시 눌러 주세요." tone="error" focus />}
-  <form class="sp-p__form" method="post" data-autosave>
+  <form class="sp-p__form" method="post" data-autosave id="health-form">
+    <input type="hidden" name="toggle" value="" />
     <section class="sp-p__section" aria-labelledby="sec-next">
       <h2 class="sp-p__section-title" id="sec-next">다가오는 일정</h2>
       {upcoming.length === 0 && <p class="sp-p__hint sp-p__empty-note">6개월 안에는 없어요.</p>}
@@ -127,3 +133,17 @@ const done = Astro.url.searchParams.get('done');
   <p class="sp-p__hint">국가 권장 시기 기준이에요. 실제 접종 기록은 질병관리청 예방접종도우미에서 확인하세요.</p>
   <AutoSave />
 </Parent>
+
+<script>
+  // 바로 저장할 때 바꾼 칸을 알려 준다(AutoSave가 보내기 전에, 그래서 잡는 단계에서). 폼은 저장할 때마다 새것이라 문서에서 받는다
+  document.addEventListener(
+    'change',
+    (e) => {
+      const box = e.target as HTMLInputElement;
+      if (box.name !== 'done' || box.form?.id !== 'health-form') return;
+      const t = box.form.elements.namedItem('toggle') as HTMLInputElement | null;
+      if (t) t.value = `${box.value}:${box.checked ? 'on' : 'off'}`;
+    },
+    true,
+  );
+</script>
