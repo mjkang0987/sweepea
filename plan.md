@@ -2,10 +2,54 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
+## 새 세션 인계 (2026-10-27 기준, dev 0.4.14 배포됨)
+
+새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
+
+### 지금 상태
+
+- dev = 0.4.14, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
+- 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 16개 모두 적용. 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
+- 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v142, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
+
+### 다음 할 일 (순서대로)
+
+1. **페이지 이동 줄이기**(사용자 "왜 다 페이지전환일까", 2026-10-27). 확인은 레이어, 같은 화면 동작은 그 자리에서 반영 + 토스트, 스크립트 없으면 지금처럼 폼. 각각 디자인 보드 먼저, 작은 브랜치로
+   1. 설정 › 가족(`/settings/family`): 승인·거절·내 가족 아님·링크 만들기 그 자리에서, 거절·내 가족 아님 확인은 레이어
+   2. 사진 정보 수정 저장(`/photo/<id>`): 그 자리에서 + "저장했어요" 토스트
+   3. 홈 레이어(`/home` 들어오기 신청·백일/생일·저장 공간): 닫기·나중에는 그 자리에서 닫힘, 다른 화면 가는 버튼만 이동
+   4. 가족 한 명(`/settings/family/member/<id>`): 올리기 권한 스위치 그 자리에서, 내보내기 확인 레이어
+   5. 설정 첫 화면 원본 저장 스위치, 그룹(이름 저장·공유·주소 다시 만들기 확인 레이어), 아이·글자 크기·건강 기록 저장
+   6. 계정: 로그아웃·탈퇴 확인 레이어 / 조부모 설치 안내 버튼(부탁하기·알겠어요·다음에) 그 자리에서
+   - 그대로 둠: 로그인·비밀번호·처음 설정·올리기처럼 다음 화면으로 가는 흐름
+   - 참고 구현: 크게 보기 `src/components/Viewer.astro`의 submit 가로채기(차례로 보내기·마지막 응답만 그림·토스트는 늘 있는 알림 칸으로 읽기), 사진 지우기 레이어 `src/pages/photo/[id].astro`(`dialog.sp-layer__modal` + `formmethod="dialog"` 취소)
+2. **사진·영상 찍은 날짜**: 지금은 JPEG만 EXIF, HEIC·PNG·영상은 파일 시각(아이폰에선 고른 시각일 수 있음). HEIC EXIF·MP4 생성 시각(mvhd) 읽기. 아이폰 사파리가 HEIC를 JPEG로 바꿀 때 찍은 날짜가 남는지는 실기기 확인 필요(`src/pages/upload.astro` photo()/video())
+3. **사진 많을 때(대기 중 질문)**: 사용자가 "내리면 자동으로 더"를 골랐고, 60장씩·상한 없음으로 제안했지만 답을 아직 못 받음. 시작 전에 확인
+4. 옛 함수 `sp_media_comments` 지우기: DROP이 필요해 적용 도구로 안 됨 → 사용자가 Supabase SQL 편집기에서 직접 실행하도록 안내
+5. 디자인 검수 남은 것(`design-audit.md`): 움직임(정보 수정 화면 반응 떠오름·말풍선, 부모 앨범 하트), 콩이 그림, 시트·모달, 가족 쪽 '생후 N개월' 등
+6. 실기기 확인: 아이폰 사파리 한마디 시트·휴지통·세로 사진 미리보기·토스트·사진 지우기 레이어, VoiceOver 안내 읽기, 'ViewTransition opt-in disabled' 콘솔 오류가 사라졌는지(헤드리스에선 재현 안 됨)
+
+### 사용자 작업 규칙 (꼭 지킬 것)
+
+- 답은 항상 한국어로, 영어·개발 용어 없이 쉬운 말로. 실수하면 "미안해, 내가 잘못했어"로 먼저 사과
+- 순서: 원인을 찾아 먼저 말함 → plan.md에 계획 → 디자인 캔버스 먼저 고침 → 개발 → 코드리뷰·검증·기능리뷰 3회 → 디자인 보드와 실제 화면 나란히 대조, 차이 전부 맞춤 → 머지
+- 디자인 시스템(토큰·컴포넌트) 꼭 지키기. CSS는 클래스·ID 선택자만, 네이티브 컨트롤·시맨틱 HTML·WCAG
+- 브랜치는 origin/dev에서, dev에 `--no-ff` 머지, 머지마다 package.json·package-lock.json 버전 올림(`npm version x.y.z --no-git-tag-version`), 매번 푸시. 강제 푸시는 막혀 있음(커밋을 나눌 땐 푸시 전에)
+- 커밋: 한국어 Conventional Commits, 작게. 끝에 빈 줄 하나 두고 Co-Authored-By·Claude-Session 줄(빈 줄이 없으면 제목에 붙어 버림)
+- 비밀 값은 채팅·커밋에 넣지 않음(`.dev.vars.supabase`는 git 제외)
+
+### 개발 도구 (`tools/`)
+
+- `tools/dev.sh`: mock 백엔드 개발 서버(:4321). 환경의 node가 22.23.4보다 낮으면 Node 24를 `tools/.node`에 받아 씀. 백그라운드로 실행
+- `tools/e2e/*.py`: 화면 흐름 검사(Python Playwright, 개발 서버 필요). 최근 것: instant(즉시 반영)·cdelete(한마디 지우기)·comments·toast·sheetios·photodel(사진 지우기 레이어)·motion. 실행: `cd tools/e2e && python3 instant.py` → 끝줄 `FAILS []`. 스크린샷은 `tools/shots/`(git 제외)
+- 디자인 보드 만들기 `tools/design/*.py`, 보드 그려 보기 `tools/render/rdc.py`(`cd tools && python3 render/rdc.py out.png T_x.dc.html:light`, 파일은 `tools/canvas/project/`). `tools/canvas/`는 git 제외 → 새 세션에선 Artifact read(`path`)로 캔버스 파일(`project/*.dc.html`, `project/canvas.json`)을 받아 `tools/canvas/project/`에 두고, 올릴 때 Artifact publish `root`를 `tools/canvas`로
+- 검사 명령: `npx astro check`, `npm run test:unit`(24개), `npm run test:db`(의도한 거절 61개)
+
 ## 진행 방식
 
 - 이슈마다 `dev`에서 `feature/<이름>` 브랜치를 딴다.
-- feature 안에서 작업 → 코드리뷰 → 개선 → 검증을 두 번 돌고 `dev`에 머지한다. `dev`에서 같은 사이클로 통합 확인 후 PR로 `main`에 올린다.
+- feature 안에서 작업 → 코드리뷰 → 개선 → 검증을 세 번 돌고(사용자 2026-10-27 기준) 디자인 대조까지 마친 뒤 `dev`에 머지한다. `dev`에서 같은 사이클로 통합 확인 후 PR로 `main`에 올린다.
 - 커밋은 한국어 + Conventional Commits 접두사, 작은 단위로.
 - 성능 예산(LCP 1.8초, CLS 0.05, 첫 화면 JS 압축 후 50KB)을 넘으면 머지하지 않는다. CI는 비압축 50KB로 더 엄격하게 잰다(미리보기 서버가 압축을 안 함). 실제 JS가 붙어 이 기준이 과하면 압축 크기 측정으로 바꾼다.
 
@@ -855,10 +899,6 @@
 - 스크립트 없으면 ?confirm=delete로 같은 레이어를 연 채 다시 그림(홈 레이어와 같은 .sp-layer 구조). 예전 경고 카드는 없앰
 - base.css .sp-layer__modal(가운데·바깥 어둡게·닫혀 있으면 숨김)
 
-### 다음(사용자 2026-10-27)
-
-- 앱 전체 페이지 이동 동작 목록 → 확인은 레이어, 같은 화면 동작은 그 자리에서 반영
-- 사진·영상 찍은 날짜: HEIC EXIF·MP4 생성 시각 읽기(지금은 JPEG만 EXIF, 나머지는 파일 시각 = 아이폰에선 고른 시각일 수 있음)
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
@@ -913,9 +953,9 @@
 
 ## 확인 필요 (멈추지 않고 기록만, 2026-10-26~)
 
-- main 머지 PR #1(dev → main, 0.2.0) 열어 둠: GitHub 검사 통과. 머지는 지우님 확인 뒤
+- main 머지 PR #1(dev → main) 열어 둠. 제목은 0.2.0 시절 그대로, dev는 0.4.14. 머지는 사용자 확인 뒤
 
-- 실제 Supabase·R2에서 한 번도 안 돌려 봄(내일 DB 설정 뒤 첫 배포에서 확인). 특히 사진 정보의 연결 표 불러오기·한마디 이름 불러오기. 마이그레이션은 아직 어디에도 적용 안 해서 init을 직접 고쳐 왔음(적용 뒤부터는 새 파일로)
+- 운영 Supabase·R2에 적용해 쓰는 중(2026-10-26~). 마이그레이션은 이제 새 파일로만
 - 네이버 로그인은 Supabase 기본 제공자가 아니라 제공자 이름이 '로그인'으로 보일 수 있음
 - 홈 화면에 두기 실기기: 아이폰 사파리 공유 버튼 위치(iOS 26은 ⋯ 안), 홈 화면 앱이 사파리 출입증 쿠키를 이어받는지, 안드로이드 크롬 '앱 설치' 문구. 삼성 인터넷·아이폰 크롬 등은 아직 안내 안 함
 - Cloudflare Workers 요금제(무료면 요청당 외부 호출 50개): 정리 작업은 45개 안에서 멈추고 다음 날 이어서 함. 큰 가족방 탈퇴는 며칠 걸릴 수 있음. 유료면 한도 올리기
