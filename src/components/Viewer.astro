@@ -275,6 +275,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       v.dataset.id = x.id;
       v.querySelector('.sp-v__toast')?.remove();
       // 새 내용이 올 때까지 위 메뉴·아래 판은 못 누르게(지난 사진에 반응하지 않게)
+      // 넘기는 중에 연 시트는 닫는다(판이 바뀌면 열린 채로 사라짐)
+      v.querySelector<HTMLDialogElement>('#talk')?.close();
       for (const el of [bar, dock]) if (el) el.inert = true;
       busy?.abort();
       busy = new AbortController();
@@ -326,6 +328,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       e.preventDefault();
       sheet.showModal();
     } else if (t.closest('[data-talk-close]')) {
+      // #talk로 판 안에 펼쳐진 경우(스크립트가 늦게 돈 때)는 링크대로 # 로 가서 닫힌다
+      if (!sheet.open) return;
       e.preventDefault();
       sheet.close();
     } else if (t === sheet) {

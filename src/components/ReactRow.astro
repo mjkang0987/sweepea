@@ -1,6 +1,6 @@
 ---
 // "눌러서 바로 보내기" 반응 5개(슬랙처럼 알약 + 수). JS 없이 폼 POST, 버튼 값에 켤지 끌지를 담는다(다시 누르면 취소)
-import { REACTION_KINDS } from '../lib/backend';
+import { REACTION_KINDS, type ReactionKind } from '../lib/backend';
 import { EMOJI } from '../lib/emoji';
 import type { Reacts } from '../lib/album';
 
@@ -14,8 +14,10 @@ interface Props {
   idSuffix?: string;
   /** 크게 보기는 시안대로 제목을 숨김(화면 읽기엔 남김) */
   hideTitle?: boolean;
+  /** 보일 반응(기본 5개 다) */
+  kinds?: readonly ReactionKind[];
 }
-const { mediaId, back, action = `/album/${mediaId}`, reacts, idSuffix = '', hideTitle = false } = Astro.props;
+const { mediaId, back, action = `/album/${mediaId}`, reacts, idSuffix = '', hideTitle = false, kinds = REACTION_KINDS } = Astro.props;
 const r = reacts.get(mediaId);
 const titleId = `react-title${idSuffix}`;
 ---
@@ -25,7 +27,7 @@ const titleId = `react-title${idSuffix}`;
   <h2 class={hideTitle ? 'sp-vh' : 'sp-r__title'} id={titleId}>눌러서 바로 보내기</h2>
   <div class="sp-r__row">
     {
-      REACTION_KINDS.map((k) => {
+      kinds.map((k) => {
         const on = r?.mine.has(k) ?? false;
         const n = r?.counts[k] ?? 0;
         return (

@@ -154,6 +154,10 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
                 <div class="sp-a__card-cap">
                   {showTag && <span class="sp-a__tag">{c.kid}</span>}
                   <span class="sp-a__card-day">{c.day}{c.kind === 'video' && ' · 영상'}</span>
+                  {/* 스크롤 애니메이션이 없는 브라우저(iOS 26 전·파이어폭스)는 아래 반응 줄이 숨으므로 카드에 하트만 */}
+                  <div class="sp-a__card-heart">
+                    <ReactRow mediaId={c.id} back={`${here}#p-${c.id}`} reacts={reacts} idSuffix={`-h${c.n}`} hideTitle kinds={['heart']} />
+                  </div>
                 </div>
               </div>
               <p class="sp-a__pos">
