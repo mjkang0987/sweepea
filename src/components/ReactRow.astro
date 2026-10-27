@@ -16,15 +16,17 @@ interface Props {
   hideTitle?: boolean;
   /** 보일 반응(기본 5개 다) */
   kinds?: readonly ReactionKind[];
+  /** 제목·이름표 없이(카드 하트 하나처럼 버튼 이름으로 충분할 때) */
+  untitled?: boolean;
 }
-const { mediaId, back, action = `/album/${mediaId}`, reacts, idSuffix = '', hideTitle = false, kinds = REACTION_KINDS } = Astro.props;
+const { mediaId, back, action = `/album/${mediaId}`, reacts, idSuffix = '', hideTitle = false, kinds = REACTION_KINDS, untitled = false } = Astro.props;
 const r = reacts.get(mediaId);
 const titleId = `react-title${idSuffix}`;
 ---
 
-<form class="sp-r" method="post" action={action} aria-labelledby={titleId}>
+<form class="sp-r" method="post" action={action} aria-labelledby={untitled ? undefined : titleId}>
   <input type="hidden" name="back" value={back} />
-  <h2 class={hideTitle ? 'sp-vh' : 'sp-r__title'} id={titleId}>눌러서 바로 보내기</h2>
+  {!untitled && <h2 class={hideTitle ? 'sp-vh' : 'sp-r__title'} id={titleId}>눌러서 바로 보내기</h2>}
   <div class="sp-r__row">
     {
       kinds.map((k) => {

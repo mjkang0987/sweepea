@@ -487,8 +487,13 @@
     display: block;
     margin-inline-start: auto;
   }
+  /* 카드 바탕(--surface)과 같은 색이면 버튼 모양이 안 보여 회색 칸 */
   .sp-a__card-heart .sp-r__btn {
     padding: 0 12px;
+    background: var(--fill);
+  }
+  .sp-a__card-heart .sp-r__btn[aria-pressed='true'] {
+    background: var(--pea-tint);
   }
 }
 @keyframes sp-a-only {

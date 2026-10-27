@@ -325,6 +325,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     const sheet = v.querySelector<HTMLDialogElement>('#talk');
     if (!sheet || typeof sheet.showModal !== 'function') return;
     if (t.closest('[data-talk-open]')) {
+      // 스크립트가 늦게 돌아 이미 #talk로 판 안에 펼쳐졌으면 그대로 둔다(모달로 열고 닫아도 #talk라 다시 펼쳐짐)
+      if (location.hash === '#talk') return;
       e.preventDefault();
       sheet.showModal();
     } else if (t.closest('[data-talk-close]')) {
