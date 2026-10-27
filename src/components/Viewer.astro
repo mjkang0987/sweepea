@@ -40,8 +40,6 @@ const { m, label, toast, slides, comments = [], src, poster, pos, total, closeHr
 const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 const now = Date.now();
 const [first, ...rest] = comments;
-// 목록은 최근 100개까지라 개수는 반응 수(전체)를 쓴다
-const talkCount = Math.max(comments.length, reacts.get(m.id)?.counts.comment ?? 0);
 const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 ---
 
@@ -116,7 +114,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
               {rest.length > 0 && (
                 <details class="sp-v__talk-more">
                   <summary class="sp-v__talk-toggle">
-                    <span class="sp-v__talk-show">한마디 {talkCount}개 모두 보기</span>
+                    <span class="sp-v__talk-show">한마디 {comments.length}개 모두 보기</span>
                     <span class="sp-v__talk-hide">접기</span>
                     <svg class="sp-v__talk-chevron" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
                   </summary>
