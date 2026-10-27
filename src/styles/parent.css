@@ -1419,6 +1419,50 @@
   flex-direction: column;
   gap: var(--space-5);
 }
+/* 원본·줄임 안내는 크기 칸 바로 아래에 붙여 읽히게 */
+.sp-p__up-note {
+  margin-top: calc(-1 * var(--space-2));
+}
+.sp-p__note-strong {
+  color: var(--label);
+  font-weight: 600;
+}
+/* 상태 칸 바로 아래(8px)에 막대·안내. 쉬는 동안은 숨겨 빈 간격이 생기지 않게 */
+.sp-p__up-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: calc(var(--space-2) - var(--space-5));
+}
+.sp-p__up-progress[hidden] {
+  display: none;
+}
+/* 진행 막대(네이티브 progress, 모양만 맞춤) */
+.sp-p__progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--fill);
+  color: var(--pea);
+  accent-color: var(--pea);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.sp-p__progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: var(--fill);
+}
+.sp-p__progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: var(--pea);
+}
+.sp-p__progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: var(--pea);
+}
 /* 끌어다 놓는 중(안쪽 글자에서 dragleave가 나지 않게) */
 .sp-p__pick-text {
   pointer-events: none;
@@ -1426,6 +1470,10 @@
 .sp-p__pick--over {
   outline: 3px dashed var(--pea);
   outline-offset: 2px;
+}
+/* 줄이거나 올리는 동안은 더 고를 수 없음을 흐리게 보여 준다(디자인 152) */
+.sp-p__pick:has(.sp-p__pick-input:disabled) {
+  opacity: 0.5;
 }
 
 .sp-p__toast:not(.sp-p__toast--error):not(.sp-p__toast--live) {

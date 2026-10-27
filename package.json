@@ -1,6 +1,6 @@
 {
   "name": "sweepea",
-  "version": "0.4.24",
+  "version": "0.4.25",
   "private": true,
   "type": "module",
   "engines": {
@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "@astrojs/cloudflare": "14.4.2",
-    "astro": "7.4.2"
+    "astro": "7.4.2",
+    "mediabunny": "1.61.3"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.12",

@@ -68,8 +68,13 @@ const kid = callName(kids[0]?.name ?? '아이');
         <span class="sp-p__row-value" id="up-size">고르면 보여요</span>
       </p>
     </div>
+    <p class="sp-p__note sp-p__up-note">사진·영상은 앨범에서 보기 좋은 크기로 줄여서 올려요(영상은 1080p, 줄일 수 없으면 그대로). <strong class="sp-p__note-strong">스위피는 원본을 따로 보관하지 않으니 원본은 폰에서 지우지 마세요.</strong></p>
 
     <p class="sp-p__toast sp-p__toast--live" id="up-status" role="status"></p>
+    <div class="sp-p__up-progress" id="up-progress" hidden>
+      <progress class="sp-p__progress" id="up-bar" max="100" value="0" aria-label="진행률"></progress>
+      <p class="sp-p__hint" id="up-shrink-hint" hidden>영상을 보기 좋은 크기로 줄이고 있어요. 다 줄일 때까지 이 화면을 켜 두세요.</p>
+    </div>
 
     <div class="sp-p__bottom" id="up-actions">
       <button class="sp-p__btn sp-p__btn--kakao" type="submit" value="share" disabled>올리고 카톡으로 보내기</button>
@@ -118,6 +123,11 @@ const kid = callName(kids[0]?.name ?? '아이');
   // 영상 원본은 이보다 크면 나눠 올린다(Worker 요청 한도 100MB), 한 편 최대 2GB(lib/media BIG_VIDEO)
   const SINGLE_MAX = 90 * MB;
   const VIDEO_MAX = 2048 * MB;
+  // 영상은 폰에서 짧은 변 1080·5Mbps로 줄여 올린다(무료는 사본만, 원본은 폰에 남음)
+  const SHRINK = { side: 1080, bitrate: 5e6 };
+  // shortcut: 줄인 영상을 통째로 메모리에 두므로(아이폰은 탭이 꺼질 수 있음) 3분(약 110MB) 넘는 영상은 원본 그대로 나눠 올린다.
+  // 긴 영상도 줄이려면 StreamTarget(fragmented)으로 만들면서 조각 올리기로 바로 흘려보낸다
+  const SHRINK_MAX_SEC = 180;
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
   const form = $<HTMLFormElement>('up-form');
   const input = $<HTMLInputElement>('up-files');
@@ -127,6 +137,9 @@ const kid = callName(kids[0]?.name ?? '아이');
   let items: Item[] = [];
   let cover = 0;
   let busy = false;
+  let shrinking = false;
+  // 줄이기가 마지막으로 진행된 때(멈춤 감시)
+  let beat = 0;
   let lastMode = 'share';
   // 한 번 올리기 시작하면 아이·그룹을 고정(이어 올릴 때 묶음 안에서 공개 범위가 섞이지 않게)
   let locked: { groupIds: string[]; childIds: string[] } | null = null;
@@ -134,6 +147,17 @@ const kid = callName(kids[0]?.name ?? '아이');
 
   // 상태 칸은 늘 있고(화면 읽기가 바로 읽게) 비었을 때만 CSS로 숨긴다
   const say = (text: string) => (status.textContent = text);
+  // 줄이기·올리기 진행: 퍼센트와 막대는 묶음 전체 기준
+  const bar = $<HTMLProgressElement>('up-bar');
+  const prog = $('up-progress');
+  // 화면 읽기가 계속 읽지 않게 글은 10% 단위·단계가 바뀔 때만, 막대는 늘
+  const step = (text: string, frac: number) => {
+    const n = Math.max(0, Math.min(100, Math.floor(frac * 100)));
+    prog.hidden = false;
+    bar.value = n;
+    const t = `${text} · ${n === 100 ? 100 : Math.floor(n / 10) * 10}%`;
+    if (status.textContent !== t) say(t);
+  };
 
   // 캔버스 하나를 돌려쓴다(아이폰은 캔버스 메모리가 금방 찬다)
   const canvas = document.createElement('canvas');
@@ -190,7 +214,50 @@ const kid = callName(kids[0]?.name ?? '아이');
       el.addEventListener('error', onErr);
     });
 
-  async function video(file: File): Promise<Item> {
+  /** 영상을 줄인 mp4. 못 줄이거나(브라우저가 못 함·실패·소리나 화면이 빠짐) 줄일 필요가 없으면 null → 원본 그대로 */
+  async function shrink(file: File, sec: number, progress: (p: number) => void) {
+    if (typeof VideoEncoder !== 'function' || typeof VideoDecoder !== 'function' || !(sec > 0) || sec > SHRINK_MAX_SEC) return null;
+    let input: import('mediabunny').Input | undefined;
+    try {
+      const mb = await import('mediabunny');
+      input = new mb.Input({ source: new mb.BlobSource(file), formats: mb.ALL_FORMATS });
+      const [video, audio] = await Promise.all([input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack()]);
+      if (!video) return null;
+      const [w, h] = await Promise.all([video.getDisplayWidth(), video.getDisplayHeight()]);
+      // 이미 작은 영상은 그대로(다시 줄이면 화질만 나빠진다)
+      if (Math.min(w, h) <= SHRINK.side && (file.size * 8) / sec <= SHRINK.bitrate * 1.2) return null;
+      const scale = Math.min(1, SHRINK.side / Math.min(w, h));
+      const width = Math.round((w * scale) / 2) * 2, height = Math.round((h * scale) / 2) * 2;
+      const output = new mb.Output({ format: new mb.Mp4OutputFormat({ fastStart: 'in-memory' }), target: new mb.BufferTarget() });
+      const conv = await mb.Conversion.init({
+        input, output, tracks: 'primary',
+        // 가로·세로를 둘 다 정해 서버에 적는 크기와 실제 영상 크기를 맞춘다
+        video: { width, height, fit: 'fill', codec: 'avc', bitrate: SHRINK.bitrate },
+        audio: { codec: 'aac' },
+      });
+      if (!conv.isValid || conv.discardedTracks.some((d) => d.track === video || d.track === audio)) return null;
+      beat = Date.now();
+      conv.onProgress = (p) => ((beat = Date.now()), progress(p));
+      // 인코더가 응답 없이 멈추면 그만두고 원본으로. 소리가 먼저 끝난 영상은 남은 화면을 만드는 동안 진행이 안 오르므로
+      // 넉넉히(영상 길이의 3배, 최소 1분) 기다린다. 다른 앱에 다녀오면 다시 센다(visibilitychange)
+      const limit = Math.max(60_000, sec * 3000);
+      const dog = setInterval(() => Date.now() - beat > limit && void conv.cancel(), 5000);
+      try {
+        await conv.execute();
+      } finally {
+        clearInterval(dog);
+      }
+      const buf = output.target.buffer;
+      if (!buf || buf.byteLength >= file.size) return null;
+      return { blob: new Blob([buf], { type: 'video/mp4' }), width, height };
+    } catch {
+      return null;
+    } finally {
+      input?.dispose();
+    }
+  }
+
+  async function video(file: File, progress: (p: number) => void): Promise<Item> {
     if (!VIDEO_TYPES.includes(file.type)) throw new Error('type');
     if (file.size > VIDEO_MAX) throw new Error('too_large');
     const v = document.createElement('video');
@@ -205,9 +272,15 @@ const kid = callName(kids[0]?.name ?? '아이');
       v.currentTime = Math.min(0.1, v.duration / 2 || 0);
       await wait(v, 'seeked');
       const { view: poster, thumb } = await viewAndThumb(v, v.videoWidth, v.videoHeight, 1280);
+      const { duration, videoWidth, videoHeight } = v;
+      // 줄이는 동안 영상 칸이 같은 영상을 따로 풀고 있지 않게 비운다(아이폰 메모리)
+      v.removeAttribute('src');
+      v.load();
+      const small = await shrink(file, duration, progress);
       return {
-        kind: 'video', view: file, poster: poster.blob, thumb: thumb.blob, width: v.videoWidth, height: v.videoHeight,
-        durationSec: Math.round(v.duration * 100) / 100,
+        kind: 'video', view: small?.blob ?? file, poster: poster.blob, thumb: thumb.blob,
+        width: small?.width ?? videoWidth, height: small?.height ?? videoHeight,
+        durationSec: Math.round(duration * 100) / 100,
         // shortcut: 영상은 파일 시각(아이폰은 내보낸 시각일 수 있음). 정확히 하려면 MP4 mvhd 생성 시각을 읽는다
         takenAt: new Date(file.lastModified).toISOString(), takenAtSource: 'file',
         url: URL.createObjectURL(thumb.blob),
@@ -247,7 +320,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     );
     if (focus !== undefined) grid.querySelectorAll<HTMLButtonElement>('.sp-p__upbtn')[focus]?.focus();
     const bytes = items.reduce((n, it) => n + it.view.size + it.thumb.size + (it.poster?.size ?? 0), 0);
-    $('up-size').textContent = items.length ? `보기 좋은 크기 · ${(bytes / MB).toFixed(1)}MB` : '고르면 보여요';
+    $('up-size').textContent = shrinking ? '줄이는 중' : items.length ? `보기 좋은 크기 · ${(bytes / MB).toFixed(1)}MB` : '고르면 보여요';
     buttons.forEach((b) => (b.disabled = busy || items.length === 0));
     input.disabled = busy || !!locked;
     choices.forEach((c) => (c.disabled = busy || !!locked));
@@ -271,22 +344,45 @@ const kid = callName(kids[0]?.name ?? '아이');
     input.files = e.dataTransfer.files;
     input.dispatchEvent(new Event('change'));
   });
+  // 줄이거나 올리는 동안 화면이 꺼지면 멈출 수 있어 켜 둔다(안 되는 브라우저는 그냥 둔다). 응답을 기다리지 않는다(헤드리스 등에서 끝나지 않을 수 있음)
+  let awake: Promise<WakeLockSentinel | undefined> | undefined;
+  const keepAwake = () => (awake = navigator.wakeLock?.request('screen').catch(() => undefined));
+  const letSleep = () => {
+    awake?.then((l) => l?.release()).catch(() => undefined);
+    awake = undefined;
+  };
+  // 다른 앱에 다녀오면 브라우저가 풀어 버리므로 다시 건다
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    beat = Date.now();
+    if (awake) keepAwake();
+  });
   input.addEventListener('change', async () => {
     if (busy) return;
     const files = [...(input.files ?? [])].slice(0, Math.max(0, MAX_ITEMS - items.length));
     if (!files.length) return;
     busy = true;
+    shrinking = typeof VideoEncoder === 'function' && files.some((f) => f.type.startsWith('video/'));
+    $('up-shrink-hint').hidden = !shrinking;
     render();
+    if (shrinking) keepAwake();
     let skipped = 0;
     for (const [i, f] of files.entries()) {
-      say(`줄이는 중… ${i + 1} / ${files.length}`);
+      const label = `${shrinking && f.type.startsWith('video/') ? '영상 ' : ''}줄이는 중… ${i + 1} / ${files.length}`;
+      step(label, i / files.length);
       try {
-        items.push(await (f.type.startsWith('video/') ? video(f) : photo(f)));
+        items.push(await (f.type.startsWith('video/') ? video(f, (p) => step(label, (i + p) / files.length)) : photo(f)));
+        // 다 줄인 것부터 바로 보이게
+        render();
       } catch {
         skipped++;
       }
     }
+    letSleep();
+    prog.hidden = true;
     busy = false;
+    shrinking = false;
+    $('up-shrink-hint').hidden = true;
     say(skipped ? `${skipped}개는 올릴 수 없어요(지원하지 않는 형식이거나 2GB 넘는 영상).` : '');
     input.value = '';
     render();
@@ -350,14 +446,20 @@ const kid = callName(kids[0]?.name ?? '아이');
     if (!groupIds.length) return say('보여줄 그룹을 하나 이상 골라 주세요.');
     locked = { groupIds, childIds };
     busy = true;
+    keepAwake();
     render();
     // 대표 사진을 맨 앞에(공유 묶음 첫 장 = 카톡 카드 대표)
     const order = [cover, ...items.keys()].filter((v, i, arr) => arr.indexOf(v) === i);
+    // 남은 것의 크기로 퍼센트를 센다(다시 누르면 남은 것 기준으로 0%부터)
+    const sizeOf = (it: Item) => it.view.size + it.thumb.size + (it.poster?.size ?? 0);
+    const total = order.reduce((t, i) => t + (items[i].done ? 0 : sizeOf(items[i])), 0) || 1;
+    let sent = 0;
     try {
       for (const [n, i] of order.entries()) {
         const it = items[i];
         if (it.done) continue;
-        say(`올리는 중… ${n + 1} / ${order.length}`);
+        const label = `올리는 중… ${n + 1} / ${order.length}`;
+        step(label, sent / total);
         it.id ??= (
           await api<{ id: string }>('/api/media', {
             method: 'POST',
@@ -369,8 +471,9 @@ const kid = callName(kids[0]?.name ?? '아이');
           })
         ).id;
         try {
-          const label = `올리는 중… ${n + 1} / ${order.length}`;
-          const keys: Record<string, string> = { view: await put(it.id, 'view', it.view, (p) => say(`${label} · 영상 ${Math.round(p * 100)}%`)), thumb: await put(it.id, 'thumb', it.thumb) };
+          const keys: Record<string, string> = { view: await put(it.id, 'view', it.view, (p) => step(label, (sent + p * it.view.size) / total)) };
+          step(label, (sent + it.view.size) / total);
+          keys.thumb = await put(it.id, 'thumb', it.thumb);
           if (it.poster) keys.poster = await put(it.id, 'poster', it.poster);
           await api(`/api/media/${it.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(keys) });
         } catch (err) {
@@ -378,8 +481,12 @@ const kid = callName(kids[0]?.name ?? '아이');
           if (!(err instanceof HttpError && (err.status === 404 || err.status === 409))) throw err;
         }
         it.done = true;
+        sent += sizeOf(it);
+        step(label, sent / total);
       }
     } catch (err) {
+      letSleep();
+      prog.hidden = true;
       busy = false;
       render();
       const n = items.filter((x) => x.done).length;
@@ -391,6 +498,8 @@ const kid = callName(kids[0]?.name ?? '아이');
           : `${n}장까지 올렸어요. 다시 누르면 나머지를 이어서 올려요.`,
       );
     }
+    letSleep();
+    prog.hidden = true;
     if (mode !== 'share') return location.assign('/home');
     const ids = order.map((i) => items[i].id!);
     say('보낼 주소를 만드는 중…');
