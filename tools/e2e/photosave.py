@@ -43,6 +43,11 @@ with sync_playwright() as p:
     check(pg.evaluate('window.__same')==1 and pg.evaluate("document.activeElement.name")=='group','그룹 없으면 폼만 바뀌고 그룹 칸으로 초점')
     pg.get_by_label('가족',exact=True).check(); pg.get_by_role('button',name='저장').click(); pg.wait_for_function(SAVED)
     check(pg.locator('#p-err').count()==0 and pg.locator('[aria-invalid]').count()==0 and pg.locator('[aria-describedby~="p-err"]').count()==0,'고쳐서 저장하면 오류 안내 지워짐')
+    # 서버: 그 자리 저장 표시가 있으면 204(크게 보기를 그리지 않음), 없으면 크게 보기로 303
+    form={'date':'2026-02-04','group':pg.locator('input[name=group]').first.get_attribute('value'),'do':'save'}
+    r=c.request.post(url,form=form,headers={'x-sp-inplace':'1','origin':B},max_redirects=0)
+    r2=c.request.post(url,form=form,headers={'origin':B},max_redirects=0)
+    check(r.status==204 and r2.status==303 and '/view/' in r2.headers['location'],'서버: 표시 있으면 204, 없으면 크게 보기로')
     # 스크립트 없이: 예전처럼 크게 보기로
     q=b.new_context(viewport={'width':390,'height':844},java_script_enabled=False,storage_state=c.storage_state()).new_page()
     q.goto(url); q.get_by_role('button',name='저장').click(); q.wait_for_url('**/view/**done=saved**')

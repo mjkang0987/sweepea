@@ -15,7 +15,7 @@ with sync_playwright() as p:
     pg.locator('.sp-p__cell-link').first.click(); pg.wait_for_url('**/view/**')
     pg.locator('.sp-r__btn').first.click(); pg.wait_for_load_state(); pg.fill('.sp-say .sp-f__input','아이고 우리 하린이 많이 컸네'); pg.get_by_role('button',name='보내기').click(); pg.wait_for_selector('.sp-toast')
     pg.screenshot(path=S+'react-code.png')
-    btns=pg.locator('.sp-r__btn').evaluate_all("e=>e.map(b=>{const r=b.getBoundingClientRect(),i=b.querySelector('.sp-r__icon').getBoundingClientRect(),s=b.querySelector('svg').getBoundingClientRect(),n=b.querySelector('.sp-r__n'),e=n?n.getBoundingClientRect().right:i.right;return [Math.round((i.x+e)/2-(r.x+r.width/2)),Math.round(i.y+i.height/2-(r.y+r.height/2)),Math.round(s.width),Math.round(i.width)]})")
+    btns=pg.locator('.sp-r__btn').evaluate_all("e=>e.map(b=>{const r=b.getBoundingClientRect(),i=b.querySelector('.sp-r__icon').getBoundingClientRect(),s=b.querySelector('.sp-r__icon').getBoundingClientRect(),n=b.querySelector('.sp-r__n'),e=n?n.getBoundingClientRect().right:i.right;return [Math.round((i.x+e)/2-(r.x+r.width/2)),Math.round(i.y+i.height/2-(r.y+r.height/2)),Math.round(s.width),Math.round(i.width)]})")
     check(all(abs(x)<=1 and abs(y)<=1 and w==iw for x,y,w,iw in btns),'이모지(+수)가 칸 가운데·그림=칸 크기 %s'%btns)
     pg.get_by_role('link',name='사진 정보 수정').click(); pg.wait_for_url('**/photo/**')
     pg.screenshot(path=S+'edit-code.png',full_page=True)
