@@ -37,9 +37,7 @@ const what = m.kind === 'video' ? '영상' : '사진';
 const label = `${dayLabel(m.taken_at)} ${what}`;
 const src = await signedMediaUrl(m.view_key);
 const poster = m.poster_key ? await signedMediaUrl(m.poster_key) : undefined;
-const [reacts, info] = await Promise.all([loadReacts(a.pass, [m.id]), b.mediaInfo(a.pass, m.id)]);
-// 가족이 남긴 최근 한마디(엄빠만 글을 본다. 가족 화면엔 수만)
-const latest = info?.latest;
+const [reacts, comments] = await Promise.all([loadReacts(a.pass, [m.id]), b.mediaComments(a.pass, m.id)]);
 const here = `/view/${m.id}${kq}`;
 const say = Astro.url.searchParams.get('say');
 const sayHere = Astro.url.searchParams.get('sm') === m.id || !Astro.url.searchParams.get('sm') ? say : null;
@@ -71,16 +69,9 @@ const slides = await slideWindow(items, i, view, (x) => `${dayLabel(x.taken_at)}
     sentText="보냈어요. 가족도 볼 수 있어요."
     toast={Astro.url.searchParams.get('done') === 'saved' ? '사진 정보를 저장했어요.' : undefined}
     slides={slides}
+    comments={comments}
   >
     <div class="sp-v__float sp-v__hide">
-      {
-        latest && (
-          <p class="sp-v__say">
-            <span class="sp-v__say-who"><span class="sp-vh">최근 한마디, </span>{latest.name}</span>
-            {latest.body}
-          </p>
-        )
-      }
       <a class="sp-v__edit" href={`/photo/${m.id}${kq}`}>
         <svg class="sp-v__edit-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
         사진 정보 수정

@@ -6,7 +6,8 @@ import ReactRow from './ReactRow.astro';
 import SayForm from './SayForm.astro';
 import type { Reacts, SlideWindow } from '../lib/album';
 import { dayLabel } from '../lib/album';
-import type { MediaItem } from '../lib/backend';
+import type { MediaComment, MediaItem } from '../lib/backend';
+import { agoLabel } from '../lib/age';
 
 interface Props {
   m: MediaItem;
@@ -32,9 +33,13 @@ interface Props {
   toast?: string;
   /** 앞뒤 사진(사진일 때 손가락으로 넘기는 스와이퍼). 영상이면 넘길 때마다 페이지를 연다 */
   slides?: SlideWindow;
+  /** 한마디(최근 것부터): 맨 위 하나는 늘 보이고 나머지는 '모두 보기'로 */
+  comments?: MediaComment[];
 }
-const { m, label, toast, slides, src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
+const { m, label, toast, slides, comments = [], src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
 const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+const now = Date.now();
+const [first, ...rest] = comments;
 const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 ---
 
@@ -99,6 +104,33 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
           <HeartToggle mediaId={m.id} back={here} action={action} reacts={reacts} />
         </div>
         <ReactRow mediaId={m.id} back={here} action={action} reacts={reacts} hideTitle />
+        {
+          first && (
+            <section class="sp-v__talk" aria-label="한마디">
+              <p class="sp-v__bubble">
+                <strong class="sp-v__bubble-who">{first.name} <span class="sp-v__bubble-when">· {agoLabel(first.created_at, now)}</span></strong>
+                <span class="sp-v__bubble-body">{first.body}</span>
+              </p>
+              {rest.length > 0 && (
+                <details class="sp-v__talk-more">
+                  <summary class="sp-v__talk-toggle">
+                    <span class="sp-v__talk-show">한마디 {comments.length}개 모두 보기</span>
+                    <span class="sp-v__talk-hide">접기</span>
+                    <svg class="sp-v__talk-chevron" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
+                  </summary>
+                  <ul class="sp-v__talk-list" aria-label="지난 한마디">
+                    {rest.map((c) => (
+                      <li class="sp-v__bubble">
+                        <strong class="sp-v__bubble-who">{c.name} <span class="sp-v__bubble-when">· {agoLabel(c.created_at, now)}</span></strong>
+                        <span class="sp-v__bubble-body">{c.body}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </section>
+          )
+        }
         <SayForm mediaId={m.id} back={here} action={action} child={child} say={say} sentText={sentText} />
       </div>
     </div>
