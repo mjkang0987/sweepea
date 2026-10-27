@@ -560,16 +560,19 @@ const kid = callName(kids[0]?.name ?? '아이');
       const full = err instanceof HttpError && err.status === 507;
       for (const it of items) if (it.state === 'sending' || (full && !it.done)) it.state = 'fail';
       render();
-      pressed?.focus();
       say('');
       const n = items.filter((x) => x.done).length;
-      return warn(
+      const upTo = n ? `${n}장까지 올렸어요. ` : '';
+      warn(
         err instanceof HttpError && err.status === 401
-          ? '로그인이 끝났어요. 다시 로그인한 뒤 올려 주세요.'
+          ? `로그인이 끝났어요. ${upTo}다시 로그인한 뒤 올려 주세요.`
           : err instanceof HttpError && err.status === 507
-          ? `저장 용량 5GB가 다 찼어요. ${n}장까지 올렸어요. 가족은 지금까지 올린 사진을 계속 볼 수 있어요.`
-          : `${err instanceof TypeError ? '인터넷 연결이 끊겼어요. ' : ''}${n ? `${n}장까지 올렸어요. 다시 누르면 나머지를 이어서 올려요.` : '다시 누르면 처음부터 올려요.'}`,
+          ? `저장 용량 5GB가 다 찼어요. ${upTo}가족은 지금까지 올린 사진을 계속 볼 수 있어요.`
+          : `${err instanceof TypeError ? '인터넷 연결이 끊겼어요. ' : ''}${n ? `${upTo}다시 누르면 나머지를 이어서 올려요.` : '다시 누르면 처음부터 올려요.'}`,
       );
+      // 안내를 넣은 뒤 포커스(화면 읽기가 알림과 버튼 이름을 섞어 읽지 않게)
+      pressed?.focus();
+      return;
     }
     letSleep();
     prog.hidden = true;
