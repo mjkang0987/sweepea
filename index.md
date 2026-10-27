@@ -4,8 +4,10 @@
 
 ## 현재 상태
 
-- 버전 0.2.0(main 첫 머지). DB 스키마·권한(Supabase 마이그레이션)은 작성·로컬 검사 완료, 실제 Supabase 프로젝트는 아직 없다.
-- 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 1~2시간 주소) 완료. 올리기 화면은 아직.
+- 버전 0.4.14(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 마이그레이션 16개 적용, 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
+- 화면 반응 속도(0.4.11~): 크게 보기의 반응·한마디·지우기는 스크립트가 있으면 페이지 이동 없이 아래 판만 갈아 끼움(반응은 누르는 즉시 표시). 페이지 이동은 겹쳐 넘어감(`@view-transition`). 나머지 화면은 아직 폼 → 페이지 이동(다음 작업).
+- 안내: 결과는 아래에서 떴다 사라지는 토스트(`src/components/Toast.astro`, 아이콘 없이 글자만). 한마디 시트가 열려 있으면 시트 위쪽 바깥에 뜸. 확인은 가운데 레이어(`.sp-layer`, 스크립트로 여는 건 `dialog.sp-layer__modal`) — 사진 지우기가 첫 번째.
+- 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 1~2시간 주소) 완료.
 - 부모 올리기(`/upload`: 기기에서 줄이기·EXIF 찍은 날·대표 사진·아이·그룹, 올린 뒤 공유 링크 `POST /api/shares`) 완료. 부모 화면은 JS 사용, 가족 화면은 0KB 유지(예외: 크게 보기 `/album/[id]`만 작은 스크립트 — 영상 재생 막대·소리·옆으로 밀기, 없어도 ‹ › 링크·기본 재생 막대로 동작. 골라서 저장하기 `/album/save`도 작은 스크립트 — 고른 수·공유 창/내려받기, 없으면 고른 사진마다 저장 링크).
 - 설정 > 가족(`/settings/family` 승인·거절·새 기기·그룹 링크, `/settings/family/sms` 한 사람용 문자 링크) 완료.
 - 설정: 구성원 상세(`/settings/family/member/<id>` 사진 올리기 허용·내보내기), 가족도 사진 저장하기(`/settings`, 켜면 가족 크게 보기에 저장 링크), 저장 용량(`/settings/storage`) 완료.
@@ -15,13 +17,13 @@
 - 홈 화면에 두기: `public/manifest.webmanifest`·`public/icons/`(콩이), 가족 앨범 위 안내(`src/components/InstallGuide.astro`, 기기 판별 `src/lib/install.ts`), 앱 안 브라우저는 엄마아빠에게 부탁(`members.install_help_at`) → 부모 최근 반응 '도와줄 사람' 완료.
 - 접종·검진(`/health/<아이 id>`, 앨범 위 아이별 다음 일정, 설정 > 아이에서 켜고 끄기): 일정 표 `src/lib/health.ts`, 완료 기록 `health_done`(부모만) 완료.
 - 부모 최근 반응(`/reactions`, 앨범 위 '최근 반응 새 N'): 승인된 가족의 반응·한마디, 확인할 사람, 열면 읽음 완료.
-- 부모 사진 정보(`/photo/<id>`, 앨범 칸에서): 찍은 날·아이·보여줄 그룹 고치기, 지우기(용량 빼고 R2 정리 대기열 `r2_cleanup.prefix`) 완료.
+- 부모 사진 정보(`/photo/<id>`, 크게 보기 '사진 정보 수정'에서): 찍은 날·아이·보여줄 그룹 고치기, 지우기(확인 레이어 → 용량 빼고 R2 정리 대기열 `r2_cleanup.prefix`) 완료. 찍은 날은 JPEG만 EXIF, 나머지는 파일 시각.
 - 그룹 관리(`/settings/family/groups` 목록·추가(10개)·상세·비밀번호 바꾸기·주소 다시 만들기) 완료.
 - 탈퇴하기(`/settings/account` 확인 체크, 구독 중이면 막음)·작별(`/goodbye`)·되살리기(`/restore`, 유예 중 부모 화면은 여기로, 남은 시간 안내) 완료. 3일 유예 뒤 실제 삭제는 예약 작업(13번, 출시 전 필수).
 - 부모 시작(`/start` 소개, `/login`·`/auth/callback` OAuth PKCE, `/setup` 처음 설정, `/home` 앨범, `/settings` 자리) 완료. 부모 세션은 쿠키 `sp_parent`(가족 기기 `sp_pass`와 따로).
 - 조부모 앨범(`/album` 넘겨 보기·모아 보기, `/album/<id>` 크게 보기, 집 고르기)과 하트·반응·한마디(폼 POST, `sp_react`·`sp_comment`) 완료.
-- 크게 보기 한마디(0.4.1): 판 안 한 줄(최근 한마디 말줄임 + 수) → 누르면 아래 시트(dialog, 스크립트 없으면 #talk로 판 안에). 반응은 수 붙은 알약 5개 한 줄(하트 따로 버튼 없음, 옛 브라우저 넘겨 보기 카드만 하트 하나). 볼 수 있는 사진이면 엄빠·승인된 가족 모두 봄(`sp_media_comments`, 승인 대기는 못 봄, 최근 100개). 엄빠 사진 정보 수정 화면의 최근 한마디도 같은 함수 첫 줄.
-- 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. mock 백엔드로 동작 확인, 앨범은 자리만. 기기 하나로 여러 가족방에 들어간다(가족방마다 승인·차단 따로). 다음 이슈는 plan.md 참고.
+- 크게 보기 한마디(0.4.1~): 판 안 한 줄(최근 한마디 말줄임 + 수) → 누르면 아래 시트(dialog, 스크립트 없으면 #talk로 판 안에). 반응은 수 붙은 알약 5개 한 줄(하트 따로 버튼 없음, 옛 브라우저 넘겨 보기 카드만 하트 하나). 볼 수 있는 사진이면 엄빠·승인된 가족 모두 봄(`sp_comment_list`, 승인 대기는 못 봄, 최근 100개, `mine`으로 내 것 표시). 쓴 사람만 지우기(`sp_delete_comment`, 휴지통 → 한 번 더 확인). 옛 `sp_media_comments`는 안 씀(지울 예정). 엄빠 사진 정보 수정 화면의 최근 한마디도 같은 목록 첫 줄.
+- 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. 기기 하나로 여러 가족방에 들어간다(가족방마다 승인·차단 따로). 다음 이슈는 plan.md 참고.
 - 첫 화면(`/`)은 심볼과 이름만 있는 임시 페이지. 클라이언트 JS 0KB.
 - 로컬 Lighthouse(모바일, 기본 스로틀링): LCP 약 0.7초, CLS 0, 접근성 100점.
 
@@ -63,7 +65,7 @@ src/pages/i/[code]/     누구세요(index) → 비밀번호(password)
 src/pages/wait.astro    승인 기다림 / 500.astro
 src/pages/album/        앨범(index: 넘겨 보기·모아 보기, [id]: 크게 보기). 쿼리 f(집)·v(보기)·z(칸)
 src/lib/album.ts        앨범 쿼리 읽기·링크·목록 불러오기, 반응 수·반응 폼 처리
-src/components/        Viewer(크게 보기, 가족·엄빠 공통. 반응·한마디·지우기는 스크립트가 있으면 페이지 이동 없이 판만 갈아 끼움)·ReactRow(반응 알약·수)·SayForm(한마디)·Notice
+src/components/        Viewer(크게 보기, 가족·엄빠 공통. 반응·한마디·지우기는 스크립트가 있으면 페이지 이동 없이 판만 갈아 끼움)·ReactRow(반응 알약·수)·SayForm(한마디)·Toast(안내)·Notice
 src/lib/parent.ts       부모 로그인 제공자·PKCE·부모 화면 진입(loadParent)
 src/layouts/Parent.astro 부모 화면 뼈대(아래 탭), 스타일 src/styles/parent.css(.sp-p*)
 src/lib/age.ts          생후 개월·생일·백일/돌/생일 당일·남은 시간·지난 시간 표시(단위 검사)
@@ -72,6 +74,7 @@ src/lib/health.ts       접종·검진 권장 일정 표와 날짜 계산(단위
 src/lib/emoji.ts        반응 도트 이모지와 페이지당 한 번 넣는 sprite
 supabase/migrations/    DB 스키마·RLS·권한 함수(sp_*)·입장 RPC. 실제 Supabase에 그대로 적용
 supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stub.sql: auth 흉내, rls.sql: 시나리오, run.sh)
+tools/                  개발 도구: dev.sh(mock 개발 서버), e2e/(화면 흐름 검사 Playwright), design/·render/(디자인 보드 만들기·그려 보기). 쓰는 법은 plan.md '새 세션 인계'
 ```
 
 ## DB 요약
@@ -103,3 +106,5 @@ supabase/tests/         로컬 Postgres 16으로 권한 시나리오 검사 (stu
 | `npm run build` | 빌드 (`dist/`) |
 | `npm run test:db` | 로컬 Postgres 16 임시 클러스터에 마이그레이션 적용 후 권한 시나리오 검사 (`PG_BIN`으로 경로 지정) |
 | `npm run perf` | 빌드 결과로 Lighthouse CI 예산 검사 (Chrome 필요, `CHROME_PATH`로 지정 가능) |
+| `bash tools/dev.sh` | mock 개발 서버(:4321, 백그라운드로). node가 낮으면 Node 24를 받아 씀 |
+| `cd tools/e2e && python3 <이름>.py` | 화면 흐름 검사(개발 서버 필요), 끝줄 `FAILS []`면 통과 |
