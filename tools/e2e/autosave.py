@@ -53,6 +53,16 @@ with sync_playwright() as p:
     inc=pg.get_by_label('새 사진에 기본으로 포함'); was=inc.is_checked(); inc.click(); said(pg,'저장했어요')
     check(still(pg) and pg.get_by_label('새 사진에 기본으로 포함').is_checked()!=was and pg.locator('#name').input_value()=='외가','기본 포함(폼 밖 칸): 그 자리에서, 이름 그대로')
     pg.screenshot(path=O+'group.png')
+    # Enter는 한 번만 보냄
+    n=[]; pg.on('request',lambda r: n.append(1) if r.method=='POST' else None)
+    pg.fill('#name','외가2'); pg.press('#name','Enter'); said(pg,'저장했어요'); pg.wait_for_timeout(500)
+    check(len(n)==1,'이름 칸 Enter: 한 번만 보냄 (%d)'%len(n))
+    # 응답 기다리는 동안 이어서 쓰던 글은 남음
+    pg.route('**/groups/*',lambda r: (pg.wait_for_timeout(0), r.continue_()) and None if r.request.method!='POST' else (__import__('time').sleep(0.8), r.continue_()))
+    pg.fill('#name','외가3'); pg.keyboard.press('Tab'); pg.focus('#name'); pg.keyboard.press('End'); pg.keyboard.type('집')
+    said(pg,'저장했어요'); pg.wait_for_timeout(200)
+    check(pg.locator('#name').input_value()=='외가3집' and pg.evaluate("document.activeElement.id")=='name','응답 와도 이어서 쓰던 글·커서 그대로')
+    pg.unroute('**/groups/*')
     # 스크립트 없이: 저장 버튼으로
     q=b.new_context(viewport={'width':390,'height':844},java_script_enabled=False,storage_state=c.storage_state()).new_page()
     q.goto(B+'/settings/text-size'); q.get_by_label('모두 기본').check(); q.get_by_role('button',name='저장').click(); q.wait_for_url('**done=saved**')
