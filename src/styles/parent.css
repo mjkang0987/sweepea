@@ -145,6 +145,41 @@
   flex-direction: column;
   gap: var(--space-2);
 }
+/* 저장 같은 주요 버튼은 탭바 바로 위 막대에 고정(디자인 151, 사용자 2026-10-27). 넓은 화면은 탭이 위라 맨 아래 */
+.sp-p__savebar {
+  position: fixed;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: calc(3.5rem + 1px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--space-3) max(var(--space-5), calc((100% - 32rem) / 2 + var(--space-5)));
+  border-top: 1px solid var(--separator);
+  background: var(--bar);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+/* 막대가 있는 화면(Parent savebar): 막대 높이(버튼 3.25rem + 위아래 여백 + 선)만큼 아래 여백, 토스트는 막대 위 12px. 글자 크기를 키우면 rem이 같이 커진다 */
+.sp-p--savebar {
+  --savebar-h: calc(3.25rem + 2 * var(--space-3) + 1px);
+  padding-bottom: calc(3.5rem + 1px + var(--savebar-h) + var(--space-6) + env(safe-area-inset-bottom));
+}
+.sp-p.sp-p--savebar .sp-toast {
+  bottom: calc(3.5rem + 1px + var(--savebar-h) + 12px + env(safe-area-inset-bottom));
+}
+@media (min-width: 64rem) {
+  .sp-p__savebar {
+    bottom: 0;
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  }
+  .sp-p--savebar {
+    padding-bottom: calc(var(--savebar-h) + var(--space-6) + env(safe-area-inset-bottom));
+  }
+  .sp-p.sp-p--savebar .sp-toast {
+    bottom: calc(var(--savebar-h) + 12px + env(safe-area-inset-bottom));
+  }
+}
 .sp-p__btn,
 .sp-p__login {
   box-sizing: border-box;

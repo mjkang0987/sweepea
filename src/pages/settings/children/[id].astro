@@ -38,7 +38,7 @@ const errText = { name: '이름을 1~12자로 써 주세요.', birth: '생일을
 const title = kid ? `${kid.name} 고치기` : '아이 추가';
 ---
 
-<Parent title={e ? `다시 확인해 주세요 · ${title}` : `${title} · 설정`} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+<Parent title={e ? `다시 확인해 주세요 · ${title}` : `${title} · 설정`} tab="settings" savebar alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings/children">아이</a>
     <h1 class="sp-p__nav-title">{title}</h1>
@@ -55,7 +55,7 @@ const title = kid ? `${kid.name} 고치기` : '아이 추가';
       <p class="sp-p__hint" id="birth-hint">생일로 월령과 접종·검진 시기를 계산해요.</p>
     </div>
     {isNew && <p class="sp-p__card sp-p__lead">새 아이도 같은 앨범에 담겨요. 사진을 올릴 때 누구 사진인지 고를 수 있어요.</p>}
-    <div class="sp-p__bottom">
+    <div class="sp-p__bottom sp-p__savebar">
       <button class="sp-p__btn" type="submit">{kid ? '저장' : '추가'}</button>
     </div>
   </form>

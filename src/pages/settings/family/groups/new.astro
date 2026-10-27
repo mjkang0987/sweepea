@@ -35,7 +35,7 @@ if (Astro.request.method === 'POST') {
 }
 ---
 
-<Parent title={error ? '다시 확인해 주세요 · 그룹 추가' : '그룹 추가 · 가족'} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+<Parent title={error ? '다시 확인해 주세요 · 그룹 추가' : '그룹 추가 · 가족'} tab="settings" savebar alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings/family/groups">그룹</a>
     <h1 class="sp-p__nav-title">그룹 추가</h1>
@@ -60,7 +60,7 @@ if (Astro.request.method === 'POST') {
       새 사진에 기본으로 포함
     </label>
     <p class="sp-p__hint" id="include-note">사진 올릴 때 이 그룹이 미리 체크돼요.</p>
-    <div class="sp-p__bottom">
+    <div class="sp-p__bottom sp-p__savebar">
       <button class="sp-p__btn" type="submit">추가</button>
     </div>
   </form>

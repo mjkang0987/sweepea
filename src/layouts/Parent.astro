@@ -12,12 +12,14 @@ interface Props {
   waiting?: number;
   /** 넓은 화면에서 넓게 쓸 화면(앨범·올리기) */
   wide?: boolean;
+  /** 저장 버튼을 아래 막대(.sp-p__savebar)에 고정한 화면: 아래 여백·토스트 자리 */
+  savebar?: boolean;
 }
-const { title, tab, wide, alerts = 0, waiting = 0 } = Astro.props;
+const { title, tab, wide, savebar, alerts = 0, waiting = 0 } = Astro.props;
 ---
 
 <Base title={title}>
-  <main class:list={['sp-p', tab && 'sp-p--tabbed', wide && 'sp-p--wide']}>
+  <main class:list={['sp-p', tab && 'sp-p--tabbed', wide && 'sp-p--wide', savebar && 'sp-p--savebar']}>
     <slot />
   </main>
   {

@@ -74,7 +74,7 @@ const done = q.get('done');
 const doneText: Record<string, string> = { saved: '저장했어요.', error: '처리하지 못했어요. 다시 눌러 주세요.' };
 ---
 
-<Parent title={error ? '다시 확인해 주세요 · 사진 정보 수정' : '사진 정보 수정 · 스위피'} tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+<Parent title={error ? '다시 확인해 주세요 · 사진 정보 수정' : '사진 정보 수정 · 스위피'} tab="home" savebar alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   {/* 디자인(ParentPhoto): 위 줄 왼쪽 닫기, 가운데 작은 제목 */}
   <div class="sp-p__nav">
     <a class="sp-p__back sp-p__back--cancel" href={`/view/${id}${kq}`}>닫기</a>
@@ -137,7 +137,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
     </li>
     </ul>
     <p class="sp-p__hint" id="group-note">그룹을 빼면 그 가족 화면에서 바로 사라져요.</p>
-    <button class="sp-p__btn" type="submit" name="do" value="save">저장</button>
+    <div class="sp-p__savebar"><button class="sp-p__btn" type="submit" name="do" value="save">저장</button></div>
   </form>
   {/* 스크립트가 있으면 이 화면 위 레이어(showModal), 없으면 주소로 같은 레이어를 연 채 다시 그린다 */}
   <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" href={`/photo/${id}${kq ? `${kq}&` : '?'}confirm=delete`} aria-haspopup="dialog" data-del-open>{isVideo ? '영상' : '사진'} 지우기</a>
