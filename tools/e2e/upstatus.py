@@ -53,7 +53,11 @@ with sync_playwright() as p:
     lab=pg.locator('.sp-p__upbtn').nth(1).get_attribute('aria-label')
     check(lab=='2번째 사진 대표, 못 올림','버튼 이름에 상태 '+str(lab))
     check(pg.locator('.sp-p__uptag').first.get_attribute('aria-hidden')=='true','표시 글은 화면 읽기에서 숨김(이름에 있음)')
-    pg.screenshot(path=D+'upstatus-fail.png')
+    check(pg.evaluate("document.activeElement.textContent")=='보내지 않고 올리기만','실패하면 누른 버튼으로 포커스')
+    pg.set_viewport_size({'width':320,'height':700})
+    h=pg.evaluate("[...document.querySelectorAll('.sp-p__uptag')].map(t=>t.getBoundingClientRect().height)")
+    check(all(x<22 for x in h),'320px에서도 표시는 한 줄 '+str(h))
+    pg.set_viewport_size({'width':390,'height':844})
     # 4) 다시 누르면 남은 것만 이어서 → 앨범
     pg.unroute('**/api/media/**')
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=60000)
@@ -92,9 +96,10 @@ with sync_playwright() as p:
     pg.close()
     # 6) 200장 넘게 고르면 넘은 것도 안내
     pg=start(b)
-    pg.set_input_files('#up-files',[D+'u0.jpg']*201); pg.wait_for_function(ready,timeout=180000)
+    # 못 여는 파일 10개 + 사진 201장: 앞 200개(못 여는 10 + 사진 190)만, 뒤 11개는 200장 넘음. 200장 줄이 맨 앞이라 '외 N개'가 파일 수와 맞음
+    pg.set_input_files('#up-files',[{'name':f'bad{i}.heic','mimeType':'image/heic','buffer':b'x'} for i in range(10)]+[U0]*201); pg.wait_for_function(ready,timeout=180000)
     rows=pg.locator('.sp-p__up-alert-item').all_inner_texts()
-    check(pg.locator('.sp-p__upcell').count()==200 and rows==['뒤의 1개 · 한 묶음에 200장까지'] and pg.locator('.sp-p__up-alert-head').inner_text()=='1개는 올릴 수 없어서 뺐어요.','200장 넘음 안내 '+str(rows))
+    check(pg.locator('.sp-p__upcell').count()==190 and rows[0]=='뒤의 11개 · 한 묶음에 200장까지' and len(rows)==10 and rows[-1]=='외 2개' and pg.locator('.sp-p__up-alert-head').inner_text()=='21개는 올릴 수 없어서 뺐어요.','200장 넘음 안내·목록 자르기 '+str([rows[0],rows[-1]]))
     pg.close()
     b.close()
 print('FAILS',FAILS)
