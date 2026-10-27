@@ -141,7 +141,10 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
                     {/* 내 한마디만 지우기: 누르면 한 번 더 묻고(네이티브 details) 폼으로 보냄. '지우기'는 이름 줄 오른쪽에 */}
                     {c.mine && (
                       <details class="sp-v__sheet-del">
-                        <summary class="sp-v__sheet-del-toggle">지우기<span class="sp-vh">: {c.body}</span></summary>
+                        <summary class="sp-v__sheet-del-toggle">
+                          <svg class="sp-v__sheet-del-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 12.5h9l1-12.5M10 11v5.5M14 11v5.5" /></svg>
+                          <span class="sp-vh">한마디 지우기: {c.body}</span>
+                        </summary>
                         <form class="sp-v__sheet-confirm" method="post" action={action}>
                           <input type="hidden" name="back" value={here} />
                           <span class="sp-v__sheet-confirm-text">이 한마디를 지울까요?</span>

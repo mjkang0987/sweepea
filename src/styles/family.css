@@ -1121,9 +1121,12 @@
   align-items: center;
   padding: 4px 20px 8px;
 }
+.sp-v__sheet .sp-v__sheet-title:focus,
+.sp-v__sheet .sp-v__sheet-title:focus-visible {
+  outline: none;
+}
 .sp-v__sheet-title {
   grid-column: 2;
-  outline: none;
   margin: 0;
   font-size: 1.1875rem;
   line-height: 1.625rem;
@@ -1185,18 +1188,27 @@
 /* 지우기(내 한마디): '지우기'는 이름 줄 오른쪽에 겹쳐 두고(줄 높이는 그대로, 누를 자리 44px), 펼치면 아래에 확인 상자 */
 .sp-v__sheet-del-toggle {
   position: absolute;
-  /* 이름 줄 가운데에 맞춰 위로 넉넉히(아래 본문은 덜 덮게) */
-  top: -12px;
-  right: 0;
+  /* 이름 줄(위 여백 14px, 높이 20px) 가운데에 44px 칸: 14 + 10 - 22 = 2px. 아이콘은 오른쪽 끝에 붙게 칸을 10px 밖으로 */
+  top: 2px;
+  right: -10px;
   min-width: 2.75rem;
   min-height: 2.75rem;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   color: var(--label-2);
   font-size: var(--subhead-size);
   cursor: pointer;
   list-style: none;
+}
+.sp-v__sheet-del-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .sp-v__sheet-del-toggle::-webkit-details-marker {
   display: none;

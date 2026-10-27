@@ -808,6 +808,13 @@
 - 리뷰 2(새 리뷰어): :modal을 모르는 옛 브라우저(iOS 15.4~15.5 등)에서 스크립트가 멈추고 CSS 규칙(:target 펼침 포함)이 통째로 무시됨 → :modal 대신 서버가 붙인 sp-v__sheet--inline 클래스, 시트 바로 뒤 인라인 스크립트가 첫 화면 전에 모달로(깜빡임 없음), 다 지운 경우에도 주소에서 say 뗌, 안내 role=status 중복 뗌
 - 리뷰 3: cdelete(지우기·재열림·닫으면 사라짐·실패 안내·엄빠 못 지움·다 지움·스크립트 없음)·comments·sheetios·reactions·pview·vplay·vswipe·photo·editshot·motion, 단위·DB(61) 통과, 디자인 대조(del-cmp)
 
+### 65. fix/delete-icon — 한마디 지우기를 휴지통 아이콘으로, 자리 바로잡기 (완료, dev 머지 0.4.9, 디자인 138)
+
+- 요구사항(사용자 2026-10-27): 지우기 위치 확인, '지우기' 글자 대신 삭제 아이콘
+- 원인: 리뷰 1회차에서 누를 자리를 위로 올리며 기준을 li 바깥(top:-12px)으로 잡아 이름 줄보다 위에 뜸. 다시 연 시트 제목 테두리는 전체 .sp-body :focus-visible 규칙이 이겨서
+- 고침: 휴지통 아이콘(20px, 누를 자리 44px, 이름 '한마디 지우기: 글'), 이름 줄 가운데·오른쪽 끝(디자인과 같은 2px 안쪽). 제목 초점 테두리 규칙을 더 구체적으로
+- 검수: cdelete(아이콘 자리·이름·제목 테두리 없음 포함)·comments·sheetios 통과, 나란히 캡처(del-cmp2)
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
