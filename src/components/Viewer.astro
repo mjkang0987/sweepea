@@ -355,6 +355,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     ui.type = 'button';
     ui.className = 'sp-vh sp-v__ui';
     const bare = (on: boolean) => {
+      // 토스트는 지운다(숨겼다 다시 보이면 사라짐 움직임이 처음부터 돌아 지난 안내가 또 뜬다)
+      if (on) v.querySelector('.sp-v > .sp-toast')?.remove();
       if (on) v.dataset.bare = '';
       else delete v.dataset.bare;
       ui.textContent = on ? '메뉴 보이기' : '메뉴 숨기기';
@@ -362,8 +364,15 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     bare(false);
     v.insertBefore(ui, v.firstChild);
     ui.addEventListener('click', () => bare(!('bare' in v.dataset)));
-    // 재생 중 누르기는 일시정지 버튼(.sp-v__tap)이 받는다
-    stage.addEventListener('click', () => bare(!('bare' in v.dataset)));
+    // 재생 중 누르기는 일시정지 버튼(.sp-v__tap)이 받는다('일시정지하고 메뉴 보기'라 메뉴도 돌려준다)
+    v.querySelector('.sp-v__tap')?.addEventListener('click', () => bare(false));
+    // PC에서 마우스로 끌다 놓은 것은 누름이 아니다
+    let down = { x: 0, y: 0 };
+    stage.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
+    stage.addEventListener('click', (e) => {
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10) return;
+      bare(!('bare' in v.dataset));
+    });
     addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && 'bare' in v.dataset) bare(false);
     });

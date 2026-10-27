@@ -1705,3 +1705,10 @@
   font-size: var(--senior-caption-size);
   font-weight: 600;
 }
+@media (prefers-reduced-transparency: reduce) {
+  .sp-v__ui:focus-visible {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
