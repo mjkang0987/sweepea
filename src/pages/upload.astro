@@ -214,9 +214,10 @@ const kid = callName(kids[0]?.name ?? '아이');
   /** 영상을 줄인 mp4. 못 줄이거나(브라우저가 못 함·실패·소리나 화면이 빠짐) 줄일 필요가 없으면 null → 원본 그대로 */
   async function shrink(file: File, sec: number, progress: (p: number) => void) {
     if (typeof VideoEncoder !== 'function' || typeof VideoDecoder !== 'function' || !(sec > 0) || sec > SHRINK_MAX_SEC) return null;
+    let input: import('mediabunny').Input | undefined;
     try {
       const mb = await import('mediabunny');
-      const input = new mb.Input({ source: new mb.BlobSource(file), formats: mb.ALL_FORMATS });
+      input = new mb.Input({ source: new mb.BlobSource(file), formats: mb.ALL_FORMATS });
       const [video, audio] = await Promise.all([input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack()]);
       if (!video) return null;
       const [w, h] = await Promise.all([video.getDisplayWidth(), video.getDisplayHeight()]);
@@ -232,13 +233,22 @@ const kid = callName(kids[0]?.name ?? '아이');
         audio: { codec: 'aac' },
       });
       if (!conv.isValid || conv.discardedTracks.some((d) => d.track === video || d.track === audio)) return null;
-      conv.onProgress = progress;
-      await conv.execute();
+      let last = Date.now();
+      conv.onProgress = (p) => ((last = Date.now()), progress(p));
+      // 인코더가 응답 없이 멈추면(화면 밖 등) 1분 뒤 그만두고 원본으로
+      const dog = setInterval(() => Date.now() - last > 60_000 && void conv.cancel(), 5000);
+      try {
+        await conv.execute();
+      } finally {
+        clearInterval(dog);
+      }
       const buf = output.target.buffer;
       if (!buf || buf.byteLength >= file.size) return null;
       return { blob: new Blob([buf], { type: 'video/mp4' }), width, height };
     } catch {
       return null;
+    } finally {
+      input?.dispose();
     }
   }
 
@@ -257,11 +267,15 @@ const kid = callName(kids[0]?.name ?? '아이');
       v.currentTime = Math.min(0.1, v.duration / 2 || 0);
       await wait(v, 'seeked');
       const { view: poster, thumb } = await viewAndThumb(v, v.videoWidth, v.videoHeight, 1280);
-      const small = await shrink(file, v.duration, progress);
+      const { duration, videoWidth, videoHeight } = v;
+      // 줄이는 동안 영상 칸이 같은 영상을 따로 풀고 있지 않게 비운다(아이폰 메모리)
+      v.removeAttribute('src');
+      v.load();
+      const small = await shrink(file, duration, progress);
       return {
         kind: 'video', view: small?.blob ?? file, poster: poster.blob, thumb: thumb.blob,
-        width: small?.width ?? v.videoWidth, height: small?.height ?? v.videoHeight,
-        durationSec: Math.round(v.duration * 100) / 100,
+        width: small?.width ?? videoWidth, height: small?.height ?? videoHeight,
+        durationSec: Math.round(duration * 100) / 100,
         // shortcut: 영상은 파일 시각(아이폰은 내보낸 시각일 수 있음). 정확히 하려면 MP4 mvhd 생성 시각을 읽는다
         takenAt: new Date(file.lastModified).toISOString(), takenAtSource: 'file',
         url: URL.createObjectURL(thumb.blob),
@@ -325,21 +339,25 @@ const kid = callName(kids[0]?.name ?? '아이');
     input.files = e.dataTransfer.files;
     input.dispatchEvent(new Event('change'));
   });
+  // 줄이거나 올리는 동안 화면이 꺼지면 멈출 수 있어 켜 둔다(안 되는 브라우저는 그냥 둔다). 응답을 기다리지 않는다(헤드리스 등에서 끝나지 않을 수 있음)
   let awake: Promise<WakeLockSentinel | undefined> | undefined;
   const keepAwake = () => (awake = navigator.wakeLock?.request('screen').catch(() => undefined));
+  const letSleep = () => {
+    awake?.then((l) => l?.release()).catch(() => undefined);
+    awake = undefined;
+  };
   // 다른 앱에 다녀오면 브라우저가 풀어 버리므로 다시 건다
   document.addEventListener('visibilitychange', () => {
-    if (shrinking && document.visibilityState === 'visible') keepAwake();
+    if (awake && document.visibilityState === 'visible') keepAwake();
   });
   input.addEventListener('change', async () => {
     if (busy) return;
     const files = [...(input.files ?? [])].slice(0, Math.max(0, MAX_ITEMS - items.length));
     if (!files.length) return;
     busy = true;
-    shrinking = files.some((f) => f.type.startsWith('video/'));
+    shrinking = typeof VideoEncoder === 'function' && files.some((f) => f.type.startsWith('video/'));
     $('up-shrink-hint').hidden = !shrinking;
     render();
-    // 줄이는 동안 화면이 꺼지면 멈출 수 있어 켜 둔다(안 되는 브라우저는 그냥 둔다). 응답을 기다리지 않는다(헤드리스 등에서 끝나지 않을 수 있음)
     if (shrinking) keepAwake();
     let skipped = 0;
     for (const [i, f] of files.entries()) {
@@ -353,8 +371,7 @@ const kid = callName(kids[0]?.name ?? '아이');
         skipped++;
       }
     }
-    awake?.then((l) => l?.release()).catch(() => undefined);
-    awake = undefined;
+    letSleep();
     bar.hidden = true;
     busy = false;
     shrinking = false;
@@ -422,6 +439,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     if (!groupIds.length) return say('보여줄 그룹을 하나 이상 골라 주세요.');
     locked = { groupIds, childIds };
     busy = true;
+    keepAwake();
     render();
     // 대표 사진을 맨 앞에(공유 묶음 첫 장 = 카톡 카드 대표)
     const order = [cover, ...items.keys()].filter((v, i, arr) => arr.indexOf(v) === i);
@@ -460,6 +478,7 @@ const kid = callName(kids[0]?.name ?? '아이');
         step(label, sent / total);
       }
     } catch (err) {
+      letSleep();
       bar.hidden = true;
       busy = false;
       render();
@@ -472,6 +491,7 @@ const kid = callName(kids[0]?.name ?? '아이');
           : `${n}장까지 올렸어요. 다시 누르면 나머지를 이어서 올려요.`,
       );
     }
+    letSleep();
     bar.hidden = true;
     if (mode !== 'share') return location.assign('/home');
     const ids = order.map((i) => items[i].id!);
