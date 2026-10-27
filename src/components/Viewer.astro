@@ -121,7 +121,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
             <dialog class="sp-v__sheet" id="talk" aria-labelledby="talk-title">
               <span class="sp-v__sheet-grab" aria-hidden="true"></span>
               <div class="sp-v__sheet-head">
-                <h2 class="sp-v__sheet-title" id="talk-title">한마디 {comments.length}개</h2>
+                <h2 class="sp-v__sheet-title" id="talk-title" tabindex="-1" autofocus>한마디 {comments.length}개</h2>
                 <a class="sp-v__sheet-close" href="#" data-talk-close>닫기</a>
               </div>
               <ul class="sp-v__sheet-list">
