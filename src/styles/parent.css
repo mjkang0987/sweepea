@@ -428,8 +428,9 @@
   position: relative;
   grid-column: var(--c2);
   grid-row: var(--r2) / span var(--s2);
-  /* 아래 1단위는 사진 사이 간격 */
-  margin-bottom: var(--u);
+  /* 칸이 차지한 줄 중 아래 1단위 자리에 가로 간격과 같은 4px만 비움(남는 몇 분의 1px은 사진이 가짐).
+     예전엔 1단위(화면 폭에 따라 4~7px)를 통째로 비워 세로 간격이 가로보다 넓었음 */
+  margin-bottom: 4px;
   border-radius: 12px;
   background: var(--fill);
   overflow: hidden;
