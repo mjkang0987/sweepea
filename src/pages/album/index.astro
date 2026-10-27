@@ -1,7 +1,6 @@
 ---
 // 앨범: 넘겨 보기(기본)·모아 보기. 여러 가족방이면 모두 섞어 보는 게 기본, 집 고르기는 링크(JS 없음)
 import Family from '../../layouts/Family.astro';
-import HeartToggle from '../../components/HeartToggle.astro';
 import ReactRow from '../../components/ReactRow.astro';
 import SayForm from '../../components/SayForm.astro';
 import InstallGuide from '../../components/InstallGuide.astro';
@@ -155,7 +154,10 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
                 <div class="sp-a__card-cap">
                   {showTag && <span class="sp-a__tag">{c.kid}</span>}
                   <span class="sp-a__card-day">{c.day}{c.kind === 'video' && ' · 영상'}</span>
-                  <HeartToggle mediaId={c.id} back={`${here}#p-${c.id}`} reacts={reacts} />
+                  {/* 스크롤 애니메이션이 없는 브라우저(iOS 26 전·파이어폭스)는 아래 반응 줄이 숨으므로 카드에 하트만 */}
+                  <div class="sp-a__card-heart">
+                    <ReactRow mediaId={c.id} back={`${here}#p-${c.id}`} reacts={reacts} kinds={['heart']} untitled />
+                  </div>
                 </div>
               </div>
               <p class="sp-a__pos">

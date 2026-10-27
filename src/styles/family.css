@@ -357,7 +357,7 @@
 }
 .sp-a__slide {
   position: relative;
-  /* 카드 안 요소들(하트·반응 줄)도 카드 위치 기준으로 움직이게 이름 붙인 타임라인 */
+  /* 카드 안 요소들(반응 줄)도 카드 위치 기준으로 움직이게 이름 붙인 타임라인 */
   view-timeline: --slide inline;
   /* 반응 뒤 #p-<id>로 돌아올 때 머리말·탭이 화면에 남게 */
   scroll-margin-top: 14rem;
@@ -468,18 +468,32 @@
     z-index: 1;
   }
 }
-/* 반응 줄·하트는 가운데 카드 것만 보이고 눌린다(visibility는 클릭·탭 이동도 막음). 움직임이 아니라 동작 줄이기와 무관 */
+/* 반응 줄은 가운데 카드 것만 보이고 눌린다(visibility는 클릭·탭 이동도 막음). 움직임이 아니라 동작 줄이기와 무관 */
 @supports (animation-timeline: view(inline)) {
-  .sp-a__slide-react,
-  .sp-a__card-cap .sp-h {
+  .sp-a__slide-react {
     animation: sp-a-only linear both;
     animation-timeline: --slide;
   }
 }
-/* 지원 안 하는 브라우저: 카드마다 줄이 겹치므로 숨기고, 크게 보기에서 보낸다 */
+/* 지원 안 하는 브라우저: 카드마다 줄이 겹치므로 숨기고, 카드에 하트 하나만(나머지는 크게 보기에서) */
+.sp-a__card-heart {
+  display: none;
+}
 @supports not (animation-timeline: view(inline)) {
   .sp-a__slide-react {
     display: none;
+  }
+  .sp-a__card-heart {
+    display: block;
+    margin-inline-start: auto;
+  }
+  /* 카드 바탕(--surface)과 같은 색이면 버튼 모양이 안 보여 회색 칸 */
+  .sp-a__card-heart .sp-r__btn {
+    padding: 0 12px;
+    background: var(--fill);
+  }
+  .sp-a__card-heart .sp-r__btn[aria-pressed='true'] {
+    background: var(--pea-tint);
   }
 }
 @keyframes sp-a-only {
@@ -674,37 +688,47 @@
 }
 .sp-r__row {
   display: flex;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  gap: 6px;
 }
+/* 슬랙처럼 알약 + 수(디자인 129): 높이 44px, 누른 건 초록 테두리 */
 .sp-r__btn {
-  flex: 1;
-  min-width: 0;
-  min-height: 3.75rem;
-  padding: 0;
+  /* 같은 폭으로 나누되 이모지+수보다 좁아지면(좁은 화면·큰 글씨) 넘치지 않고 다음 줄로 */
+  flex: 1 1 0;
+  min-width: max-content;
+  min-height: 2.75rem;
+  padding: 0 4px;
   border: 0;
-  border-radius: 18px;
+  border-radius: 999px;
   background: var(--surface);
   color: var(--label);
   font-family: inherit;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   cursor: pointer;
 }
 .sp-r__btn[aria-pressed='true'] {
   background: var(--pea-tint);
-  box-shadow: inset 0 0 0 2px var(--pea);
-  color: var(--pea-deep);
+  box-shadow: inset 0 0 0 1.5px var(--pea);
+  color: var(--pea-ink);
+}
+.sp-r__n {
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+  font-weight: 700;
 }
 .sp-r__btn:focus-visible {
   outline: 2px solid var(--pea-ink);
   outline-offset: 2px;
 }
-/* 도트 이모지 28px(디자인 125). 그림은 칸에 꽉 맞게: 글자 크기 배율이 달라도 가운데에서 안 벗어남 */
+/* 도트 이모지 20px(디자인 129). 그림은 칸에 꽉 맞게: 글자 크기 배율이 달라도 가운데에서 안 벗어남 */
 .sp-r__icon {
+  flex: none;
   display: block;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 .sp-r__svg {
   display: block;
@@ -752,42 +776,6 @@
 @keyframes sp-twinkle {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(0.82); opacity: 0.55; }
-}
-
-/* 하트 수(누르면 켜기·끄기) */
-.sp-h {
-  margin: 0;
-}
-.sp-h__btn {
-  min-width: var(--target-senior);
-  min-height: var(--target-senior);
-  padding: 0 var(--space-2);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--blossom);
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  cursor: pointer;
-}
-.sp-h__icon {
-  fill: none;
-  stroke: var(--blossom);
-  stroke-width: 2;
-}
-.sp-h__btn[aria-pressed='true'] .sp-h__icon {
-  fill: var(--blossom);
-}
-.sp-h__n {
-  font-size: var(--senior-body-size);
-  line-height: 1.75rem;
-  font-weight: 600;
-}
-.sp-h__btn:focus-visible {
-  outline: 2px solid var(--pea-ink);
-  outline-offset: 2px;
 }
 
 /* 모아 보기 칸 배지 */
@@ -1025,91 +1013,174 @@
   flex-direction: column;
   gap: var(--space-2);
 }
-/* 한마디(디자인): 회색 말풍선, 이름 13 굵게 · 때 회색, 글 15. 맨 위 하나 + '모두 보기' */
+/* 한마디 입력칸·보내기(디자인: 19px, 다른 입력칸보다 한 단계 작게) */
+.sp-say .sp-f__input,
+.sp-say .sp-f__btn {
+  font-size: 1.1875rem;
+  line-height: 1.625rem;
+}
+/* 한마디(디자인 129): 회색 한 줄(이름 굵게 + 글 말줄임, 오른쪽 말풍선 아이콘·수 ›) → 누르면 아래 시트 */
 .sp-v__talk {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-}
-.sp-v__bubble {
-  max-width: 100%;
+  min-height: 3.5rem;
   box-sizing: border-box;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--space-2) var(--space-3);
-  border-radius: 14px 14px 14px 4px;
-  background: var(--fill);
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-.sp-v__bubble-who {
-  font-size: var(--footnote-size);
-  line-height: 1.4;
-}
-.sp-v__bubble-when {
-  font-weight: 400;
-  color: var(--label-2);
-}
-.sp-v__bubble-body {
-  font-size: var(--subhead-size);
-  line-height: 1.35;
-}
-.sp-v__talk-more {
-  align-self: stretch;
-}
-.sp-v__talk-toggle {
-  width: fit-content;
-  min-height: 2.75rem;
   display: flex;
   align-items: center;
-  gap: 2px;
-  color: var(--pea-ink);
-  font-size: var(--subhead-size);
+  gap: 10px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--label);
+  text-decoration: none;
+  font-size: var(--senior-caption-size);
+  line-height: var(--senior-caption-line);
+}
+.sp-v__talk-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sp-v__talk-who {
+  font-weight: 700;
+}
+.sp-v__talk-count {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pea-deep);
   font-weight: 600;
-  cursor: pointer;
-  list-style: none;
 }
-.sp-v__talk-toggle::-webkit-details-marker {
-  display: none;
-}
-.sp-v__talk-chevron {
+.sp-v__talk-icon {
+  width: 1.25rem;
+  height: 1.25rem;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.4;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .sp-v__talk-chevron {
-    transition: transform 0.2s;
-  }
+.sp-v__talk-icon--small {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 2.4;
 }
-.sp-v__talk-more[open] .sp-v__talk-chevron {
-  transform: rotate(-90deg);
+.sp-v__talk:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
 }
-.sp-v__talk-hide,
-.sp-v__talk-more[open] .sp-v__talk-show {
-  display: none;
-}
-.sp-v__talk-more[open] .sp-v__talk-hide {
-  display: inline;
-}
-.sp-v__talk-list {
-  margin: 0;
+/* 시트: 화면 아래에 붙어 올라옴(최대 72%), 목록만 굴러감 */
+.sp-v__sheet {
+  position: fixed;
+  inset: auto 0 0;
+  width: 100%;
+  max-width: 32rem;
+  max-height: 72dvh;
+  box-sizing: border-box;
+  margin: 0 auto;
   padding: 0;
-  list-style: none;
+  border: 0;
+  border-radius: 20px 20px 0 0;
+  background: var(--bg);
+  color: var(--label);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.2);
+}
+.sp-v__sheet[open] {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
 }
-.sp-v__meta {
+.sp-v__sheet::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+/* 스크립트가 없으면 #talk로 열려 판 안에 그대로 펼쳐진다(입력칸은 판 것 하나만) */
+.sp-v__sheet:target:not([open]) {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  max-height: none;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.sp-v__sheet:target:not([open]) .sp-v__sheet-form {
+  display: none;
+}
+.sp-v__sheet-grab {
+  align-self: center;
+  width: 40px;
+  height: 5px;
+  margin-top: 8px;
+  border-radius: 3px;
+  background: var(--fill);
+}
+.sp-v__sheet-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 4px 20px 8px;
+}
+.sp-v__sheet-title {
+  grid-column: 2;
+  margin: 0;
+  font-size: 1.1875rem;
+  line-height: 1.625rem;
+  font-weight: 700;
+}
+.sp-v__sheet-close {
+  justify-self: end;
+  min-width: 2.75rem;
+  min-height: var(--target-senior);
+  justify-content: flex-end;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  color: var(--pea-ink);
+  text-decoration: none;
+  font-size: 1.1875rem;
+  font-weight: 600;
+}
+.sp-v__sheet-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 20px;
+  list-style: none;
+}
+.sp-v__sheet-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 0;
+}
+.sp-v__sheet-item + .sp-v__sheet-item {
+  border-top: 0.5px solid var(--separator);
+}
+.sp-v__sheet-who,
+.sp-v__sheet-body {
+  margin: 0;
+}
+.sp-v__sheet-who {
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-v__sheet-name {
+  font-weight: 700;
+}
+.sp-v__sheet-when {
+  color: var(--label-2);
+}
+.sp-v__sheet-body {
+  font-size: 1.1875rem;
+  line-height: 1.6875rem;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.sp-v__sheet-form {
+  padding: 12px 20px max(34px, env(safe-area-inset-bottom));
+  border-top: 0.5px solid var(--separator);
+}
+.sp-v__meta {
+  margin: 0;
 }
 /* 디자인: 반응 버튼은 회색 칸(밝은 화면에서 흰 반투명이면 판과 같은 색이라 안 보였음) */
 .sp-v__panel .sp-r__btn {

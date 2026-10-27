@@ -1,6 +1,6 @@
 ---
-// "눌러서 바로 보내기" 반응 5개. JS 없이 폼 POST, 버튼 값에 켤지 끌지를 담는다(다시 누르면 취소)
-import { REACTION_KINDS } from '../lib/backend';
+// "눌러서 바로 보내기" 반응 5개(슬랙처럼 알약 + 수). JS 없이 폼 POST, 버튼 값에 켤지 끌지를 담는다(다시 누르면 취소)
+import { REACTION_KINDS, type ReactionKind } from '../lib/backend';
 import { EMOJI } from '../lib/emoji';
 import type { Reacts } from '../lib/album';
 
@@ -14,24 +14,30 @@ interface Props {
   idSuffix?: string;
   /** 크게 보기는 시안대로 제목을 숨김(화면 읽기엔 남김) */
   hideTitle?: boolean;
+  /** 보일 반응(기본 5개 다) */
+  kinds?: readonly ReactionKind[];
+  /** 제목·이름표 없이(카드 하트 하나처럼 버튼 이름으로 충분할 때) */
+  untitled?: boolean;
 }
-const { mediaId, back, action = `/album/${mediaId}`, reacts, idSuffix = '', hideTitle = false } = Astro.props;
+const { mediaId, back, action = `/album/${mediaId}`, reacts, idSuffix = '', hideTitle = false, kinds = REACTION_KINDS, untitled = false } = Astro.props;
 const r = reacts.get(mediaId);
 const titleId = `react-title${idSuffix}`;
 ---
 
-<form class="sp-r" method="post" action={action} aria-labelledby={titleId}>
+<form class="sp-r" method="post" action={action} aria-labelledby={untitled ? undefined : titleId}>
   <input type="hidden" name="back" value={back} />
-  <h2 class={hideTitle ? 'sp-vh' : 'sp-r__title'} id={titleId}>눌러서 바로 보내기</h2>
+  {!untitled && <h2 class={hideTitle ? 'sp-vh' : 'sp-r__title'} id={titleId}>눌러서 바로 보내기</h2>}
   <div class="sp-r__row">
     {
-      REACTION_KINDS.map((k) => {
+      kinds.map((k) => {
         const on = r?.mine.has(k) ?? false;
+        const n = r?.counts[k] ?? 0;
         return (
-          <button class="sp-r__btn" type="submit" name="react" value={`${k}:${on ? 'off' : 'on'}`} aria-pressed={on ? 'true' : 'false'} aria-label={EMOJI[k].label}>
+          <button class="sp-r__btn" type="submit" name="react" value={`${k}:${on ? 'off' : 'on'}`} aria-pressed={on ? 'true' : 'false'} aria-label={`${EMOJI[k].label} ${n}개`}>
             <span class={`sp-r__icon sp-r__icon--${EMOJI[k].anim}`}>
-              <svg class="sp-r__svg" width="28" height="28" aria-hidden="true" focusable="false"><use href={`#e-${k}`} /></svg>
+              <svg class="sp-r__svg" width="20" height="20" aria-hidden="true" focusable="false"><use href={`#e-${k}`} /></svg>
             </span>
+            {n > 0 && <span class="sp-r__n" aria-hidden="true">{n}</span>}
           </button>
         );
       })
