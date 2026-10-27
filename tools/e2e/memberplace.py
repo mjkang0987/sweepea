@@ -41,6 +41,8 @@ with sync_playwright() as p:
     pg.route('**/member/**',lambda r: r.abort() if r.request.method=='POST' else r.continue_())
     pg.get_by_role('switch',name='사진 올리기 허용').click(); pg.wait_for_selector('.sp-toast--error'); pg.wait_for_timeout(200)
     check(pg.get_by_role('switch',name='사진 올리기 허용').get_attribute('aria-checked')=='true' and '처리하지 못했어요' in pg.evaluate("document.getElementById('mem-urgent').textContent"),'실패하면 스위치 되돌리고 오류 토스트')
+    s3=pg.get_by_role('switch',name='사진 올리기 허용'); s3.click(); s3.click(); pg.wait_for_function("!document.querySelector('.sp-p[aria-busy]')"); pg.wait_for_timeout(200)
+    check(pg.get_by_role('switch',name='사진 올리기 허용').get_attribute('aria-checked')=='true','두 번 다 실패해도 서버 상태(켜짐)로')
     pg.unroute('**/member/**')
     # 내보내기: 이 화면 위 레이어
     pg.get_by_role('button',name='내 가족 아님 · 내보내기 서아 아빠').click(); pg.wait_for_selector('#mem-ask[open]')
