@@ -25,10 +25,10 @@ with sync_playwright() as p:
     # 탈퇴. mock은 로그인할 때마다 새 사용자라, '같은 사람이 다시 로그인'은 부모 쿠키를 되돌려 흉내 낸다
     saved=[x for x in c.cookies() if x['name']=='sp_parent']
     def relogin(): c.add_cookies(saved); pg.goto(B+'/home')
-    pg.goto(B+'/settings/account'); pg.get_by_role('link',name='탈퇴하기').click(); pg.wait_for_url('**confirm=delete**')
+    pg.goto(B+'/settings/account'); pg.get_by_role('link',name='탈퇴하기').click(); pg.get_by_role('dialog',name='정말 탈퇴할까요?').wait_for()
     check('사진 1장과' in pg.content(),'확인에 사진 수'); shot('1')
     pg.evaluate("document.querySelector('[name=agree]').removeAttribute('required')")
-    pg.get_by_role('button',name='탈퇴하기').click(); pg.wait_for_url('**confirm=delete**')
+    pg.get_by_role('button',name='탈퇴하기').click(); pg.wait_for_url('**e=agree**')
     check(pg.get_by_role('alert').count()==1 and pg.get_by_label('모두 지워지는 것을 확인했어요').get_attribute('aria-invalid')=='true','체크 안 하면 이유와 함께 다시 확인')
     pg.get_by_label('모두 지워지는 것을 확인했어요').check(); pg.get_by_role('button',name='탈퇴하기').click(); pg.wait_for_url('**/goodbye?on=**')
     check('그동안 고마웠어요' in pg.content() and '월' in pg.locator('.sp-p__lead').inner_text(),'작별 화면에 지울 날'); shot('2')
