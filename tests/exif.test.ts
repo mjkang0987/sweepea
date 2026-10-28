@@ -94,6 +94,11 @@ test('PNG eXIf', async () => {
   assert.equal(await photoTakenAt(png(true)), '2026-10-21T15:30:00.000Z');
   assert.equal(await photoTakenAt(png(false)), null);
 });
+test('믿을 수 없는 사진 시각(1980년·미래)은 null', async () => {
+  assert.equal(await photoTakenAt(new Blob([jpeg('1980:01:01 00:00:00')])), null);
+  assert.equal(await photoTakenAt(new Blob([jpeg('2099:01:01 00:00:00')])), null);
+  assert.equal(await photoTakenAt(new Blob([heic('1980:01:01 00:00:00')])), null);
+});
 test('JPEG은 종류 표시 없이도(바이트로 판별)', async () => {
   assert.equal(await photoTakenAt(new Blob([jpeg('2026:10:21 15:30:00')])), '2026-10-21T06:30:00.000Z');
 });
@@ -117,6 +122,6 @@ test('MP4 mvhd 만든 시각(moov 끝·앞, 버전 0·1)', async () => {
 });
 test('MP4 만든 시각이 0(1904년)·미래·moov 없음은 null', async () => {
   assert.equal(await mp4CreatedAt(mp4(-2082844800)), null);
-  assert.equal(await mp4CreatedAt(mp4(Date.now() / 1000 + 7 * 86400)), null);
+  assert.equal(await mp4CreatedAt(mp4(Math.floor(Date.now() / 1000) + 9 * 3600)), null); // 현지 시각을 UTC로 적은 갓 찍은 영상
   assert.equal(await mp4CreatedAt(new Blob([new Uint8Array(box('ftyp', cc('isom')))])), null);
 });

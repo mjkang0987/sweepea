@@ -101,7 +101,7 @@ const kid = callName(kids[0]?.name ?? '아이');
 </Parent>
 
 <script>
-  import { fitSize, mp4CreatedAt, photoTakenAt } from '../lib/exif';
+  import { fitSize, mp4CreatedAt, photoTakenAt, plausible } from '../lib/exif';
 
   type Item = {
     kind: 'photo' | 'video';
@@ -290,7 +290,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       const d = (await input.getMetadataTags()).date;
       // 날짜만 적힌 태그(©day '2024' 등)는 자정 UTC가 되어 시각이 틀리므로 mvhd로 넘긴다
       const t = d?.getTime() ?? NaN;
-      if (t >= Date.UTC(2001, 0, 1) && t <= Date.now() + 86_400_000 && t % 86_400_000 !== 0) return new Date(t).toISOString();
+      if (plausible(t) && t % 86_400_000 !== 0) return new Date(t).toISOString();
     } catch {
       // 못 읽으면 아래 mvhd로
     } finally {

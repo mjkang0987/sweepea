@@ -5,6 +5,15 @@ const HEAD = 128 * 1024;
 /** 사진 파일의 촬영 시각(ISO). 종류 표시가 아니라 앞부분 바이트로 JPEG·HEIC·PNG를 가린다. 없거나 깨졌으면 null
  * shortcut: WebP는 EXIF가 보통 파일 끝이라 안 읽음, 폰 사진이 WebP로 오기 시작하면 끝부분도 읽는다 */
 export async function photoTakenAt(file: Blob): Promise<string | null> {
+  const iso = await readPhoto(file);
+  return iso && plausible(Date.parse(iso)) ? iso : null;
+}
+
+/** 파일 안 시각으로 믿을 만한가: 2001년부터 지금(+10분)까지. 시계가 초기화된 카메라(1980년)·앞서 간 시계·현지 시각을 UTC로 적은 영상(미래가 됨)은
+ * 버리고 파일 시각을 쓴다(정보 수정 화면의 날짜 범위 2000년~오늘 밖이면 저장이 막히므로) */
+export const plausible = (ms: number) => ms >= Date.UTC(2001, 0, 1) && ms <= Date.now() + 600_000;
+
+async function readPhoto(file: Blob): Promise<string | null> {
   const buf = await file.slice(0, HEAD).arrayBuffer();
   const v = new DataView(buf);
   if (v.byteLength >= 12 && v.getUint32(4) === 0x66747970) {
@@ -122,8 +131,8 @@ function heifExif(v: DataView): { offset: number; length: number } | null {
 
 }
 
-/** MP4·MOV 'moov/mvhd'의 만든 시각(UTC, 1904년부터 초). 2001년 전이나 내일 이후는 잘못 적힌 값으로 보고 null.
- * 안드로이드 일부는 현지 시각을 UTC처럼 적어 몇 시간 어긋날 수 있다(날짜 묶기엔 대개 충분) */
+/** MP4·MOV 'moov/mvhd'의 만든 시각(UTC, 1904년부터 초). 믿을 만한 범위(plausible) 밖이면 null.
+ * 안드로이드 일부는 현지 시각을 UTC처럼 적어 몇 시간 늦게 보일 수 있다(미래가 되면 버려짐) */
 export async function mp4CreatedAt(file: Blob): Promise<string | null> {
   let p = 0;
   // 위 단계 상자(ftyp·mdat·moov…)를 머리만 읽으며 건너뛴다. moov는 앞에도 끝에도 올 수 있다
@@ -146,7 +155,7 @@ export async function mp4CreatedAt(file: Blob): Promise<string | null> {
           const ver = m.getUint8(q + 8);
           const secs = ver === 1 ? (q + 20 <= m.byteLength ? Number(m.getBigUint64(q + 12)) : NaN) : m.getUint32(q + 12);
           const ms = (secs - 2082844800) * 1000;
-          return ms >= Date.UTC(2001, 0, 1) && ms <= Date.now() + 86_400_000 ? new Date(ms).toISOString() : null;
+          return plausible(ms) ? new Date(ms).toISOString() : null;
         }
         if (n < 8) return null;
         q += n;
