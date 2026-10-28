@@ -1036,6 +1036,17 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 예상 결과: 사진을 누르면 사진만, 다시 누르면 돌아옴. 넘겨도 사진만 상태 유지, 키보드로도 전환
 - 결과: 리뷰 3회 반영(사진만 켜면 토스트 지움·사진만 중에 온 토스트는 읽기만(숨긴 토스트가 나중에 다시 뜨지 않게), 마우스로 끌다 놓기·빠른 두 번째 누름은 버림, 일시정지 버튼은 메뉴도 돌려줌, 투명도 줄이기·포커스 테두리). 검사 `tools/e2e/viewbare.py` 19개, vswipe·comments 통과(vplay는 원래 있던 "한마디 보냄 토스트"만 실패), 가족 `/album` 화면도 직접 확인, astro check·build·단위 검사 통과
 
+### 85. feature/account-layer — 계정 탈퇴 확인 레이어·홈 화면에 두기 안내 그 자리에서 (진행 중, 디자인 이미 있음: Account·AccountDelete·AccountDeleteSub)
+
+- 요구(다음 할 일 1-6): 페이지 이동 줄이기 마지막. 계정의 탈퇴 확인을 다른 화면 대신 이 화면 위 레이어로, 조부모 홈 화면에 두기 안내의 부탁하기·알겠어요·다음에를 이동 없이 그 자리에서
+- 방식
+  - 계정: 보드대로 묶음 줄(로그아웃·탈퇴하기), 이름 칸에 카카오 아이콘. 탈퇴하기는 `dialog.sp-layer__modal` showModal(사진 지우기 레이어와 같은 방식). 왼쪽 정렬·우는 얼굴(`public/sad.svg`)·두 버튼 같은 너비, 체크 전엔 탈퇴하기 흐리게(눌리면 브라우저 기본 안내). 구독 중이면 같은 자리에 '구독 중이에요' 레이어. 스크립트 없으면 `?confirm=`으로 같은 레이어를 연 채 다시 그림
+  - 로그아웃은 보드에 확인이 없고 로그인 화면으로 가는 흐름이라 그대로(폼)
+  - 홈 화면에 두기: `InstallGuide.astro` 스크립트가 폼을 `x-sp-inplace`로 보내고 `/install`은 204(다 됨)·409(부탁할 곳 없음). 판을 치우고 초점은 바로 아래 탭으로, 부탁하기면 숨겨 둔 알림을 보이고 초점. 스크립트 없으면 예전처럼 폼
+  - 안내 판 배치(앨범 위 판)는 그대로, 보드의 아래 시트 모양은 이번 범위 아님
+- 영향: `src/pages/settings/account.astro`, `src/components/InstallGuide.astro`, `src/pages/install.ts`, `src/styles/base.css`, `src/styles/parent.css`, `public/sad.svg`, e2e `tools/e2e/acclayer.py`(새), `install.py`·`delete.py`(이동 대신 레이어·판 사라짐 기다리기)
+- 예상 결과: 탈퇴하기 → 주소 그대로 레이어(모달·Esc·바깥 누르기·취소로 닫힘, 체크해야 탈퇴), 설치 안내 버튼 → 이동 없이 판 사라짐
+
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
 저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
