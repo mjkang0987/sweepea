@@ -488,6 +488,9 @@
   width: 1.75rem;
   height: 1.75rem;
   image-rendering: pixelated;
+  /* 그림이 칸 아래쪽(32줄 중 13~32)에만 있어 글자 가운데에 맞게 올림 */
+  position: relative;
+  top: -0.35rem;
 }
 .sp-p__landing-title {
   margin: 0;
