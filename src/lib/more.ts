@@ -1,4 +1,16 @@
 // 목록 화면 공통(브라우저): 아래로 내리면 다음 쪽 이어 붙이기, 크게 보기에서 닫고 돌아오면 보던 자리로
+import { masonry } from './masonry';
+
+/** 엇갈린 배열 다시 계산(같은 묶음이 쪽을 넘어 이어져 칸을 합친 뒤 그 묶음 전체로). 앞에서부터 쌓으므로 이미 있던 칸 자리는 그대로 */
+export function relayout(ul: HTMLElement) {
+  const cells = [...ul.children] as HTMLElement[];
+  const r = cells.map((c) => Number(c.dataset.ratio) || 1);
+  const two = masonry(r, 2);
+  const four = masonry(r, 4);
+  cells.forEach((c, i) => {
+    for (const [k, v] of Object.entries({ c2: two[i].col, r2: two[i].row, s2: two[i].span, c4: four[i].col, r4: four[i].row, s4: four[i].span })) c.style.setProperty(`--${k}`, String(v));
+  });
+}
 
 /** 목록 끝 [data-more] 안 '사진 더 보기' 링크가 화면에 가까워지면(600px 앞) 그 쪽을 받아 merge로 붙이고(붙인 칸들을 돌려줌), 받은 쪽의 끝 줄로 바꾼다.
  * 못 받으면 링크를 되돌려 둔다(누르면 그 쪽 페이지로). 돌려주는 함수는 지금 바로 받기(옆으로 넘기는 목록은 스스로 부른다, observe: false).

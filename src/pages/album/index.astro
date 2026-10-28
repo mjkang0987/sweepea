@@ -12,6 +12,7 @@ import { INSTALL_COOKIE } from '../../lib/install';
 import { albumHref, dayLabel, loadAlbum, loadPage, loadReacts, ZOOMS } from '../../lib/album';
 import { getBackend } from '../../lib/backend';
 import { signedMediaUrl } from '../../lib/signed';
+import { masonry, ratioOf } from '../../lib/masonry';
 import { PHOTOS_SEEN, WAITED, seenAt, setLayerCookie } from '../../lib/layers';
 
 // 서명된 사진 주소가 들어 있는 사람별 페이지: 공유 캐시 금지
@@ -67,11 +68,19 @@ const cards = await Promise.all(
     what: m.kind === 'video' ? '영상' : '사진',
   })),
 );
-const days: { day: string; cards: typeof cards }[] = [];
+const days: { day: string; cards: (typeof cards[number] & { ratio: number; at?: string })[] }[] = [];
 for (const c of cards) {
   if (days.at(-1)?.day !== c.day) days.push({ day: c.day, cards: [] });
-  days.at(-1)!.cards.push(c);
+  days.at(-1)!.cards.push({ ...c, ratio: ratioOf(c.width, c.height) });
 }
+// 2줄(넓은 화면 4줄)은 엇갈린 배열(디자인 GrandList, 부모 홈과 같은 계산): 날짜 묶음마다 자리를 정해 내보낸다.
+// 다음 쪽을 합칠 때 브라우저가 그 묶음만 다시 계산해도 앞 칸은 움직이지 않는다(CSS columns는 줄을 다시 나눠 옮겨감)
+if (q.z === 2)
+  for (const d of days) {
+    const two = masonry(d.cards.map((c) => c.ratio), 2);
+    const four = masonry(d.cards.map((c) => c.ratio), 4);
+    d.cards.forEach((c, i) => (c.at = `--c2:${two[i].col};--r2:${two[i].row};--s2:${two[i].span};--c4:${four[i].col};--r4:${four[i].row};--s4:${four[i].span}`));
+  }
 const zi = ZOOMS.indexOf(q.z);
 // 홈 화면에 두기 안내 쿠키(쿠키는 페이지 맨 위에서 읽고 지운다: 그려지는 중에는 못 바꾼다)
 const installState = Astro.cookies.get(INSTALL_COOKIE)?.value;
@@ -225,7 +234,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
             </h2>
             <ul class={`sp-a__grid sp-a__grid--${q.z}`}>
               {d.cards.map((c) => (
-                <li class="sp-a__cell" id={`c-${c.id}`}>
+                <li class="sp-a__cell" id={`c-${c.id}`} style={c.at} data-ratio={c.ratio}>
                   <a class="sp-a__cell-link" href={c.href}>
                     <img
                       class="sp-a__cell-img"
@@ -270,7 +279,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 </Family>
 
 <script>
-  import { autoMore, keepSpot } from '../../lib/more';
+  import { autoMore, keepSpot, relayout } from '../../lib/more';
 
   const swipe = document.querySelector<HTMLElement>('.sp-a__swipe');
   if (swipe) {
@@ -294,6 +303,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
         const ul = last.querySelector<HTMLElement>('.sp-a__grid');
         if (last.dataset.day === sec.dataset.day && ul) {
           for (const li of sec.querySelectorAll<HTMLElement>('.sp-a__cell')) added.push(ul.appendChild(document.importNode(li, true)));
+          if (ul.classList.contains('sp-a__grid--2')) relayout(ul);
           const n = ul.children.length;
           last.setAttribute('aria-label', `${last.dataset.day} ${n}장`);
           const count = last.querySelector('.sp-a__day-count');
