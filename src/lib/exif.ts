@@ -235,7 +235,7 @@ function readTiff(v: DataView, t: number, end: number): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-/** JPEG에서 위치·기기 정보를 화질 손실 없이 뺀 바이트. 남기는 것: APP0(JFIF)·APP2 색 정보(ICC)·APP14(Adobe 색 변환)·그림 데이터.
+/** JPEG에서 위치·기기 정보를 화질 손실 없이 뺀 바이트. 남기는 것: APP0 JFIF·APP2 색 정보(ICC)·APP14(Adobe 색 변환)·그림 데이터.
  * 빼는 것: APP1(EXIF·XMP, GPS가 여기)·다른 APP·주석·EOI 뒤에 붙은 데이터(스캔 사이에 온 것도). 회전 정보(Orientation≠1)가 있거나 깨졌으면 null(다시 저장해야 함) */
 export function stripJpeg(buf: ArrayBuffer): Uint8Array<ArrayBuffer> | null {
   const b = new Uint8Array(buf);
@@ -267,7 +267,9 @@ export function stripJpeg(buf: ArrayBuffer): Uint8Array<ArrayBuffer> | null {
     const app = marker >= 0xffe0 && marker <= 0xffef;
     if (marker === 0xffe1 && len >= 8 && v.getUint32(p + 4) === 0x45786966 && orientation(v, p + 10, p + 2 + len) > 1) return null;
     const icc = marker === 0xffe2 && len >= 14 && String.fromCharCode(...b.subarray(p + 4, p + 15)) === 'ICC_PROFILE';
-    if (!(app || marker === 0xfffe) || marker === 0xffe0 || marker === 0xffee || icc) keep.push(b.subarray(p, end));
+    // APP0은 JFIF만(JFXX엔 잘리기 전 작은 그림이 들 수 있다)
+    const jfif = marker === 0xffe0 && len >= 7 && v.getUint32(p + 4) === 0x4a464946 && b[p + 8] === 0;
+    if (!(app || marker === 0xfffe) || jfif || marker === 0xffee || icc) keep.push(b.subarray(p, end));
     p = end;
   }
   return null;

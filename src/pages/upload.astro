@@ -228,9 +228,9 @@ const kid = callName(kids[0]?.name ?? '아이');
     const head = small ? new Uint8Array(await file.slice(0, 2).arrayBuffer()) : null;
     const jpeg = head?.[0] === 0xff && head[1] === 0xd8; // 앞 2바이트 FF D8(PNG·HEIC는 통째로 안 읽게)
     const kept = jpeg ? stripJpeg(await file.arrayBuffer()) : null;
-    const keep = kept !== null && kept.byteLength <= view.blob.size;
+    const useOriginal = kept !== null && kept.byteLength <= view.blob.size;
     return {
-      kind: 'photo', view: keep ? new Blob([kept], { type: 'image/jpeg' }) : view.blob, thumb: thumb.blob, width: view.width, height: view.height,
+      kind: 'photo', view: useOriginal ? new Blob([kept], { type: 'image/jpeg' }) : view.blob, thumb: thumb.blob, width: view.width, height: view.height,
       takenAt: exif ?? new Date(file.lastModified).toISOString(), takenAtSource: exif ? 'exif' : 'file',
       url: URL.createObjectURL(thumb.blob),
     };
