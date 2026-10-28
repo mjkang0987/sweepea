@@ -152,3 +152,13 @@ test('stripJpeg: 회전 정보가 있거나 깨졌으면 null', () => {
   assert.equal(stripJpeg(buf([0xff, 0xdb, 0, 40, 1])), null); // 길이가 파일 밖
   assert.equal(stripJpeg(new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer), null);
 });
+test('stripJpeg: 프로그레시브 스캔 사이의 EXIF·주석도 빼고, 사이 표 안의 FF D9에서 자르지 않음', () => {
+  const scan = (d: number[]) => [...seg(0xda, [1, 1, 0]), ...d];
+  const dht = seg(0xc4, [0x10, 0xff, 0xd9, 1]); // 표 안에 우연히 FF D9
+  const out = stripJpeg(buf(seg(0xc2, [8, 0, 1, 0, 1, 1]), scan([0x11, 0xff, 0x00]), orient(1), seg(0xfe, ascii('x')), dht, scan([0x22, 0xff, 0xd3, 0x33]), [0xff, 0xd9]));
+  assert.deepEqual(out, new Uint8Array([0xff, 0xd8, ...seg(0xc2, [8, 0, 1, 0, 1, 1]), ...scan([0x11, 0xff, 0x00]), ...dht, ...scan([0x22, 0xff, 0xd3, 0x33]), 0xff, 0xd9]));
+});
+test('stripJpeg: 그림 데이터 밖의 길이 없는 표지는 null', () => {
+  assert.equal(stripJpeg(buf([0xff, 0x01], pic)), null);
+  assert.equal(stripJpeg(buf([0xff, 0xd0], pic)), null);
+});

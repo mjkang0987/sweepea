@@ -236,38 +236,39 @@ function readTiff(v: DataView, t: number, end: number): string | null {
 }
 
 /** JPEG에서 위치·기기 정보를 화질 손실 없이 뺀 바이트. 남기는 것: APP0(JFIF)·APP2 색 정보(ICC)·APP14(Adobe 색 변환)·그림 데이터.
- * 빼는 것: APP1(EXIF·XMP, GPS가 여기)·다른 APP·주석·EOI 뒤에 붙은 데이터. 회전 정보(Orientation≠1)가 있거나 깨졌으면 null(다시 저장해야 함) */
-export function stripJpeg(buf: ArrayBuffer): Uint8Array | null {
+ * 빼는 것: APP1(EXIF·XMP, GPS가 여기)·다른 APP·주석·EOI 뒤에 붙은 데이터(스캔 사이에 온 것도). 회전 정보(Orientation≠1)가 있거나 깨졌으면 null(다시 저장해야 함) */
+export function stripJpeg(buf: ArrayBuffer): Uint8Array<ArrayBuffer> | null {
   const b = new Uint8Array(buf);
   const v = new DataView(buf);
   if (b.length < 4 || v.getUint16(0) !== 0xffd8) return null;
   const keep: Uint8Array[] = [b.subarray(0, 2)];
   let p = 2;
-  while (p + 4 <= b.length) {
+  while (p + 2 <= b.length) {
     const marker = v.getUint16(p);
     if ((marker & 0xff00) !== 0xff00) return null;
     if (marker === 0xffff) { p++; continue; } // 채움 바이트
+    if (marker === 0xffd9) {
+      keep.push(b.subarray(p, p + 2));
+      const out = new Uint8Array(keep.reduce((n, x) => n + x.length, 0));
+      let o = 0;
+      for (const x of keep) (out.set(x, o), (o += x.length));
+      return out;
+    }
+    // 길이 없는 표지(TEM·RSTn)는 그림 데이터 밖에 오면 깨진 파일
+    if (marker === 0xff01 || (marker >= 0xffd0 && marker <= 0xffd8) || p + 4 > b.length) return null;
     const len = v.getUint16(p + 2);
     if (len < 2 || p + 2 + len > b.length) return null;
-    const seg = b.subarray(p, p + 2 + len);
+    let end = p + 2 + len;
     if (marker === 0xffda) {
-      // 그림 데이터: 안에서 FF 뒤엔 00·RSTn만 오므로 처음 FF D9가 끝(EOI). 프로그레시브는 사이에 다른 표지가 와도 괜찮다
-      for (let q = p + 2 + len; q + 1 < b.length; q++) {
-        if (b[q] === 0xff && b[q + 1] === 0xd9) {
-          keep.push(b.subarray(p, q + 2));
-          const out = new Uint8Array(keep.reduce((n, x) => n + x.length, 0));
-          let o = 0;
-          for (const x of keep) (out.set(x, o), (o += x.length));
-          return out;
-        }
-      }
-      return null;
+      // 그림 데이터: FF 뒤에 00·RSTn·채움이면 데이터, 아니면 다음 표지(프로그레시브는 스캔 사이에 표지가 온다)
+      while (end + 1 < b.length && !(b[end] === 0xff && b[end + 1] !== 0x00 && b[end + 1] !== 0xff && (b[end + 1] < 0xd0 || b[end + 1] > 0xd7))) end++;
+      if (end + 1 >= b.length) return null;
     }
     const app = marker >= 0xffe0 && marker <= 0xffef;
     if (marker === 0xffe1 && len >= 8 && v.getUint32(p + 4) === 0x45786966 && orientation(v, p + 10, p + 2 + len) > 1) return null;
     const icc = marker === 0xffe2 && len >= 14 && String.fromCharCode(...b.subarray(p + 4, p + 15)) === 'ICC_PROFILE';
-    if (!(app || marker === 0xfffe) || marker === 0xffe0 || marker === 0xffee || icc) keep.push(seg);
-    p += 2 + len;
+    if (!(app || marker === 0xfffe) || marker === 0xffe0 || marker === 0xffee || icc) keep.push(b.subarray(p, end));
+    p = end;
   }
   return null;
 }
