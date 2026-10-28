@@ -1744,11 +1744,6 @@
     display: block;
     columns: var(--cols);
   }
-  .sp-a__grid--2 .sp-a__cell,
-  .sp-f--wide .sp-a__grid--2 .sp-a__cell {
-    grid-column: auto;
-    grid-row: auto;
-  }
   .sp-a__grid--2 .sp-a__cell-link,
   .sp-a__grid--2 .sp-a__cell-img {
     height: auto;

@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-28 기준, dev 0.4.34 배포됨)
+## 새 세션 인계 (2026-10-28 기준, dev 0.4.35 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
 
 ### 지금 상태
 
-- dev = 0.4.34, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- dev = 0.4.35, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 17개 모두 적용(17번째 `20261027000004_finish_quota.sql` 완료 때 5GB 한도는 2026-10-28 사용자 승인 후 적용, 권한 그대로 service_role만). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v157, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
@@ -1168,11 +1168,14 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 결과: 검토 3회(1회: 넘겨 보기 반응 뒤 첫 카드로 튐·900장 넘는 자리·지워진 기준 사진·화면 읽기 알림·초점·버튼 대비, 2회: 스크립트 없는 다음 쪽 제목 0장·커서 엄격 확인·순번·올라온 날, 3회: 201번째부터 반응 수 빠짐·카드 id 겹침·낡은 주석), 모두 고침. loadmore e2e 25개(130장, 달·날 걸침, 끝 줄, 닫으면 같은 높이, 넘겨 보기 반응 뒤 그 카드, 스크립트 없음), QA 커서 시험(같은 시각 여럿·지워진 기준·MAX_ROWS 1000), 운영 Supabase에 새 조회 문법 확인(anon, 0행), 기존 e2e(save·family·delete·homelayer·masonry·comments·instant·chev·kidtabs·vplay 새 부분) 통과
 - 못 한 것: 실제 사진 많은 가족 데이터·실기기(아이폰 사파리 돌아온 높이·VoiceOver 알림)·900장 넘는 자리 화면 확인. vplay '한마디 보냄 토스트'는 원래부터 실패(이번 변경과 무관)
 
-### 89. feature/family-masonry — 가족 모아 보기 2줄을 엇갈린 배열로 (진행 중)
+### 89. feature/family-masonry — 가족 모아 보기 2줄을 엇갈린 배열로 (완료, dev 머지 0.4.35)
 - 요구(사용자 2026-10-28 "그게 나을까?" → 추천대로): 가족 모아 보기 기본 크기(2줄, 넓은 화면 4줄)는 CSS columns라 같은 날이 쪽을 넘어 이어져 칸을 합치면 그날 사진이 줄 사이로 다시 나뉘어 보이던 칸이 옆 줄로 옮겨감(리플로우). 순서도 줄마다 위→아래로 읽힘
 - 구현: 부모 홈과 같은 엇갈린 배열(`src/lib/masonry.ts`, 가장 짧은 줄에 차례로 쌓기, 디자인 GrandList 보드도 같은 방식). 서버가 날짜 묶음마다 2줄·4줄 자리를 `--c2/--r2/--s2`·`--c4/--r4/--s4`로 내보내고, 이어 붙여 합치면 브라우저가 그 묶음만 다시 계산(앞 칸 자리는 그대로). 다시 계산하는 함수는 `src/lib/more.ts`로 옮겨 홈과 같이 씀. 1줄(columns 1)·3·5줄(정사각형 격자)은 그대로
-- 영향 파일: `src/pages/album/index.astro`, `src/styles/family.css`, `src/lib/more.ts`, `src/pages/home.astro`, e2e
+- 영향 파일: `src/pages/album/index.astro`, `src/styles/family.css`, `src/styles/parent.css`, `src/lib/more.ts`, `src/lib/masonry.ts`(주석), `src/pages/home.astro`, `tools/e2e/loadmore.py`
 - 예상 결과: 사진이 늦게 오거나 다음 쪽을 합쳐도 보이던 칸이 움직이지 않음
+- 범위 바뀜(검토 2회): 칸 폭 단위(cqi)·container query가 없는 옛 브라우저(iOS 15 이하) 대비 `@supports not (container-type: inline-size)` — 가족 2줄은 CSS columns, 부모 홈(이미 배포된 엇갈린 배열)은 정사각 격자
+- 결과: 검토 3회(1회: 주석·e2e 비율 섞기, 2회: 옛 브라우저 대비, 3회: 쓸모없는 대비 줄·주석·문서), loadmore e2e 28개(쪽 경계에 걸친 날을 합쳐도 움직인 칸 0, 겹침 0, 휴대폰 2줄, 비율 섞음), QA로 세 쪽에 걸친 날 두 번 합치기·폭 바꾸기·z 전환·스크립트 없는 다음 쪽 확인, 대비 규칙은 CSS를 넣어 390·1280폭 겹침 0
+- 못 한 것: 실제 iOS 15 이하 사파리, 사진 많은 실제 가족 데이터. 아주 긴 파노라마는 칸에 맞게 잘림(부모 홈·디자인과 같은 규칙, 크게 보기에선 전체)
 
 ### 90. 도메인 연결 sweepea.co.kr + www (대기: 사용자 네임서버 변경)
 - 요구(사용자 2026-10-28): 도메인 연결, "www도 같이 연결되어야 해"
