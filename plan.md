@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-28 기준, dev 0.4.29 배포됨)
+## 새 세션 인계 (2026-10-28 기준, dev 0.4.30 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
 
 ### 지금 상태
 
-- dev = 0.4.29, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- dev = 0.4.30, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 16개 적용, **17번째 `20261027000004_finish_quota.sql`(완료 때 5GB 한도)는 사용자 확인 기다림**(적용 전에도 앱은 동작, 한도만 시작 때 확인). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v157, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
@@ -21,7 +21,7 @@
    3. ~~홈 레이어~~ 완료(74, 0.4.19)
    4. ~~가족 한 명~~ 완료(75, 0.4.20)
    5. 설정·그룹·아이·글자 크기·건강 기록: 바로 저장 화면(설정 스위치·글자 크기·아이 접종 보기·그룹 이름/기본 포함)은 완료(76, 0.4.21). 5b 그룹 공유·주소 다시 만들기도 완료(77, 0.4.22). 5c 접종 바로 저장 + 저장 버튼 아래 고정(대기열 D)도 완료(78, 0.4.23). 아이 고치기·추가는 목록으로 가는 흐름이라 이동은 그대로(버튼만 아래 고정)
-   6. 계정: 로그아웃·탈퇴 확인 레이어 / 조부모 설치 안내 버튼(부탁하기·알겠어요·다음에) 그 자리에서
+   6. ~~계정 탈퇴 확인 레이어 / 조부모 설치 안내 버튼 그 자리에서~~ 완료(85, 0.4.30). 로그아웃은 디자인에 확인이 없어 그대로
    - 그대로 둠: 로그인·비밀번호·처음 설정·올리기처럼 다음 화면으로 가는 흐름
    - 참고 구현: 설정 › 가족 `src/pages/settings/family/index.astro`의 스크립트(fetch → `.sp-p`·탭바 갈아 끼우기, 확인 모달 `#fam-ask`, 알림 칸 `#fam-live`·`#fam-urgent`)가 엄빠 화면 기본형. 크게 보기 `src/components/Viewer.astro`의 submit 가로채기(차례로 보내기·마지막 응답만 그림·토스트는 늘 있는 알림 칸으로 읽기), 사진 지우기 레이어 `src/pages/photo/[id].astro`(`dialog.sp-layer__modal` + `formmethod="dialog"` 취소)
 2. **사진·영상 찍은 날짜**: 지금은 JPEG만 EXIF, HEIC·PNG·영상은 파일 시각(아이폰에선 고른 시각일 수 있음). HEIC EXIF·MP4 생성 시각(mvhd) 읽기. 아이폰 사파리가 HEIC를 JPEG로 바꿀 때 찍은 날짜가 남는지는 실기기 확인 필요(`src/pages/upload.astro` photo()/video())
@@ -1036,7 +1036,7 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 예상 결과: 사진을 누르면 사진만, 다시 누르면 돌아옴. 넘겨도 사진만 상태 유지, 키보드로도 전환
 - 결과: 리뷰 3회 반영(사진만 켜면 토스트 지움·사진만 중에 온 토스트는 읽기만(숨긴 토스트가 나중에 다시 뜨지 않게), 마우스로 끌다 놓기·빠른 두 번째 누름은 버림, 일시정지 버튼은 메뉴도 돌려줌, 투명도 줄이기·포커스 테두리). 검사 `tools/e2e/viewbare.py` 19개, vswipe·comments 통과(vplay는 원래 있던 "한마디 보냄 토스트"만 실패), 가족 `/album` 화면도 직접 확인, astro check·build·단위 검사 통과
 
-### 85. feature/account-layer — 계정 탈퇴 확인 레이어·홈 화면에 두기 안내 그 자리에서 (진행 중, 디자인 이미 있음: Account·AccountDelete·AccountDeleteSub)
+### 85. feature/account-layer — 계정 탈퇴 확인 레이어·홈 화면에 두기 안내 그 자리에서 (완료, dev 머지 0.4.30, 디자인 이미 있음: Account·AccountDelete·AccountDeleteSub)
 
 - 요구(다음 할 일 1-6): 페이지 이동 줄이기 마지막. 계정의 탈퇴 확인을 다른 화면 대신 이 화면 위 레이어로, 조부모 홈 화면에 두기 안내의 부탁하기·알겠어요·다음에를 이동 없이 그 자리에서
 - 방식
@@ -1046,6 +1046,8 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
   - 안내 판 배치(앨범 위 판)는 그대로, 보드의 아래 시트 모양은 이번 범위 아님
 - 영향: `src/pages/settings/account.astro`, `src/components/InstallGuide.astro`, `src/pages/install.ts`, `src/styles/base.css`, `src/styles/parent.css`, `public/sad.svg`, e2e `tools/e2e/acclayer.py`(새), `install.py`·`delete.py`(이동 대신 레이어·판 사라짐 기다리기)
 - 예상 결과: 탈퇴하기 → 주소 그대로 레이어(모달·Esc·바깥 누르기·취소로 닫힘, 체크해야 탈퇴), 설치 안내 버튼 → 이동 없이 판 사라짐
+- 결과: 리뷰 3회 반영(로그아웃 줄 초점 테두리, 체크 전 탈퇴하기는 흐림 대신 바탕색+빨간 글자·테두리로 대비 4.5:1 이상(보드와 다름), 글자 200%면 두 버튼 위아래로, 닫으면 확인 체크 풀기, 설치 안내 401이면 다시 들어오기·서버 오류는 폼으로·모르는 값 400, 카카오 아이콘 색 토큰). 검사 `tools/e2e/acclayer.py` 29개, install·delete·photodel·homelayer 통과, astro check·build·단위 검사 통과
+- 알고 둔 것: 스크립트 없이 연 레이어는 모달이 아님(사진 지우기와 같은 패턴, 뒤 화면에 inert 주기는 따로), 부탁할 곳이 없으면(409) 판이 그대로라 반응 없음(예전 폼과 같음), 구독 중 레이어의 '구독 관리' 버튼은 결제 화면이 없어 뺌, 카카오 아이콘은 mock 계정에 제공자가 없어 화면으로 못 봄
 
 ## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
 
