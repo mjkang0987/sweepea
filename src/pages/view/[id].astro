@@ -6,7 +6,7 @@ import { applyReactPost, dayLabel, loadReacts, slideWindow } from '../../lib/alb
 import { getBackend } from '../../lib/backend';
 import { UUID } from '../../lib/media';
 import { callName } from '../../lib/ko';
-import { loadParent } from '../../lib/parent';
+import { loadParent, seoulDate } from '../../lib/parent';
 import { signedMediaUrl } from '../../lib/signed';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
@@ -42,7 +42,7 @@ const say = Astro.url.searchParams.get('say');
 const sayHere = Astro.url.searchParams.get('sm') === m.id || !Astro.url.searchParams.get('sm') ? say : null;
 // 아이를 안 골랐고 여럿이면 사진의 아이를 모르니 '아이'로
 const child = picked ? callName(picked.name) : kids.length === 1 ? callName(kids[0].name) : '아이';
-const saveName = `sweepea-${m.taken_at.slice(0, 10)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`;
+const saveName = `sweepea-${seoulDate(m.taken_at)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`;
 const view = (x: { id: string }) => `/view/${x.id}${kq}`;
 const slides = await slideWindow(items, i, view, (x) => `${dayLabel(x.taken_at)} ${x.kind === 'video' ? '영상' : '사진'}`);
 ---

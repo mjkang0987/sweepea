@@ -33,7 +33,9 @@ export async function pkce(): Promise<{ verifier: string; challenge: string }> {
 export const PKCE_COOKIE = 'sp_pkce';
 
 /** 서울 날짜 YYYY-MM-DD(새벽에 오늘 태어난 아이가 '미래'로 막히지 않게) */
-export const seoulToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+/** 한국 날짜 YYYY-MM-DD */
+export const seoulDate = (at: string | number | Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(at));
+export const seoulToday = () => seoulDate(new Date());
 
 /** 있는 날짜(2월 31일 같은 값 거절)이고 2010-01-01~오늘(서울)이면 true */
 export function validBirth(birth: string): boolean {
