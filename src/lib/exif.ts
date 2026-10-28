@@ -1,4 +1,170 @@
-// JPEG EXIF에서 촬영 시각만 읽는다(라이브러리 없이). 사진 파일 앞부분(128KB 정도)이면 충분하다
+// 사진·영상 파일 안의 촬영 시각만 읽는다(라이브러리 없이). JPEG·PNG는 앞부분(128KB 정도)이면 충분하고, HEIC은 Exif 항목 자리를 찾아 그 부분만 더 읽는다
+
+const HEAD = 128 * 1024;
+
+/** 사진 파일의 촬영 시각(ISO). 종류 표시가 아니라 앞부분 바이트로 JPEG·HEIC·PNG를 가린다. 없거나 깨졌으면 null
+ * shortcut: WebP는 EXIF가 보통 파일 끝이라 안 읽음, 폰 사진이 WebP로 오기 시작하면 끝부분도 읽는다 */
+export async function photoTakenAt(file: Blob): Promise<string | null> {
+  const iso = await readPhoto(file);
+  return iso && plausible(Date.parse(iso)) ? iso : null;
+}
+
+/** 파일 안 시각으로 믿을 만한가: 2001년부터 지금(+10분)까지. 시계가 초기화된 카메라(1980년)·앞서 간 시계·현지 시각을 UTC로 적은 영상(미래가 됨)은
+ * 버리고 파일 시각을 쓴다(정보 수정 화면의 날짜 범위 2000년~오늘 밖이면 저장이 막히므로) */
+export const plausible = (ms: number) => ms >= Date.UTC(2001, 0, 1) && ms <= Date.now() + 600_000;
+
+async function readPhoto(file: Blob): Promise<string | null> {
+  const buf = await file.slice(0, HEAD).arrayBuffer();
+  const v = new DataView(buf);
+  if (v.byteLength >= 12 && v.getUint32(4) === 0x66747970) {
+    // ISO 상자 'ftyp' → HEIC/HEIF
+    const at = heifExif(v);
+    if (!at || at.length < 8) return null;
+    const ex = new DataView(await file.slice(at.offset, at.offset + Math.min(at.length, HEAD)).arrayBuffer());
+    if (ex.byteLength < 8) return null;
+    // Exif 항목: 앞 4바이트는 TIFF 머리까지 건너뛸 길이(보통 'Exif\0\0' 6바이트)
+    const t = 4 + ex.getUint32(0);
+    return t + 8 <= ex.byteLength ? readTiff(ex, t, ex.byteLength) : null;
+  }
+  if (v.byteLength >= 8 && v.getUint32(0) === 0x89504e47 && v.getUint32(4) === 0x0d0a1a0a) return pngExif(v);
+  return exifTakenAt(buf);
+}
+
+/** PNG 'eXIf' 덩어리(내용이 바로 TIFF) */
+function pngExif(v: DataView): string | null {
+  let p = 8;
+  while (p + 8 <= v.byteLength) {
+    const len = v.getUint32(p);
+    const type = v.getUint32(p + 4);
+    if (type === 0x65584966) return readTiff(v, p + 8, Math.min(v.byteLength, p + 8 + len));
+    if (type === 0x49444154 || type === 0x49454e44) return null; // IDAT·IEND: 그림 시작·끝, eXIf는 그 앞에 온다
+    p += 12 + len;
+  }
+  return null;
+}
+
+/** HEIF 'meta' 상자에서 Exif 항목의 파일 안 위치(iinf로 항목 번호, iloc으로 자리). 못 찾으면 null */
+function heifExif(v: DataView): { offset: number; length: number } | null {
+  /** [start, stop) 안의 상자들 → [이름, 내용 시작, 끝] */
+  const boxes = (start: number, stop: number) => {
+    const out: [string, number, number][] = [];
+    let p = start;
+    while (p + 8 <= stop) {
+      let size = v.getUint32(p);
+      let head = 8;
+      if (size === 1) {
+        if (p + 16 > stop) break;
+        size = Number(v.getBigUint64(p + 8));
+        head = 16;
+      } else if (size === 0) size = stop - p;
+      if (size < head) break;
+      out.push([String.fromCharCode(v.getUint8(p + 4), v.getUint8(p + 5), v.getUint8(p + 6), v.getUint8(p + 7)), p + head, Math.min(stop, p + size)]);
+      p += size;
+    }
+    return out;
+  };
+  const get = (list: [string, number, number][], name: string) => list.find((x) => x[0] === name);
+  const meta = get(boxes(0, v.byteLength), 'meta');
+  if (!meta) return null;
+  const kids = boxes(meta[1] + 4, meta[2]); // meta는 FullBox(버전·플래그 4바이트)
+  const iinf = get(kids, 'iinf');
+  const iloc = get(kids, 'iloc');
+  if (!iinf || !iloc) return null;
+  // 범위 밖 읽기는 RangeError → 아래 try에서 null
+  try {
+    // iinf: 항목 정보(infe) 중 종류가 'Exif'인 것의 번호
+    let p = iinf[1];
+    p += 4 + (v.getUint8(p) === 0 ? 2 : 4);
+    let id = -1;
+    for (const [type, s, e] of boxes(p, iinf[2])) {
+      if (type !== 'infe' || e - s < 12) continue;
+      const ver = v.getUint8(s);
+      if (ver < 2) continue;
+      const q = s + 4;
+      const item = ver === 2 ? v.getUint16(q) : v.getUint32(q);
+      const kind = v.getUint32(q + (ver === 2 ? 4 : 6));
+      if (kind === 0x45786966) {
+        id = item;
+        break;
+      }
+    }
+    if (id < 0) return null;
+    // iloc: 항목 번호 → (자리, 길이). 방식 0은 파일 안 자리, 1은 meta 안 idat 안 자리
+    p = iloc[1];
+    const ver = v.getUint8(p);
+    p += 4;
+    const sizes = v.getUint8(p);
+    const sizes2 = v.getUint8(p + 1);
+    p += 2;
+    const offSize = sizes >> 4, lenSize = sizes & 15, baseSize = sizes2 >> 4, idxSize = ver === 1 || ver === 2 ? sizes2 & 15 : 0;
+    const num = (n: number) => {
+      const x = n === 0 ? 0 : n === 4 ? v.getUint32(p) : n === 8 ? Number(v.getBigUint64(p)) : NaN;
+      p += n;
+      return x;
+    };
+    if (lenSize === 0) return null; // 길이 없는 자리는 못 읽는다(크기 0이면 아래 루프가 제자리를 돈다)
+    const count = ver < 2 ? (p += 2, v.getUint16(p - 2)) : (p += 4, v.getUint32(p - 4));
+    for (let i = 0; i < count && p < iloc[2]; i++) {
+      const item = ver < 2 ? (p += 2, v.getUint16(p - 2)) : (p += 4, v.getUint32(p - 4));
+      const method = ver === 1 || ver === 2 ? (p += 2, v.getUint16(p - 2) & 15) : 0;
+      p += 2; // data_reference_index
+      const base = num(baseSize);
+      const extents = (p += 2, v.getUint16(p - 2));
+      if (p + extents * (idxSize + offSize + lenSize) > iloc[2]) return null;
+      let first: { offset: number; length: number } | null = null;
+      for (let j = 0; j < extents; j++) {
+        num(idxSize);
+        const off = num(offSize);
+        const len = num(lenSize);
+        first ??= { offset: base + off, length: len };
+      }
+      if (item !== id) continue;
+      if (!first || !Number.isFinite(first.offset) || !Number.isFinite(first.length)) return null;
+      if (method === 0) return first;
+      const idat = get(kids, 'idat');
+      return method === 1 && idat ? { offset: idat[1] + first.offset, length: first.length } : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** MP4·MOV 'moov/mvhd'의 만든 시각(UTC, 1904년부터 초). 믿을 만한 범위(plausible) 밖이면 null.
+ * 안드로이드 일부는 현지 시각을 UTC처럼 적어 몇 시간 늦게 보일 수 있다(미래가 되면 버려짐) */
+export async function mp4CreatedAt(file: Blob): Promise<string | null> {
+  let p = 0;
+  // 위 단계 상자(ftyp·mdat·moov…)를 머리만 읽으며 건너뛴다. moov는 앞에도 끝에도 올 수 있다
+  for (let i = 0; i < 64 && p + 8 <= file.size; i++) {
+    const h = new DataView(await file.slice(p, p + 16).arrayBuffer());
+    let size = h.getUint32(0);
+    let head = 8;
+    if (size === 1 && h.byteLength >= 16) {
+      size = Number(h.getBigUint64(8));
+      head = 16;
+    } else if (size === 0) size = file.size - p;
+    if (size < head) return null;
+    if (h.getUint32(4) === 0x6d6f6f76) {
+      // moov 안 첫 상자들 중 mvhd(보통 맨 앞)
+      const m = new DataView(await file.slice(p + head, p + Math.min(size, head + 4096)).arrayBuffer());
+      let q = 0;
+      while (q + 8 <= m.byteLength) {
+        const n = m.getUint32(q);
+        if (m.getUint32(q + 4) === 0x6d766864 && q + 16 <= m.byteLength) {
+          const ver = m.getUint8(q + 8);
+          const secs = ver === 1 ? (q + 20 <= m.byteLength ? Number(m.getBigUint64(q + 12)) : NaN) : m.getUint32(q + 12);
+          const ms = (secs - 2082844800) * 1000;
+          return plausible(ms) ? new Date(ms).toISOString() : null;
+        }
+        if (n < 8) return null;
+        q += n;
+      }
+      return null;
+    }
+    p += size;
+  }
+  return null;
+}
 
 /** DateTimeOriginal(+OffsetTimeOriginal)을 ISO 시각으로. 시간대가 없으면 한국 시간(+09:00)으로 본다. 없거나 깨졌으면 null */
 export function exifTakenAt(buf: ArrayBuffer): string | null {

@@ -1,6 +1,7 @@
 ---
 // 크게 보기: 사진·영상이 화면 가득, 위 메뉴·아래 판이 반투명으로 겹친다. 이 화면만 작은 스크립트(영상 재생 막대·옆으로 밀기).
 // 스크립트가 없어도 ‹ › 링크로 넘기고 영상은 브라우저 기본 재생 막대로 본다
+import { seoulDate } from '../../lib/parent';
 import Family from '../../layouts/Family.astro';
 import Viewer from '../../components/Viewer.astro';
 import { albumHref, dayLabel, handleReactPost, loadAlbum, loadReacts, slideWindow } from '../../lib/album';
@@ -37,7 +38,7 @@ const say = Astro.url.searchParams.get('say');
 // 부모가 '가족도 사진 저장하기'를 켠 가족방이면 저장 링크(같은 주소라 download 속성이 먹는다)
 const canSave = open.find((f) => f.family_id === m.family_id)?.download_allowed ?? false;
 const sayHere = Astro.url.searchParams.get('sm') === m.id || !Astro.url.searchParams.get('sm') ? say : null;
-const saveName = `sweepea-${m.taken_at.slice(0, 10)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`;
+const saveName = `sweepea-${seoulDate(m.taken_at)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`;
 ---
 
 <Family title={`${label} · ${i + 1} / ${items.length}`} wide>

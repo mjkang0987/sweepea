@@ -1,7 +1,7 @@
 // node --test (Node 24는 .ts를 그대로 실행)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { exifTakenAt, fitSize } from '../src/lib/exif.ts';
+import { exifTakenAt, fitSize, mp4CreatedAt, photoTakenAt } from '../src/lib/exif.ts';
 
 /** EXIF가 든 최소 JPEG(빅/리틀 엔디언, 시간대 있음/없음) */
 function jpeg(date: string, opts: { le?: boolean; offset?: string } = {}): ArrayBuffer {
@@ -54,4 +54,74 @@ test('긴 변 맞추기', () => {
   assert.deepEqual(fitSize(4032, 3024, 2048), { width: 2048, height: 1536 });
   assert.deepEqual(fitSize(800, 600, 2048), { width: 800, height: 600 });
   assert.deepEqual(fitSize(1000, 4000, 480), { width: 120, height: 480 });
+});
+
+// ---- HEIC·PNG·영상(87) ----
+const u32 = (n: number) => [n >>> 24, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+const u16 = (n: number) => [n >> 8, n & 0xff];
+const cc = (t: string) => [...t].map((c) => c.charCodeAt(0));
+const box = (type: string, body: number[]) => [...u32(8 + body.length), ...cc(type), ...body];
+/** jpeg()에서 TIFF 부분만(FFD8 FFE1 길이 'Exif\0\0' 12바이트 뒤, 끝 FFD9 앞) */
+const tiffOf = (date: string, offset?: string) => [...new Uint8Array(jpeg(date, { offset }))].slice(12, -2);
+
+/** 최소 HEIC: ftyp + meta(iinf: 1 hvc1, 2 Exif / iloc) + mdat 또는 meta 안 idat */
+function heic(date: string, opts: { idat?: boolean; noExif?: boolean } = {}): Uint8Array<ArrayBuffer> {
+  const exif = [...u32(6), ...cc('Exif'), 0, 0, ...tiffOf(date)];
+  const infe = (id: number, type: string) => box('infe', [2, 0, 0, 0, ...u16(id), ...u16(0), ...cc(type), 0]);
+  const iinf = box('iinf', [0, 0, 0, 0, ...u16(2), ...infe(1, 'hvc1'), ...infe(2, opts.noExif ? 'mime' : 'Exif')]);
+  const ver = opts.idat ? 1 : 0;
+  const iloc = (off: number) => box('iloc', [ver, 0, 0, 0, 0x44, 0x00, ...u16(1), ...u16(2), ...(ver ? u16(1) : []), ...u16(0), ...u16(1), ...u32(off), ...u32(exif.length)]);
+  const ftyp = box('ftyp', [...cc('heic'), 0, 0, 0, 0, ...cc('mif1'), ...cc('heic')]);
+  const meta = (off: number) => box('meta', [0, 0, 0, 0, ...box('hdlr', [0, 0, 0, 0, 0, 0, 0, 0, ...cc('pict'), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), ...iinf, ...iloc(off), ...(opts.idat ? box('idat', exif) : [])]);
+  if (opts.idat) return new Uint8Array([...ftyp, ...meta(0)]);
+  const head = ftyp.length + meta(0).length;
+  return new Uint8Array([...ftyp, ...meta(head + 8), ...box('mdat', exif), ...new Array(100).fill(7)]);
+}
+test('HEIC: mdat 안 Exif 항목', async () => {
+  assert.equal(await photoTakenAt(new Blob([heic('2026:10:21 15:30:00')])), '2026-10-21T06:30:00.000Z');
+});
+test('HEIC: meta 안 idat의 Exif 항목(iloc 방식 1)', async () => {
+  assert.equal(await photoTakenAt(new Blob([heic('2025:01:02 03:04:05', { idat: true })])), '2025-01-01T18:04:05.000Z');
+});
+test('HEIC: Exif 항목 없음·잘림은 null', async () => {
+  assert.equal(await photoTakenAt(new Blob([heic('2026:10:21 15:30:00', { noExif: true })])), null);
+  assert.equal(await photoTakenAt(new Blob([heic('2026:10:21 15:30:00').slice(0, 60)])), null);
+});
+test('PNG eXIf', async () => {
+  const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  const chunk = (t: string, d: number[]) => [...u32(d.length), ...cc(t), ...d, 0, 0, 0, 0];
+  const png = (withExif: boolean) => new Blob([new Uint8Array([...sig, ...chunk('IHDR', new Array(13).fill(0)), ...(withExif ? chunk('eXIf', tiffOf('2026:10:21 15:30:00', '+00:00')) : []), ...chunk('IDAT', [1, 2]), ...chunk('IEND', [])])]);
+  assert.equal(await photoTakenAt(png(true)), '2026-10-21T15:30:00.000Z');
+  assert.equal(await photoTakenAt(png(false)), null);
+});
+test('믿을 수 없는 사진 시각(1980년·미래)은 null', async () => {
+  assert.equal(await photoTakenAt(new Blob([jpeg('1980:01:01 00:00:00')])), null);
+  assert.equal(await photoTakenAt(new Blob([jpeg('2099:01:01 00:00:00')])), null);
+  assert.equal(await photoTakenAt(new Blob([heic('1980:01:01 00:00:00')])), null);
+});
+test('JPEG은 종류 표시 없이도(바이트로 판별)', async () => {
+  assert.equal(await photoTakenAt(new Blob([jpeg('2026:10:21 15:30:00')])), '2026-10-21T06:30:00.000Z');
+});
+
+/** 최소 MP4: ftyp + (mdat, moov 순서 고를 수 있음). mvhd 만든 시각은 1904년부터 초 */
+function mp4(unix: number, opts: { v1?: boolean; moovFirst?: boolean } = {}): Blob {
+  const secs = unix + 2082844800;
+  const mvhd = opts.v1
+    ? box('mvhd', [1, 0, 0, 0, ...u32(Math.floor(secs / 2 ** 32)), ...u32(secs >>> 0), ...new Array(8 + 4 + 8 + 80).fill(0)])
+    : box('mvhd', [0, 0, 0, 0, ...u32(secs), ...new Array(4 + 4 + 4 + 80).fill(0)]);
+  const moov = box('moov', [...mvhd, ...box('trak', [])]);
+  const mdat = box('mdat', new Array(5000).fill(1));
+  const ftyp = box('ftyp', [...cc('isom'), 0, 0, 2, 0]);
+  return new Blob([new Uint8Array(opts.moovFirst ? [...ftyp, ...moov, ...mdat] : [...ftyp, ...mdat, ...moov])]);
+}
+test('MP4 mvhd 만든 시각(moov 끝·앞, 버전 0·1)', async () => {
+  const t = Date.UTC(2026, 9, 21, 6, 30) / 1000;
+  assert.equal(await mp4CreatedAt(mp4(t)), '2026-10-21T06:30:00.000Z');
+  assert.equal(await mp4CreatedAt(mp4(t, { moovFirst: true })), '2026-10-21T06:30:00.000Z');
+  assert.equal(await mp4CreatedAt(mp4(t, { v1: true })), '2026-10-21T06:30:00.000Z');
+});
+test('MP4 만든 시각이 0(1904년)·미래·moov 없음은 null', async () => {
+  assert.equal(await mp4CreatedAt(mp4(-2082844800)), null);
+  assert.equal(await mp4CreatedAt(mp4(Math.floor(Date.now() / 1000) + 9 * 3600)), null); // 현지 시각을 UTC로 적은 갓 찍은 영상
+  assert.equal(await mp4CreatedAt(new Blob([new Uint8Array(box('ftyp', cc('isom')))])), null);
 });

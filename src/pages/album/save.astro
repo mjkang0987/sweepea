@@ -1,6 +1,7 @@
 ---
 // 골라서 저장하기: 모아 보기에서 여러 장 골라 휴대폰에 저장. 엄마아빠가 '가족도 사진 저장하기'를 켠 집 사진만.
 // 스크립트가 있으면 공유 창(휴대폰 '이미지 저장')이나 한 장씩 내려받기, 없으면 고른 사진마다 저장 링크 목록
+import { seoulDate } from '../../lib/parent';
 import Family from '../../layouts/Family.astro';
 import { albumHref, dayLabel, loadAlbum } from '../../lib/album';
 import { signedMediaUrl } from '../../lib/signed';
@@ -20,7 +21,7 @@ const cards = await Promise.all(
     id: m.id,
     thumb: await signedMediaUrl(m.thumb_key),
     src: await signedMediaUrl(m.view_key),
-    name: `sweepea-${m.taken_at.slice(0, 10)}-${m.id.slice(0, 4)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`,
+    name: `sweepea-${seoulDate(m.taken_at)}-${m.id.slice(0, 4)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`,
     label: `${dayLabel(m.taken_at)} ${showTag ? `${kids.get(m.family_id)} ` : ''}${m.kind === 'video' ? '영상' : '사진'}`,
     width: m.width,
     height: m.height,

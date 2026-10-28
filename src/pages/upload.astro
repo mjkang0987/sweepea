@@ -101,7 +101,7 @@ const kid = callName(kids[0]?.name ?? '아이');
 </Parent>
 
 <script>
-  import { exifTakenAt, fitSize } from '../lib/exif';
+  import { fitSize, mp4CreatedAt, photoTakenAt, plausible } from '../lib/exif';
 
   type Item = {
     kind: 'photo' | 'video';
@@ -219,12 +219,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
     const { view, thumb } = await viewAndThumb(bmp, bmp.width, bmp.height, 2048);
     bmp.close();
-    let exif: string | null = null;
-    try {
-      if (file.type === 'image/jpeg') exif = exifTakenAt(await file.slice(0, 128 * 1024).arrayBuffer());
-    } catch {
-      exif = null;
-    }
+    const exif = await photoTakenAt(file).catch(() => null);
     return {
       kind: 'photo', view: view.blob, thumb: thumb.blob, width: view.width, height: view.height,
       takenAt: exif ?? new Date(file.lastModified).toISOString(), takenAtSource: exif ? 'exif' : 'file',
@@ -286,6 +281,24 @@ const kid = callName(kids[0]?.name ?? '아이');
     }
   }
 
+  /** 영상 안 촬영 시각: 아이폰 creationdate(시간대 있음, mediabunny가 읽음) → mvhd 만든 시각 → 없으면 null */
+  async function videoTakenAt(file: File): Promise<string | null> {
+    let input: import('mediabunny').Input | undefined;
+    try {
+      const mb = await import('mediabunny');
+      input = new mb.Input({ source: new mb.BlobSource(file), formats: mb.ALL_FORMATS });
+      const d = (await input.getMetadataTags()).date;
+      // 날짜만 적힌 태그(©day '2024' 등)는 자정 UTC가 되어 시각이 틀리므로 mvhd로 넘긴다
+      const t = d?.getTime() ?? NaN;
+      if (plausible(t) && t % 86_400_000 !== 0) return new Date(t).toISOString();
+    } catch {
+      // 못 읽으면 아래 mvhd로
+    } finally {
+      input?.dispose();
+    }
+    return mp4CreatedAt(file).catch(() => null);
+  }
+
   async function video(file: File, progress: (p: number) => void): Promise<Item> {
     if (!VIDEO_TYPES.includes(file.type)) throw new Error('type');
     if (file.size > VIDEO_MAX) throw new Error('too_large');
@@ -305,13 +318,13 @@ const kid = callName(kids[0]?.name ?? '아이');
       // 줄이는 동안 영상 칸이 같은 영상을 따로 풀고 있지 않게 비운다(아이폰 메모리)
       v.removeAttribute('src');
       v.load();
-      const small = await shrink(file, duration, progress);
+      const [small, taken] = await Promise.all([shrink(file, duration, progress), videoTakenAt(file)]);
       return {
         kind: 'video', view: small?.blob ?? file, poster: poster.blob, thumb: thumb.blob,
         width: small?.width ?? videoWidth, height: small?.height ?? videoHeight,
         durationSec: Math.round(duration * 100) / 100,
-        // shortcut: 영상은 파일 시각(아이폰은 내보낸 시각일 수 있음). 정확히 하려면 MP4 mvhd 생성 시각을 읽는다
-        takenAt: new Date(file.lastModified).toISOString(), takenAtSource: 'file',
+        // 파일 안 시각은 DB 출처 값 중 'exif'로 적는다
+        takenAt: taken ?? new Date(file.lastModified).toISOString(), takenAtSource: taken ? 'exif' : 'file',
         url: URL.createObjectURL(thumb.blob),
       };
     } finally {
