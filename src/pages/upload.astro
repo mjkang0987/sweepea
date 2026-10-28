@@ -13,7 +13,7 @@ const kids = a.home.children ?? [];
 const kid = callName(kids[0]?.name ?? '아이');
 ---
 
-<Parent title="사진 올리기 · 스위피" wide savebar>
+<Parent title="사진 올리기 · 스위피" wide savebar={2}>
   <form class="sp-p__form" id="up-form" data-family={a.home.family_id} data-kid={kid} novalidate>
     <nav class="sp-p__bar sp-p__bar--title" aria-label="올리기">
       <a class="sp-p__back sp-p__back--cancel" href="/home">취소</a>
@@ -150,7 +150,12 @@ const kid = callName(kids[0]?.name ?? '아이');
   const NO_GROUP = '보여줄 그룹을 하나 이상 골라 주세요.';
 
   // 상태 칸은 늘 있고(화면 읽기가 바로 읽게) 비었을 때만 CSS로 숨긴다
-  const say = (text: string) => (status.textContent = text);
+  // 버튼 막대가 아래에 고정이라 상태 칸이 화면 밖일 수 있다: 새로 나타날 때만 보이게 스크롤(진행 중엔 끌어당기지 않게)
+  const say = (text: string) => {
+    const appear = !!text && !status.textContent;
+    status.textContent = text;
+    if (appear) status.scrollIntoView({ block: 'nearest' });
+  };
   // 못 올린 안내는 진행 글과 따로 빨간 칸에(role=alert). 고를 때 뺀 파일은 이름·이유 목록
   const alertBox = $('up-alert');
   const warn = (head = '', rows: string[] = []) => {
@@ -168,6 +173,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       ul.appendChild(li);
     }
     alertBox.replaceChildren(p, ...(rows.length ? [ul] : []));
+    alertBox.scrollIntoView({ block: 'nearest' });
   };
   const TAG = { done: '올림', sending: '올리는 중', fail: '못 올림' } as const;
   // 그룹을 고르면 '그룹을 골라 주세요'만 지운다(고를 때 뺀 파일 목록 같은 다른 안내는 둔다)
@@ -449,6 +455,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     }
     letSleep();
     prog.hidden = true;
+    status.style.removeProperty('--p');
     busy = false;
     shrinking = false;
     $('up-shrink-hint').hidden = true;
@@ -569,6 +576,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     } catch (err) {
       letSleep();
       prog.hidden = true;
+      status.style.removeProperty('--p');
       busy = false;
       // 용량이 다 차면 남은 것도 못 올라가므로 모두 못 올림
       const full = err instanceof HttpError && err.status === 507;
@@ -590,6 +598,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     }
     letSleep();
     prog.hidden = true;
+    status.style.removeProperty('--p');
     if (mode !== 'share') return location.assign('/home');
     const ids = order.map((i) => items[i].id!);
     say('보낼 주소를 만드는 중…');
@@ -600,6 +609,8 @@ const kid = callName(kids[0]?.name ?? '아이');
         body: JSON.stringify({ groupIds, mediaIds: ids }),
       });
       form.hidden = true;
+      // 막대가 없어졌으니 그 자리 아래 여백도 뺀다
+      form.closest('.sp-p')?.classList.remove('sp-p--savebar', 'sp-p--savebar2');
       const done = $('up-done');
       done.hidden = false;
       $<HTMLInputElement>('up-link').value = url;
@@ -618,6 +629,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       $('up-copy').addEventListener('click', () => copy(url, '주소를 복사했어요.'));
     } catch {
       form.hidden = true;
+      form.closest('.sp-p')?.classList.remove('sp-p--savebar', 'sp-p--savebar2');
       $('up-noshare').hidden = false;
       $('up-noshare-title').focus();
     }

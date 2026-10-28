@@ -192,12 +192,47 @@
   bottom: calc(var(--savebar-h) + 12px + env(safe-area-inset-bottom));
 }
 /* 버튼이 둘인 막대(올리기: 카톡으로 보내기 + 올리기만) */
-.sp-p--savebar:has(.sp-p__savebar .sp-p__btn + .sp-p__btn) {
+.sp-p--savebar2 {
   --savebar-h: calc(2 * 3.25rem + var(--space-2) + 2 * var(--space-3) + 1px);
 }
-/* 포커스된 칸이 막대 밑에 숨지 않게(탭바 + 버튼 둘 막대까지) */
+/* 포커스된 칸이 막대 밑에 숨지 않게(탭바 + 버튼 둘 막대까지, :has 모르는 브라우저는 기본 8.5rem) */
 .sp-html:has(.sp-p--savebar) {
   scroll-padding-bottom: calc(3.5rem + 1px + 2 * 3.25rem + var(--space-2) + 2 * var(--space-3) + 1px + var(--space-4) + env(safe-area-inset-bottom));
+}
+/* 넓은 화면 올리기: 버튼은 오른쪽 칸 안 제자리(높이가 넉넉함) */
+@media (min-width: 64rem) {
+  .sp-p.sp-p--wide .sp-p__savebar {
+    position: static;
+    padding: 0;
+    border-top: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .sp-p.sp-p--wide.sp-p--savebar {
+    padding-bottom: var(--space-6);
+  }
+}
+/* 낮은 화면(가로로 든 폰·크게 확대): 막대가 화면 절반을 가리지 않게 고정을 푼다 */
+@media (max-height: 30rem) {
+  .sp-p__savebar,
+  .sp-p:not(.sp-p--tabbed) .sp-p__savebar {
+    position: static;
+    padding: 0;
+    border-top: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .sp-p--savebar.sp-p--tabbed {
+    padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  }
+  .sp-p--savebar:not(.sp-p--tabbed) {
+    padding-bottom: var(--space-6);
+  }
+  .sp-html:has(.sp-p--savebar) {
+    scroll-padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  }
 }
 .sp-p__btn,
 .sp-p__login {

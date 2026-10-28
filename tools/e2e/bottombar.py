@@ -32,6 +32,14 @@ with sync_playwright() as p:
     check(pg.locator('#up-bar').evaluate("e=>e.classList.contains('sp-vh')"),'올리기: 진행 막대는 화면에서 숨김(화면 읽기용만)')
     pg.set_input_files('#up-files',[D+'u0.jpg',D+'u1.jpg',D+'u2.jpg']); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=60000)
     last_clear(pg,'.sp-p__up-note','#up-actions','올리기: 안내 글이 막대 밑에 안 숨음')
+    # 그룹을 다 끄고 누르면 화면 밖 알림 칸이 보이게 스크롤
+    pg.evaluate("window.scrollTo(0,0)")
+    for c in pg.locator('input[name=group]:checked').all(): c.uncheck()
+    pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_timeout(400)
+    ab=pg.locator('#up-alert').bounding_box(); bar=pg.locator('#up-actions').bounding_box()
+    check(ab and ab['y']>=0 and ab['y']+ab['height']<=bar['y']+1,'그룹 없이 누르면 알림 칸이 막대 위에 보임')
+    for c in pg.locator('input[name=group]').all(): c.check()
+    pg.evaluate("window.scrollTo(0,0)")
     # 올리는 중 상태 칸 배경이 차오르는지(느린 네트워크로 잡아 둔다)
     pg.route('**/api/media/**',lambda r:(pg.wait_for_timeout(400),r.continue_()))
     pg.get_by_role('button',name='보내지 않고 올리기만').click()
@@ -40,7 +48,16 @@ with sync_playwright() as p:
     bg=st.evaluate("e=>getComputedStyle(e).backgroundImage")
     check('gradient' in bg,'올리는 중: 상태 칸 배경이 진행 막대(그라디언트)')
     pg.screenshot(path=W+'/bb-upload.png')
+    sb=st.bounding_box(); check(sb['y']>=0 and sb['y']+sb['height']<=pg.locator('#up-actions').bounding_box()['y']+1,'올리기 시작하면 상태 칸이 막대 위에 보임')
     pg.wait_for_url('**/home**',timeout=60000)
+    pg.unroute('**/api/media/**')
+    # 넓은 화면: 버튼은 오른쪽 칸 안 제자리
+    pg.set_viewport_size({'width':1280,'height':900}); pg.goto(B+'/upload')
+    check(pg.locator('#up-actions').evaluate("e=>getComputedStyle(e).position")=='static','넓은 화면 올리기: 버튼 제자리(고정 안 함)')
+    # 낮은 화면(가로로 든 폰): 고정 풀림
+    pg.set_viewport_size({'width':844,'height':390}); pg.goto(B+'/upload')
+    check(pg.locator('#up-actions').evaluate("e=>getComputedStyle(e).position")=='static','낮은 화면: 막대 고정 풀림')
+    pg.set_viewport_size({'width':390,'height':H})
     # 문자 공유(탭 있음): 가족이 없으면 막대 없음
     pg.goto(B+'/settings/family/sms'); check(pg.locator('.sp-p__savebar').count()==0 and 'sp-p--savebar' not in pg.locator('main').get_attribute('class'),'문자 공유: 들어온 가족 없으면 막대 없음')
     # 가족 비밀번호(가족 화면): 맨 아래 고정
