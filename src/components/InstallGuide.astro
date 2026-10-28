@@ -64,11 +64,14 @@ const steps =
     e.preventDefault();
     if (busy || !box) return;
     busy = true;
-    const body = new FormData(form, by);
+    const body = new FormData(form);
+    if (by) body.append(by.name, by.value);
     try {
       const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin', headers: { 'x-sp-inplace': '1' } });
-      // 부탁할 곳이 없거나 실패하면 폼으로 보낼 때처럼 판을 그대로 둔다
-      if (!r.ok) return;
+      // 로그인이 풀렸으면 다시 들어오기로, 부탁할 곳이 없으면(409) 폼으로 보낼 때처럼 판을 그대로 둔다
+      if (r.status === 401) return location.assign('/');
+      if (r.status === 409) return;
+      if (!r.ok) throw new Error(String(r.status));
       // 판 바로 뒤에서 처음 누를 수 있는 것(스크립트 태그 같은 건 건너뜀)
       let el = box.nextElementSibling;
       let next: HTMLElement | null = null;
@@ -80,7 +83,7 @@ const steps =
         done.focus();
       } else next?.focus();
     } catch {
-      // 연결이 끊기면 폼으로 다시 보낸다(누른 버튼 값을 붙여서)
+      // 연결이 끊기거나 서버 오류면 폼으로 다시 보낸다(누른 버튼 값을 붙여서)
       if (by) form.appendChild(Object.assign(document.createElement('input'), { type: 'hidden', name: by.name, value: by.value }));
       form.submit();
     } finally {

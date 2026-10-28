@@ -15,6 +15,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const inplace = request.headers.get('x-sp-inplace') === '1';
   const done = (status = 204) => (inplace ? new Response(null, { status }) : redirect(to, 303));
   const set = (v: string, maxAge: number) => cookies.set(INSTALL_COOKIE, v, { path: '/', sameSite: 'lax', secure: import.meta.env.PROD, maxAge });
+  if (inplace && !['ok', 'later', 'ask'].includes(action)) return new Response(null, { status: 400 });
   if (action === 'ok') set('ok', INSTALL_AGES.ok);
   else if (action === 'later') set('later', INSTALL_AGES.later);
   else if (action === 'ask') {

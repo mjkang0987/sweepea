@@ -38,6 +38,8 @@ with sync_playwright() as p:
     check(dlg.is_visible() and pg.url.endswith('/settings/account'),'탈퇴하기 누르면 주소 그대로 레이어')
     check(pg.evaluate("document.getElementById('del').matches(':modal')"),'레이어는 모달(뒤 화면 못 누름)')
     check(pg.evaluate("document.activeElement.textContent.trim()")=='취소','처음 초점은 취소')
+    btn=dlg.get_by_role('button',name='탈퇴하기')
+    check(btn.evaluate("e=>getComputedStyle(e).color")!=btn.evaluate("e=>getComputedStyle(e).backgroundColor") and btn.evaluate("e=>getComputedStyle(e).opacity")=='1','체크 전 탈퇴하기는 흐리지 않고 연한 바탕')
     check('사진 0장과' in dlg.inner_text(),'지워질 사진 수 안내')
     pg.wait_for_timeout(600); pg.screenshot(path=D+'acc-1.png')
     pg.get_by_role('button',name='취소').click()
@@ -88,6 +90,14 @@ with sync_playwright() as p:
     check(not navs and done.is_visible() and pg.evaluate("document.activeElement.id")=='install-done','부탁하기: 이동 없이 알림이 보이고 초점')
     pg.screenshot(path=D+'acc-3.png')
     pg.reload(); check(GUIDE(pg).count()==0 and pg.locator('#install-done').count()==0,'다시 열면 판·알림 둘 다 없음')
+    c.close()
+    # 3b) 로그인이 풀렸으면 다시 들어오기로, 모르는 값은 400
+    c,pg=family(b,KAKAO,'이모')
+    st=pg.request.post(B+'/install',form={'do':'bogus','back':'/album'},headers={'x-sp-inplace':'1','origin':B}).status
+    check(st==400,'모르는 값은 400 ('+str(st)+')')
+    c.clear_cookies(name='sp_pass')
+    pg.get_by_role('button',name='엄마아빠에게 부탁하기').click(); pg.wait_for_url(lambda u: '/album' not in u)
+    check('/album' not in pg.url,'로그인이 풀렸으면 다시 들어오기 화면으로 ('+pg.url+')')
     c.close()
     # 4) 스크립트 없음: 폼으로 보내고 앨범 다시 그림(예전대로)
     c,pg=family(b,KAKAO,'이모',False)
