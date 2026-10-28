@@ -534,7 +534,7 @@
   font-weight: 700;
 }
 
-/* 모아 보기: 날짜별, 칸 수는 ?z=. 원본 비율 그대로 쌓기(CSS columns) */
+/* 모아 보기: 날짜별, 칸 수는 ?z=. 1칸은 원본 비율 그대로(CSS columns), 2줄은 엇갈린 배열(masonry.ts), 3·5칸은 정사각 격자 */
 .sp-a__day {
   display: flex;
   flex-direction: column;

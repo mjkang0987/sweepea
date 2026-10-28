@@ -6,8 +6,8 @@ import os,sys,struct,tempfile
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D=os.path.dirname(os.path.abspath(__file__))+'/'
 W=sys.argv[1] if len(sys.argv)>1 else tempfile.gettempdir()
-SRC=open(D+'u2.jpg','rb').read()
-def jpg(path,date):
+SRCS=[open(D+f,'rb').read() for f in ('u0.jpg','u1.jpg','u2.jpg','tall.jpg','pano.jpg')]  # 비율 섞기(세로·가로·정사각·아주 긴 것)
+def jpg(path,date,SRC):
     d=date.encode()+b'\0'; o=b'+09:00\0'
     tiff=b'II'+struct.pack('<HI',42,8)+struct.pack('<HHHII',1,0x8769,4,1,26)+struct.pack('<I',0)
     tiff+=struct.pack('<HHHII',2,0x9003,2,20,56)+struct.pack('<HHII',0x9011,2,7,76)+struct.pack('<I',0)+d+o
@@ -16,10 +16,10 @@ def jpg(path,date):
 FILES=[]
 for m,n in ((6,30),(5,70),(4,30)):
     for i in range(n):
-        f=os.path.join(W,f'lm2-{m}-{i:02d}.jpg')
+        f=os.path.join(W,f'lm3-{m}-{i:02d}.jpg')
         day=15 if m==5 and 20<=i<50 else 1+i%28
         if m==5 and day==15 and not 20<=i<50: day=16
-        if not os.path.exists(f): jpg(f,f'2024:{m:02d}:{day:02d} {10+i%10:02d}:{i%60:02d}:{i%60:02d}')
+        if not os.path.exists(f): jpg(f,f'2024:{m:02d}:{day:02d} {10+i%10:02d}:{i%60:02d}:{i%60:02d}',SRCS[(m+i)%5])
         FILES.append(f)
 FAILS=[]
 def check(c,msg):
