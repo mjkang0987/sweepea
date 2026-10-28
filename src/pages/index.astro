@@ -16,8 +16,15 @@ if (pass) {
   if (families.length) return Astro.redirect('/wait');
 }
 const home = `${(SITE_ORIGIN || Astro.url.origin).replace(/\/$/, '')}/`;
-// 한 장(92, 사용자 "한 장으로 설명되면 좋겠는데"): 처음 보는 사람이 바로 '내 얘기'라고 느끼는 제목(사용자 고른 A: 단톡방) + 정체(가족 앨범) 한 줄, 핵심 3줄, 시작하기, 가족 안내. 제품 사실만, 디자인 Landing
-const points = ['외가·친가 따로, 처음 보는 이름은 엄마아빠가 확인해요', '단톡방처럼 만료되지 않고 앨범에 계속 쌓여요', '할머니의 하트와 한마디가 나에게 돌아와요'];
+// 한 장(92): 처음 보는 사람이 '내 얘기'라고 느끼는 제목(단톡방) + 두 줄 + 실제 서비스 화면(할머니가 링크로 보는 넘겨 보기, 디자인 Landing) + 짧은 낱말 셋 + 시작하기. 제품 사실만
+const chips = ['앱 설치 없이', '외가·친가 따로', '지우기 전엔 그대로'];
+const reacts = [
+  { e: '❤️', n: 3, on: true },
+  { e: '👍', n: 1 },
+  { e: '😊' },
+  { e: '😭' },
+  { e: '✨' },
+];
 ---
 
 <Parent
@@ -25,24 +32,41 @@ const points = ['외가·친가 따로, 처음 보는 이름은 엄마아빠가 
   description="아기 사진을 올리고 카톡으로 링크만 보내면 할머니·할아버지는 앱 설치도 가입도 없이 바로 봐요. 외가·친가는 따로, 처음 보는 이름은 엄마아빠가 확인해요. 무료 5GB로 시작하세요."
   canonical={home}
 >
-  <section class="sp-p__brand" aria-labelledby="brand">
-    <img class="sp-p__brand-kongi sp-p__brand-kongi--sm" src="/kongi.svg" width="88" height="88" alt="" />
-    <p class="sp-p__landing-name">스위피</p>
+  <section class="sp-p__brand sp-p__landing" aria-labelledby="brand">
+    <p class="sp-p__landing-name"><img class="sp-p__landing-kongi" src="/kongi.svg" width="28" height="28" alt="" />스위피</p>
     <h1 class="sp-p__landing-title" id="brand">아기 사진, <br />단톡방에 올리고 계신가요?</h1>
-    <p class="sp-p__brand-text">단톡방 말고 가족 앨범에 올리세요. 할머니·할아버지는 앱 설치 없이 링크로 바로 봐요.</p>
-    <ul class="sp-p__points">
-      {
-        points.map((pt) => (
-          <li class="sp-p__point">
-            <span class="sp-p__point-mark" aria-hidden="true">✓</span>
-            {pt}
-          </li>
-        ))
-      }
+    <p class="sp-p__brand-text">링크 하나만 보내세요.<br />할머니는 누르기만 하면 돼요.</p>
+    {/* 할머니가 링크를 누르면 보는 넘겨 보기 화면(장식). 아래 테두리만 배경으로 흐려 자른다 */}
+    <div class="sp-p__phone" aria-hidden="true">
+      <div class="sp-p__phone-body">
+        <div class="sp-p__phone-screen">
+          <p class="sp-p__phone-title">하린이 새 사진 12장</p>
+          <p class="sp-p__phone-sub">오늘 엄마가 올렸어요</p>
+          <div class="sp-p__phone-deck">
+            <span class="sp-p__phone-card sp-p__phone-card--prev"></span>
+            <span class="sp-p__phone-card sp-p__phone-card--next"></span>
+            <span class="sp-p__phone-card sp-p__phone-card--now">
+              <span class="sp-p__phone-photo"><img class="sp-p__phone-kongi" src="/kongi-crop.svg" width="84" height="110" alt="" /></span>
+              <span class="sp-p__phone-cap">생후 13개월 · 10월 21일</span>
+            </span>
+          </div>
+          <p class="sp-p__phone-pos"><b>1</b> / 12 · 옆으로 밀거나 옆 사진을 누르세요</p>
+          <p class="sp-p__phone-sub">눌러서 바로 보내기</p>
+          <p class="sp-p__phone-reacts">
+            {reacts.map((r) => <span class:list={['sp-p__phone-react', r.on && 'sp-p__phone-react--on']}>{r.e}{r.n && <b>{r.n}</b>}</span>)}
+          </p>
+          <p class="sp-p__phone-say"><span class="sp-p__phone-input">하린이에게 한마디</span><span class="sp-p__phone-send">보내기</span></p>
+        </div>
+      </div>
+      <span class="sp-p__phone-fade"></span>
+    </div>
+    <ul class="sp-p__landing-chips">
+      {chips.map((c) => <li class="sp-p__landing-chip">{c}</li>)}
     </ul>
   </section>
-  <div class="sp-p__bottom">
+  <div class="sp-p__bottom sp-p__landing-bottom">
     <a class="sp-p__login" href="/login">무료로 시작하기</a>
-    <p class="sp-p__fine sp-p__landing-fine">무료 5GB · 가족에게 링크를 받으셨다면 그 링크를 눌러 주세요</p>
+    <p class="sp-p__fine">5GB까지 무료</p>
+    <p class="sp-p__note">링크 받으셨나요? 받은 링크를 눌러 주세요</p>
   </div>
 </Parent>
