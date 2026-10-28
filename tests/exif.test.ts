@@ -1,7 +1,7 @@
 // node --test (Node 24는 .ts를 그대로 실행)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { exifTakenAt, fitSize, mp4CreatedAt, photoTakenAt } from '../src/lib/exif.ts';
+import { exifTakenAt, fitSize, mp4CreatedAt, photoTakenAt, stripJpeg } from '../src/lib/exif.ts';
 
 /** EXIF가 든 최소 JPEG(빅/리틀 엔디언, 시간대 있음/없음) */
 function jpeg(date: string, opts: { le?: boolean; offset?: string } = {}): ArrayBuffer {
@@ -124,4 +124,31 @@ test('MP4 만든 시각이 0(1904년)·미래·moov 없음은 null', async () =>
   assert.equal(await mp4CreatedAt(mp4(-2082844800)), null);
   assert.equal(await mp4CreatedAt(mp4(Math.floor(Date.now() / 1000) + 9 * 3600)), null); // 현지 시각을 UTC로 적은 갓 찍은 영상
   assert.equal(await mp4CreatedAt(new Blob([new Uint8Array(box('ftyp', cc('isom')))])), null);
+});
+
+/** 표지(marker)와 내용으로 JPEG 조각 */
+const seg = (m: number, body: number[]) => [0xff, m, (body.length + 2) >> 8, (body.length + 2) & 0xff, ...body];
+const ascii = (s: string) => [...s].map((c) => c.charCodeAt(0));
+/** Orientation 하나만 든 EXIF(리틀 엔디언) */
+const orient = (o: number) => seg(0xe1, [...ascii('Exif'), 0, 0, 0x49, 0x49, 42, 0, 8, 0, 0, 0, 1, 0, 0x12, 0x01, 3, 0, 1, 0, 0, 0, o, 0, 0, 0, 0, 0, 0, 0]);
+const pic = [...seg(0xdb, [0, 1, 2]), ...seg(0xc0, [8, 0, 1, 0, 1, 1]), ...seg(0xda, [1, 1, 0]), 0x12, 0xff, 0x00, 0x34, 0xff, 0xd0, 0x56, 0xff, 0xd9];
+const buf = (...parts: number[][]) => new Uint8Array([0xff, 0xd8, ...parts.flat()]).buffer;
+
+test('stripJpeg: EXIF·XMP·주석·끝 데이터는 빼고 JFIF·ICC·Adobe·그림은 그대로', () => {
+  const jfif = seg(0xe0, [...ascii('JFIF'), 0, 1, 1]);
+  const icc = seg(0xe2, [...ascii('ICC_PROFILE'), 0, 1, 1, 9]);
+  const mpf = seg(0xe2, [...ascii('MPF'), 0, 1]);
+  const adobe = seg(0xee, [...ascii('Adobe'), 1]);
+  const xmp = seg(0xe1, [...ascii('http://ns.adobe.com/xap/1.0/'), 0]);
+  const out = stripJpeg(buf(jfif, orient(1), xmp, icc, mpf, seg(0xfe, ascii('hi')), adobe, pic, [0xff, 0xd8, 9, 9]));
+  assert.deepEqual(out, new Uint8Array([0xff, 0xd8, ...jfif, ...icc, ...adobe, ...pic]));
+  // EXIF가 아예 없어도 된다
+  assert.deepEqual(stripJpeg(buf(pic)), new Uint8Array([0xff, 0xd8, ...pic]));
+});
+test('stripJpeg: 회전 정보가 있거나 깨졌으면 null', () => {
+  assert.equal(stripJpeg(buf(orient(6), pic)), null);
+  assert.equal(stripJpeg(buf(orient(3), pic)), null);
+  assert.equal(stripJpeg(buf(pic.slice(0, -2))), null); // EOI 없음
+  assert.equal(stripJpeg(buf([0xff, 0xdb, 0, 40, 1])), null); // 길이가 파일 밖
+  assert.equal(stripJpeg(new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer), null);
 });
