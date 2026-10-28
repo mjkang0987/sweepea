@@ -13,7 +13,7 @@ const kids = a.home.children ?? [];
 const kid = callName(kids[0]?.name ?? '아이');
 ---
 
-<Parent title="사진 올리기 · 스위피" wide>
+<Parent title="사진 올리기 · 스위피" wide savebar>
   <form class="sp-p__form" id="up-form" data-family={a.home.family_id} data-kid={kid} novalidate>
     <nav class="sp-p__bar sp-p__bar--title" aria-label="올리기">
       <a class="sp-p__back sp-p__back--cancel" href="/home">취소</a>
@@ -73,11 +73,11 @@ const kid = callName(kids[0]?.name ?? '아이');
     <div class="sp-p__toast sp-p__toast--error sp-p__toast--live" id="up-alert" role="alert"></div>
     <p class="sp-p__toast sp-p__toast--live" id="up-status" role="status"></p>
     <div class="sp-p__up-progress" id="up-progress" hidden>
-      <progress class="sp-p__progress" id="up-bar" max="100" value="0" aria-label="진행률"></progress>
+      <progress class="sp-vh" id="up-bar" max="100" value="0" aria-label="진행률"></progress>
       <p class="sp-p__hint" id="up-shrink-hint" hidden>영상을 보기 좋은 크기로 줄이고 있어요. 다 줄일 때까지 이 화면을 켜 두세요.</p>
     </div>
 
-    <div class="sp-p__bottom" id="up-actions">
+    <div class="sp-p__bottom sp-p__savebar" id="up-actions">
       <button class="sp-p__btn sp-p__btn--kakao" type="submit" value="share" disabled>올리고 카톡으로 보내기</button>
       <button class="sp-p__btn sp-p__btn--text" type="submit" value="only" disabled>보내지 않고 올리기만</button>
     </div>
@@ -172,7 +172,7 @@ const kid = callName(kids[0]?.name ?? '아이');
   const TAG = { done: '올림', sending: '올리는 중', fail: '못 올림' } as const;
   // 그룹을 고르면 '그룹을 골라 주세요'만 지운다(고를 때 뺀 파일 목록 같은 다른 안내는 둔다)
   for (const c of choices) if (c.name === 'group') c.addEventListener('change', () => alertBox.textContent === NO_GROUP && warn());
-  // 줄이기·올리기 진행: 막대는 묶음 전체 기준. 퍼센트 글은 영상 하나의 진행(줄이기·나눠 올리기)일 때만
+  // 줄이기·올리기 진행: 상태 칸 배경이 왼쪽부터 차오른다(사용자 2026-10-29, 따로 막대 없음. 화면 읽기는 숨은 progress). 묶음 전체 기준. 퍼센트 글은 영상 하나의 진행(줄이기·나눠 올리기)일 때만
   // (사진은 '3 / 12'와 같은 말이라 빼 달라고 함)
   const bar = $<HTMLProgressElement>('up-bar');
   const prog = $('up-progress');
@@ -181,6 +181,7 @@ const kid = callName(kids[0]?.name ?? '아이');
   const step = (text: string, frac: number, video?: number, tag = '') => {
     prog.hidden = false;
     bar.value = pct(frac);
+    status.style.setProperty('--p', `${pct(frac)}%`);
     const v = video === undefined ? -1 : pct(video);
     const t = v < 0 ? text : `${text} · ${tag}${v === 100 ? 100 : Math.floor(v / 10) * 10}%`;
     if (status.textContent !== t) say(t);
