@@ -32,9 +32,9 @@ export async function pkce(): Promise<{ verifier: string; challenge: string }> {
 
 export const PKCE_COOKIE = 'sp_pkce';
 
-/** 서울 날짜 YYYY-MM-DD(새벽에 오늘 태어난 아이가 '미래'로 막히지 않게) */
-/** 한국 날짜 YYYY-MM-DD */
+/** 서울 날짜 YYYY-MM-DD */
 export const seoulDate = (at: string | number | Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(at));
+/** 서울 오늘(새벽에 오늘 태어난 아이가 '미래'로 막히지 않게) */
 export const seoulToday = () => seoulDate(new Date());
 
 /** 있는 날짜(2월 31일 같은 값 거절)이고 2010-01-01~오늘(서울)이면 true */
@@ -71,7 +71,7 @@ export async function logoutParent(cookies: AstroCookies) {
 
 /** 작별 화면 주소: 지울 날(서울 날짜)을 들고 간다 */
 export const goodbyeHref = (deleteAfter: string) =>
-  `/goodbye?on=${new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(deleteAfter))}`;
+  `/goodbye?on=${seoulDate(deleteAfter)}`;
 
 /** 그룹 비밀번호(숫자 4자리)·힌트 검사. 문제가 있으면 안내 문구 */
 export function pinError(password: string, hint: string): string | null {

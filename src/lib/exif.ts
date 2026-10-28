@@ -128,7 +128,6 @@ function heifExif(v: DataView): { offset: number; length: number } | null {
   } catch {
     return null;
   }
-
 }
 
 /** MP4·MOV 'moov/mvhd'의 만든 시각(UTC, 1904년부터 초). 믿을 만한 범위(plausible) 밖이면 null.
