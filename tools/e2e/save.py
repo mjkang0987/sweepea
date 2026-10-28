@@ -21,7 +21,7 @@ with sync_playwright() as p:
     gp.goto(B+'/album?v=list')
     check(gp.get_by_role('link',name='골라서 저장하기').count()==0,'저장 꺼져 있으면 버튼 없음')
     gp.goto(B+'/album/save'); check('v=list' in gp.url,'저장 꺼져 있으면 고르기 화면 대신 모아 보기로')
-    pg.goto(B+'/settings'); pg.get_by_role('switch',name='가족도 사진 저장하기').click(); pg.wait_for_url('**done=download-on**')
+    pg.goto(B+'/settings'); sw=pg.get_by_role('switch',name='가족도 사진 저장하기'); sw.click(); pg.wait_for_function("document.querySelector('[role=switch]').getAttribute('aria-checked')==='true'")  # 그 자리에서 저장(주소 안 바뀜)
     gp.goto(B+'/album?v=list'); gp.get_by_role('link',name='골라서 저장하기').click(); gp.wait_for_url('**/album/save**')
     st=gp.locator('[data-count]')
     check(gp.locator('.sp-s__check').count()==3,'사진 3장 고를 수 있음')
