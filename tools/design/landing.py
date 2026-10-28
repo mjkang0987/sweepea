@@ -17,11 +17,11 @@ def page(t):
     chips=''.join(f'<li style="padding: 6px 12px; border-radius: 999px; background: var(--surface); font-size: 14px; line-height: 20px; font-weight: 600; color: var(--label-2); white-space: nowrap;">{c}</li>' for c in CHIPS)
     # 사진 자리엔 콩이(사용자 '아기 사진 비우지 말고 콩이 넣어 줘'). 서비스 화면(사용자 "카톡 대화 장면 말고 서비스 화면 보여 주는 게 맞지 않나?"): 할머니가 링크를 누르면 보는 앨범(GrandHome 넘겨 보기)을 휴대폰 틀에
     # 실제 서비스 화면(사용자 '실제 서비스 UI, 좌우에 이전·다음 사진'): GrandHome 넘겨 보기를 줄여서 — 가운데 카드 + 양옆 비스듬한 이전·다음 카드, n/12, 눌러서 바로 보내기, 한마디.
-    # 폭 280 휴대폰, 내용은 다 보이고 아래 테두리만 배경색으로 흐려 자름(사용자 '하단 라인 부분 정도만')
+    # 폭 280 휴대폰, 내용은 다 보이고 아래 테두리만 배경색으로 흐려 자름(사용자 '하단 라인 부분 정도만'). 몸체는 검정 그대로, 옆면 얇은 금속선 + 뒤 빛(다크에서 배경에 묻히지 않게, 사용자 '테두리가 밝아지면 핸드폰이 아니잖어')
     chip=lambda e,n='',on=False: f'<span style="flex: 1; min-width: 0; min-height: 30px; border-radius: 15px; background: {"var(--pea-tint)" if on else "var(--surface)"}; {"box-shadow: inset 0 0 0 1.5px var(--pea); color: var(--pea-deep);" if on else ""} display: flex; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 700;"><span style="{EF} font-size: 13px;">{e}</span>{n}</span>'
     side=lambda left,rot,origin: f'<span style="position: absolute; top: 12px; left: {left}px; width: 176px; height: 196px; border-radius: 14px; overflow: hidden; background: var(--surface); transform: perspective(700px) rotateY({rot}deg) scale(0.86); transform-origin: {origin} center; opacity: 0.5;"><span style="display: block; height: 160px; background: var(--ph-2);"></span></span>'
-    chat=f'''<div aria-hidden="true" style="position: relative; width: 280px; overflow: hidden;">
-        <div style="box-sizing: border-box; padding: 9px 9px 0; border-radius: 42px 42px 0 0; background: #1d1d1f; box-shadow: 0 0 0 1px var(--separator);">
+    chat=f'''<div aria-hidden="true" style="position: relative; width: 340px; padding: 26px 30px 0; margin-top: -22px; box-sizing: border-box; overflow: hidden;">
+        <div style="box-sizing: border-box; padding: 9px 9px 0; border-radius: 42px 42px 0 0; background: #1d1d1f; box-shadow: 0 0 0 1.5px #3a3a3c, 0 0 0 2.5px #8e8e93, 0 -4px 26px var(--phone-glow);">
           <div style="border-radius: 34px 34px 0 0; overflow: hidden; background: var(--bg); padding: 20px 12px 22px; display: flex; flex-direction: column; gap: 8px; text-align: left;">
             <div style="display: flex; flex-direction: column; gap: 1px;"><strong style="font-size: 17px; line-height: 22px; font-weight: 800;">하린이 새 사진 12장</strong><span style="font-size: 11px; line-height: 15px; color: var(--label-2);">오늘 엄마가 올렸어요</span></div>
             <div style="position: relative; height: 220px; margin: 0 -12px; overflow: hidden;">
@@ -61,6 +61,8 @@ d=json.load(open('canvas.json')); b=d['boards']
 for t in ['','-Light']:
     src=open(f'ParentLogin{t}.dc.html').read()
     head=src[:src.index('<div class="sp-t sp-{{theme}}"')].replace('<title>시작하기</title>','<title>스위피 첫 화면</title>')
+    # 휴대폰 뒤 빛: 라이트는 그림자, 다크는 민트 빛(검은 배경에 검은 몸체가 묻히지 않게)
+    head=head.replace('</style>','.sp-t{--phone-glow:rgba(0,0,0,0.16)}.sp-dark{--phone-glow:rgba(45,212,191,0.30)}@media (prefers-color-scheme: dark){.sp-system{--phone-glow:rgba(45,212,191,0.30)}}\n</style>',1)
     tail=src[src.index('</x-dc>'):]
     n=f'Landing{t}.dc.html'
     open(n,'w').write(head+page(t)+tail)
