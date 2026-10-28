@@ -2,15 +2,15 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-28 기준, dev 0.4.30 배포됨)
+## 새 세션 인계 (2026-10-28 기준, dev 0.4.31 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
 
 ### 지금 상태
 
-- dev = 0.4.30, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- dev = 0.4.31, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
-- 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 16개 적용, **17번째 `20261027000004_finish_quota.sql`(완료 때 5GB 한도)는 사용자 확인 기다림**(적용 전에도 앱은 동작, 한도만 시작 때 확인). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
+- 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 16개 적용, **17번째 `20261027000004_finish_quota.sql`(완료 때 5GB 한도)는 사용자가 적용 OK(2026-10-28), 5GB 넘은 가족 없음 확인. 자동 모드 안전장치가 apply_migration을 막아 사용자가 SQL 편집기에서 직접 실행하거나 도구를 허용해야 함**(적용 전에도 앱은 동작, 한도만 시작 때 확인). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v157, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
 
 ### 다음 할 일 (순서대로)
@@ -1124,3 +1124,10 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 
 - Pretendard 글꼴: 동적 서브셋(CDN) vs 직접 서브셋 생성 — 첫 화면 성능 측정 후 결정
 - 최소 지원 브라우저 (카톡 인앱 브라우저 기준)
+
+### 86. feature/vt-abort — 페이지 전환 취소 오류 막기 (완료, dev 머지 0.4.31)
+- 사용자 보고(2026-10-28): 크롬 콘솔에 `Uncaught (in promise) InvalidStateError: Transition was aborted because of invalid state. ViewTransition opt-in disabled`가 자꾸 찍힘(home)
+- 원인: 다른 문서로 넘어가는 전환(`@view-transition`)을 브라우저가 건너뛰면(전환 중 화면이 가려지는 등) pageswap/pagereveal의 `viewTransition.ready`가 거부되는데 받는 곳이 없음. 이동은 정상
+- 고침: `src/layouts/Base.astro` head에 인라인 스크립트, 두 이벤트의 ready·finished·updateCallbackDone을 받아 둠
+- 검증: skipTransition을 강제로 넣어 고치기 전 이동마다 `Transition was skipped` 오류 → 고친 뒤 0, 보통 이동은 전환 그대로. acclayer e2e 통과, QA 1회(지적 2개 반영: 주석을 JS 안으로, `p?.catch`)
+- 못 한 것: 실제 '화면 가려짐' 상황은 헤드리스에서 재현 못 함, 사파리 실기기
