@@ -1737,3 +1737,20 @@
     backdrop-filter: none;
   }
 }
+
+/* 칸 폭 단위(cqi)를 모르는 옛 브라우저(iOS 15 이하 등): 2줄은 예전처럼 원본 비율 그대로 쌓기(CSS columns) */
+@supports not (container-type: inline-size) {
+  .sp-a__grid--2 {
+    display: block;
+    columns: var(--cols);
+  }
+  .sp-a__grid--2 .sp-a__cell,
+  .sp-f--wide .sp-a__grid--2 .sp-a__cell {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .sp-a__grid--2 .sp-a__cell-link,
+  .sp-a__grid--2 .sp-a__cell-img {
+    height: auto;
+  }
+}
