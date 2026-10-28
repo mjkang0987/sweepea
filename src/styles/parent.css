@@ -1253,6 +1253,7 @@
 }
 .sp-p__provider--kakao {
   background: var(--kakao);
+  color: var(--kakao-ink);
 }
 .sp-p__rows-item--danger {
   color: var(--danger);

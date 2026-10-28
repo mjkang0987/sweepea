@@ -56,6 +56,8 @@ with sync_playwright() as p:
     pg.get_by_role('link',name='탈퇴하기').click()
     dlg.get_by_role('button',name='탈퇴하기').click(); pg.wait_for_timeout(300)
     check(dlg.is_visible() and pg.url.endswith('/settings/account'),'체크 안 하면 보내지 않음(브라우저 기본 안내)')
+    dlg.get_by_label('모두 지워지는 것을 확인했어요').check(); pg.keyboard.press('Escape'); pg.get_by_role('link',name='탈퇴하기').click()
+    check(not dlg.get_by_label('모두 지워지는 것을 확인했어요').is_checked(),'닫았다 다시 열면 확인 체크가 풀려 있음')
     dlg.get_by_label('모두 지워지는 것을 확인했어요').check(); dlg.get_by_role('button',name='탈퇴하기').click(); pg.wait_for_url('**/goodbye?on=**')
     check(True,'체크하고 탈퇴하면 작별 화면')
     c.close()

@@ -44,7 +44,7 @@ const open = confirm === 'delete' || confirm === 'subscribed';
       {
         a.home.provider === 'kakao' && (
           <span class="sp-p__provider sp-p__provider--kakao" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" focusable="false"><path d="M12 4C7 4 3 7.1 3 11c0 2.5 1.7 4.7 4.2 5.9l-.9 3.3c-.1.3.3.5.5.3l3.9-2.6c.4 0 .8.1 1.3.1 5 0 9-3.1 9-7s-4-7-9-7z" fill="#191919" /></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" focusable="false"><path d="M12 4C7 4 3 7.1 3 11c0 2.5 1.7 4.7 4.2 5.9l-.9 3.3c-.1.3.3.5.5.3l3.9-2.6c.4 0 .8.1 1.3.1 5 0 9-3.1 9-7s-4-7-9-7z" fill="currentColor" /></svg>
           </span>
         )
       }
@@ -111,6 +111,8 @@ const open = confirm === 'delete' || confirm === 'subscribed';
       e.preventDefault();
       del.showModal();
     });
+    // 닫으면 확인 체크를 풀어 둔다(다시 열 때 한 번에 탈퇴되지 않게)
+    del.addEventListener('close', () => del.querySelector('form')?.reset());
     // 어두운 바깥을 누르면 닫기
     del.addEventListener('click', (e) => {
       if (e.target !== del) return;
