@@ -50,6 +50,8 @@ const nameError = Astro.url.searchParams.get('e') === 'name' ? '이름을 1~12�
         <div class="sp-f__head">
           <h1 class="sp-f__title">누구세요?</h1>
           <p class="sp-f__lead">이름을 누르면 {child} 사진이 열려요</p>
+          {/* 보신 기록(95): 엄마아빠 크게 보기에 본 사람 이름이 보이는 걸 처음에 알린다 */}
+          <p class="sp-f__caption">엄마아빠에게 누가 봤는지 보여요</p>
         </div>
         <form class="sp-f__form" method="get" action={`/i/${code}/password`}>
           {/* 이름 칸에서 엔터를 누르면 이름 버튼이 아니라 '들어가기'가 눌리게, 맨 앞에 숨은 기본 버튼 */}

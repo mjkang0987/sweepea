@@ -75,6 +75,8 @@ const downloads: Record<string, boolean> = {};
 const used: Record<string, number> = {};
 // 지운 한마디는 deleted로 남김(DB처럼 하루 30개 한도엔 셈)
 const comments: { id: string; mediaId: string; memberId: string; at: number; body: string; deleted?: boolean }[] = [];
+// 보신 기록: `사진|구성원` (넣은 순서 = 처음 본 순)
+const views = new Set<string>();
 const familyOf = (s: Share) => groups.find((g) => g.id === s.groupIds[0])!.familyId;
 const key = (pass: Pass, familyId: string) => `${pass.access}|${familyId}`;
 function meOf(d: Device | undefined): EntryMe | null {
@@ -348,6 +350,24 @@ export function createMockBackend(): Backend {
       if (!c) throw new BackendError('not_allowed', 403, '42501');
       c.deleted = true;
     },
+    async noteViews(pass, ids) {
+      for (const id of ids.slice(0, 50)) {
+        try {
+          views.add(`${id}|${viewer(pass, id)}`);
+        } catch {
+          // 볼 수 없는 사진은 건너뜀(DB처럼 조용히)
+        }
+      }
+    },
+    async mediaViewers(pass, id) {
+      // DB처럼 자기 가족방 사진이 아니면 빈 목록
+      try {
+        parentMedia(pass, id);
+      } catch {
+        return [];
+      }
+      return [...views].filter((k) => k.startsWith(`${id}|`)).map((k) => authorName(k.split('|')[1])).filter((x): x is string => !!x).slice(0, 100);
+    },
     async mediaComments(pass, id) {
       try {
         if (parents.has(pass.access)) parentMedia(pass, id);
@@ -563,6 +583,7 @@ export function createMockBackend(): Backend {
       media.splice(i, 1);
       for (let j = comments.length - 1; j >= 0; j--) if (comments[j].mediaId === id) comments.splice(j, 1);
       for (const k of [...reactions]) if (k.startsWith(`${id}|`)) reactions.delete(k);
+      for (const k of [...views]) if (k.startsWith(`${id}|`)) views.delete(k);
     },
   };
 }

@@ -64,18 +64,23 @@ select pg_temp.ok(not exists (select 1 from public.media where id = :'m2'), '친
 select public.sp_react(:'m1', 'heart', true), public.sp_react(:'m1', 'sparkle', true);
 select public.sp_comment(:'m1', '아이고 많이 컸네');
 update public.members set text_size = 'large' where id = :'m_gm';
+-- 보신 기록(20261029000001): 볼 수 있는 다 올라간 사진만, 같은 사진은 한 줄
+select public.sp_note_views(array[:'m1', :'m2', :'m4', :'m1']::uuid[]);
+select public.sp_note_views(array[:'m1']::uuid[]);
 reset role;
 
 -- 권한 밖 동작은 에러가 나야 한다
 \set ON_ERROR_STOP 0
 set role authenticated;
-\echo '아래 에러 3줄은 의도된 거부'
+\echo '아래 에러 4줄은 의도된 거부'
 select public.sp_react(:'m2', 'heart', true);
+select * from public.views;
 select password_hash from public.groups;
 update public.members set display_name = '왕할머니' where id = :'m_gm';
 reset role;
 \set ON_ERROR_STOP 1
 select pg_temp.ok((select count(*) = 2 from public.reactions), '거부된 반응은 안 들어감');
+select pg_temp.ok((select count(*) = 1 from public.views where media_id = :'m1' and member_id = :'m_gm') and (select count(*) = 1 from public.views), '본 기록은 볼 수 있는 사진 한 줄만');
 select pg_temp.ok((select display_name = '외할머니' and text_size = 'large' from public.members where id = :'m_gm'), '글자 크기만 바뀜');
 
 -- ── 큰이모: 새 이름 → 승인 대기, 받은 공유 묶음만
@@ -88,6 +93,7 @@ select pg_temp.ok((select count(*) = 2 from public.media), '승인 전엔 공유
 \echo '아래 에러 1줄은 의도된 거부(승인 대기는 반응 못 함)'
 select public.sp_react(:'m1', 'heart', true);
 \set ON_ERROR_STOP 1
+select public.sp_note_views(array[:'m1']::uuid[]);
 select pg_temp.ok((select count(*) = 1 from public.members), '승인 전엔 가족 명단 대신 자기 이름만');
 select pg_temp.ok(not exists (select 1 from public.media where id = :'m5'), '공유 안 한 외가 사진은 안 보임');
 reset role;
@@ -95,7 +101,10 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
 update public.members set status = 'active', pending_until = null where display_name = '큰이모';
+select pg_temp.ok(array(select name from public.sp_parent_media_viewers(:'m1')) = array['외할머니'], '엄빠는 본 사람 이름(승인 대기 때 본 건 안 남음)');
+select public.sp_note_views(array[:'m1']::uuid[]);
 reset role;
+select pg_temp.ok((select count(*) = 1 from public.views), '엄빠가 본 건 안 셈');
 select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
 set role authenticated;
 select pg_temp.ok((select count(*) = 3 from public.media), '승인 뒤 외가 사진 전부');
@@ -279,9 +288,12 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
 set role authenticated;
 select public.sp_delete_comment(:'c3');
+select pg_temp.ok(not exists (select 1 from public.sp_parent_media_viewers(:'m1')), '다른 집 부모는 본 사람 못 봄');
+select public.sp_note_views(array[:'m1']::uuid[]);
 reset role;
 \set ON_ERROR_STOP 1
 select pg_temp.ok((select deleted_at is null from public.comments where id = :'c3'), '다른 가족·다른 집 부모는 못 지움');
+select pg_temp.ok((select count(*) = 1 from public.views), '다른 집 부모는 본 기록을 못 남김');
 delete from public.comments where id = :'c3';
 
 -- 거절하면 그 기기도 막힌다

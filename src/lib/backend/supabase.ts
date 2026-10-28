@@ -310,6 +310,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         p_hint: f.hint ?? null,
       }),
     mediaComments: (pass, id) => rpc<MediaComment[]>(pass, 'sp_comment_list', { p_media_id: id }),
+    noteViews: (pass, ids) => (ids.length ? rpc<void>(pass, 'sp_note_views', { p_media_ids: ids }) : Promise.resolve()),
+    mediaViewers: async (pass, id) => (await rpc<{ name: string }[]>(pass, 'sp_parent_media_viewers', { p_media_id: id })).map((x) => x.name),
     deleteComment: (pass, id) => rpc<void>(pass, 'sp_delete_comment', { p_comment_id: id }),
     reactionCounts: (pass, ids) => (ids.length ? rpc<ReactionCount[]>(pass, 'sp_reaction_counts', { p_media_ids: ids }) : Promise.resolve([])),
   };
