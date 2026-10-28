@@ -12,7 +12,13 @@ const HEADERS: [string, string][] = [
 ];
 if (import.meta.env.PROD) HEADERS.push(['strict-transport-security', 'max-age=31536000']);
 
-export const onRequest = defineMiddleware(async (_ctx, next) => {
+export const onRequest = defineMiddleware(async (ctx, next) => {
+  // www로 들어오면 같은 경로로 대표 주소에(가족 링크·로그인 쿠키가 주소에 묶이므로 하나로). 308: 폼 POST도 그대로 간다
+  if (ctx.url.hostname.startsWith('www.')) {
+    const to = new URL(ctx.url);
+    to.hostname = to.hostname.slice(4);
+    return new Response(null, { status: 308, headers: { location: to.href } });
+  }
   let res = await next();
   const add = () => { for (const [k, v] of HEADERS) if (!res.headers.has(k)) res.headers.set(k, v); };
   try {
