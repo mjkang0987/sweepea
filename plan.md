@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-28 기준, dev 0.4.37 배포됨)
+## 새 세션 인계 (2026-10-28 기준, dev 0.4.38 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
 
 ### 지금 상태
 
-- dev = 0.4.37, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- dev = 0.4.38, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 17개 모두 적용(17번째 `20261027000004_finish_quota.sql` 완료 때 5GB 한도는 2026-10-28 사용자 승인 후 적용, 권한 그대로 service_role만). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v157, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
@@ -72,7 +72,7 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 구현 방식
   - `src/styles/tokens.css`: 색·글자·간격 토큰. 태그 선택자 없이 `:root`와 클래스만
   - `src/layouts/Base.astro`: `lang="ko"`, `color-scheme`, 토큰 CSS
-  - `src/pages/index.astro`: 임시 첫 화면(심볼 + 이름). 실제 화면은 뷰어 이슈에서
+  - `src/pages/index.astro`: 임시 첫 화면(심볼 + 이름). 실제 화면은 뷰어 이슈에서 → 91에서 소개 한 장으로
   - `lighthouserc.json` + `.github/workflows/perf.yml`
 - 영향받는 파일: `package.json`, `astro.config.mjs`, `tsconfig.json`, `src/**`, `lighthouserc.json`, `.github/workflows/perf.yml`, `index.md`
 - 예상 결과: `npm run build`가 통과하고, `npm run perf`가 예산 안에서 통과한다
@@ -1183,3 +1183,13 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 사용자 할 일: ① Cloudflare `Takeaseat.cs@gmail.com's Account`에 사이트 `sweepea.co.kr`(Free) 추가 ② 가비아에서 네임서버를 Cloudflare가 준 2개로 ③ Active 될 때까지 대기 ④ 연결 뒤 Supabase > Authentication > URL Configuration에 `https://sweepea.co.kr/auth/callback`(Site URL도 새 주소) 추가
 - 진행: 사용자가 Cloudflare 사이트 추가(Free, AI 학습 크롤러 막기 추천)·가비아 네임서버 ed/jade.ns.cloudflare.com(3차 ns.gabia.net 지움)·Active(2026-10-28). 코드: wrangler.jsonc routes·vars·keep_vars, 미들웨어 www → 308. 0.4.36에서 routes 때문에 workers.dev가 꺼짐(1042, 실수) → 0.4.37 `workers_dev: true`
 - 할 일(Active 뒤): `wrangler.jsonc`에 `routes`로 `sweepea.co.kr`·`www.sweepea.co.kr` custom_domain, `www`는 `src/middleware`에서 같은 경로로 `sweepea.co.kr`에 301(주소 하나로: 가족 링크·로그인 쿠키가 주소에 묶임), `SITE_ORIGIN=https://sweepea.co.kr`(공유 링크), 배포 뒤 두 주소·로그인·공유 링크 확인. workers.dev 주소와 이미 보낸 링크는 계속 열림
+
+### 91. feature/landing — 대표 첫 화면에 소개 노출(검색 등록용) (완료, dev 머지 0.4.38)
+- 요구(사용자 2026-10-28): 처음 온 사람이 sweepea.co.kr에 들어오면 "가족에게 받은 주소로 들어와 주세요"만 나와 엄마아빠는 막힘. "메인 진입 시 뭔가 있어야 서치 콘솔에도 등록" → "일단 루트에 컨텐츠 노출되는 걸로"
+- 디자인: 캔버스 Landing·Landing-Light(v161~, `tools/design/landing.py`). 위 콩이·스위피·한 줄 소개(로그인 보드와 같음) + '시작하기' + 가족 안내 한 줄, 가운데 소개 3장 그림·제목(h2, title-2)·설명, 아래 '시작하기'·바닥글
+- 구현: `/`에 처음 온 사람(부모 쿠키·가족 출입증 없음)은 소개 화면. 이미 들어온 기기는 지금처럼 앨범·대기로. 로그인 화면(`sp-p__brand`·`sp-p__login`)·소개 화면(`sp-p__mock*`·`sp-p__intro-*`) 스타일 재사용. 검색용: 제목·설명, 공유 미리보기(og:title·description·image), 대표 주소 canonical, `public/robots.txt`(/api/만 막음, 나머지 화면은 미들웨어 X-Robots-Tag noindex — 아래 '바뀜'), `public/sitemap.xml`
+- 영향 파일: `src/pages/index.astro`, `src/layouts/{Base,Parent}.astro`, `src/middleware.ts`, `src/styles/parent.css`, `public/robots.txt`, `public/sitemap.xml`
+- 바뀜(검토 1회): robots.txt로 첫 화면 말고 다 막으면 카톡 스크랩 봇이 가족 링크(/i/) 미리보기를 못 만들 수 있음 → robots.txt는 /api/만 막고, 첫 화면 밖 모든 응답에 `X-Robots-Tag: noindex, nofollow`(미들웨어). 글자 200%에서 소개 그림 카드가 화면을 넘던 것(/start도) → 감싼 칸 max-width·이름 줄어들기
+- 하지 않는 것: 개인정보처리방침·이용약관(따로), 서치 콘솔 소유 확인(사용자가 DNS TXT 또는 확인 코드)
+- 결과: 검토 3회(1회: robots→noindex 머리·200% 넘침, 2·3회: 소개 카드 칩 줄바꿈·문서), 로컬 Lighthouse LCP 약 1.4초·CLS 0·접근성 100·JS 0, 기존 e2e(entry·parent) 통과
+- 남은 확인: 운영에서 카카오 공유 디버거로 /i/ 미리보기(사용자 로그인 필요), 운영 robots.txt에 Cloudflare 봇 설정이 덧붙는지. 디자인과 다른 점: 소개 그림 카드는 /start 구현을 그대로 써서 보드보다 글자가 작고 셋째 카드의 콩이가 카드 안(보드는 위)

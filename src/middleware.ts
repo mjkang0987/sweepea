@@ -20,7 +20,9 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     return new Response(null, { status: 308, headers: { location: to.href } });
   }
   let res = await next();
-  const add = () => { for (const [k, v] of HEADERS) if (!res.headers.has(k)) res.headers.set(k, v); };
+  // 검색에는 대표 첫 화면만: 가족 링크·앨범·사진·설정은 색인하지 않게(robots.txt로 막으면 카톡 미리보기도 막힐 수 있어 머리로)
+  const robots: [string, string][] = ctx.url.pathname === '/' ? [] : [['x-robots-tag', 'noindex, nofollow']];
+  const add = () => { for (const [k, v] of [...HEADERS, ...robots]) if (!res.headers.has(k)) res.headers.set(k, v); };
   try {
     add();
   } catch {
