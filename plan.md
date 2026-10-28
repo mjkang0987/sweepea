@@ -1183,3 +1183,10 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 사용자 할 일: ① Cloudflare `Takeaseat.cs@gmail.com's Account`에 사이트 `sweepea.co.kr`(Free) 추가 ② 가비아에서 네임서버를 Cloudflare가 준 2개로 ③ Active 될 때까지 대기 ④ 연결 뒤 Supabase > Authentication > URL Configuration에 `https://sweepea.co.kr/auth/callback`(Site URL도 새 주소) 추가
 - 진행: 사용자가 Cloudflare 사이트 추가(Free, AI 학습 크롤러 막기 추천)·가비아 네임서버 ed/jade.ns.cloudflare.com(3차 ns.gabia.net 지움)·Active(2026-10-28). 코드: wrangler.jsonc routes·vars·keep_vars, 미들웨어 www → 308. 0.4.36에서 routes 때문에 workers.dev가 꺼짐(1042, 실수) → 0.4.37 `workers_dev: true`
 - 할 일(Active 뒤): `wrangler.jsonc`에 `routes`로 `sweepea.co.kr`·`www.sweepea.co.kr` custom_domain, `www`는 `src/middleware`에서 같은 경로로 `sweepea.co.kr`에 301(주소 하나로: 가족 링크·로그인 쿠키가 주소에 묶임), `SITE_ORIGIN=https://sweepea.co.kr`(공유 링크), 배포 뒤 두 주소·로그인·공유 링크 확인. workers.dev 주소와 이미 보낸 링크는 계속 열림
+
+### 91. feature/landing — 대표 첫 화면에 소개 노출(검색 등록용) (진행 중)
+- 요구(사용자 2026-10-28): 처음 온 사람이 sweepea.co.kr에 들어오면 "가족에게 받은 주소로 들어와 주세요"만 나와 엄마아빠는 막힘. "메인 진입 시 뭔가 있어야 서치 콘솔에도 등록" → "일단 루트에 컨텐츠 노출되는 걸로"
+- 디자인: 캔버스 Landing·Landing-Light(v161~, `tools/design/landing.py`). 위 콩이·스위피·한 줄 소개(로그인 보드와 같음) + '시작하기' + 가족 안내 한 줄, 가운데 소개 3장 그림·제목(h2, title-2)·설명, 아래 '시작하기'·바닥글
+- 구현: `/`에 처음 온 사람(부모 쿠키·가족 출입증 없음)은 소개 화면. 이미 들어온 기기는 지금처럼 앨범·대기로. 로그인 화면(`sp-p__brand`·`sp-p__login`)·소개 화면(`sp-p__mock*`·`sp-p__intro-*`) 스타일 재사용. 검색용: 제목·설명, 공유 미리보기(og:title·description·image), 대표 주소 canonical, `public/robots.txt`(첫 화면·화면 파일만 열고 앨범·가족 링크·사진·API 막음), `public/sitemap.xml`
+- 영향 파일: `src/pages/index.astro`, `src/layouts/{Base,Parent}.astro`, `src/styles/parent.css`, `public/robots.txt`, `public/sitemap.xml`
+- 하지 않는 것: 개인정보처리방침·이용약관(따로), 서치 콘솔 소유 확인(사용자가 DNS TXT 또는 확인 코드)
