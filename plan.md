@@ -1173,3 +1173,9 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 구현: 부모 홈과 같은 엇갈린 배열(`src/lib/masonry.ts`, 가장 짧은 줄에 차례로 쌓기, 디자인 GrandList 보드도 같은 방식). 서버가 날짜 묶음마다 2줄·4줄 자리를 `--c2/--r2/--s2`·`--c4/--r4/--s4`로 내보내고, 이어 붙여 합치면 브라우저가 그 묶음만 다시 계산(앞 칸 자리는 그대로). 다시 계산하는 함수는 `src/lib/more.ts`로 옮겨 홈과 같이 씀. 1줄(columns 1)·3·5줄(정사각형 격자)은 그대로
 - 영향 파일: `src/pages/album/index.astro`, `src/styles/family.css`, `src/lib/more.ts`, `src/pages/home.astro`, e2e
 - 예상 결과: 사진이 늦게 오거나 다음 쪽을 합쳐도 보이던 칸이 움직이지 않음
+
+### 90. 도메인 연결 sweepea.co.kr + www (대기: 사용자 네임서버 변경)
+- 요구(사용자 2026-10-28): 도메인 연결, "www도 같이 연결되어야 해"
+- 지금(2026-10-28 확인): 네임서버가 아직 가비아(ns.gabia.co.kr 등). 로컬 wrangler 로그인 안 됨(배포는 dev 푸시로 자동)
+- 사용자 할 일: ① Cloudflare `Takeaseat.cs@gmail.com's Account`에 사이트 `sweepea.co.kr`(Free) 추가 ② 가비아에서 네임서버를 Cloudflare가 준 2개로 ③ Active 될 때까지 대기 ④ 연결 뒤 Supabase > Authentication > URL Configuration에 `https://sweepea.co.kr/auth/callback`(Site URL도 새 주소) 추가
+- 할 일(Active 뒤): `wrangler.jsonc`에 `routes`로 `sweepea.co.kr`·`www.sweepea.co.kr` custom_domain, `www`는 `src/middleware`에서 같은 경로로 `sweepea.co.kr`에 301(주소 하나로: 가족 링크·로그인 쿠키가 주소에 묶임), `SITE_ORIGIN=https://sweepea.co.kr`(공유 링크), 배포 뒤 두 주소·로그인·공유 링크 확인. workers.dev 주소와 이미 보낸 링크는 계속 열림
