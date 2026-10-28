@@ -311,9 +311,11 @@
 }
 .sp-p__mock-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 .sp-p__mock-chip {
+  white-space: nowrap;
   padding: var(--space-1) var(--space-3);
   border-radius: 999px;
   background: var(--fill);
@@ -326,6 +328,7 @@
 }
 .sp-p__mock-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   padding-top: var(--space-2);
@@ -344,9 +347,8 @@
 }
 .sp-p__mock-who {
   flex: 1;
-  /* 좁은 화면·큰 글자에서 '승인'이 밖으로 밀리지 않게 이름 쪽이 줄어든다 */
+  /* 좁은 화면·큰 글자에서 '승인'이 밖으로 밀리지 않게 이름 쪽이 줄어든다(낱말 단위로 줄바꿈) */
   min-width: 0;
-  overflow-wrap: anywhere;
   color: var(--label-2);
 }
 .sp-p__mock-ok {
