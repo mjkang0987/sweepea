@@ -11,7 +11,7 @@ _svg=open(os.path.join('..','..','..','public','kongi.svg')).read().replace('vie
 KONGI_CROP='data:image/svg+xml;base64,'+base64.b64encode(_svg.encode()).decode()
 # 이모지 글꼴(앱 ReactRow와 같음). 작은따옴표가 든 글을 f문자열 밖에 둔다
 EF="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;"
-CHIPS=['앱 설치 없이','외가·친가 따로','지우기 전엔 그대로']
+CHIPS=['외가·친가 따로','하트·한마디','지우기 전엔 그대로']
 def page(t):
     """한 장(사용자 2026-10-28 "설명문구가 너무 구리다" → 말 대신 장면): 제목 + 두 줄 + 서비스 화면(할머니가 보는 앨범) + 짧은 낱말 셋 + 시작하기"""
     chips=''.join(f'<li style="padding: 6px 12px; border-radius: 999px; background: var(--surface); font-size: 14px; line-height: 20px; font-weight: 600; color: var(--label-2); white-space: nowrap;">{c}</li>' for c in CHIPS)
@@ -45,7 +45,7 @@ def page(t):
     <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center;">
       <p style="margin: 0; display: flex; align-items: center; gap: 6px; font-size: 17px; line-height: 22px; font-weight: 800; color: var(--pea-ink);"><img class="sp-kongi-anim" src="{KONGI}" alt="" style="width: 28px; height: 28px; image-rendering: pixelated;">스위피</p>
       <h1 style="margin: 0; font-size: 28px; line-height: 36px; font-weight: 800; letter-spacing: -0.4px;">아기 사진,<br>단톡방에 올리고 계신가요?</h1>
-      <p style="margin: 0; font-size: 17px; line-height: 24px; color: var(--label-2);">링크 하나만 보내세요.<br>할머니는 누르기만 하면 돼요.</p>
+      <p style="margin: 0; font-size: 17px; line-height: 24px; color: var(--label-2);">링크 하나만 보내세요.<br>할머니는 앱 설치도 가입도 없이 봐요.</p>
       {chat}
       <ul style="list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;">{chips}</ul>
     </div>
