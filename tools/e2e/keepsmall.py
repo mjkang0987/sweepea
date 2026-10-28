@@ -1,5 +1,5 @@
 # 이미 작은 사진은 다시 저장하지 않기(97): 작은 JPEG는 정보(EXIF·GPS)만 뺀 원본이 다시 저장한 것보다 작거나 같으면 그대로,
-# 아니면·회전 정보가 있으면·큰 사진은 다시 저장. 어떤 경우에도 올라간 보기용에 EXIF가 없다 (mock)
+# 아니면·회전 정보가 있으면·큰 사진은 다시 저장. 어떤 경우에도 올라간 보기용에 위치·기기 정보가 없다 (mock, 인자 webkit이면 사파리 엔진)
 import io,os,sys,tempfile,base64
 from PIL import Image
 from playwright.sync_api import sync_playwright
@@ -23,7 +23,7 @@ big=make('big',(3000,2000),80)              # 큰 사진 → 다시 저장(긴 �
 rot=make('rot',(1200,900),55,orient=6)      # 회전 정보 → 다시 저장
 files=[kakao,fine,big,rot]
 with sync_playwright() as p:
-    br=p.chromium.launch(); pg=br.new_page(viewport={'width':390,'height':844})
+    br=(p.webkit if 'webkit' in sys.argv else p.chromium).launch(); pg=br.new_page(viewport={'width':390,'height':844})
     # 브라우저가 보낸 Blob 본문은 요청 기록에 안 남아서 fetch를 감싸 받아 둔다
     pg.add_init_script("""window.__views=[];const f=window.fetch;window.fetch=async(u,o)=>{
       if(o&&o.method==='PUT'&&String(u).endsWith('/view')&&o.body instanceof Blob){const b=new Uint8Array(await o.body.arrayBuffer());let s='';for(const c of b)s+=String.fromCharCode(c);window.__keep(btoa(s));}
@@ -38,7 +38,10 @@ with sync_playwright() as p:
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home**',timeout=60000)
     check(len(got)==4,f'보기용 4장 올라감 ({len(got)})')
     raw={n:open(f,'rb').read() for n,f in zip(['kakao','fine','big','rot'],files)}
-    for b in got: check(b'Exif' not in b and b'Apple' not in b,f'보기용({len(b)}바이트)에 EXIF·기기 정보 없음')
+    # 사파리는 다시 저장할 때 자기 EXIF(해상도 정도)를 붙이므로 '위치·제조사가 없음'으로 본다
+    for b in got:
+        ex=Image.open(io.BytesIO(b)).getexif()
+        check(0x8825 not in ex and 0x010f not in ex and b'Apple' not in b,f'보기용({len(b)}바이트)에 위치·기기 정보 없음')
     ims=[Image.open(io.BytesIO(b)) for b in got]
     sizes=sorted(im.size for im in ims)
     check((2048,1365) in sizes,f'큰 사진은 긴 변 2048로 줄임 {sizes}')
