@@ -255,6 +255,8 @@
   text-align: center;
 }
 .sp-p__intro-art {
+  /* 글자 200%에서도 화면 폭을 넘지 않게(그림 카드 폭이 rem이라 커진다) */
+  max-width: 100%;
   margin-bottom: var(--space-4);
 }
 .sp-p__intro-title {
@@ -269,6 +271,7 @@
   color: var(--label-2);
 }
 .sp-p__mock {
+  max-width: 100%;
   box-sizing: border-box;
   width: 17.5rem;
   padding: var(--space-4);
@@ -341,6 +344,9 @@
 }
 .sp-p__mock-who {
   flex: 1;
+  /* 좁은 화면·큰 글자에서 '승인'이 밖으로 밀리지 않게 이름 쪽이 줄어든다 */
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--label-2);
 }
 .sp-p__mock-ok {

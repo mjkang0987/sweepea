@@ -72,7 +72,7 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 구현 방식
   - `src/styles/tokens.css`: 색·글자·간격 토큰. 태그 선택자 없이 `:root`와 클래스만
   - `src/layouts/Base.astro`: `lang="ko"`, `color-scheme`, 토큰 CSS
-  - `src/pages/index.astro`: 임시 첫 화면(심볼 + 이름). 실제 화면은 뷰어 이슈에서
+  - `src/pages/index.astro`: 임시 첫 화면(심볼 + 이름). 실제 화면은 뷰어 이슈에서 → 91에서 소개 한 장으로
   - `lighthouserc.json` + `.github/workflows/perf.yml`
 - 영향받는 파일: `package.json`, `astro.config.mjs`, `tsconfig.json`, `src/**`, `lighthouserc.json`, `.github/workflows/perf.yml`, `index.md`
 - 예상 결과: `npm run build`가 통과하고, `npm run perf`가 예산 안에서 통과한다
@@ -1188,5 +1188,6 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 요구(사용자 2026-10-28): 처음 온 사람이 sweepea.co.kr에 들어오면 "가족에게 받은 주소로 들어와 주세요"만 나와 엄마아빠는 막힘. "메인 진입 시 뭔가 있어야 서치 콘솔에도 등록" → "일단 루트에 컨텐츠 노출되는 걸로"
 - 디자인: 캔버스 Landing·Landing-Light(v161~, `tools/design/landing.py`). 위 콩이·스위피·한 줄 소개(로그인 보드와 같음) + '시작하기' + 가족 안내 한 줄, 가운데 소개 3장 그림·제목(h2, title-2)·설명, 아래 '시작하기'·바닥글
 - 구현: `/`에 처음 온 사람(부모 쿠키·가족 출입증 없음)은 소개 화면. 이미 들어온 기기는 지금처럼 앨범·대기로. 로그인 화면(`sp-p__brand`·`sp-p__login`)·소개 화면(`sp-p__mock*`·`sp-p__intro-*`) 스타일 재사용. 검색용: 제목·설명, 공유 미리보기(og:title·description·image), 대표 주소 canonical, `public/robots.txt`(첫 화면·화면 파일만 열고 앨범·가족 링크·사진·API 막음), `public/sitemap.xml`
-- 영향 파일: `src/pages/index.astro`, `src/layouts/{Base,Parent}.astro`, `src/styles/parent.css`, `public/robots.txt`, `public/sitemap.xml`
+- 영향 파일: `src/pages/index.astro`, `src/layouts/{Base,Parent}.astro`, `src/middleware.ts`, `src/styles/parent.css`, `public/robots.txt`, `public/sitemap.xml`
+- 바뀜(검토 1회): robots.txt로 첫 화면 말고 다 막으면 카톡 스크랩 봇이 가족 링크(/i/) 미리보기를 못 만들 수 있음 → robots.txt는 /api/만 막고, 첫 화면 밖 모든 응답에 `X-Robots-Tag: noindex, nofollow`(미들웨어). 글자 200%에서 소개 그림 카드가 화면을 넘던 것(/start도) → 감싼 칸 max-width·이름 줄어들기
 - 하지 않는 것: 개인정보처리방침·이용약관(따로), 서치 콘솔 소유 확인(사용자가 DNS TXT 또는 확인 코드)

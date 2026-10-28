@@ -1,10 +1,6 @@
-# 검색에는 대표 첫 화면만. 가족 앨범·가족 링크·사진·API는 막는다(아이 사진 서비스)
+# 검색에 보일 곳은 대표 첫 화면뿐: 다른 화면·사진은 응답 머리 X-Robots-Tag: noindex로 빼고(미들웨어),
+# 여기서 막지는 않는다(막으면 카톡이 가족 링크 미리보기를 못 만들 수 있다). API만 막는다
 User-agent: *
-Allow: /$
-Allow: /_astro/
-Allow: /icons/
-Allow: /kongi.svg
-Allow: /favicon.svg
-Disallow: /
+Disallow: /api/
 
 Sitemap: https://sweepea.co.kr/sitemap.xml

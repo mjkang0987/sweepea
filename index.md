@@ -25,7 +25,7 @@
 - 사진 많을 때(0.4.34~): 부모 홈·가족 앨범은 처음 60장, 내리면 60장씩 끝까지(`?before=<찍은 날~id>` 쪽을 받아 붙임, 끝 줄 '처음 사진까지 모두 봤어요', 디자인 LoadMore·LoadMoreFamily). 크게 보기는 그 사진 앞뒤 21장 창과 자리·전체(몇 번째 사진이든 열림). 닫으면 보던 자리로(`?to=<id>#c-|p-<id>`, 그 사진 아래 30장까지, 한 번에 900장 넘으면 그 위 30장부터 한 쪽). 골라서 저장하기는 최근 200장 그대로. 가족 모아 보기 2줄(넓은 화면 4줄)도 0.4.35~ 부모 홈과 같은 엇갈린 배열(다음 쪽을 합쳐도 앞 칸이 안 움직임). 칸 폭 단위(cqi)를 모르는 옛 브라우저(iOS 15 이하)는 가족 2줄은 CSS columns, 부모 홈은 정사각 격자.
 - 크게 보기 한마디(0.4.1~): 판 안 한 줄(최근 한마디 말줄임 + 수) → 누르면 아래 시트(dialog, 스크립트 없으면 #talk로 판 안에). 반응은 수 붙은 알약 5개 한 줄(하트 따로 버튼 없음, 옛 브라우저 넘겨 보기 카드만 하트 하나). 볼 수 있는 사진이면 엄빠·승인된 가족 모두 봄(`sp_comment_list`, 승인 대기는 못 봄, 최근 100개, `mine`으로 내 것 표시). 쓴 사람만 지우기(`sp_delete_comment`, 휴지통 → 한 번 더 확인). 옛 `sp_media_comments`는 안 씀(지울 예정). 엄빠 사진 정보 수정 화면의 최근 한마디도 같은 목록 첫 줄.
 - 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. 기기 하나로 여러 가족방에 들어간다(가족방마다 승인·차단 따로). 다음 이슈는 plan.md 참고.
-- 첫 화면(`/`)은 심볼과 이름만 있는 임시 페이지. 클라이언트 JS 0KB.
+- 첫 화면(`/`, 0.4.38~): 처음 온 사람(엄마아빠·검색)에겐 소개 한 장(콩이·한 줄 소개·시작하기·가족 안내 + 소개 3장, 디자인 Landing), 들어온 기기는 앨범·대기로. 검색에는 첫 화면만: 나머지 화면·사진은 `X-Robots-Tag: noindex`(미들웨어, robots.txt로 막으면 카톡 미리보기도 막힐 수 있어서), `public/robots.txt`는 `/api/`만 막고 `public/sitemap.xml`. 모든 화면에 공유 미리보기(og), 첫 화면에 대표 주소 canonical. 클라이언트 JS 0KB(Base 인라인 오류 처리만).
 - 로컬 Lighthouse(모바일, 기본 스로틀링): LCP 약 0.7초, CLS 0, 접근성 100점.
 
 ## 기술
@@ -50,7 +50,7 @@ lighthouserc.json       성능 예산 (LCP 1.8초, CLS 0.05, JS 비압축 50KB, 
 public/favicon.svg      심볼 (시스템 테마에 맞춰 색 바뀜)
 src/styles/tokens.css   디자인 토큰 (색·글자·간격·모서리·터치). 원본은 디자인 시스템 '스위피'
 src/styles/base.css     문서 기본 스타일 (.sp-html, .sp-body, 포커스 링)
-src/layouts/Base.astro  공통 HTML 뼈대 (lang=ko, theme-color)
+src/layouts/Base.astro  공통 HTML 뼈대 (lang=ko, theme-color, 공유 미리보기 og, canonical, 페이지 전환 오류 처리)
 src/layouts/Family.astro 가족 화면 뼈대 (글자 크기 쿠키 적용)
 src/styles/family.css   가족 화면 공통 (.sp-f*)
 src/lib/backend/        백엔드 계약(types.ts, listMedia 커서 before·after·id·찍은 날 범위, countMedia), supabase.ts(fetch로 Auth·RPC), mock.ts(개발용, 운영 금지)
