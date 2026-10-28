@@ -406,26 +406,10 @@
   color: var(--label-2);
 }
 
-/* 대표 첫 화면(디자인 Landing): 로그인 화면 머리 + 소개 3장을 한 장으로 내려 보기 */
-.sp-p__brand--landing {
-  flex: none;
-  padding: 3rem 0 var(--space-8);
-}
-.sp-p__landing-cta {
-  width: 100%;
-  margin-top: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-}
-.sp-p__landing-cta .sp-p__login {
-  max-width: 22.5rem;
-}
-/* 92 문구: 머리 제목이 검색어를 담고 이름은 위 작은 글자 */
+/* 대표 첫 화면(디자인 Landing, 한 장): 로그인 화면처럼 가운데 소개 + 아래 시작하기. 제목이 검색어를 담고 이름은 위 작은 글자 */
 .sp-p__brand-kongi--sm {
-  width: 6rem;
-  height: 6rem;
+  width: 5.5rem;
+  height: 5.5rem;
 }
 .sp-p__landing-name {
   margin: 0;
@@ -441,118 +425,40 @@
   font-weight: 800;
   letter-spacing: var(--large-title-tracking);
 }
-.sp-p__landing-family {
-  margin-top: var(--space-2);
-}
-.sp-p__landing-sec {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  padding: 2.5rem 0;
-  border-top: 1px solid var(--separator);
-}
-.sp-p__pains,
-.sp-p__steps {
+.sp-p__points {
   list-style: none;
-  margin: 0;
-  padding: 0;
+  box-sizing: border-box;
+  width: 100%;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
   display: flex;
   flex-direction: column;
-}
-.sp-p__pains {
   gap: var(--space-3);
+  text-align: left;
 }
-.sp-p__pain {
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-}
-.sp-p__steps {
-  gap: var(--space-5);
-}
-.sp-p__step {
+.sp-p__point {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
-.sp-p__step-n {
+.sp-p__point-mark {
   flex: none;
-  width: 2rem;
-  height: 2rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.0625rem;
   border-radius: 50%;
   background: var(--pea-tint);
   color: var(--pea-deep);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--subhead-size);
-  font-weight: 700;
-}
-.sp-p__step-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  color: var(--label-2);
-  font-size: var(--subhead-size);
-  line-height: var(--subhead-line);
-}
-.sp-p__step-title {
-  color: var(--label);
-  font-size: var(--body-size);
-  line-height: var(--body-line);
-}
-.sp-p__faq-item {
-  border-top: 1px solid var(--separator);
-}
-.sp-p__faq-q {
-  /* 기본 펼침 표시(▶)를 살리려고 flex로 바꾸지 않는다. 누를 자리 44px */
-  min-height: var(--target-min);
-  box-sizing: border-box;
-  padding: var(--space-3) 0;
-  font-weight: 600;
-  cursor: pointer;
-}
-.sp-p__faq-a {
-  margin: 0 0 var(--space-4);
-  color: var(--label-2);
-  font-size: var(--subhead-size);
-  line-height: var(--subhead-line);
-}
-.sp-p__landing-end {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  padding: 2.5rem 0 var(--space-8);
-  border-top: 1px solid var(--separator);
-  text-align: center;
-}
-.sp-p__landing-end .sp-p__login {
-  max-width: 22.5rem;
-}
-.sp-p__feature {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 2.5rem 0;
-  border-top: 1px solid var(--separator);
-  text-align: center;
-}
-.sp-p__feature-title {
-  margin: 0;
-  font-size: var(--title-2-size);
-  line-height: var(--title-2-line);
-  font-weight: var(--title-2-weight);
-  letter-spacing: var(--title-2-tracking);
-}
-.sp-p__landing-foot {
-  padding: var(--space-5) 0 var(--space-8);
-  border-top: 1px solid var(--separator);
-  text-align: center;
-  color: var(--label-2);
   font-size: var(--footnote-size);
-  line-height: var(--footnote-line);
+  font-weight: 800;
+}
+.sp-p__landing-fine {
+  text-align: center;
 }
 
 /* 앨범 */

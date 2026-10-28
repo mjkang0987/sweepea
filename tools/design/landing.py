@@ -1,4 +1,4 @@
-# 대표 첫 화면(91 → 92 문구, 사용자 2026-10-28 "마케팅 스킬 + 리서치로 업데이트"): 처음 온 사람(엄마아빠·검색)이 보는 한 장짜리 소개
+# 대표 첫 화면(91 → 92 문구, 사용자 2026-10-28 "마케팅 스킬 + 리서치로 업데이트" → "한 장으로 설명되면 좋겠는데"): 휴대폰 한 화면 소개
 # 세 박자: 지금 불편(이런 적 있으세요?) → 바뀐 모습(좋은 점) → 시작 방법(이렇게 써요·시작하기). 지어낸 숫자·후기 없이 제품 사실만
 # 머리: 콩이·스위피·제목(검색어 '아기 사진')·설명·'무료로 시작하기'·가족 안내 / 불편 3 / 3단계 / 좋은 점 3(소개 그림 카드) / 자주 묻는 질문 / 마지막 시작하기 / 바닥글
 # 휴대폰 390 기준, 넓은 화면은 같은 줄을 가운데로(보드 없음). 라이트·다크
@@ -25,45 +25,23 @@ def art(f):
 H2='margin: 0; font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: -0.3px;'
 SEC='display: flex; flex-direction: column; gap: 20px; padding: 40px 0; border-top: 1px solid var(--separator);'
 BTN='<a href="ParentLogin{t}.dc.html" style="min-height: 52px; border-radius: 12px; font-size: 17px; line-height: 22px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--pea); color: var(--on-pea); text-decoration: none; width: 100%; max-width: 360px; box-sizing: border-box;">무료로 시작하기</a>'
+POINTS=['할머니·할아버지는 앱 설치·가입 없이 링크로 바로 봐요','외가·친가 따로, 처음 보는 이름은 엄마아빠가 확인해요','하트와 한마디가 돌아오고, 사진은 사라지지 않아요']
 def page(t):
-    pains=''.join(f'<li style="padding: 14px 16px; border-radius: 14px; background: var(--surface); font-size: 17px; line-height: 24px;">{p}</li>' for p in PAINS)
-    steps=''.join(f'<li style="display: flex; gap: 14px; align-items: flex-start;"><span aria-hidden="true" style="flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--pea-tint); color: var(--pea-deep); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700;">{i+1}</span><span style="display: flex; flex-direction: column; gap: 4px;"><strong style="font-size: 17px; line-height: 24px;">{h}</strong><span style="font-size: 15px; line-height: 21px; color: var(--label-2);">{b}</span></span></li>' for i,(h,b) in enumerate(STEPS))
-    feats=''.join(f'''
-    <section aria-labelledby="f{n+1}" style="display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; padding: 40px 0; border-top: 1px solid var(--separator);">
-      {art(f"ParentIntro{n+1}{t}.dc.html")}
-      <div style="display: flex; flex-direction: column; gap: 10px;"><h2 id="f{n+1}" style="{H2}">{h}</h2><p style="margin: 0; font-size: 17px; line-height: 24px; color: var(--label-2);">{b}</p></div>
-    </section>''' for n,(h,b) in enumerate(FEATS))
-    faq=''.join(f'<details style="border-top: 1px solid var(--separator); padding: 4px 0;"{" open" if i==0 else ""}><summary style="min-height: 48px; display: flex; align-items: center; font-size: 17px; line-height: 24px; font-weight: 600; cursor: pointer;">{q}</summary><p style="margin: 0 0 14px; font-size: 15px; line-height: 22px; color: var(--label-2);">{a}</p></details>' for i,(q,a) in enumerate(FAQ))
-    return f'''<div class="sp-t sp-{{{{theme}}}}" style="position: relative; width: 390px; box-sizing: border-box; background: var(--bg); color: var(--label); font-family: 'Pretendard Variable', -apple-system, system-ui, sans-serif; word-break: keep-all;">
-  <main style="padding: 20px 20px 0; display: flex; flex-direction: column;">
-    <header style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: 56px 0 40px;">
-      <img class="sp-kongi-anim" src="{KONGI}" alt="" style="width: 96px; height: 96px; image-rendering: pixelated;">
+    """한 장(사용자 2026-10-28 "한 장으로 설명되면 좋겠는데"): 휴대폰 한 화면에 제목·핵심 3줄·시작하기·가족 안내"""
+    pts=''.join(f'<li style="display: flex; align-items: flex-start; gap: 12px; text-align: left;"><span aria-hidden="true" style="flex: none; width: 24px; height: 24px; margin-top: 1px; border-radius: 50%; background: var(--pea-tint); color: var(--pea-deep); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800;">✓</span><span style="font-size: 17px; line-height: 24px;">{p}</span></li>' for p in POINTS)
+    return f'''<div class="sp-t sp-{{{{theme}}}}" style="position: relative; width: 390px; height: 844px; box-sizing: border-box; background: var(--bg); color: var(--label); font-family: 'Pretendard Variable', -apple-system, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; word-break: keep-all;">
+  <main style="flex: 1; padding: 20px 20px 0; display: flex; flex-direction: column;">
+    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center;">
+      <img class="sp-kongi-anim" src="{KONGI}" alt="" style="width: 88px; height: 88px; image-rendering: pixelated;">
       <p style="margin: 0; font-size: 17px; line-height: 22px; font-weight: 800; color: var(--pea-ink);">스위피</p>
       <h1 style="margin: 0; font-size: 30px; line-height: 38px; font-weight: 800; letter-spacing: -0.4px;">아기 사진, 링크 하나면<br>할머니도 바로 봐요</h1>
-      <p style="margin: 0; font-size: 17px; line-height: 24px; color: var(--label-2);">앱 설치도, 가입도 없이. 스위피에 올리고 카톡으로 링크만 보내세요. 사진은 사라지지 않고 가족 앨범에 쌓여요.</p>
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; margin-top: 10px;">
-        {BTN.format(t=t)}
-        <p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--label-2);">무료 5GB로 시작해요</p>
-        <p style="margin: 6px 0 0; font-size: 15px; line-height: 21px; color: var(--label-2);">가족에게 링크를 받으셨나요? 받은 링크를 눌러 주세요</p>
-      </div>
-    </header>
-    <section aria-labelledby="pain" style="{SEC}">
-      <h2 id="pain" style="{H2}">이런 적 있으세요?</h2>
-      <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;">{pains}</ul>
-    </section>
-    <section aria-labelledby="how" style="{SEC}">
-      <h2 id="how" style="{H2}">이렇게 써요</h2>
-      <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px;">{steps}</ol>
-    </section>{feats}
-    <section aria-labelledby="faq" style="{SEC} gap: 8px;">
-      <h2 id="faq" style="{H2} margin-bottom: 8px;">자주 묻는 질문</h2>
-      {faq}
-    </section>
-    <section aria-labelledby="go" style="display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; padding: 40px 0 32px; border-top: 1px solid var(--separator);">
-      <h2 id="go" style="{H2}">오늘 찍은 사진, 오늘 할머니께</h2>
-      {BTN.format(t=t)}
-    </section>
-    <footer style="padding: 20px 0 32px; border-top: 1px solid var(--separator); text-align: center; font-size: 13px; line-height: 18px; color: var(--label-2);">스위피 · sweepea.co.kr</footer>
+      <p style="margin: 0; font-size: 17px; line-height: 24px; color: var(--label-2);">사진을 올리고 카톡으로 링크만 보내세요</p>
+      <ul style="list-style: none; margin: 10px 0 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; width: 100%; box-sizing: border-box; border-radius: 18px; background: var(--surface);">{pts}</ul>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 24px;">
+      <a href="ParentLogin{t}.dc.html" style="min-height: 52px; border-radius: 12px; font-size: 17px; line-height: 22px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--pea); color: var(--on-pea); text-decoration: none; width: 100%; box-sizing: border-box;">무료로 시작하기</a>
+      <p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--label-2);">무료 5GB · 가족에게 링크를 받으셨다면 그 링크를 눌러 주세요</p>
+    </div>
   </main>
 </div>
 '''
@@ -71,12 +49,12 @@ d=json.load(open('canvas.json')); b=d['boards']
 for t in ['','-Light']:
     src=open(f'ParentLogin{t}.dc.html').read()
     head=src[:src.index('<div class="sp-t sp-{{theme}}"')].replace('<title>시작하기</title>','<title>스위피 첫 화면</title>')
-    tail=src[src.index('</x-dc>'):].replace('"height":844','"height":3600')
+    tail=src[src.index('</x-dc>'):]
     n=f'Landing{t}.dc.html'
     open(n,'w').write(head+page(t)+tail)
     ref=b[f'ParentLogin{t}.dc.html']
     if n not in d['order']: d['order'].append(n)
     x=max(v['x'] for v in b.values() if v['y']==ref['y'])+470 if n not in b else b[n]['x']
-    b[n]=dict(ref,x=x,h=3600,title=('다크' if not t else '라이트')+' · 첫 화면(sweepea.co.kr) · 소개')
+    b[n]=dict(ref,x=x,h=844,title=('다크' if not t else '라이트')+' · 첫 화면(sweepea.co.kr) · 소개')
 json.dump(d,open('canvas.json','w'),ensure_ascii=False,indent=1)
 print('ok')
