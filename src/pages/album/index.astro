@@ -1,5 +1,6 @@
 ---
-// 앨범: 넘겨 보기(기본)·모아 보기. 여러 가족방이면 모두 섞어 보는 게 기본, 집 고르기는 링크(JS 없음)
+// 앨범: 넘겨 보기(기본)·모아 보기. 여러 가족방이면 모두 섞어 보는 게 기본, 집 고르기는 링크.
+// 작은 스크립트는 60장씩 더 불러오기·닫고 돌아온 자리 맞추기만(없으면 '사진 더 보기' 링크와 #앵커)
 import Family from '../../layouts/Family.astro';
 import ReactRow from '../../components/ReactRow.astro';
 import SayForm from '../../components/SayForm.astro';
@@ -27,7 +28,7 @@ if (Astro.request.method === 'POST') {
 const a = await loadAlbum(Astro.cookies, Astro.url);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const { pass, open, kids, q } = a;
-// 60장씩: ?before=<id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
+// 60장씩: ?before=<찍은 날~id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
 const cont = Astro.url.searchParams.has('before');
 // 전체 장 수는 제목·넘겨 보기 'n / 전체'에. 새 사진 레이어는 이 쪽(60장)이 아니라 최근 200장에서 본다(옛날에 찍고 새로 올린 사진도 잡게, 예전과 같은 범위)
 const [page, total, recent200] = await Promise.all([
@@ -78,7 +79,7 @@ const installState = Astro.cookies.get(INSTALL_COOKIE)?.value;
 const installAsked = !cont && Astro.cookies.get(`${INSTALL_COOKIE}_msg`)?.value === '1';
 if (installAsked) Astro.cookies.delete(`${INSTALL_COOKIE}_msg`, { path: '/' });
 // 가운데 레이어(한 번 열 때 하나): 승인 뒤 처음 → 새 사진. 처음 온 기기는 지금 사진까지 본 걸로만 적는다
-const recent = !q.f && recent200 ? recent200 : items;
+const recent = recent200 ?? items;
 const newestAt = recent.reduce((t, m) => Math.max(t, m.created_at ? Date.parse(m.created_at) : 0), 0);
 const newestIso = newestAt ? new Date(newestAt).toISOString() : '';
 const waited = Astro.cookies.get(WAITED)?.value;
@@ -186,8 +187,8 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
               {/* 반응 줄은 카드마다. 가운데 카드 것만 보이게(CSS), JS 없이 그 사진에 보낸다 */}
               <div class="sp-a__slide-react">
                 {/* 돌아올 때 같은 카드가 가운데에 오게 #p-<id> */}
-                <ReactRow mediaId={c.id} back={backTo(c.id)} reacts={reacts} idSuffix={`-${c.n}`} />
-                <SayForm mediaId={c.id} back={backTo(c.id)} child={c.kid || '아이'} idSuffix={`-${c.n}`} />
+                <ReactRow mediaId={c.id} back={backTo(c.id)} reacts={reacts} idSuffix={`-${c.id}`} />
+                <SayForm mediaId={c.id} back={backTo(c.id)} child={c.kid || '아이'} idSuffix={`-${c.id}`} />
               </div>
             </li>
           ))}

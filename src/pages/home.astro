@@ -35,7 +35,7 @@ const kid = callName(a.home.children?.[0]?.name ?? '아이');
 const kids = a.home.children ?? [];
 const picked = kids.length > 1 ? kids.find((k) => k.id === Astro.url.searchParams.get('k')) : undefined;
 const b = getBackend();
-// 60장씩: ?before=<id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
+// 60장씩: ?before=<찍은 날~id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
 const cont = Astro.url.searchParams.has('before');
 // 접종·검진: 일정 보기를 켠 아이마다 다음 일정 하나. 옆 기능이라 실패하면 줄만 빼고 앨범은 보인다
 const today = seoulToday();

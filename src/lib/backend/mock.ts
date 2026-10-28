@@ -315,8 +315,8 @@ export function createMockBackend(): Backend {
       comments.push({ id: crypto.randomUUID(), mediaId: id, memberId: parentKey(pass), at: Date.now(), body: text });
     },
     async reactionCounts(pass, ids) {
-      // 볼 수 있는 사진만(DB의 sp_can_view_media 흉내)
-      ids = ids.filter((id) => {
+      // DB(sp_reaction_counts)처럼 앞 200장만, 볼 수 있는 사진만(sp_can_view_media 흉내)
+      ids = ids.slice(0, 200).filter((id) => {
         try {
           if (parents.has(pass.access)) parentMedia(pass, id);
           else viewer(pass, id);

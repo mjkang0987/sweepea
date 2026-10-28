@@ -140,7 +140,10 @@ export type Reacts = Map<string, { counts: Partial<Record<ReactionKind | 'commen
 
 export async function loadReacts(pass: Pass, mediaIds: string[]): Promise<Reacts> {
   const out: Reacts = new Map(mediaIds.map((id) => [id, { counts: {}, mine: new Set() }]));
-  for (const r of await getBackend().reactionCounts(pass, mediaIds) as ReactionCount[]) {
+  // DB 함수는 한 번에 200장까지만 본다(닫고 돌아오면 900장까지 그림) → 200장씩 나눠 함께 묻는다
+  const chunks = Array.from({ length: Math.ceil(mediaIds.length / 200) }, (_, i) => mediaIds.slice(i * 200, i * 200 + 200));
+  const rows = (await Promise.all(chunks.map((ids) => getBackend().reactionCounts(pass, ids)))).flat() as ReactionCount[];
+  for (const r of rows) {
     const x = out.get(r.media_id);
     if (!x) continue;
     x.counts[r.kind] = r.n;

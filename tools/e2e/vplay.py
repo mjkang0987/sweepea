@@ -66,8 +66,10 @@ with sync_playwright() as p:
     # 넘겨 보기 한마디 칸
     pg.goto(B+'/album'); pg.wait_for_load_state()
     check(pg.get_by_text('직접 쓰기').count()==0 and pg.locator('.sp-a__slide .sp-say').count()>=3,'넘겨 보기 카드마다 한마디 칸')
-    pg.locator('#say-body-1').fill('넘겨서 한마디'); pg.locator('#say-1').get_by_role('button',name='보내기').click(); pg.wait_for_load_state()
-    check(pg.locator('.sp-toast').count()==1 and '보냈어요' in pg.locator('.sp-toast').inner_text() and '보냈어요' not in pg.locator('#say-1').inner_text(),'결과는 화면 아래 토스트 하나(카드 안 상자 없음)')
+    say1=pg.locator('.sp-a__slide').first.locator('.sp-say')  # 카드 한마디 폼(id 끝은 사진 id)
+    say1.locator('input[name=body]').fill('넘겨서 한마디'); say1.get_by_role('button',name='보내기').click(); pg.wait_for_load_state()
+    say1=pg.locator('.sp-a__slide').first.locator('.sp-say')
+    check(pg.locator('.sp-toast').count()==1 and '보냈어요' in pg.locator('.sp-toast').inner_text() and '보냈어요' not in say1.inner_text(),'결과는 화면 아래 토스트 하나(카드 안 상자 없음)')
     pg.screenshot(path=D+'vp-swipe.png')
     # PC·다크
     c2=b.new_context(viewport={'width':1280,'height':800},color_scheme='dark'); c2.add_cookies(gm.cookies()); q=c2.new_page()
