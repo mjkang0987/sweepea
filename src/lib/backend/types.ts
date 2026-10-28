@@ -247,7 +247,7 @@ export interface Backend {
   /** 볼 수 있는 사진(찍은 날·id 내림차순). before는 그 사진보다 옛것, after는 그보다 최근 것(가까운 순서로 limit개를 골라 내림차순으로 돌려줌), id는 한 장만 */
   listMedia(pass: Pass, opts?: MediaQuery): Promise<MediaItem[]>;
   /** listMedia와 같은 조건의 개수(limit 없음) */
-  countMedia(pass: Pass, opts?: Omit<MediaQuery, 'limit' | 'before' | 'id'>): Promise<number>;
+  countMedia(pass: Pass, opts?: Omit<MediaQuery, 'limit' | 'id'>): Promise<number>;
   /** 반응 켜기·끄기. 볼 수 없는 사진이면 BackendError 403 */
   react(pass: Pass, mediaId: string, kind: ReactionKind, on: boolean): Promise<void>;
   /** 한마디(1~200자). 하루 30개 넘으면 BackendError 429 */

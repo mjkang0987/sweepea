@@ -51,11 +51,13 @@ export interface MediaPage {
 }
 const cursorParam = (m: MediaItem) => `${m.taken_at}~${m.id}`;
 /** ?before= 값 → 커서. 기준 사진을 다시 찾지 않으므로 그사이 지워져도 그 자리부터 이어진다 */
+// 찍은 날은 DB가 준 꼴 그대로(마이크로초까지, 다시 만들면 잘려 커서가 틀어짐) 엄격히 확인한다: DB 거르기 글에 그대로 들어가므로
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/;
 function readCursor(v: string | null): MediaCursor | undefined {
   const i = v?.lastIndexOf('~') ?? -1;
   if (!v || i < 0) return undefined;
   const takenAt = v.slice(0, i), id = v.slice(i + 1);
-  return Number.isFinite(Date.parse(takenAt)) && UUID.test(id) ? { takenAt, id } : undefined;
+  return ISO.test(takenAt) && UUID.test(id) ? { takenAt, id } : undefined;
 }
 /** 주소에 맞는 한 쪽: ?before=<커서>면 그 다음 PAGE장, ?to=<id>면(크게 보기에서 닫고 돌아옴) 그 사진이 든 쪽까지 처음부터(아래로 30장은 더), 아니면 처음 PAGE장 */
 export async function loadPage(pass: Pass, base: MediaQuery, url: URL): Promise<MediaPage> {
@@ -66,12 +68,13 @@ export async function loadPage(pass: Pass, base: MediaQuery, url: URL): Promise<
   };
   const before = readCursor(url.searchParams.get('before'));
   if (before) {
-    const [rows, ahead] = await Promise.all([
+    // 앞에 있는 수 = 전체 - 커서보다 옛것(기준 사진이 그사이 지워져도 맞게)
+    const [rows, total, older] = await Promise.all([
       backend.listMedia(pass, { ...base, before, limit: PAGE + 1 }),
-      backend.countMedia(pass, { ...base, after: before }),
+      backend.countMedia(pass, base),
+      backend.countMedia(pass, { ...base, before }),
     ]);
-    // 기준 사진(앞 쪽 마지막)까지 앞에 있다
-    return page(rows, PAGE, true, ahead + 1);
+    return page(rows, PAGE, true, total - older);
   }
   const toId = url.searchParams.get('to');
   const to = toId && UUID.test(toId) ? (await backend.listMedia(pass, { ...base, id: toId, limit: 1 }))[0] : undefined;

@@ -29,8 +29,12 @@ if ('redirect' in a) return Astro.redirect(a.redirect);
 const { pass, open, kids, q } = a;
 // 60장씩: ?before=<id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
 const cont = Astro.url.searchParams.has('before');
-// 전체 장 수는 제목·넘겨 보기 'n / 전체'에. 모아 보기의 이어지는 쪽은 쓰지 않아 건너뛴다
-const [page, total] = await Promise.all([loadPage(pass, a.base, Astro.url), cont && q.v === 'list' ? 0 : getBackend().countMedia(pass, a.base)]);
+// 전체 장 수는 제목·넘겨 보기 'n / 전체'에. 새 사진 레이어는 이 쪽(60장)이 아니라 최근 200장에서 본다(옛날에 찍고 새로 올린 사진도 잡게, 예전과 같은 범위)
+const [page, total, recent200] = await Promise.all([
+  loadPage(pass, a.base, Astro.url),
+  getBackend().countMedia(pass, a.base),
+  !cont && !q.f ? getBackend().listMedia(pass, { ...a.base, limit: 200 }) : null,
+]);
 const { items } = page;
 const sep = albumHref(q).includes('?') ? '&' : '?';
 const nextHref = page.next ? `${albumHref(q)}${sep}before=${encodeURIComponent(page.next)}` : null;
@@ -46,7 +50,8 @@ const here = albumHref(q);
 const many = open.length > 1;
 const kidTitle = q.f ? kids.get(q.f)! : [...kids.values()].join('·');
 const title = `${kidTitle} 사진`;
-const latest = items[0] ? dayLabel(items[0].taken_at) : null;
+// 가장 최근 사진 날짜(이어지는 쪽·아래부터 그린 쪽은 첫 사진이 최근 것이 아니라 뺀다)
+const latest = items[0] && page.offset === 0 ? dayLabel(items[0].taken_at) : null;
 const showTag = many && !q.f;
 
 const cards = await Promise.all(
@@ -73,8 +78,7 @@ const installState = Astro.cookies.get(INSTALL_COOKIE)?.value;
 const installAsked = !cont && Astro.cookies.get(`${INSTALL_COOKIE}_msg`)?.value === '1';
 if (installAsked) Astro.cookies.delete(`${INSTALL_COOKIE}_msg`, { path: '/' });
 // 가운데 레이어(한 번 열 때 하나): 승인 뒤 처음 → 새 사진. 처음 온 기기는 지금 사진까지 본 걸로만 적는다
-// 새 사진 레이어는 이 쪽(60장)이 아니라 최근 200장에서 본다(옛날에 찍고 새로 올린 사진도 잡게, 예전과 같은 범위)
-const recent = !cont && !q.f && items.length >= 60 ? await getBackend().listMedia(pass, { ...a.base, limit: 200 }) : items;
+const recent = !q.f && recent200 ? recent200 : items;
 const newestAt = recent.reduce((t, m) => Math.max(t, m.created_at ? Date.parse(m.created_at) : 0), 0);
 const newestIso = newestAt ? new Date(newestAt).toISOString() : '';
 const waited = Astro.cookies.get(WAITED)?.value;
