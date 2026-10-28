@@ -14,11 +14,14 @@ interface Props {
   wide?: boolean;
   /** 저장 버튼을 아래 막대(.sp-p__savebar)에 고정한 화면: 아래 여백·토스트 자리 */
   savebar?: boolean;
+  /** 검색·미리보기 설명과 대표 주소(첫 화면) */
+  description?: string;
+  canonical?: string;
 }
-const { title, tab, wide, savebar, alerts = 0, waiting = 0 } = Astro.props;
+const { title, tab, wide, savebar, alerts = 0, waiting = 0, description, canonical } = Astro.props;
 ---
 
-<Base title={title}>
+<Base title={title} description={description} canonical={canonical}>
   <main class:list={['sp-p', tab && 'sp-p--tabbed', wide && 'sp-p--wide', savebar && 'sp-p--savebar']}>
     <slot />
   </main>

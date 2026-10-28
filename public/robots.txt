@@ -1,0 +1,10 @@
+# 검색에는 대표 첫 화면만. 가족 앨범·가족 링크·사진·API는 막는다(아이 사진 서비스)
+User-agent: *
+Allow: /$
+Allow: /_astro/
+Allow: /icons/
+Allow: /kongi.svg
+Allow: /favicon.svg
+Disallow: /
+
+Sitemap: https://sweepea.co.kr/sitemap.xml

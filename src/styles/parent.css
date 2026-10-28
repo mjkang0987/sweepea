@@ -398,6 +398,52 @@
   color: var(--label-2);
 }
 
+/* 대표 첫 화면(디자인 Landing): 로그인 화면 머리 + 소개 3장을 한 장으로 내려 보기 */
+.sp-p__brand--landing {
+  flex: none;
+  padding: 3rem 0 var(--space-8);
+}
+.sp-p__landing-cta {
+  width: 100%;
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sp-p__landing-cta .sp-p__login {
+  max-width: 22.5rem;
+}
+.sp-p__landing-cta--end {
+  margin-top: 0;
+  padding: 2.5rem 0 var(--space-8);
+  border-top: 1px solid var(--separator);
+}
+.sp-p__feature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--separator);
+  text-align: center;
+}
+.sp-p__feature-title {
+  margin: 0;
+  font-size: var(--title-2-size);
+  line-height: var(--title-2-line);
+  font-weight: var(--title-2-weight);
+  letter-spacing: var(--title-2-tracking);
+}
+.sp-p__landing-foot {
+  padding: var(--space-5) 0 var(--space-8);
+  border-top: 1px solid var(--separator);
+  text-align: center;
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+}
+
 /* 앨범 */
 .sp-p__empty {
   flex: 1;
