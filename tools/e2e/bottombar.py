@@ -57,6 +57,10 @@ with sync_playwright() as p:
     # 낮은 화면(가로로 든 폰): 고정 풀림
     pg.set_viewport_size({'width':844,'height':390}); pg.goto(B+'/upload')
     check(pg.locator('#up-actions').evaluate("e=>getComputedStyle(e).position")=='static','낮은 화면: 막대 고정 풀림')
+    # 낮은 폰 화면에서 파일만 고를 때는 화면이 끌려 내려가지 않음(줄이기 상태 칸)
+    pg.set_viewport_size({'width':390,'height':600}); pg.goto(B+'/upload'); pg.evaluate("window.scrollTo(0,0)")
+    pg.set_input_files('#up-files',[D+'u0.jpg',D+'u1.jpg',D+'u2.jpg']); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=60000)
+    check(pg.evaluate('scrollY')==0,f"파일 고를 땐 스크롤 그대로 ({pg.evaluate('scrollY')})")
     pg.set_viewport_size({'width':390,'height':H})
     # 문자 공유(탭 있음): 가족이 없으면 막대 없음
     pg.goto(B+'/settings/family/sms'); check(pg.locator('.sp-p__savebar').count()==0 and 'sp-p--savebar' not in pg.locator('main').get_attribute('class'),'문자 공유: 들어온 가족 없으면 막대 없음')

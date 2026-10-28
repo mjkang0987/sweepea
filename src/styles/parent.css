@@ -233,6 +233,13 @@
   .sp-html:has(.sp-p--savebar) {
     scroll-padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
   }
+  /* 토스트도 막대 없이 탭바 위·화면 아래에 */
+  .sp-p.sp-p--savebar .sp-toast {
+    bottom: calc(3.5rem + 1px + 12px + env(safe-area-inset-bottom));
+  }
+  .sp-p.sp-p--savebar:not(.sp-p--tabbed) .sp-toast {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
 }
 .sp-p__btn,
 .sp-p__login {
@@ -1798,14 +1805,14 @@
   inherits: false;
   initial-value: 0%;
 }
-.sp-p__toast--live:has(+ .sp-p__up-progress:not([hidden])) {
+.sp-p__toast--progress {
   background:
     linear-gradient(var(--pea), var(--pea)) left bottom / var(--p) 3px no-repeat,
     linear-gradient(to right, color-mix(in srgb, var(--pea) 20%, var(--pea-tint)) var(--p), var(--pea-tint) var(--p));
   transition: --p 0.3s linear;
 }
 @media (prefers-reduced-motion: reduce) {
-  .sp-p__toast--live:has(+ .sp-p__up-progress:not([hidden])) {
+  .sp-p__toast--progress {
     transition: none;
   }
 }

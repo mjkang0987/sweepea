@@ -150,12 +150,7 @@ const kid = callName(kids[0]?.name ?? '아이');
   const NO_GROUP = '보여줄 그룹을 하나 이상 골라 주세요.';
 
   // 상태 칸은 늘 있고(화면 읽기가 바로 읽게) 비었을 때만 CSS로 숨긴다
-  // 버튼 막대가 아래에 고정이라 상태 칸이 화면 밖일 수 있다: 새로 나타날 때만 보이게 스크롤(진행 중엔 끌어당기지 않게)
-  const say = (text: string) => {
-    const appear = !!text && !status.textContent;
-    status.textContent = text;
-    if (appear) status.scrollIntoView({ block: 'nearest' });
-  };
+  const say = (text: string) => (status.textContent = text);
   // 못 올린 안내는 진행 글과 따로 빨간 칸에(role=alert). 고를 때 뺀 파일은 이름·이유 목록
   const alertBox = $('up-alert');
   const warn = (head = '', rows: string[] = []) => {
@@ -188,6 +183,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     prog.hidden = false;
     bar.value = pct(frac);
     status.style.setProperty('--p', `${pct(frac)}%`);
+    status.classList.add('sp-p__toast--progress');
     const v = video === undefined ? -1 : pct(video);
     const t = v < 0 ? text : `${text} · ${tag}${v === 100 ? 100 : Math.floor(v / 10) * 10}%`;
     if (status.textContent !== t) say(t);
@@ -456,6 +452,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     letSleep();
     prog.hidden = true;
     status.style.removeProperty('--p');
+    status.classList.remove('sp-p__toast--progress');
     busy = false;
     shrinking = false;
     $('up-shrink-hint').hidden = true;
@@ -539,6 +536,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     const sizeOf = (it: Item) => it.view.size + it.thumb.size + (it.poster?.size ?? 0);
     const total = order.reduce((t, i) => t + (items[i].done ? 0 : sizeOf(items[i])), 0) || 1;
     let sent = 0;
+    let shown = false;
     try {
       for (const [n, i] of order.entries()) {
         const it = items[i];
@@ -547,6 +545,11 @@ const kid = callName(kids[0]?.name ?? '아이');
         it.state = 'sending';
         paint(i);
         step(label, sent / total);
+        // 버튼 막대가 아래에 고정이라 상태 칸이 화면 밖일 수 있다: 올리기를 시작할 때 한 번만 보이게(줄이기 땐 안 끌어당김)
+        if (!shown) {
+          shown = true;
+          status.scrollIntoView({ block: 'nearest' });
+        }
         it.id ??= (
           await api<{ id: string }>('/api/media', {
             method: 'POST',
@@ -577,6 +580,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       letSleep();
       prog.hidden = true;
       status.style.removeProperty('--p');
+      status.classList.remove('sp-p__toast--progress');
       busy = false;
       // 용량이 다 차면 남은 것도 못 올라가므로 모두 못 올림
       const full = err instanceof HttpError && err.status === 507;
@@ -599,6 +603,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     letSleep();
     prog.hidden = true;
     status.style.removeProperty('--p');
+    status.classList.remove('sp-p__toast--progress');
     if (mode !== 'share') return location.assign('/home');
     const ids = order.map((i) => items[i].id!);
     say('보낼 주소를 만드는 중…');
