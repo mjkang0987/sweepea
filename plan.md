@@ -1131,3 +1131,13 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 고침: `src/layouts/Base.astro` head에 인라인 스크립트, 두 이벤트의 ready·finished·updateCallbackDone을 받아 둠
 - 검증: skipTransition을 강제로 넣어 고치기 전 이동마다 `Transition was skipped` 오류 → 고친 뒤 0, 보통 이동은 전환 그대로. acclayer e2e 통과, QA 1회(지적 2개 반영: 주석을 JS 안으로, `p?.catch`)
 - 못 한 것: 실제 '화면 가려짐' 상황은 헤드리스에서 재현 못 함, 사파리 실기기
+
+### 87. feature/taken-at — 찍은 날짜 제대로 읽기 (진행 중)
+- 요구: 지금은 JPEG만 EXIF 촬영 시각을 읽고 HEIC·PNG·영상은 파일 시각(`lastModified`)을 써서, 아이폰은 고른 시각·내보낸 시각이 들어가 앨범 달이 틀어질 수 있음
+- 구현
+  - 사진: 종류 표시(`file.type`) 대신 파일 앞부분 바이트로 판별. JPEG(지금대로), HEIC/HEIF(meta 상자의 iinf·iloc에서 Exif 항목 위치를 찾아 그 부분만 읽음), PNG(eXIf 덩어리). 같은 TIFF 읽기(`readTiff`)를 씀
+  - 영상: mediabunny `getMetadataTags().date`(아이폰 `com.apple.quicktime.creationdate`, 시간대 있음) → 없으면 MP4/MOV `moov/mvhd` 생성 시각(UTC, 1904 기준) → 없으면 파일 시각. 2001년 전·내일 이후는 버림
+  - 출처 값은 DB에 있는 값만 되므로 파일 안 시각은 'exif', 파일 시각은 'file'
+- 영향 파일: `src/lib/exif.ts`, `src/pages/upload.astro`(photo·video), `tests/exif.test.ts`
+- 예상 결과: 아이폰 HEIC·영상, 안드로이드 영상이 찍은 날짜로 앨범에 묶임
+- 하지 않는 것: WebP(EXIF가 보통 파일 끝이라 앞부분만 읽어서는 못 찾음), PNG 스크린샷의 XMP 날짜
