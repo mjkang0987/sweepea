@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-28 기준, dev 0.4.31 배포됨)
+## 새 세션 인계 (2026-10-28 기준, dev 0.4.32 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
 
 ### 지금 상태
 
-- dev = 0.4.31, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- dev = 0.4.32, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 17개 모두 적용(17번째 `20261027000004_finish_quota.sql` 완료 때 5GB 한도는 2026-10-28 사용자 승인 후 적용, 권한 그대로 service_role만). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v157, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
@@ -24,7 +24,7 @@
    6. ~~계정 탈퇴 확인 레이어 / 조부모 설치 안내 버튼 그 자리에서~~ 완료(85, 0.4.30). 로그아웃은 디자인에 확인이 없어 그대로
    - 그대로 둠: 로그인·비밀번호·처음 설정·올리기처럼 다음 화면으로 가는 흐름
    - 참고 구현: 설정 › 가족 `src/pages/settings/family/index.astro`의 스크립트(fetch → `.sp-p`·탭바 갈아 끼우기, 확인 모달 `#fam-ask`, 알림 칸 `#fam-live`·`#fam-urgent`)가 엄빠 화면 기본형. 크게 보기 `src/components/Viewer.astro`의 submit 가로채기(차례로 보내기·마지막 응답만 그림·토스트는 늘 있는 알림 칸으로 읽기), 사진 지우기 레이어 `src/pages/photo/[id].astro`(`dialog.sp-layer__modal` + `formmethod="dialog"` 취소)
-2. **사진·영상 찍은 날짜**: 지금은 JPEG만 EXIF, HEIC·PNG·영상은 파일 시각(아이폰에선 고른 시각일 수 있음). HEIC EXIF·MP4 생성 시각(mvhd) 읽기. 아이폰 사파리가 HEIC를 JPEG로 바꿀 때 찍은 날짜가 남는지는 실기기 확인 필요(`src/pages/upload.astro` photo()/video())
+2. ~~사진·영상 찍은 날짜~~ 완료(87, 0.4.32). 아이폰 사파리에서 HEIC→JPEG 바꿀 때·영상 고를 때 날짜가 남는지는 실기기 확인 필요(할 일 6)
 3. **사진 많을 때(대기 중 질문)**: 사용자가 "내리면 자동으로 더"를 골랐고, 60장씩·상한 없음으로 제안했지만 답을 아직 못 받음. 시작 전에 확인
 4. 옛 함수 `sp_media_comments` 지우기: DROP이 필요해 적용 도구로 안 됨 → 사용자가 Supabase SQL 편집기에서 직접 실행하도록 안내
 5. 디자인 검수 남은 것(`design-audit.md`): 움직임(정보 수정 화면 반응 떠오름·말풍선, 부모 앨범 하트), 콩이 그림, 시트·모달, 가족 쪽 '생후 N개월' 등
@@ -1132,13 +1132,13 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 검증: skipTransition을 강제로 넣어 고치기 전 이동마다 `Transition was skipped` 오류 → 고친 뒤 0, 보통 이동은 전환 그대로. acclayer e2e 통과, QA 1회(지적 2개 반영: 주석을 JS 안으로, `p?.catch`)
 - 못 한 것: 실제 '화면 가려짐' 상황은 헤드리스에서 재현 못 함, 사파리 실기기
 
-### 87. feature/taken-at — 찍은 날짜 제대로 읽기 (진행 중)
+### 87. feature/taken-at — 찍은 날짜 제대로 읽기 (완료, dev 머지 0.4.32)
 - 요구: 지금은 JPEG만 EXIF 촬영 시각을 읽고 HEIC·PNG·영상은 파일 시각(`lastModified`)을 써서, 아이폰은 고른 시각·내보낸 시각이 들어가 앨범 달이 틀어질 수 있음
 - 구현
   - 사진: 종류 표시(`file.type`) 대신 파일 앞부분 바이트로 판별. JPEG(지금대로), HEIC/HEIF(meta 상자의 iinf·iloc에서 Exif 항목 위치를 찾아 그 부분만 읽음), PNG(eXIf 덩어리). 같은 TIFF 읽기(`readTiff`)를 씀
-  - 영상: mediabunny `getMetadataTags().date`(아이폰 `com.apple.quicktime.creationdate`, 시간대 있음) → 없으면 MP4/MOV `moov/mvhd` 생성 시각(UTC, 1904 기준) → 없으면 파일 시각. 2001년 전·내일 이후는 버림
+  - 영상: mediabunny `getMetadataTags().date`(아이폰 `com.apple.quicktime.creationdate`, 시간대 있음) → 없으면 MP4/MOV `moov/mvhd` 생성 시각(UTC, 1904 기준) → 없으면 파일 시각. 범위(아래 plausible) 밖은 버림. mediabunny date는 ©day·rldt·date·creationdate 중 먼저 읽힌 값이라 날짜만 있는 ©day가 먼저면(자정 UTC) mvhd로 넘어감
   - 출처 값은 DB에 있는 값만 되므로 파일 안 시각은 'exif', 파일 시각은 'file'
-- 영향 파일: `src/lib/exif.ts`, `src/pages/upload.astro`(photo·video), `tests/exif.test.ts`
+- 영향 파일: `src/lib/exif.ts`, `src/pages/upload.astro`(photo·video), `tests/exif.test.ts`, `tools/e2e/takenat.py`, (함께 고침) `src/lib/parent.ts` `seoulDate`, `src/pages/view/[id].astro`·`album/[id].astro`·`album/save.astro`, `tools/e2e/save.py`
 - 예상 결과: 아이폰 HEIC·영상, 안드로이드 영상이 찍은 날짜로 앨범에 묶임
 - 믿을 만한 범위(`plausible`): 2001년~지금+10분. 밖이면 파일 시각(1980년 초기화 카메라, 현지 시각을 UTC로 적은 영상이 미래가 되는 경우, 정보 수정 화면 범위 2000~오늘 밖이면 저장이 막히므로)
 - 하지 않는 것: WebP(EXIF가 보통 파일 끝이라 앞부분만 읽어서는 못 찾음), PNG 스크린샷의 XMP 날짜
