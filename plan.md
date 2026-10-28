@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-28 기준, dev 0.4.32 배포됨)
+## 새 세션 인계 (2026-10-28 기준, dev 0.4.33 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(55~70이 최근).
 
 ### 지금 상태
 
-- dev = 0.4.32, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
+- dev = 0.4.33, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 17개 모두 적용(17번째 `20261027000004_finish_quota.sql` 완료 때 5GB 한도는 2026-10-28 사용자 승인 후 적용, 권한 그대로 service_role만). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v157, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
@@ -1144,3 +1144,9 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 하지 않는 것: WebP(EXIF가 보통 파일 끝이라 앞부분만 읽어서는 못 찾음), PNG 스크린샷의 XMP 날짜
 - 알려진 한계: 홈은 찍은 날 최신 200장만(album.ts shortcut). 사진 200장 넘는 가족이 옛날 사진을 올리면 올린 직후 홈에 안 보일 수 있음 → 다음 할 일 3(더 불러오기)에서 해결
 - 함께 고침: 저장 파일 이름 날짜가 UTC 날짜(`taken_at.slice(0,10)`)라 한국 아침 사진이 전날로 붙던 것 → `seoulDate`(view·album/[id]·album/save)
+
+### 86b. fix/vt-uncaught — 전환 오류가 사진 화면에서 계속 찍힘 (완료, dev 머지 0.4.33)
+- 사용자 보고(2026-10-28): 86 뒤에도 사진 크게 보기 주소에서 같은 오류. 헤드리스에선 일반 화면으로 재현 못 함(화면이 가려진 채 열릴 때 크롬이 페이지에 건네지 않은 전환을 취소하는 것으로 추정, 확실하지 않음)
+- 재현된 것: 앱에서 없는 주소로 가면 기본 404 화면(앱 바탕 아님)에서 같은 오류
+- 고침: Base에 `unhandledrejection`에서 'Transition …' DOMException만 막기(다른 오류는 그대로), `src/pages/404.astro`(Base + 안내)
+- 검증: 전환 오류 거부는 안 찍히고 다른 오류는 찍힘, 앱→없는 주소 오류 없음, 404 상태 코드·제목
