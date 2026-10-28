@@ -96,6 +96,20 @@ export interface MediaKeys {
   poster: string | null;
 }
 
+/** 목록 커서: 찍은 날 + id(같은 시각이면 id로 순서) */
+export interface MediaCursor {
+  takenAt: string;
+  id: string;
+}
+export interface MediaQuery {
+  familyId?: string;
+  childId?: string;
+  limit?: number;
+  before?: MediaCursor;
+  after?: MediaCursor;
+  id?: string;
+}
+
 export interface MediaItem {
   id: string;
   family_id: string;
@@ -229,7 +243,10 @@ export interface Backend {
   finishUpload(mediaId: string, keys: MediaKeys, bytes: number): Promise<boolean>;
   /** 볼 수 있는 사진만(RLS). 최근 찍은 순 */
   // shortcut: 다음 쪽 넘기기 없음(최근 limit장만). 뷰어 이슈에서 (taken_at, id) 기준 커서로
-  listMedia(pass: Pass, opts?: { familyId?: string; childId?: string; limit?: number }): Promise<MediaItem[]>;
+  /** 볼 수 있는 사진(찍은 날·id 내림차순). before는 그 사진보다 옛것, after는 그보다 최근 것(가까운 순서로 limit개를 골라 내림차순으로 돌려줌), id는 한 장만 */
+  listMedia(pass: Pass, opts?: MediaQuery): Promise<MediaItem[]>;
+  /** listMedia와 같은 조건의 개수(limit 없음) */
+  countMedia(pass: Pass, opts?: Omit<MediaQuery, 'limit' | 'before' | 'id'>): Promise<number>;
   /** 반응 켜기·끄기. 볼 수 없는 사진이면 BackendError 403 */
   react(pass: Pass, mediaId: string, kind: ReactionKind, on: boolean): Promise<void>;
   /** 한마디(1~200자). 하루 30개 넘으면 BackendError 429 */

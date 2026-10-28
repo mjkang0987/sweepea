@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, MediaComment, MediaItem, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
+import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, MediaComment, MediaItem, MediaQuery, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -20,6 +20,10 @@ export class BackendError extends Error {
 }
 
 
+const MEDIA_COLS = 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key,created_at';
+// 한 번에 받는 최대(닫고 돌아올 때 그 사진까지 그리는 경우 포함). shortcut: 1020장 넘게 앞의 사진으로 돌아오면 앞 1020장까지만 그림, 그때는 커서로 나눠 받는다
+const MEDIA_MAX = 1020;
+
 export function createSupabaseBackend(url: string, anonKey: string, serviceKey?: string): Backend {
   const base = url.replace(/\/$/, '');
 
@@ -36,6 +40,21 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     // return=minimal은 본문이 없다(PATCH 204, POST 201)
     const text = await res.text();
     return (text ? JSON.parse(text) : undefined) as T;
+  }
+
+  /** listMedia·countMedia 공통 거르기: 올린 것만, 가족방·아이, 커서(찍은 날·id), 한 장 */
+  function mediaQuery(opts: MediaQuery) {
+    const q = new URLSearchParams({ status: 'eq.ready' });
+    if (opts.familyId) q.set('family_id', `eq.${opts.familyId}`);
+    if (opts.childId) q.set('media_children.child_id', `eq.${opts.childId}`);
+    if (opts.id) q.set('id', `eq.${opts.id}`);
+    // 시각에 ':'·'+'가 있어 or 안에서는 따옴표로 감싼다
+    const c = opts.before ?? opts.after;
+    if (c) {
+      const op = opts.before ? 'lt' : 'gt';
+      q.set('or', `(taken_at.${op}."${c.takenAt}",and(taken_at.eq."${c.takenAt}",id.${op}.${c.id}))`);
+    }
+    return q;
   }
 
   /** 서버 전용 함수(service_role 키) */
@@ -117,19 +136,30 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     r2CleanupTake: (limit) => serviceRpc<string[]>('sp_r2_cleanup_take', { p_limit: limit }),
     r2CleanupDone: (prefix) => serviceRpc<void>('sp_r2_cleanup_done', { p_prefix: prefix }),
     async listMedia(pass, opts = {}) {
-      const q = new URLSearchParams({
-        select: 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key,created_at',
-        status: 'eq.ready',
-        order: 'taken_at.desc,id.desc',
-        limit: String(Math.min(opts.limit ?? 60, 200)),
-      });
-      if (opts.familyId) q.set('family_id', `eq.${opts.familyId}`);
-      if (!opts.childId) return call<MediaItem[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access });
-      // 한 아이만: 사진-아이 연결이 있는 것만(inner join), 연결 칸은 돌려주지 않는다
-      q.set('select', `${q.get('select')},media_children!inner(child_id)`);
-      q.set('media_children.child_id', `eq.${opts.childId}`);
+      const q = mediaQuery(opts);
+      q.set('select', `${MEDIA_COLS}${opts.childId ? ',media_children!inner(child_id)' : ''}`);
+      // after는 가까운 것부터 골라야 해서 오름차순으로 받고 뒤집는다
+      q.set('order', opts.after ? 'taken_at.asc,id.asc' : 'taken_at.desc,id.desc');
+      q.set('limit', String(Math.min(opts.limit ?? 60, MEDIA_MAX)));
       const rows = await call<(MediaItem & { media_children?: unknown })[]>(`/rest/v1/media?${q}`, { method: 'GET', token: pass.access });
-      return rows.map(({ media_children: _c, ...m }) => m);
+      // 한 아이만 고른 경우 연결 칸은 돌려주지 않는다
+      const items = rows.map(({ media_children: _c, ...m }) => m);
+      return opts.after ? items.reverse() : items;
+    },
+    async countMedia(pass, opts = {}) {
+      const q = mediaQuery(opts);
+      q.set('select', opts.childId ? 'id,media_children!inner(child_id)' : 'id');
+      q.set('limit', '1');
+      const res = await fetch(`${base}/rest/v1/media?${q}`, {
+        method: 'HEAD',
+        headers: { apikey: anonKey, authorization: `Bearer ${pass.access}`, prefer: 'count=exact' },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new BackendError(`/rest/v1/media count ${res.status}`, res.status);
+      // Content-Range: 0-0/123 또는 */0
+      const n = Number(res.headers.get('content-range')?.split('/')[1]);
+      if (!Number.isFinite(n)) throw new BackendError('/rest/v1/media count range', 502);
+      return n;
     },
     async react(pass, id, kind, on) {
       await rpc(pass, 'sp_react', { p_media_id: id, p_kind: kind, p_on: on });
