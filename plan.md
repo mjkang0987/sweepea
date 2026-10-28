@@ -1177,11 +1177,12 @@ D. ~~**저장 버튼은 아래 고정**~~ 완료(78): 접종 체크(`/health/<�
 - 결과: 검토 3회(1회: 주석·e2e 비율 섞기, 2회: 옛 브라우저 대비, 3회: 쓸모없는 대비 줄·주석·문서), loadmore e2e 28개(쪽 경계에 걸친 날을 합쳐도 움직인 칸 0, 겹침 0, 휴대폰 2줄, 비율 섞음), QA로 세 쪽에 걸친 날 두 번 합치기·폭 바꾸기·z 전환·스크립트 없는 다음 쪽 확인, 대비 규칙은 CSS를 넣어 390·1280폭 겹침 0
 - 못 한 것: 실제 iOS 15 이하 사파리, 사진 많은 실제 가족 데이터. 아주 긴 파노라마는 칸에 맞게 잘림(부모 홈·디자인과 같은 규칙, 크게 보기에선 전체)
 
-### 90. 도메인 연결 sweepea.co.kr + www (dev 머지 0.4.37, Supabase 주소 추가 기다림)
+### 90. 도메인 연결 sweepea.co.kr + www (완료, dev 머지 0.4.37)
 - 요구(사용자 2026-10-28): 도메인 연결, "www도 같이 연결되어야 해"
 - 지금(2026-10-28 확인): 네임서버가 아직 가비아(ns.gabia.co.kr 등). 로컬 wrangler 로그인 안 됨(배포는 dev 푸시로 자동)
 - 사용자 할 일: ① Cloudflare `Takeaseat.cs@gmail.com's Account`에 사이트 `sweepea.co.kr`(Free) 추가 ② 가비아에서 네임서버를 Cloudflare가 준 2개로 ③ Active 될 때까지 대기 ④ 연결 뒤 Supabase > Authentication > URL Configuration에 `https://sweepea.co.kr/auth/callback`(Site URL도 새 주소) 추가
 - 진행: 사용자가 Cloudflare 사이트 추가(Free, AI 학습 크롤러 막기 추천)·가비아 네임서버 ed/jade.ns.cloudflare.com(3차 ns.gabia.net 지움)·Active(2026-10-28). 코드: wrangler.jsonc routes·vars·keep_vars, 미들웨어 www → 308. 0.4.36에서 routes 때문에 workers.dev가 꺼짐(1042, 실수) → 0.4.37 `workers_dev: true`
+- Supabase(2026-10-28): 처음엔 새 주소가 허용 목록에 없어 카카오 로그인 뒤 Site URL(workers.dev 첫 화면)로 떨어짐(인증 기록으로 확인) → 사용자가 Site URL `https://sweepea.co.kr`·Redirect URLs에 `/auth/callback` 추가, 로그인 뒤 /home 확인
 - 할 일(Active 뒤): `wrangler.jsonc`에 `routes`로 `sweepea.co.kr`·`www.sweepea.co.kr` custom_domain, `www`는 `src/middleware`에서 같은 경로로 `sweepea.co.kr`에 301(주소 하나로: 가족 링크·로그인 쿠키가 주소에 묶임), `SITE_ORIGIN=https://sweepea.co.kr`(공유 링크), 배포 뒤 두 주소·로그인·공유 링크 확인. workers.dev 주소와 이미 보낸 링크는 계속 열림
 
 ### 91. feature/landing — 대표 첫 화면에 소개 노출(검색 등록용) (완료, dev 머지 0.4.38)
