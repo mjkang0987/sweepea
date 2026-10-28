@@ -25,6 +25,10 @@ const { title, description = '카톡으로 보내고, 설치 없이 보고, 사�
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="apple-mobile-web-app-title" content="스위피" />
     <title>{title}</title>
+    <script is:inline>
+      // 페이지 전환 중에 화면이 가려지면 크롬이 전환만 취소하고 'InvalidStateError'를 처리 안 된 오류로 찍는다(이동은 정상). 두 쪽 다 받아 둔다
+      for (const t of ['pageswap', 'pagereveal']) addEventListener(t, (e) => { const v = e.viewTransition; if (v) for (const p of [v.ready, v.finished, v.updateCallbackDone]) p?.catch(() => {}); });
+    </script>
   </head>
   <body class="sp-body">
     <slot />
