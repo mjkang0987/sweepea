@@ -1,12 +1,13 @@
-# 아래로 내리면 60장씩 더 불러오기(88, mock): 사진 130장(6월 30·5월 70·4월 30, EXIF 날짜)으로 쪽 경계에 달이 걸치게
+# 아래로 내리면 60장씩 더 불러오기(88, mock): 사진 130장(6월 30·5월 70·4월 30, EXIF 날짜)으로 쪽 경계에 달이 걸치게.
+# 5월 15일 하루 30장(전체 51~80번째)이 첫 쪽 경계에 걸쳐 가족 모아 보기 합치기(89, 엇갈린 배열이라 앞 칸이 안 움직임)를 본다
 # 홈: 처음 60장 → 내리면 120 → 130 + '처음 사진까지 모두 봤어요', 걸친 달은 한 묶음·사진 수는 처음부터 그 달 전체, 엇갈린 배열 안 겹침
 # 스크립트 없으면 '사진 더 보기' 링크로 다음 60장. 크게 보기에서 닫으면 보던 자리(같은 높이)로
 import os,sys,struct,tempfile
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D=os.path.dirname(os.path.abspath(__file__))+'/'
 W=sys.argv[1] if len(sys.argv)>1 else tempfile.gettempdir()
-SRC=open(D+'u2.jpg','rb').read()
-def jpg(path,date):
+SRCS=[open(D+f,'rb').read() for f in ('u0.jpg','u1.jpg','u2.jpg','tall.jpg','pano.jpg')]  # 비율 섞기(세로·가로·정사각·아주 긴 것)
+def jpg(path,date,SRC):
     d=date.encode()+b'\0'; o=b'+09:00\0'
     tiff=b'II'+struct.pack('<HI',42,8)+struct.pack('<HHHII',1,0x8769,4,1,26)+struct.pack('<I',0)
     tiff+=struct.pack('<HHHII',2,0x9003,2,20,56)+struct.pack('<HHII',0x9011,2,7,76)+struct.pack('<I',0)+d+o
@@ -15,8 +16,10 @@ def jpg(path,date):
 FILES=[]
 for m,n in ((6,30),(5,70),(4,30)):
     for i in range(n):
-        f=os.path.join(W,f'lm-{m}-{i:02d}.jpg')
-        if not os.path.exists(f): jpg(f,f'2024:{m:02d}:{1+i%28:02d} {10+i%10:02d}:00:{i%60:02d}')
+        f=os.path.join(W,f'lm3-{m}-{i:02d}.jpg')
+        day=15 if m==5 and 20<=i<50 else 1+i%28
+        if m==5 and day==15 and not 20<=i<50: day=16
+        if not os.path.exists(f): jpg(f,f'2024:{m:02d}:{day:02d} {10+i%10:02d}:{i%60:02d}:{i%60:02d}',SRCS[(m+i)%5])
         FILES.append(f)
 FAILS=[]
 def check(c,msg):
@@ -72,7 +75,19 @@ with sync_playwright() as p:
         if gp.get_by_role('button',name=btn,exact=True).count(): gp.get_by_role('button',name=btn,exact=True).click(); gp.wait_for_url('**/album**')
     gcells=lambda: gp.locator('.sp-a__cell').count()
     check(gcells()==60 and '130장' in gp.locator('h1').inner_text(),'가족 모아 보기 처음 60장, 제목 130장 (%d, %s)'%(gcells(),gp.locator('h1').inner_text()))
+    POS="(()=>{const o={};for(const e of document.querySelectorAll('.sp-a__cell')){const r=e.getBoundingClientRect();o[e.id]=[Math.round(r.left),Math.round(r.top+scrollY),Math.round(r.height)]}return o})()"
+    seam=gp.locator('.sp-a__day').last; seam_n=seam.locator('.sp-a__cell').count()
+    before=gp.evaluate(POS)
     bottom(gp); gp.wait_for_function("document.querySelectorAll('.sp-a__cell').length===120",timeout=20000)
+    after=gp.evaluate(POS)
+    moved=[k for k,v in before.items() if after.get(k)!=v]
+    seam_all=gp.locator('.sp-a__day').filter(has_text='5월 15일').locator('.sp-a__cell').count()
+    check(0<seam_n<30 and seam_all==30 and not moved,'쪽 경계에 걸친 날(5월 15일 %d장 + 나머지)을 합쳐도 이미 있던 칸이 안 움직임 (합친 뒤 %d장, 움직인 칸 %d)'%(seam_n,seam_all,len(moved)))
+    gov=gp.evaluate("""(()=>{let n=0;for(const d of document.querySelectorAll('.sp-a__day')){const r=[...d.querySelectorAll('.sp-a__cell')].map(e=>e.getBoundingClientRect());
+      for(let i=0;i<r.length;i++)for(let j=i+1;j<r.length;j++){const a=r[i],b=r[j];if(a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1)n++}}return n})()""")
+    check(gov==0,'가족 모아 보기 칸이 겹치지 않음 (%d쌍)'%gov)
+    cols=gp.evaluate("(()=>{const d=[...document.querySelectorAll('.sp-a__day')].find(x=>x.querySelectorAll('.sp-a__cell').length>=4);return new Set([...d.querySelectorAll('.sp-a__cell')].map(e=>Math.round(e.getBoundingClientRect().left))).size})()")
+    check(cols==2,'휴대폰 2줄 (%d줄)'%cols)
     bottom(gp); gp.wait_for_function("document.querySelectorAll('.sp-a__cell').length===130",timeout=20000)
     days=gp.eval_on_selector_all('.sp-a__day','e=>e.map(x=>x.dataset.day)')
     check(len(days)==len(set(days)),'같은 날 묶음이 두 번 안 나옴 (%d개)'%len(days))

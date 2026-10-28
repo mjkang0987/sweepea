@@ -302,19 +302,8 @@ for (const mo of months) {
 </Parent>
 
 <script>
-  import { autoMore, keepSpot } from '../lib/more';
-  import { masonry } from '../lib/masonry';
+  import { autoMore, keepSpot, relayout } from '../lib/more';
 
-  // 엇갈린 배열 다시 계산(같은 달이 쪽을 넘어 이어지면 합친 뒤 그 달 전체로)
-  const relayout = (ul: HTMLElement) => {
-    const cells = [...ul.children] as HTMLElement[];
-    const r = cells.map((c) => Number(c.dataset.ratio) || 1);
-    const two = masonry(r, 2);
-    const four = masonry(r, 4);
-    cells.forEach((c, i) => {
-      for (const [k, v] of Object.entries({ c2: two[i].col, r2: two[i].row, s2: two[i].span, c4: four[i].col, r4: four[i].row, s4: four[i].span })) c.style.setProperty(`--${k}`, String(v));
-    });
-  };
   // 다음 60장: 같은 달이면 그 달에 칸을 합치고, 아니면 달 묶음을 뒤에 붙인다(달 사진 수는 서버가 그 달 전체로 셈)
   autoMore((doc) => {
     const added: HTMLElement[] = [];

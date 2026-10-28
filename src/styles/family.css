@@ -534,11 +534,13 @@
   font-weight: 700;
 }
 
-/* 모아 보기: 날짜별, 칸 수는 ?z=. 원본 비율 그대로 쌓기(CSS columns) */
+/* 모아 보기: 날짜별, 칸 수는 ?z=. 1칸은 원본 비율 그대로(CSS columns), 2줄은 엇갈린 배열(masonry.ts), 3·5칸은 정사각 격자 */
 .sp-a__day {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  /* 2줄 엇갈린 배열의 칸 높이 단위를 이 폭(cqi) 기준으로 */
+  container-type: inline-size;
 }
 .sp-a__day-title {
   margin: 0;
@@ -560,9 +562,25 @@
   columns: 1;
   --gap: 12px;
 }
+/* 2줄(넓은 화면 4줄)은 엇갈린 배열: 서버가 정한 자리(--c2 줄·--r2 시작·--s2 높이, 높이 단위는 줄 폭의 1/40, 부모 홈과 같은 masonry.ts) */
 .sp-a__grid--2 {
-  columns: 2;
   --gap: 8px;
+  --cols: 2;
+  --u: calc((100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols) / 40);
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  grid-auto-rows: var(--u);
+}
+.sp-a__grid--2 .sp-a__cell {
+  grid-column: var(--c2);
+  grid-row: var(--r2) / span var(--s2);
+}
+.sp-a__grid--2 .sp-a__cell-link,
+.sp-a__grid--2 .sp-a__cell-img {
+  height: 100%;
+}
+.sp-a__grid--2 .sp-a__cell-img {
+  object-fit: cover;
 }
 /* 3·5칸은 정사각형 격자(줄 단위로 채워야 촘촘하다) */
 .sp-a__grid--3,
@@ -868,7 +886,11 @@
     max-width: 72rem;
   }
   .sp-f--wide .sp-a__grid--2 {
-    columns: 4;
+    --cols: 4;
+  }
+  .sp-f--wide .sp-a__grid--2 .sp-a__cell {
+    grid-column: var(--c4);
+    grid-row: var(--r4) / span var(--s4);
   }
   .sp-f--wide .sp-a__grid--3 {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -1713,5 +1735,17 @@
     background: var(--surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+}
+
+/* 칸 폭 단위(cqi)를 모르는 옛 브라우저(iOS 15 이하 등): 2줄은 예전처럼 원본 비율 그대로 쌓기(CSS columns) */
+@supports not (container-type: inline-size) {
+  .sp-a__grid--2 {
+    display: block;
+    columns: var(--cols);
+  }
+  .sp-a__grid--2 .sp-a__cell-link,
+  .sp-a__grid--2 .sp-a__cell-img {
+    height: auto;
   }
 }

@@ -1834,3 +1834,16 @@
 .sp-p__btn[hidden] {
   display: none;
 }
+
+/* 칸 폭 단위(cqi)를 모르는 옛 브라우저(iOS 15 이하 등): 엇갈린 배열 대신 정사각 격자(줄 높이 계산이 깨져 겹치지 않게) */
+@supports not (container-type: inline-size) {
+  .sp-p__grid {
+    grid-auto-rows: auto;
+  }
+  .sp-p__cell,
+  .sp-p--wide .sp-p__cell {
+    grid-column: auto;
+    grid-row: auto;
+    aspect-ratio: 1;
+  }
+}
