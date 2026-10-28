@@ -1,6 +1,6 @@
 // 앨범 화면 공통: 주소 쿼리(집 f, 보기 v, 칸 z) 읽기와 링크 만들기, 들어간 가족방·사진 목록
 import type { AstroCookies } from 'astro';
-import { BackendError, getBackend, REACTION_KINDS, type MediaItem, type MediaQuery, type MeFamily, type Pass, type ReactionCount, type ReactionKind } from './backend';
+import { BackendError, getBackend, REACTION_KINDS, type MediaCursor, type MediaItem, type MediaQuery, type MeFamily, type Pass, type ReactionCount, type ReactionKind } from './backend';
 import { currentPass } from './pass';
 import { isOpen } from './families';
 import { callName } from './ko';
@@ -38,37 +38,57 @@ export function albumHref(q: AlbumQuery, path = '/album'): string {
 
 /** 목록 한 번에 그리는 장 수(사용자 2026-10-28 "60장씩, 끝까지") */
 export const PAGE = 60;
+/** 닫고 돌아올 때 한 번에 그리는 최대(Supabase 기본 max_rows 1000 아래, +1장으로 다음 쪽 확인) */
+const TO_MAX = 900;
 export interface MediaPage {
   items: MediaItem[];
-  /** 다음 쪽 첫 사진 바로 앞(이 쪽 마지막 사진) id. 끝이면 null */
+  /** 다음 쪽 주소 값(?before=, 이 쪽 마지막 사진의 찍은 날~id). 끝이면 null */
   next: string | null;
-  /** 앞 쪽에 이어지는 쪽(?before=)이면 true: 끝 줄 '모두 봤어요'를 보일지 */
+  /** 앞 쪽에 이어지는 쪽이거나 여러 쪽을 그렸으면 true: 끝 줄 '모두 봤어요'를 보일지 */
   more: boolean;
   /** 이 쪽 앞에 있는 사진 수(넘겨 보기 'n / 전체'의 n) */
   offset: number;
 }
-/** 주소에 맞는 한 쪽: ?before=<id>면 그 사진 다음 PAGE장, ?to=<id>면(크게 보기에서 닫고 돌아옴) 그 사진이 든 쪽까지 처음부터, 아니면 처음 PAGE장.
- * 모르는 id면 처음 쪽 */
+const cursorParam = (m: MediaItem) => `${m.taken_at}~${m.id}`;
+/** ?before= 값 → 커서. 기준 사진을 다시 찾지 않으므로 그사이 지워져도 그 자리부터 이어진다 */
+function readCursor(v: string | null): MediaCursor | undefined {
+  const i = v?.lastIndexOf('~') ?? -1;
+  if (!v || i < 0) return undefined;
+  const takenAt = v.slice(0, i), id = v.slice(i + 1);
+  return Number.isFinite(Date.parse(takenAt)) && UUID.test(id) ? { takenAt, id } : undefined;
+}
+/** 주소에 맞는 한 쪽: ?before=<커서>면 그 다음 PAGE장, ?to=<id>면(크게 보기에서 닫고 돌아옴) 그 사진이 든 쪽까지 처음부터(아래로 30장은 더), 아니면 처음 PAGE장 */
 export async function loadPage(pass: Pass, base: MediaQuery, url: URL): Promise<MediaPage> {
   const backend = getBackend();
-  const before = url.searchParams.get('before');
-  const to = url.searchParams.get('to');
-  const anchorId = before && UUID.test(before) ? before : to && UUID.test(to) ? to : null;
-  const anchor = anchorId ? (await backend.listMedia(pass, { ...base, id: anchorId, limit: 1 }))[0] : undefined;
-  const cursor = anchor && { takenAt: anchor.taken_at, id: anchor.id };
-  let limit = PAGE;
-  if (cursor && anchorId === to) {
-    const newer = await backend.countMedia(pass, { ...base, after: cursor });
-    // 그 사진 아래로도 30장은 있게(쪽 끝에 가까우면 아래가 짧아 같은 높이로 스크롤하지 못함)
-    limit = Math.ceil((newer + 1 + 30) / PAGE) * PAGE;
+  const page = (rows: MediaItem[], limit: number, more: boolean, offset: number): MediaPage => {
+    const items = rows.slice(0, limit);
+    return { items, next: rows.length > limit ? cursorParam(items[items.length - 1]) : null, more, offset };
+  };
+  const before = readCursor(url.searchParams.get('before'));
+  if (before) {
+    const [rows, ahead] = await Promise.all([
+      backend.listMedia(pass, { ...base, before, limit: PAGE + 1 }),
+      backend.countMedia(pass, { ...base, after: before }),
+    ]);
+    // 기준 사진(앞 쪽 마지막)까지 앞에 있다
+    return page(rows, PAGE, true, ahead + 1);
   }
-  const cont = !!cursor && anchorId === before;
-  const [rows, ahead] = await Promise.all([
-    backend.listMedia(pass, { ...base, limit: limit + 1, before: cont ? cursor : undefined }),
-    cont ? backend.countMedia(pass, { ...base, after: cursor }) : 0,
-  ]);
-  const items = rows.slice(0, limit);
-  return { items, next: rows.length > limit ? items[items.length - 1].id : null, more: cont || limit > PAGE, offset: cont ? ahead + 1 : 0 };
+  const toId = url.searchParams.get('to');
+  const to = toId && UUID.test(toId) ? (await backend.listMedia(pass, { ...base, id: toId, limit: 1 }))[0] : undefined;
+  if (to) {
+    const c = { takenAt: to.taken_at, id: to.id };
+    const newer = await backend.countMedia(pass, { ...base, after: c });
+    // 그 사진 아래로도 30장은 있게(쪽 끝에 가까우면 아래가 짧아 같은 높이로 스크롤하지 못함)
+    const want = Math.ceil((newer + 1 + 30) / PAGE) * PAGE;
+    if (want <= TO_MAX) return page(await backend.listMedia(pass, { ...base, limit: want + 1 }), want, want > PAGE, 0);
+    // shortcut: 아주 아래(900장 넘게) 사진은 그 위 30장부터 한 쪽만 그림(위로는 이어 붙이지 않음, 탭 '앨범'으로 처음부터), 필요하면 위쪽 이어 붙이기
+    const [above, below] = await Promise.all([
+      backend.listMedia(pass, { ...base, after: c, limit: 30 }),
+      backend.listMedia(pass, { ...base, before: c, limit: PAGE - 30 }),
+    ]);
+    return page([...above, to, ...below], PAGE, true, newer - above.length);
+  }
+  return page(await backend.listMedia(pass, { ...base, limit: PAGE + 1 }), PAGE, false, 0);
 }
 
 /** 크게 보기: 그 사진과 앞뒤 21장(창 ±20장 + 창 밖 한 장씩, slideWindow용), 몇 번째·전체. 볼 수 없는 사진이면 null */

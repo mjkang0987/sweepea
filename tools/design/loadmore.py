@@ -9,9 +9,9 @@ def cells(n,h=(150,110,130,150)):
     return f'<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; align-items: start;">{col(h[:n//2])}{col(h[n//2:n])}</div>'
 def rows(big):
     f=17 if big else 15; lh=24 if big else 20; k=40 if big else 32; btn=56 if big else 52; bf=21 if big else 17  # 가족은 senior 글자(캡션 17·버튼 21)
-    load=f'<p role="status" style="margin: 0; min-height: 64px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: {f}px; line-height: {lh}px; color: var(--label-2);"><img src="/_blob/18a8457a415dd2214e041f90295e4f10" width="{k}" height="{k}" alt="" style="width: {k}px; height: {k}px; image-rendering: pixelated;">사진 불러오는 중…</p>'
-    more=f'<a href="#" style="min-height: {btn}px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--fill); color: var(--pea-ink); text-decoration: none; font-size: {bf}px; line-height: 24px; font-weight: 700;">사진 더 보기</a>'
-    end=f'<p role="status" style="margin: 0; min-height: 64px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: {f}px; line-height: {lh}px; color: var(--label-2);"><img src="/_blob/18a8457a415dd2214e041f90295e4f10" width="{k}" height="{k}" alt="" style="width: {k}px; height: {k}px; image-rendering: pixelated;">처음 사진까지 모두 봤어요</p>'
+    load=f'<p style="margin: 0; min-height: 64px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: {f}px; line-height: {lh}px; color: var(--label-2);"><img src="/_blob/18a8457a415dd2214e041f90295e4f10" width="{k}" height="{k}" alt="" style="width: {k}px; height: {k}px; image-rendering: pixelated;">사진 불러오는 중…</p>'
+    more=f'<a href="#" style="min-height: {btn}px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--fill); color: var(--pea-deep); text-decoration: none; font-size: {bf}px; line-height: 24px; font-weight: 700;">사진 더 보기</a>'
+    end=f'<p style="margin: 0; min-height: 64px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: {f}px; line-height: {lh}px; color: var(--label-2);"><img src="/_blob/18a8457a415dd2214e041f90295e4f10" width="{k}" height="{k}" alt="" style="width: {k}px; height: {k}px; image-rendering: pixelated;">처음 사진까지 모두 봤어요</p>'
     return CAP.format('① 내려오면 저절로 · 불러오는 중')+load+CAP.format('② 스크립트가 없을 때 · 누르면 다음 60장')+more+CAP.format('③ 더 없을 때')+end
 def board(src,big,title):
     s=open(src).read()

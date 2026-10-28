@@ -244,8 +244,6 @@ export interface Backend {
   uploadTarget(pass: Pass, mediaId: string): Promise<UploadTarget | null>;
   /** 서버 전용(service_role). 이미 완료됐거나 없으면 false */
   finishUpload(mediaId: string, keys: MediaKeys, bytes: number): Promise<boolean>;
-  /** 볼 수 있는 사진만(RLS). 최근 찍은 순 */
-  // shortcut: 다음 쪽 넘기기 없음(최근 limit장만). 뷰어 이슈에서 (taken_at, id) 기준 커서로
   /** 볼 수 있는 사진(찍은 날·id 내림차순). before는 그 사진보다 옛것, after는 그보다 최근 것(가까운 순서로 limit개를 골라 내림차순으로 돌려줌), id는 한 장만 */
   listMedia(pass: Pass, opts?: MediaQuery): Promise<MediaItem[]>;
   /** listMedia와 같은 조건의 개수(limit 없음) */

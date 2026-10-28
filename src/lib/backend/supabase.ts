@@ -21,8 +21,8 @@ export class BackendError extends Error {
 
 
 const MEDIA_COLS = 'id,family_id,kind,taken_at,width,height,duration_sec,view_key,thumb_key,poster_key,created_at';
-// 한 번에 받는 최대(닫고 돌아올 때 그 사진까지 그리는 경우 포함). shortcut: 1020장 넘게 앞의 사진으로 돌아오면 앞 1020장까지만 그림, 그때는 커서로 나눠 받는다
-const MEDIA_MAX = 1020;
+// 한 번에 받는 최대(닫고 돌아올 때 그리는 901장 포함, Supabase 기본 max_rows 1000 아래)
+const MEDIA_MAX = 1000;
 
 export function createSupabaseBackend(url: string, anonKey: string, serviceKey?: string): Backend {
   const base = url.replace(/\/$/, '');

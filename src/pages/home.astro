@@ -61,7 +61,7 @@ const [page, admin, healthRows] = await Promise.all([
 ]);
 const { items } = page;
 const kq = picked ? `k=${encodeURIComponent(picked.id)}&` : '';
-const nextHref = page.next ? `/home?${kq}before=${page.next}` : null;
+const nextHref = page.next ? `/home?${kq}before=${encodeURIComponent(page.next)}` : null;
 const now = Date.now();
 const s = admin && summarize(admin);
 const firstWait = s && s.pendingDevices.length === 0 && s.pendingMembers.length === 1 ? s.pendingMembers[0] : null;
@@ -127,10 +127,12 @@ for (const m of items) {
     length: m.kind === 'video' && m.duration_sec ? clock(Number(m.duration_sec)) : null,
   });
 }
-// 달 사진 수는 그 달 전체(쪽에 걸쳐 나뉘어도 맞게, 서울 달 기준)
+// 달 사진 수는 그 달 전체(서울 달 기준). 쪽 가운데 달은 칸 수가 곧 전체라, 쪽 경계에 걸칠 수 있는 첫 달(앞 쪽이 있을 때)·끝 달(다음 쪽이 있을 때)만 센다
 const nextYM = (ym: string) => (ym.slice(5) === '12' ? `${Number(ym.slice(0, 4)) + 1}-01` : `${ym.slice(0, 4)}-${String(Number(ym.slice(5)) + 1).padStart(2, '0')}`);
 await Promise.all(
-  months.map(async (mo) => {
+  months.map(async (mo, i) => {
+    mo.count = mo.cells.length;
+    if (!((i === 0 && page.offset > 0) || (i === months.length - 1 && page.next))) return;
     mo.count = await b.countMedia(a.pass, { childId: picked?.id, takenFrom: `${mo.ym}-01T00:00:00+09:00`, takenBefore: `${nextYM(mo.ym)}-01T00:00:00+09:00` }).catch(() => mo.cells.length);
   }),
 );
@@ -288,7 +290,7 @@ for (const mo of months) {
     </div>
   ) : (
     page.more && (
-      <p class="sp-more__end" role="status" data-more>
+      <p class="sp-more__end" data-more>
         <img class="sp-more__kongi" src="/kongi.svg" width="32" height="32" alt="" />처음 사진까지 모두 봤어요
       </p>
     )
@@ -315,15 +317,21 @@ for (const mo of months) {
   };
   // 다음 60장: 같은 달이면 그 달에 칸을 합치고, 아니면 달 묶음을 뒤에 붙인다(달 사진 수는 서버가 그 달 전체로 셈)
   autoMore((doc) => {
+    const added: HTMLElement[] = [];
     for (const sec of doc.querySelectorAll<HTMLElement>('.sp-p__month')) {
       const last = [...document.querySelectorAll<HTMLElement>('.sp-p__month')].at(-1);
-      if (!last) return;
+      if (!last) break;
       const ul = last.querySelector<HTMLElement>('.sp-p__grid');
       if (last.dataset.ym === sec.dataset.ym && ul) {
-        for (const li of sec.querySelectorAll<HTMLElement>('.sp-p__cell')) ul.appendChild(document.importNode(li, true));
+        for (const li of sec.querySelectorAll<HTMLElement>('.sp-p__cell')) added.push(ul.appendChild(document.importNode(li, true)));
         relayout(ul);
-      } else last.insertAdjacentElement('afterend', document.importNode(sec, true));
+      } else {
+        const node = document.importNode(sec, true);
+        last.insertAdjacentElement('afterend', node);
+        added.push(...node.querySelectorAll<HTMLElement>('.sp-p__cell'));
+      }
     }
+    return added;
   });
   keepSpot('.sp-p__cell-link');
 

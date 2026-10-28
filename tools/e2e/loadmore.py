@@ -44,6 +44,7 @@ with sync_playwright() as p:
     check(pg.locator('[data-more] a').count()==1,'끝에 다음 쪽 링크')
     # 2) 내리면 120 → 130, 걸친 달은 한 묶음, 안 겹침
     bottom(pg); pg.wait_for_function("document.querySelectorAll('.sp-p__cell').length===120",timeout=20000)
+    check('60장을 더 불러왔어요' in pg.locator('p.sp-vh[role=status]').inner_text(),'화면 읽기 알림: 60장을 더 불러왔어요')
     check(pg.locator('.sp-p__month[data-ym="2024-05"]').count()==1,'5월은 한 묶음')
     check(pg.locator('.sp-p__month[data-ym="2024-05"] .sp-p__cell').count()==70,'5월 칸 70')
     check(overlap(pg,'2024-05')==0,'합친 5월 칸이 안 겹침')
@@ -91,6 +92,11 @@ with sync_playwright() as p:
     gp.evaluate("(()=>{const s=document.querySelector('.sp-a__swipe');s.scrollLeft=s.scrollWidth})()")
     gp.wait_for_function("document.querySelectorAll('.sp-a__slide').length===120",timeout=20000)
     check(gp.locator('.sp-a__slide').nth(60).locator('.sp-a__pos-n').inner_text()=='61','붙은 카드 번호가 이어짐(61)')
+    # 붙은 카드(70번째)에서 하트를 보내도 그 카드로 돌아옴(스크립트 없는 폼 → to=)
+    s70=gp.locator('.sp-a__slide').nth(69); sid70=s70.get_attribute('id')
+    s70.evaluate("e=>e.scrollIntoView({inline:'center',block:'nearest'})"); gp.wait_for_timeout(400)
+    s70.locator('.sp-a__slide-react button[value="heart:on"]').first.click(); gp.wait_for_url('**to=**'); gp.wait_for_timeout(600)
+    check(gp.evaluate(f"(()=>{{const s=document.querySelector('.sp-a__swipe'),e=document.getElementById('{sid70}');if(!e)return false;const a=s.getBoundingClientRect(),r=e.getBoundingClientRect();return r.left<a.right&&r.right>a.left}})()"),'붙은 카드에서 하트 보내도 그 카드로')
     # 넘겨 보기에서 크게 보기 → 닫으면 그 카드
     sid=gp.locator('.sp-a__slide').nth(90).get_attribute('id')[2:]
     gp.goto(B+'/album/'+sid); gp.get_by_role('link',name='닫기').first.click(); gp.wait_for_url('**/album**'); gp.wait_for_timeout(600)

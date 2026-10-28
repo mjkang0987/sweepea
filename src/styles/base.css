@@ -413,7 +413,8 @@
   justify-content: center;
   border-radius: var(--radius-full);
   background: var(--fill);
-  color: var(--pea-ink);
+  /* pea-ink는 회색 바탕에서 4.48:1이라 한 단계 진하게(라이트 6:1 넘음) */
+  color: var(--pea-deep);
   font-size: var(--headline-size);
   line-height: var(--headline-line);
   font-weight: 700;

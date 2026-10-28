@@ -1,9 +1,13 @@
 // 목록 화면 공통(브라우저): 아래로 내리면 다음 쪽 이어 붙이기, 크게 보기에서 닫고 돌아오면 보던 자리로
 
-/** 목록 끝 [data-more] 안 '사진 더 보기' 링크가 화면에 가까워지면(600px 앞) 그 쪽을 받아 merge로 붙이고, 받은 쪽의 끝 줄로 바꾼다.
+/** 목록 끝 [data-more] 안 '사진 더 보기' 링크가 화면에 가까워지면(600px 앞) 그 쪽을 받아 merge로 붙이고(붙인 칸들을 돌려줌), 받은 쪽의 끝 줄로 바꾼다.
  * 못 받으면 링크를 되돌려 둔다(누르면 그 쪽 페이지로). 돌려주는 함수는 지금 바로 받기(옆으로 넘기는 목록은 스스로 부른다, observe: false).
- * IntersectionObserver가 없으면 링크 그대로 */
-export function autoMore(merge: (doc: Document) => void, { observe = true } = {}): () => void {
+ * 화면 읽기에는 늘 있는 빈 알림 칸 하나로 알린다(내용이 든 채 새로 넣은 role=status는 대부분 읽지 않음). IntersectionObserver가 없으면 링크 그대로 */
+export function autoMore(merge: (doc: Document) => HTMLElement[], { observe = true } = {}): () => void {
+  const live = document.createElement('p');
+  live.className = 'sp-vh';
+  live.setAttribute('role', 'status');
+  document.body.appendChild(live);
   const io = observe && typeof IntersectionObserver === 'function' ? new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && void load(e.target as HTMLElement)), { rootMargin: '600px 0px' }) : null;
   let busy = false;
   const watch = () => {
@@ -15,26 +19,33 @@ export function autoMore(merge: (doc: Document) => void, { observe = true } = {}
     const a = el.querySelector('a');
     if (!a || busy) return;
     busy = true;
+    // 키보드로 링크에 와 있었으면 붙인 첫 칸으로 초점을 옮긴다(링크가 사라져 초점이 맨 위로 떨어지지 않게)
+    const focused = el.contains(document.activeElement);
     const wait = document.createElement('p');
     wait.className = 'sp-more__end';
-    wait.setAttribute('role', 'status');
     wait.innerHTML = '<img class="sp-more__kongi" src="/kongi.svg" width="32" height="32" alt="" />사진 불러오는 중…';
     el.replaceWith(wait);
+    if (focused) wait.tabIndex = -1, wait.focus();
+    live.textContent = '사진 불러오는 중';
     try {
       const res = await fetch(a.href, { credentials: 'same-origin' });
       // 로그인이 풀리면 다른 화면으로 돌려보낸다
       if (res.redirected && new URL(res.url).pathname !== new URL(a.href).pathname) return void location.assign(res.url);
       if (!res.ok) throw new Error(String(res.status));
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-      merge(doc);
+      const added = merge(doc);
       const end = doc.querySelector('[data-more]');
       if (end) wait.replaceWith(document.importNode(end, true));
       else wait.remove();
+      if (focused) added[0]?.querySelector<HTMLElement>('a')?.focus();
+      live.textContent = end && !end.querySelector('a') ? `사진 ${added.length}장을 더 불러왔어요. 처음 사진까지 모두 봤어요` : `사진 ${added.length}장을 더 불러왔어요`;
       watch();
     } catch {
       // 다시 저절로 받지는 않는다(끝없이 되풀이하지 않게). 누르면 그 쪽 페이지로
       wait.replaceWith(el);
       el.dataset.failed = '';
+      if (focused) el.querySelector('a')?.focus();
+      live.textContent = '사진을 불러오지 못했어요. 사진 더 보기를 눌러 주세요';
     } finally {
       busy = false;
     }

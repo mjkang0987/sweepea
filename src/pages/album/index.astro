@@ -29,9 +29,13 @@ if ('redirect' in a) return Astro.redirect(a.redirect);
 const { pass, open, kids, q } = a;
 // 60장씩: ?before=<id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
 const cont = Astro.url.searchParams.has('before');
-const [page, total] = await Promise.all([loadPage(pass, a.base, Astro.url), getBackend().countMedia(pass, a.base)]);
+// 전체 장 수는 제목·넘겨 보기 'n / 전체'에. 모아 보기의 이어지는 쪽은 쓰지 않아 건너뛴다
+const [page, total] = await Promise.all([loadPage(pass, a.base, Astro.url), cont && q.v === 'list' ? 0 : getBackend().countMedia(pass, a.base)]);
 const { items } = page;
-const nextHref = page.next ? `${albumHref(q)}${albumHref(q).includes('?') ? '&' : '?'}before=${page.next}` : null;
+const sep = albumHref(q).includes('?') ? '&' : '?';
+const nextHref = page.next ? `${albumHref(q)}${sep}before=${encodeURIComponent(page.next)}` : null;
+// 넘겨 보기 반응·한마디 뒤 돌아올 곳: 그 카드까지 그리게 to=, 가운데로 #p-
+const backTo = (id: string) => `${here}${sep}to=${id}#p-${id}`;
 // 한마디 결과는 보낸 카드에만(sm=사진 id)
 const say = Astro.url.searchParams.get('say');
 const sayFor = Astro.url.searchParams.get('sm');
@@ -69,7 +73,9 @@ const installState = Astro.cookies.get(INSTALL_COOKIE)?.value;
 const installAsked = !cont && Astro.cookies.get(`${INSTALL_COOKIE}_msg`)?.value === '1';
 if (installAsked) Astro.cookies.delete(`${INSTALL_COOKIE}_msg`, { path: '/' });
 // 가운데 레이어(한 번 열 때 하나): 승인 뒤 처음 → 새 사진. 처음 온 기기는 지금 사진까지 본 걸로만 적는다
-const newestAt = items.reduce((t, m) => Math.max(t, m.created_at ? Date.parse(m.created_at) : 0), 0);
+// 새 사진 레이어는 이 쪽(60장)이 아니라 최근 200장에서 본다(옛날에 찍고 새로 올린 사진도 잡게, 예전과 같은 범위)
+const recent = !cont && !q.f && items.length >= 60 ? await getBackend().listMedia(pass, { ...a.base, limit: 200 }) : items;
+const newestAt = recent.reduce((t, m) => Math.max(t, m.created_at ? Date.parse(m.created_at) : 0), 0);
 const newestIso = newestAt ? new Date(newestAt).toISOString() : '';
 const waited = Astro.cookies.get(WAITED)?.value;
 const approved = !cont && waited && open.some((f) => f.family_id === waited) ? kids.get(waited) ?? '아이' : null;
@@ -78,7 +84,7 @@ const allKids = !q.f && !cont;
 const photosSeen = seenAt(Astro.cookies, PHOTOS_SEEN);
 // 처음 온 기기: 지금까지(사진이 없으면 지금 시각까지) 본 걸로만 적는다
 if (photosSeen === null && allKids && !approved) setLayerCookie(Astro.cookies, PHOTOS_SEEN, newestIso || new Date().toISOString());
-const fresh = !approved && allKids && photosSeen !== null ? items.filter((m) => m.created_at && Date.parse(m.created_at) > photosSeen) : [];
+const fresh = !approved && allKids && photosSeen !== null ? recent.filter((m) => m.created_at && Date.parse(m.created_at) > photosSeen) : [];
 const freshThumbs = await Promise.all(fresh.slice(0, 3).map((m) => signedMediaUrl(m.thumb_key)));
 const freshKid = fresh.length ? kids.get(fresh[0].family_id) ?? '아이' : '';
 const fewer = zi < ZOOMS.length - 1 ? albumHref({ ...q, z: ZOOMS[zi + 1] }) : null;
@@ -166,7 +172,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
                   <span class="sp-a__card-day">{c.day}{c.kind === 'video' && ' · 영상'}</span>
                   {/* 스크롤 애니메이션이 없는 브라우저(iOS 26 전·파이어폭스)는 아래 반응 줄이 숨으므로 카드에 하트만 */}
                   <div class="sp-a__card-heart">
-                    <ReactRow mediaId={c.id} back={`${here}#p-${c.id}`} reacts={reacts} kinds={['heart']} untitled />
+                    <ReactRow mediaId={c.id} back={backTo(c.id)} reacts={reacts} kinds={['heart']} untitled />
                   </div>
                 </div>
               </div>
@@ -176,8 +182,8 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
               {/* 반응 줄은 카드마다. 가운데 카드 것만 보이게(CSS), JS 없이 그 사진에 보낸다 */}
               <div class="sp-a__slide-react">
                 {/* 돌아올 때 같은 카드가 가운데에 오게 #p-<id> */}
-                <ReactRow mediaId={c.id} back={`${here}#p-${c.id}`} reacts={reacts} idSuffix={`-${c.n}`} />
-                <SayForm mediaId={c.id} back={`${here}#p-${c.id}`} child={c.kid || '아이'} idSuffix={`-${c.n}`} />
+                <ReactRow mediaId={c.id} back={backTo(c.id)} reacts={reacts} idSuffix={`-${c.n}`} />
+                <SayForm mediaId={c.id} back={backTo(c.id)} child={c.kid || '아이'} idSuffix={`-${c.n}`} />
               </div>
             </li>
           ))}
@@ -189,7 +195,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
           </div>
         ) : (
           page.more && (
-            <p class="sp-more__end" role="status" data-more>
+            <p class="sp-more__end" data-more>
               <img class="sp-more__kongi" src="/kongi.svg" width="40" height="40" alt="" />처음 사진까지 모두 봤어요
             </p>
           )
@@ -246,7 +252,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
           </div>
         ) : (
           page.more && (
-            <p class="sp-more__end" role="status" data-more>
+            <p class="sp-more__end" data-more>
               <img class="sp-more__kongi" src="/kongi.svg" width="40" height="40" alt="" />처음 사진까지 모두 봤어요
             </p>
           )
@@ -265,9 +271,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
   if (swipe) {
     // 넘겨 보기: 옆으로 밀다 남은 카드가 다섯 장쯤이면 다음 60장 카드를 뒤에 붙인다(옆 스크롤이라 직접 부름)
     const more = autoMore(
-      (doc) => {
-        for (const li of doc.querySelectorAll<HTMLElement>('.sp-a__slide')) swipe.appendChild(document.importNode(li, true));
-      },
+      (doc) => [...doc.querySelectorAll<HTMLElement>('.sp-a__slide')].map((li) => swipe.appendChild(document.importNode(li, true))),
       { observe: false },
     );
     const near = () => {
@@ -278,18 +282,24 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
   } else {
     // 모아 보기: 같은 날이 쪽을 넘어 이어지면 그날 묶음에 칸을 합치고 장 수를 고친다
     autoMore((doc) => {
+      const added: HTMLElement[] = [];
       for (const sec of doc.querySelectorAll<HTMLElement>('.sp-a__day')) {
         const last = [...document.querySelectorAll<HTMLElement>('.sp-a__day')].at(-1);
-        if (!last) return;
+        if (!last) break;
         const ul = last.querySelector<HTMLElement>('.sp-a__grid');
         if (last.dataset.day === sec.dataset.day && ul) {
-          for (const li of sec.querySelectorAll<HTMLElement>('.sp-a__cell')) ul.appendChild(document.importNode(li, true));
+          for (const li of sec.querySelectorAll<HTMLElement>('.sp-a__cell')) added.push(ul.appendChild(document.importNode(li, true)));
           const n = ul.children.length;
           last.setAttribute('aria-label', `${last.dataset.day} ${n}장`);
           const count = last.querySelector('.sp-a__day-count');
           if (count) count.textContent = `· ${n}장`;
-        } else last.insertAdjacentElement('afterend', document.importNode(sec, true));
+        } else {
+          const node = document.importNode(sec, true);
+          last.insertAdjacentElement('afterend', node);
+          added.push(...node.querySelectorAll<HTMLElement>('.sp-a__cell'));
+        }
       }
+      return added;
     });
     keepSpot('.sp-a__cell-link');
   }
