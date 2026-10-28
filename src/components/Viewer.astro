@@ -356,6 +356,8 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     };
     let t: ReturnType<typeof setTimeout> | undefined;
     track.addEventListener('scroll', () => {
+      // 넘기기 시작하면 머문 시간은 다시 센다(넘겨 보기 앨범과 같게)
+      clearTimeout(dwell);
       arrows(Math.round(track.scrollLeft / track.clientWidth));
       // 멈춤 알림(scrollend)이 없는 브라우저만 시간으로
       if ('onscrollend' in window) return;
