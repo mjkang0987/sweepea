@@ -1,7 +1,7 @@
 // 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
 // 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
-import type { ActivityItem, Backend, EnterResult, EntryInfo, EntryMe, MediaItem, Me, MeFamily, ParentHome, Pass, ReactionCount, ReactionKind, TextSizeMode } from './types';
+import type { ActivityItem, Backend, EnterResult, EntryInfo, EntryMe, MediaItem, MediaQuery, Me, MeFamily, ParentHome, Pass, ReactionCount, ReactionKind, TextSizeMode } from './types';
 import { BackendError } from './supabase';
 import { SWEEPEA_MOCK_USED_BYTES } from 'astro:env/server';
 
@@ -131,6 +131,27 @@ function parentMedia(pass: Pass, mediaId: string): void {
   const fam = parents.get(pass.access)?.familyId;
   if (!fam || !media.some((y) => y.id === mediaId && y.status === 'ready' && y.family_id === fam)) throw new BackendError('not_allowed', 403, '42501');
 }
+
+/** listMedia·countMedia 공통: 볼 수 있는 올린 사진, 가족방·아이·한 장·커서로 거른 뒤 찍은 날·id 내림차순 */
+function visibleMedia(pass: Pass, opts: MediaQuery) {
+  const parent = parents.get(pass.access);
+  const c = opts.before ?? opts.after;
+  return media
+    .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId) && (!opts.childId || x.childIds.includes(opts.childId)) && (!opts.id || x.id === opts.id) && (!opts.takenFrom || Date.parse(x.taken_at) >= Date.parse(opts.takenFrom)) && (!opts.takenBefore || Date.parse(x.taken_at) < Date.parse(opts.takenBefore)))
+    .filter((x) => !c || (opts.before ? newerFirst(x, { taken_at: c.takenAt, id: c.id }) > 0 : newerFirst(x, { taken_at: c.takenAt, id: c.id }) < 0))
+    .filter((x) => {
+      if (parent) return x.family_id === parent.familyId;
+      if (isClosing(x.family_id)) return false;
+      const d = deviceOf(pass, x.family_id);
+      const mem = members.find((m) => m.id === d?.memberId);
+      // 올리기 권한 가족은 모든 그룹 사진을 본다(DB sp_can_view_media와 같게)
+      return d?.status === 'active' && mem?.status === 'active' && (canUpload(d) || x.groupIds.includes(mem.groupId));
+    })
+    .sort(newerFirst);
+}
+/** 찍은 날·id 내림차순 비교(앞이 더 최근이면 음수) */
+const newerFirst = (a: { taken_at: string; id: string }, b: { taken_at: string; id: string }) =>
+  a.taken_at === b.taken_at ? (a.id < b.id ? 1 : a.id > b.id ? -1 : 0) : a.taken_at < b.taken_at ? 1 : -1;
 
 export function createMockBackend(): Backend {
   return {
@@ -294,8 +315,8 @@ export function createMockBackend(): Backend {
       comments.push({ id: crypto.randomUUID(), mediaId: id, memberId: parentKey(pass), at: Date.now(), body: text });
     },
     async reactionCounts(pass, ids) {
-      // 볼 수 있는 사진만(DB의 sp_can_view_media 흉내)
-      ids = ids.filter((id) => {
+      // DB(sp_reaction_counts)처럼 앞 200장만, 볼 수 있는 사진만(sp_can_view_media 흉내)
+      ids = ids.slice(0, 200).filter((id) => {
         try {
           if (parents.has(pass.access)) parentMedia(pass, id);
           else viewer(pass, id);
@@ -476,20 +497,13 @@ export function createMockBackend(): Backend {
       return id;
     },
     async listMedia(pass, opts = {}) {
-      const parent = parents.get(pass.access);
-      return media
-        .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId) && (!opts.childId || x.childIds.includes(opts.childId)))
-        .filter((x) => {
-          if (parent) return x.family_id === parent.familyId;
-          if (isClosing(x.family_id)) return false;
-          const d = deviceOf(pass, x.family_id);
-          const mem = members.find((m) => m.id === d?.memberId);
-          // 올리기 권한 가족은 모든 그룹 사진을 본다(DB sp_can_view_media와 같게)
-          return d?.status === 'active' && mem?.status === 'active' && (canUpload(d) || x.groupIds.includes(mem.groupId));
-        })
-        .sort((a, b) => (a.taken_at === b.taken_at ? (a.id < b.id ? 1 : -1) : a.taken_at < b.taken_at ? 1 : -1))
-        .slice(0, opts.limit ?? 60)
-        .map(({ status: _s, uploader: _u, groupIds: _g, childIds: _c, bytes: _b, ...rest }) => rest);
+      const all = visibleMedia(pass, opts);
+      // after: 그보다 최근 것 중 가까운 limit개(내림차순 유지)
+      const picked = opts.after ? all.slice(Math.max(0, all.length - (opts.limit ?? 60))) : all.slice(0, opts.limit ?? 60);
+      return picked.map(({ status: _s, uploader: _u, groupIds: _g, childIds: _c, bytes: _b, ...rest }) => rest);
+    },
+    async countMedia(pass, opts = {}) {
+      return visibleMedia(pass, opts).length;
     },
     // 정리 작업은 mock에선 할 일이 없다(실제 규칙은 DB 검사와 cleanup 단위 검사가 맡는다)
     purgeDeletedFamilies: async () => [],

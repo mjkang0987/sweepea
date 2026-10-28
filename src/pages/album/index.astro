@@ -1,5 +1,6 @@
 ---
-// 앨범: 넘겨 보기(기본)·모아 보기. 여러 가족방이면 모두 섞어 보는 게 기본, 집 고르기는 링크(JS 없음)
+// 앨범: 넘겨 보기(기본)·모아 보기. 여러 가족방이면 모두 섞어 보는 게 기본, 집 고르기는 링크.
+// 작은 스크립트는 60장씩 더 불러오기·닫고 돌아온 자리 맞추기만(없으면 '사진 더 보기' 링크와 #앵커)
 import Family from '../../layouts/Family.astro';
 import ReactRow from '../../components/ReactRow.astro';
 import SayForm from '../../components/SayForm.astro';
@@ -8,7 +9,8 @@ import { sayNote } from '../../lib/say';
 import InstallGuide from '../../components/InstallGuide.astro';
 import { callName } from '../../lib/ko';
 import { INSTALL_COOKIE } from '../../lib/install';
-import { albumHref, dayLabel, loadAlbum, loadReacts, ZOOMS } from '../../lib/album';
+import { albumHref, dayLabel, loadAlbum, loadPage, loadReacts, ZOOMS } from '../../lib/album';
+import { getBackend } from '../../lib/backend';
 import { signedMediaUrl } from '../../lib/signed';
 import { PHOTOS_SEEN, WAITED, seenAt, setLayerCookie } from '../../lib/layers';
 
@@ -25,7 +27,20 @@ if (Astro.request.method === 'POST') {
 }
 const a = await loadAlbum(Astro.cookies, Astro.url);
 if ('redirect' in a) return Astro.redirect(a.redirect);
-const { pass, open, kids, q, items } = a;
+const { pass, open, kids, q } = a;
+// 60장씩: ?before=<찍은 날~id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
+const cont = Astro.url.searchParams.has('before');
+// 전체 장 수는 제목·넘겨 보기 'n / 전체'에. 새 사진 레이어는 이 쪽(60장)이 아니라 최근 200장에서 본다(옛날에 찍고 새로 올린 사진도 잡게, 예전과 같은 범위)
+const [page, total, recent200] = await Promise.all([
+  loadPage(pass, a.base, Astro.url),
+  getBackend().countMedia(pass, a.base),
+  !cont && !q.f ? getBackend().listMedia(pass, { ...a.base, limit: 200 }) : null,
+]);
+const { items } = page;
+const sep = albumHref(q).includes('?') ? '&' : '?';
+const nextHref = page.next ? `${albumHref(q)}${sep}before=${encodeURIComponent(page.next)}` : null;
+// 넘겨 보기 반응·한마디 뒤 돌아올 곳: 그 카드까지 그리게 to=, 가운데로 #p-
+const backTo = (id: string) => `${here}${sep}to=${id}#p-${id}`;
 // 한마디 결과는 보낸 카드에만(sm=사진 id)
 const say = Astro.url.searchParams.get('say');
 const sayFor = Astro.url.searchParams.get('sm');
@@ -36,7 +51,8 @@ const here = albumHref(q);
 const many = open.length > 1;
 const kidTitle = q.f ? kids.get(q.f)! : [...kids.values()].join('·');
 const title = `${kidTitle} 사진`;
-const latest = items[0] ? dayLabel(items[0].taken_at) : null;
+// 가장 최근 사진 날짜(이어지는 쪽·아래부터 그린 쪽은 첫 사진이 최근 것이 아니라 뺀다)
+const latest = items[0] && page.offset === 0 ? dayLabel(items[0].taken_at) : null;
 const showTag = many && !q.f;
 
 const cards = await Promise.all(
@@ -47,7 +63,7 @@ const cards = await Promise.all(
     src: await signedMediaUrl(q.v === 'swipe' ? (m.kind === 'video' ? (m.poster_key ?? m.thumb_key) : m.view_key) : m.thumb_key),
     day: dayLabel(m.taken_at),
     kid: kids.get(m.family_id) ?? '',
-    n: i + 1,
+    n: page.offset + i + 1,
     what: m.kind === 'video' ? '영상' : '사진',
   })),
 );
@@ -59,19 +75,21 @@ for (const c of cards) {
 const zi = ZOOMS.indexOf(q.z);
 // 홈 화면에 두기 안내 쿠키(쿠키는 페이지 맨 위에서 읽고 지운다: 그려지는 중에는 못 바꾼다)
 const installState = Astro.cookies.get(INSTALL_COOKIE)?.value;
-const installAsked = Astro.cookies.get(`${INSTALL_COOKIE}_msg`)?.value === '1';
+// 이어지는 쪽(스크립트가 받아 사진만 씀)은 안내·레이어 쿠키를 건드리지 않는다
+const installAsked = !cont && Astro.cookies.get(`${INSTALL_COOKIE}_msg`)?.value === '1';
 if (installAsked) Astro.cookies.delete(`${INSTALL_COOKIE}_msg`, { path: '/' });
 // 가운데 레이어(한 번 열 때 하나): 승인 뒤 처음 → 새 사진. 처음 온 기기는 지금 사진까지 본 걸로만 적는다
-const newestAt = items.reduce((t, m) => Math.max(t, m.created_at ? Date.parse(m.created_at) : 0), 0);
+const recent = recent200 ?? items;
+const newestAt = recent.reduce((t, m) => Math.max(t, m.created_at ? Date.parse(m.created_at) : 0), 0);
 const newestIso = newestAt ? new Date(newestAt).toISOString() : '';
 const waited = Astro.cookies.get(WAITED)?.value;
-const approved = waited && open.some((f) => f.family_id === waited) ? kids.get(waited) ?? '아이' : null;
+const approved = !cont && waited && open.some((f) => f.family_id === waited) ? kids.get(waited) ?? '아이' : null;
 // 한 집만 거른 화면에선 다른 집 사진을 모르니 건드리지 않는다
-const allKids = !q.f;
+const allKids = !q.f && !cont;
 const photosSeen = seenAt(Astro.cookies, PHOTOS_SEEN);
 // 처음 온 기기: 지금까지(사진이 없으면 지금 시각까지) 본 걸로만 적는다
 if (photosSeen === null && allKids && !approved) setLayerCookie(Astro.cookies, PHOTOS_SEEN, newestIso || new Date().toISOString());
-const fresh = !approved && allKids && photosSeen !== null ? items.filter((m) => m.created_at && Date.parse(m.created_at) > photosSeen) : [];
+const fresh = !approved && allKids && photosSeen !== null ? recent.filter((m) => m.created_at && Date.parse(m.created_at) > photosSeen) : [];
 const freshThumbs = await Promise.all(fresh.slice(0, 3).map((m) => signedMediaUrl(m.thumb_key)));
 const freshKid = fresh.length ? kids.get(fresh[0].family_id) ?? '아이' : '';
 const fewer = zi < ZOOMS.length - 1 ? albumHref({ ...q, z: ZOOMS[zi + 1] }) : null;
@@ -116,7 +134,7 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
   }
   <header class="sp-a__head">
     <div class="sp-a__head-text">
-      <h1 class="sp-f__title">{title} {items.length >= 200 ? '200장 넘게' : `${items.length}장`}</h1>
+      <h1 class="sp-f__title">{title} {total}장</h1>
       {latest && <p class="sp-f__lead">{latest}에 올라왔어요</p>}
     </div>
     <img class="sp-a__kongi" src="/kongi.svg" width="64" height="64" alt="" />
@@ -142,12 +160,12 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
   </nav>
 
   {
-    items.length === 0 ? (
+    items.length === 0 && cont ? null : items.length === 0 ? (
       <p class="sp-f__box">아직 올라온 사진이 없어요. 엄마아빠가 올리면 여기에 보여요.</p>
     ) : q.v === 'swipe' ? (
       <>
         {/* 시안(GrandHome): 가운데 카드 + 양옆 사진이 비스듬히 보임. 손가락으로 밀면 넘어감(scroll-snap), 기울기는 CSS 스크롤 애니메이션 */}
-        <ul class="sp-a__swipe" aria-label={`사진 ${cards.length}장, 옆으로 밀어서 넘겨 보기`}>
+        <ul class="sp-a__swipe" aria-label={`사진 ${total}장, 옆으로 밀어서 넘겨 보기`}>
           {cards.map((c) => (
             <li class="sp-a__slide" id={`p-${c.id}`}>
               <div class="sp-a__card">
@@ -159,22 +177,34 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
                   <span class="sp-a__card-day">{c.day}{c.kind === 'video' && ' · 영상'}</span>
                   {/* 스크롤 애니메이션이 없는 브라우저(iOS 26 전·파이어폭스)는 아래 반응 줄이 숨으므로 카드에 하트만 */}
                   <div class="sp-a__card-heart">
-                    <ReactRow mediaId={c.id} back={`${here}#p-${c.id}`} reacts={reacts} kinds={['heart']} untitled />
+                    <ReactRow mediaId={c.id} back={backTo(c.id)} reacts={reacts} kinds={['heart']} untitled />
                   </div>
                 </div>
               </div>
               <p class="sp-a__pos">
-                <strong class="sp-a__pos-n">{c.n}</strong> / {cards.length}<span aria-hidden="true"> · 옆으로 밀거나 옆 사진을 누르세요</span>
+                <strong class="sp-a__pos-n">{c.n}</strong> / {total}<span aria-hidden="true"> · 옆으로 밀거나 옆 사진을 누르세요</span>
               </p>
               {/* 반응 줄은 카드마다. 가운데 카드 것만 보이게(CSS), JS 없이 그 사진에 보낸다 */}
               <div class="sp-a__slide-react">
                 {/* 돌아올 때 같은 카드가 가운데에 오게 #p-<id> */}
-                <ReactRow mediaId={c.id} back={`${here}#p-${c.id}`} reacts={reacts} idSuffix={`-${c.n}`} />
-                <SayForm mediaId={c.id} back={`${here}#p-${c.id}`} child={c.kid || '아이'} idSuffix={`-${c.n}`} />
+                <ReactRow mediaId={c.id} back={backTo(c.id)} reacts={reacts} idSuffix={`-${c.id}`} />
+                <SayForm mediaId={c.id} back={backTo(c.id)} child={c.kid || '아이'} idSuffix={`-${c.id}`} />
               </div>
             </li>
           ))}
         </ul>
+        {/* 목록 끝(디자인 LoadMoreFamily) */}
+        {nextHref ? (
+          <div class="sp-more" data-more>
+            <a class="sp-more__btn" href={nextHref}>사진 더 보기</a>
+          </div>
+        ) : (
+          page.more && (
+            <p class="sp-more__end" data-more>
+              <img class="sp-more__kongi" src="/kongi.svg" width="40" height="40" alt="" />처음 사진까지 모두 봤어요
+            </p>
+          )
+        )}
       </>
     ) : (
       <>
@@ -189,13 +219,13 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
           {more ? <a class="sp-a__zoom-btn" href={more} aria-label="크게(한 줄에 더 적게)">+</a> : <span class="sp-a__zoom-btn sp-a__zoom-btn--off" aria-hidden="true">+</span>}
         </nav>
         {days.map((d) => (
-          <section class="sp-a__day" aria-label={`${d.day} ${d.cards.length}장`}>
+          <section class="sp-a__day" data-day={d.day} aria-label={`${d.day} ${d.cards.length}장`}>
             <h2 class="sp-a__day-title">
               {d.day} <span class="sp-a__day-count">· {d.cards.length}장</span>
             </h2>
             <ul class={`sp-a__grid sp-a__grid--${q.z}`}>
               {d.cards.map((c) => (
-                <li class="sp-a__cell">
+                <li class="sp-a__cell" id={`c-${c.id}`}>
                   <a class="sp-a__cell-link" href={c.href}>
                     <img
                       class="sp-a__cell-img"
@@ -220,9 +250,62 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
             </ul>
           </section>
         ))}
+        {/* 목록 끝(디자인 LoadMoreFamily) */}
+        {nextHref ? (
+          <div class="sp-more" data-more>
+            <a class="sp-more__btn" href={nextHref}>사진 더 보기</a>
+          </div>
+        ) : (
+          page.more && (
+            <p class="sp-more__end" data-more>
+              <img class="sp-more__kongi" src="/kongi.svg" width="40" height="40" alt="" />처음 사진까지 모두 봤어요
+            </p>
+          )
+        )}
         {/* 떠 있는 칸 크기 버튼 아래로 마지막 줄이 가리지 않게 */}
         <div class="sp-a__zoom-space" aria-hidden="true"></div>
       </>
     )
   }
 </Family>
+
+<script>
+  import { autoMore, keepSpot } from '../../lib/more';
+
+  const swipe = document.querySelector<HTMLElement>('.sp-a__swipe');
+  if (swipe) {
+    // 넘겨 보기: 옆으로 밀다 남은 카드가 다섯 장쯤이면 다음 60장 카드를 뒤에 붙인다(옆 스크롤이라 직접 부름)
+    const more = autoMore(
+      (doc) => [...doc.querySelectorAll<HTMLElement>('.sp-a__slide')].map((li) => swipe.appendChild(document.importNode(li, true))),
+      { observe: false },
+    );
+    const near = () => {
+      if (swipe.scrollLeft + swipe.clientWidth * 6 >= swipe.scrollWidth) more();
+    };
+    swipe.addEventListener('scroll', near, { passive: true });
+    near();
+  } else {
+    // 모아 보기: 같은 날이 쪽을 넘어 이어지면 그날 묶음에 칸을 합치고 장 수를 고친다
+    autoMore((doc) => {
+      const added: HTMLElement[] = [];
+      for (const sec of doc.querySelectorAll<HTMLElement>('.sp-a__day')) {
+        const last = [...document.querySelectorAll<HTMLElement>('.sp-a__day')].at(-1);
+        if (!last) break;
+        const ul = last.querySelector<HTMLElement>('.sp-a__grid');
+        if (last.dataset.day === sec.dataset.day && ul) {
+          for (const li of sec.querySelectorAll<HTMLElement>('.sp-a__cell')) added.push(ul.appendChild(document.importNode(li, true)));
+          const n = ul.children.length;
+          last.setAttribute('aria-label', `${last.dataset.day} ${n}장`);
+          const count = last.querySelector('.sp-a__day-count');
+          if (count) count.textContent = `· ${n}장`;
+        } else {
+          const node = document.importNode(sec, true);
+          last.insertAdjacentElement('afterend', node);
+          added.push(...node.querySelectorAll<HTMLElement>('.sp-a__cell'));
+        }
+      }
+      return added;
+    });
+    keepSpot('.sp-a__cell-link');
+  }
+</script>

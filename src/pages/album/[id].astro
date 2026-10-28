@@ -1,10 +1,10 @@
 ---
-// 크게 보기: 사진·영상이 화면 가득, 위 메뉴·아래 판이 반투명으로 겹친다. 이 화면만 작은 스크립트(영상 재생 막대·옆으로 밀기).
+// 크게 보기: 사진·영상이 화면 가득, 위 메뉴·아래 판이 반투명으로 겹친다. 작은 스크립트(영상 재생 막대·옆으로 밀기).
 // 스크립트가 없어도 ‹ › 링크로 넘기고 영상은 브라우저 기본 재생 막대로 본다
 import { seoulDate } from '../../lib/parent';
 import Family from '../../layouts/Family.astro';
 import Viewer from '../../components/Viewer.astro';
-import { albumHref, dayLabel, handleReactPost, loadAlbum, loadReacts, slideWindow } from '../../lib/album';
+import { albumHref, dayLabel, handleReactPost, loadAlbum, loadReacts, loadWindow, slideWindow } from '../../lib/album';
 import { getBackend } from '../../lib/backend';
 import { UUID } from '../../lib/media';
 import { signedMediaUrl } from '../../lib/signed';
@@ -18,10 +18,11 @@ if (Astro.request.method === 'POST') {
 }
 const a = await loadAlbum(Astro.cookies, Astro.url);
 if ('redirect' in a) return Astro.redirect(a.redirect);
-const { pass, open, kids, q, items } = a;
-const i = items.findIndex((m) => m.id === Astro.params.id);
-// 볼 수 없거나 목록 밖 사진은 앨범으로
-if (i < 0) return Astro.redirect(albumHref(q));
+const { pass, open, kids, q } = a;
+// 그 사진 앞뒤 21장과 자리·전체(몇 번째 사진이든). 볼 수 없는 사진은 앨범으로
+const win = await loadWindow(pass, a.base, id);
+if (!win) return Astro.redirect(albumHref(q));
+const { items, i } = win;
 const m = items[i];
 const prev = items[i - 1];
 const next = items[i + 1];
@@ -41,15 +42,15 @@ const sayHere = Astro.url.searchParams.get('sm') === m.id || !Astro.url.searchPa
 const saveName = `sweepea-${seoulDate(m.taken_at)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`;
 ---
 
-<Family title={`${label} · ${i + 1} / ${items.length}`} wide>
+<Family title={`${label} · ${win.pos} / ${win.total}`} wide>
   <Viewer
     m={m}
     label={label}
     src={src}
     poster={poster}
-    pos={i + 1}
-    total={items.length}
-    closeHref={albumHref(q)}
+    pos={win.pos}
+    total={win.total}
+    closeHref={`${albumHref(q)}${albumHref(q).includes('?') ? '&' : '?'}to=${m.id}#${q.v === 'swipe' ? 'p' : 'c'}-${m.id}`}
     save={canSave ? { href: src, name: saveName, label } : undefined}
     prev={prev && { href: albumHref(q, `/album/${prev.id}`), video: prev.kind === 'video' }}
     next={next && { href: albumHref(q, `/album/${next.id}`), video: next.kind === 'video' }}

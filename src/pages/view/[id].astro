@@ -2,7 +2,7 @@
 // 엄빠 크게 보기: 조부모와 같은 화면(반응·한마디 남기기·저장) + 사진 정보 수정 버튼. 순서는 앨범과 같음(아이를 골랐으면 ?k=)
 import Family from '../../layouts/Family.astro';
 import Viewer from '../../components/Viewer.astro';
-import { applyReactPost, dayLabel, loadReacts, slideWindow } from '../../lib/album';
+import { applyReactPost, dayLabel, loadReacts, loadWindow, slideWindow } from '../../lib/album';
 import { getBackend } from '../../lib/backend';
 import { UUID } from '../../lib/media';
 import { callName } from '../../lib/ko';
@@ -25,11 +25,10 @@ if (Astro.request.method === 'POST') {
   const ops = { react: (m: string, k: Parameters<typeof b.parentReact>[2], on: boolean) => b.parentReact(pass, m, k, on), comment: (m: string, t: string) => b.parentComment(pass, m, t), deleteComment: (c: string) => b.deleteComment(pass, c) };
   return Astro.redirect(await applyReactPost(Astro.request, id, ops, back, `/view/${id}${kq}`), 303);
 }
-// shortcut: 앨범과 같이 최근 200장 안에서만 넘김
-// 반응·한마디는 주소의 id로 목록과 함께 받는다(왕복 한 번 줄임)
-const [items, reacts, comments] = await Promise.all([b.listMedia(a.pass, { limit: 200, childId: picked?.id }), loadReacts(a.pass, [id]), b.mediaComments(a.pass, id)]);
-const i = items.findIndex((m) => m.id === id);
-if (i < 0) return Astro.redirect(`/home${kq}`);
+// 그 사진 앞뒤 21장과 자리·전체(몇 번째 사진이든). 반응·한마디는 주소의 id로 함께 받는다(왕복 한 번 줄임)
+const [win, reacts, comments] = await Promise.all([loadWindow(a.pass, { childId: picked?.id }, id), loadReacts(a.pass, [id]), b.mediaComments(a.pass, id)]);
+if (!win) return Astro.redirect(`/home${kq}`);
+const { items, i } = win;
 const m = items[i];
 const prev = items[i - 1];
 const next = items[i + 1];
@@ -47,15 +46,15 @@ const view = (x: { id: string }) => `/view/${x.id}${kq}`;
 const slides = await slideWindow(items, i, view, (x) => `${dayLabel(x.taken_at)} ${x.kind === 'video' ? '영상' : '사진'}`);
 ---
 
-<Family title={`${label} · ${i + 1} / ${items.length}`} wide>
+<Family title={`${label} · ${win.pos} / ${win.total}`} wide>
   <Viewer
     m={m}
     label={label}
     src={src}
     poster={poster}
-    pos={i + 1}
-    total={items.length}
-    closeHref={`/home${kq}`}
+    pos={win.pos}
+    total={win.total}
+    closeHref={`/home?${picked ? `k=${encodeURIComponent(picked.id)}&` : ''}to=${m.id}#c-${m.id}`}
     save={{ href: src, name: saveName, label }}
     prev={prev && { href: view(prev), video: prev.kind === 'video' }}
     next={next && { href: view(next), video: next.kind === 'video' }}
