@@ -17,7 +17,7 @@
 - 홈 화면에 두기: `public/manifest.webmanifest`·`public/icons/`(콩이), 가족 앨범 위 안내(`src/components/InstallGuide.astro`, 기기 판별 `src/lib/install.ts`), 앱 안 브라우저는 엄마아빠에게 부탁(`members.install_help_at`) → 부모 최근 반응 '도와줄 사람' 완료. 버튼은 이동 없이 그 자리에서(0.4.30~, 스크립트 없으면 폼).
 - 접종·검진(`/health/<아이 id>`, 앨범 위 아이별 다음 일정, 설정 > 아이에서 켜고 끄기): 일정 표 `src/lib/health.ts`, 완료 기록 `health_done`(부모만) 완료.
 - 부모 최근 반응(`/reactions`, 앨범 위 '최근 반응 새 N'): 승인된 가족의 반응·한마디, 확인할 사람, 열면 읽음 완료.
-- 부모 사진 정보(`/photo/<id>`, 크게 보기 '사진 정보 수정'에서): 찍은 날·아이·보여줄 그룹 고치기, 지우기(확인 레이어 → 용량 빼고 R2 정리 대기열 `r2_cleanup.prefix`) 완료. 찍은 날은 JPEG만 EXIF, 나머지는 파일 시각.
+- 부모 사진 정보(`/photo/<id>`, 크게 보기 '사진 정보 수정'에서): 찍은 날·아이·보여줄 그룹 고치기, 지우기(확인 레이어 → 용량 빼고 R2 정리 대기열 `r2_cleanup.prefix`) 완료. 찍은 날은 사진 JPEG·HEIC·PNG의 EXIF, 영상은 아이폰 creationdate → mvhd 만든 시각, 없으면 파일 시각(0.4.32~, `src/lib/exif.ts`).
 - 그룹 관리(`/settings/family/groups` 목록·추가(10개)·상세·비밀번호 바꾸기·주소 다시 만들기) 완료.
 - 탈퇴하기(`/settings/account` 확인 체크, 구독 중이면 막음)·작별(`/goodbye`)·되살리기(`/restore`, 유예 중 부모 화면은 여기로, 남은 시간 안내) 완료. 3일 유예 뒤 실제 삭제는 예약 작업(13번, 출시 전 필수).
 - 부모 시작(`/start` 소개, `/login`·`/auth/callback` OAuth PKCE, `/setup` 처음 설정, `/home` 앨범, `/settings` 자리) 완료. 부모 세션은 쿠키 `sp_parent`(가족 기기 `sp_pass`와 따로).

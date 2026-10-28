@@ -65,7 +65,7 @@ const box = (type: string, body: number[]) => [...u32(8 + body.length), ...cc(ty
 const tiffOf = (date: string, offset?: string) => [...new Uint8Array(jpeg(date, { offset }))].slice(12, -2);
 
 /** 최소 HEIC: ftyp + meta(iinf: 1 hvc1, 2 Exif / iloc) + mdat 또는 meta 안 idat */
-function heic(date: string, opts: { idat?: boolean; noExif?: boolean } = {}): Uint8Array {
+function heic(date: string, opts: { idat?: boolean; noExif?: boolean } = {}): Uint8Array<ArrayBuffer> {
   const exif = [...u32(6), ...cc('Exif'), 0, 0, ...tiffOf(date)];
   const infe = (id: number, type: string) => box('infe', [2, 0, 0, 0, ...u16(id), ...u16(0), ...cc(type), 0]);
   const iinf = box('iinf', [0, 0, 0, 0, ...u16(2), ...infe(1, 'hvc1'), ...infe(2, opts.noExif ? 'mime' : 'Exif')]);

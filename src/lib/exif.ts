@@ -12,6 +12,7 @@ export async function photoTakenAt(file: Blob): Promise<string | null> {
     const at = heifExif(v);
     if (!at || at.length < 8) return null;
     const ex = new DataView(await file.slice(at.offset, at.offset + Math.min(at.length, HEAD)).arrayBuffer());
+    if (ex.byteLength < 8) return null;
     // Exif 항목: 앞 4바이트는 TIFF 머리까지 건너뛸 길이(보통 'Exif\0\0' 6바이트)
     const t = 4 + ex.getUint32(0);
     return t + 8 <= ex.byteLength ? readTiff(ex, t, ex.byteLength) : null;
@@ -92,6 +93,7 @@ function heifExif(v: DataView): { offset: number; length: number } | null {
       p += n;
       return x;
     };
+    if (lenSize === 0) return null; // 길이 없는 자리는 못 읽는다(크기 0이면 아래 루프가 제자리를 돈다)
     const count = ver < 2 ? (p += 2, v.getUint16(p - 2)) : (p += 4, v.getUint32(p - 4));
     for (let i = 0; i < count && p < iloc[2]; i++) {
       const item = ver < 2 ? (p += 2, v.getUint16(p - 2)) : (p += 4, v.getUint32(p - 4));
@@ -99,6 +101,7 @@ function heifExif(v: DataView): { offset: number; length: number } | null {
       p += 2; // data_reference_index
       const base = num(baseSize);
       const extents = (p += 2, v.getUint16(p - 2));
+      if (p + extents * (idxSize + offSize + lenSize) > iloc[2]) return null;
       let first: { offset: number; length: number } | null = null;
       for (let j = 0; j < extents; j++) {
         num(idxSize);
