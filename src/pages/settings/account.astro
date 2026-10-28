@@ -1,5 +1,5 @@
 ---
-// 계정: 로그인 제공자·부모 호칭, 로그아웃, 탈퇴하기(한 번 더 확인 + 확인 체크)
+// 계정: 로그인 제공자·부모 호칭, 로그아웃, 탈퇴하기(이 화면 위 레이어에서 한 번 더 확인 + 확인 체크)
 import Parent from '../../layouts/Parent.astro';
 import { BackendError, getBackend } from '../../lib/backend';
 import { goodbyeHref, loadParent, logoutParent, PROVIDER_NAMES } from '../../lib/parent';
@@ -9,14 +9,14 @@ const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
-  if (form.get('agree') !== '1') return Astro.redirect('/settings/account?confirm=delete&e=agree#confirm', 303);
+  if (form.get('agree') !== '1') return Astro.redirect('/settings/account?confirm=delete&e=agree', 303);
   try {
     const at = await getBackend().requestDelete(a.pass);
     await logoutParent(Astro.cookies);
     return Astro.redirect(goodbyeHref(at), 303);
   } catch (err) {
     if (!(err instanceof BackendError)) throw err;
-    return Astro.redirect(`/settings/account?confirm=${err.status === 402 ? 'subscribed' : 'error'}#confirm`, 303);
+    return Astro.redirect(`/settings/account?confirm=${err.status === 402 ? 'subscribed' : 'error'}`, 303);
   }
 }
 const provider = PROVIDER_NAMES[a.home.provider ?? ''];
@@ -28,49 +28,94 @@ const what = videos ? `사진 ${photos.toLocaleString('ko-KR')}장·영상 ${vid
 const agreeError = Astro.url.searchParams.get('e') === 'agree';
 const day = (iso: string) => new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(iso));
 const planUntil = a.home.plan_until ? day(a.home.plan_until) : null;
+// 구독 중이면(또는 서버가 402로 막았으면) 탈퇴 대신 구독 안내 레이어
+const kind = planUntil || confirm === 'subscribed' ? 'subscribed' : 'delete';
+const open = confirm === 'delete' || confirm === 'subscribed';
 ---
 
-<Parent title={confirm === 'delete' ? '정말 탈퇴할까요? · 계정' : '계정 · 설정'} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+<Parent title={open ? `${kind === 'delete' ? '정말 탈퇴할까요?' : '구독 중이에요'} · 계정` : '계정 · 설정'} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings">설정</a>
     <h1 class="sp-p__nav-title">계정</h1>
   </div>
-  <div class="sp-p__card">
-    <p class="sp-p__who-name">{who}</p>
-    <p class="sp-p__hint">{provider ? `${provider}로 로그인` : '로그인됨'}</p>
+  {/* 디자인 Account: 로그인 제공자 아이콘(카카오) + 이름·로그인 방법 */}
+  <ul class="sp-p__rows" role="list">
+    <li class="sp-p__rows-item">
+      {
+        a.home.provider === 'kakao' && (
+          <span class="sp-p__provider sp-p__provider--kakao" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" focusable="false"><path d="M12 4C7 4 3 7.1 3 11c0 2.5 1.7 4.7 4.2 5.9l-.9 3.3c-.1.3.3.5.5.3l3.9-2.6c.4 0 .8.1 1.3.1 5 0 9-3.1 9-7s-4-7-9-7z" fill="#191919" /></svg>
+          </span>
+        )
+      }
+      <span class="sp-p__radio-text">
+        <span class="sp-p__who-name">{who}</span>
+        <span class="sp-p__hint">{provider ? `${provider}로 로그인` : '로그인됨'}</span>
+      </span>
+    </li>
+  </ul>
+  {confirm === 'error' && <p class="sp-p__toast sp-p__toast--error" role="alert" tabindex="-1" autofocus>처리하지 못했어요. 다시 눌러 주세요.</p>}
+  {/* 디자인 Account: 묶음 줄 로그아웃·탈퇴하기 */}
+  <ul class="sp-p__rows" role="list">
+    <li>
+      <form method="post" action="/logout">
+        <button class="sp-p__rows-item sp-p__rows-button" type="submit">로그아웃</button>
+      </form>
+    </li>
+    <li>
+      <a class="sp-p__rows-item sp-p__rows-button sp-p__rows-item--danger" href={`/settings/account?confirm=${kind}`} aria-haspopup="dialog" data-del-open>탈퇴하기</a>
+    </li>
+  </ul>
+  <p class="sp-p__hint">로그아웃해도 사진과 가족은 그대로예요. 탈퇴하면 3일 뒤 모두 지워져요.</p>
+  {/* 디자인 AccountDelete·AccountDeleteSub: 이 화면 위 가운데 레이어. 스크립트가 있으면 showModal, 없으면 주소(?confirm=)로 연 채 다시 그린다 */}
+  <div class={open ? 'sp-layer' : undefined}>
+    {open && <div class="sp-layer__scrim" aria-hidden="true"></div>}
+    <dialog class:list={['sp-layer__box sp-layer__box--start', !open && 'sp-layer__modal']} id="del" open={open} aria-labelledby="del-t" aria-describedby="del-d">
+      <img class="sp-layer__kongi sp-layer__kongi--sm" src="/sad.svg" width="40" height="40" alt="" />
+      {
+        kind === 'delete' ? (
+          <>
+            <h2 class="sp-layer__title" id="del-t">정말 탈퇴할까요?</h2>
+            <p class="sp-layer__text" id="del-d">가족 화면은 바로 닫히고, <strong>3일 뒤</strong> {what} 가족·아이 정보가 모두 지워져요. 3일 안에 다시 로그인하면 되살릴 수 있어요.</p>
+            <form class="sp-layer__actions sp-layer__actions--del" method="post">
+              {agreeError && <p class="sp-p__error" role="alert" id="agree-err">'모두 지워지는 것을 확인했어요'를 체크해야 탈퇴할 수 있어요.</p>}
+              <label class="sp-p__check sp-p__check--plain">
+                <input class="sp-p__checkbox" type="checkbox" name="agree" value="1" required aria-invalid={agreeError ? 'true' : undefined} aria-describedby={agreeError ? 'agree-err' : undefined} />
+                모두 지워지는 것을 확인했어요
+              </label>
+              <div class="sp-layer__pair">
+                {open ? <a class="sp-p__btn sp-p__btn--quiet" href="/settings/account" autofocus>취소</a> : <button class="sp-p__btn sp-p__btn--quiet" type="submit" formmethod="dialog" formnovalidate autofocus>취소</button>}
+                <button class="sp-p__btn sp-p__btn--danger-strong" type="submit">탈퇴하기</button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <>
+            <h2 class="sp-layer__title" id="del-t">구독 중이에요</h2>
+            <p class="sp-layer__text" id="del-d">탈퇴해도 결제는 자동으로 멈추지 않아요. 아직 해지하지 않았다면 App Store나 Google Play에서 가족 플랜 구독을 먼저 해지해 주세요. {planUntil ? `구독 기간이 끝나는 ${planUntil} 뒤에 탈퇴할 수 있어요.` : '구독 기간이 끝난 뒤에 탈퇴할 수 있어요.'}</p>
+            <form class="sp-layer__actions" method="dialog">
+              {open ? <a class="sp-p__btn sp-p__btn--quiet" href="/settings/account" autofocus>닫기</a> : <button class="sp-p__btn sp-p__btn--quiet" type="submit" autofocus>닫기</button>}
+            </form>
+          </>
+        )
+      }
+    </dialog>
   </div>
-  {
-    confirm === 'delete' && !planUntil ? (
-      <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
-        <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>정말 탈퇴할까요?</h2>
-        <p class="sp-p__lead">가족 화면은 바로 닫히고, <strong>3일 뒤</strong> {what} 가족·아이 정보가 모두 지워져요. 3일 안에 다시 로그인하면 되살릴 수 있어요.</p>
-        <form class="sp-p__form" method="post">
-          {agreeError && <p class="sp-p__error" role="alert" id="agree-err">'모두 지워지는 것을 확인했어요'를 체크해야 탈퇴할 수 있어요.</p>}
-          <label class="sp-p__check sp-p__check--plain">
-            <input class="sp-p__checkbox" type="checkbox" name="agree" value="1" required aria-invalid={agreeError ? 'true' : undefined} aria-describedby={agreeError ? 'agree-err' : undefined} />
-            모두 지워지는 것을 확인했어요
-          </label>
-          <div class="sp-p__pair">
-            <a class="sp-p__btn sp-p__btn--quiet" href="/settings/account">취소</a>
-            <button class="sp-p__btn sp-p__btn--danger-strong" type="submit">탈퇴하기</button>
-          </div>
-        </form>
-      </section>
-    ) : confirm === 'subscribed' || confirm === 'delete' ? (
-      <section class="sp-p__card sp-p__card--warn" id="confirm" aria-labelledby="confirm-title">
-        <h2 class="sp-p__card-title" id="confirm-title" tabindex="-1" autofocus>구독 중이에요</h2>
-        <p class="sp-p__lead">탈퇴해도 결제는 자동으로 멈추지 않아요. 아직 해지하지 않았다면 App Store나 Google Play에서 가족 플랜 구독을 먼저 해지해 주세요. {planUntil ? `구독 기간이 끝나는 ${planUntil} 뒤에 탈퇴할 수 있어요.` : '구독 기간이 끝난 뒤에 탈퇴할 수 있어요.'}</p>
-        <a class="sp-p__btn sp-p__btn--quiet" href="/settings/account">닫기</a>
-      </section>
-    ) : (
-      <>
-        {confirm === 'error' && <p class="sp-p__toast sp-p__toast--error" role="alert" tabindex="-1" autofocus>처리하지 못했어요. 다시 눌러 주세요.</p>}
-        <form class="sp-p__account-out" method="post" action="/logout">
-          <button class="sp-p__btn sp-p__btn--quiet" type="submit">로그아웃</button>
-        </form>
-        <p class="sp-p__hint">로그아웃해도 사진과 가족은 그대로예요. 탈퇴하면 3일 뒤 모두 지워져요.</p>
-        <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" href={`/settings/account?confirm=${planUntil ? 'subscribed' : 'delete'}#confirm`}>탈퇴하기</a>
-      </>
-    )
-  }
 </Parent>
+
+<script>
+  // 탈퇴하기: 링크 대신 이 화면 위 레이어로(스크립트 없으면 링크대로 ?confirm=)
+  const del = document.getElementById('del') as HTMLDialogElement | null;
+  if (del && !del.open && typeof del.showModal === 'function') {
+    document.querySelector('[data-del-open]')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      del.showModal();
+    });
+    // 어두운 바깥을 누르면 닫기
+    del.addEventListener('click', (e) => {
+      if (e.target !== del) return;
+      const r = del.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) del.close();
+    });
+  }
+</script>

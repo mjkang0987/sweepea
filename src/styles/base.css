@@ -154,6 +154,27 @@
   height: 6rem;
   image-rendering: pixelated;
 }
+.sp-layer__kongi--sm {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+/* 왼쪽 정렬 레이어(디자인 AccountDelete): 콩이·제목·글·체크를 왼쪽에, 버튼은 둘 나란히 */
+.sp-layer__box--start {
+  align-items: stretch;
+  text-align: left;
+}
+.sp-layer__box--start .sp-layer__text {
+  color: var(--label);
+}
+.sp-layer__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+/* 확인 체크 전엔 흐리게(디자인). 눌리긴 해서 체크하라는 브라우저 안내가 뜬다 */
+.sp-layer__actions:has(.sp-p__checkbox:not(:checked)) .sp-p__btn--danger-strong {
+  opacity: 0.4;
+}
 .sp-layer__meter {
   align-self: stretch;
 }

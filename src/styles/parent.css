@@ -1245,6 +1245,26 @@
 .sp-p__account-out {
   margin-top: var(--space-4);
 }
+.sp-p__provider {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-p__provider--kakao {
+  background: var(--kakao);
+}
+.sp-p__rows-item--danger {
+  color: var(--danger);
+  text-decoration: none;
+}
+.sp-p__rows-item--danger:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: -2px;
+}
 .sp-p__list--gap {
   margin-bottom: var(--space-2);
 }
