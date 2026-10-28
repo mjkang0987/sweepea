@@ -284,7 +284,8 @@ function orientation(v: DataView, t: number, end: number): number {
   for (let i = 0; i < n; i++) {
     const e = ifd + 2 + i * 12;
     if (e + 12 > end) return 9;
-    if (v.getUint16(e, le) === 0x0112) return v.getUint16(e + 8, le);
+    // 보통 SHORT(3), 잘못 만든 파일은 LONG(4)
+    if (v.getUint16(e, le) === 0x0112) return v.getUint16(e + 2, le) === 4 ? v.getUint32(e + 8, le) : v.getUint16(e + 8, le);
   }
   return 1;
 }

@@ -162,3 +162,7 @@ test('stripJpeg: 그림 데이터 밖의 길이 없는 표지는 null', () => {
   assert.equal(stripJpeg(buf([0xff, 0x01], pic)), null);
   assert.equal(stripJpeg(buf([0xff, 0xd0], pic)), null);
 });
+test('stripJpeg: Orientation이 LONG으로 적혀도 회전으로 봄', () => {
+  const long6 = seg(0xe1, [...ascii('Exif'), 0, 0, 0x49, 0x49, 42, 0, 8, 0, 0, 0, 1, 0, 0x12, 0x01, 4, 0, 1, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0]);
+  assert.equal(stripJpeg(buf(long6, pic)), null);
+});

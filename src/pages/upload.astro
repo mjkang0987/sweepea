@@ -225,7 +225,9 @@ const kid = callName(kids[0]?.name ?? '아이');
     bmp.close();
     const exif = await photoTakenAt(file).catch(() => null);
     // 이미 작은 JPEG(카톡으로 받은 사진 등)는 다시 저장하면 화질만 깎이고 커지기도 한다 → 정보만 뺀 원본이 작거나 같으면 그대로
-    const kept = small ? stripJpeg(await file.arrayBuffer()) : null;
+    const head = small ? new Uint8Array(await file.slice(0, 2).arrayBuffer()) : null;
+    const jpeg = head?.[0] === 0xff && head[1] === 0xd8; // 앞 2바이트 FF D8(PNG·HEIC는 통째로 안 읽게)
+    const kept = jpeg ? stripJpeg(await file.arrayBuffer()) : null;
     const keep = kept !== null && kept.byteLength <= view.blob.size;
     return {
       kind: 'photo', view: keep ? new Blob([kept], { type: 'image/jpeg' }) : view.blob, thumb: thumb.blob, width: view.width, height: view.height,
