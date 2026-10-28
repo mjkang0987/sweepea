@@ -1,6 +1,7 @@
 ---
 // 가족 앨범 위 '홈 화면에 두세요' 안내(페이지 흐름 안의 판, 앨범을 가리지 않는다). 기기마다 단계가 다르고,
-// 앱 안 브라우저(카톡 등)에서는 엄마아빠에게 부탁한다. 홈 화면 아이콘으로 열었으면 CSS(display-mode: standalone)로 숨긴다(JS 없음)
+// 앱 안 브라우저(카톡 등)에서는 엄마아빠에게 부탁한다. 홈 화면 아이콘으로 열었으면 CSS(display-mode: standalone)로 숨긴다.
+// 버튼은 스크립트가 그 자리에서 보내고 판만 치운다(스크립트 없으면 폼으로 보내고 앨범을 다시 그림)
 import { installPlatform } from '../lib/install';
 
 interface Props {
@@ -20,10 +21,10 @@ const steps =
   [];
 ---
 
-{asked && <p class="sp-f__box sp-f__box--pea sp-f__install-done" role="status" tabindex="-1" autofocus>엄마아빠에게 부탁했어요. 엄마아빠가 스위피를 열면 보여요.</p>}
+{(asked || (!state && platform === 'inapp')) && <p class="sp-f__box sp-f__box--pea sp-f__install-done" id="install-done" role="status" tabindex="-1" autofocus={asked} hidden={!asked}>엄마아빠에게 부탁했어요. 엄마아빠가 스위피를 열면 보여요.</p>}
 {
   !state && platform !== 'other' && (
-    <aside class="sp-f__install" aria-labelledby="install-title">
+    <aside class="sp-f__install" id="install" aria-labelledby="install-title">
       <h2 class="sp-f__install-title" id="install-title">홈 화면에 두세요</h2>
       <p class="sp-f__install-lead">다음부터 아이콘만 누르면 {kid} 사진이 바로 열려요.</p>
       <form class="sp-f__form" method="post" action="/install">
@@ -53,3 +54,37 @@ const steps =
     </aside>
   )
 }
+
+<script>
+  const box = document.getElementById('install');
+  const form = box?.querySelector('form');
+  let busy = false;
+  form?.addEventListener('submit', async (e) => {
+    const by = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+    e.preventDefault();
+    if (busy || !box) return;
+    busy = true;
+    const body = new FormData(form, by);
+    try {
+      const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin', headers: { 'x-sp-inplace': '1' } });
+      // 부탁할 곳이 없거나 실패하면 폼으로 보낼 때처럼 판을 그대로 둔다
+      if (!r.ok) return;
+      // 판 바로 뒤에서 처음 누를 수 있는 것(스크립트 태그 같은 건 건너뜀)
+      let el = box.nextElementSibling;
+      let next: HTMLElement | null = null;
+      while (el && !(next = el.matches('a, button') ? (el as HTMLElement) : el.querySelector<HTMLElement>('a, button'))) el = el.nextElementSibling;
+      box.remove();
+      const done = document.getElementById('install-done');
+      if (by?.value === 'ask' && done) {
+        done.hidden = false;
+        done.focus();
+      } else next?.focus();
+    } catch {
+      // 연결이 끊기면 폼으로 다시 보낸다(누른 버튼 값을 붙여서)
+      if (by) form.appendChild(Object.assign(document.createElement('input'), { type: 'hidden', name: by.name, value: by.value }));
+      form.submit();
+    } finally {
+      busy = false;
+    }
+  });
+</script>
