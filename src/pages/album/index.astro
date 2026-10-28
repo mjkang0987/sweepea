@@ -293,6 +293,40 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
     };
     swipe.addEventListener('scroll', near, { passive: true });
     near();
+    // 보신 기록(95): 가운데 카드에 1.5초 머물면 그 사진을 남긴다(사진마다 한 번). 실패는 버림(다음에 다시 보면 남음)
+    const seen = new Set<string>();
+    let dwell: ReturnType<typeof setTimeout> | undefined;
+    const centered = () => {
+      const mid = swipe.getBoundingClientRect().left + swipe.clientWidth / 2;
+      let best: HTMLElement | undefined;
+      let gap = Infinity;
+      for (const li of swipe.querySelectorAll<HTMLElement>('.sp-a__slide')) {
+        const r = li.getBoundingClientRect();
+        const d = Math.abs(r.left + r.width / 2 - mid);
+        if (d < gap) [best, gap] = [li, d];
+      }
+      return best?.id.slice(2);
+    };
+    const settle = () => {
+      clearTimeout(dwell);
+      const id = centered();
+      if (!id || seen.has(id)) return;
+      dwell = setTimeout(() => {
+        if (centered() !== id || seen.has(id)) return;
+        seen.add(id);
+        fetch('/api/views', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [id] }), keepalive: true, credentials: 'same-origin' }).catch(() => seen.delete(id));
+      }, 1500);
+    };
+    let still: ReturnType<typeof setTimeout> | undefined;
+    swipe.addEventListener('scroll', () => {
+      clearTimeout(dwell);
+      // 멈춤 알림(scrollend)이 없는 브라우저만 시간으로
+      if ('onscrollend' in window) return;
+      clearTimeout(still);
+      still = setTimeout(settle, 150);
+    }, { passive: true });
+    swipe.addEventListener('scrollend', settle);
+    settle();
   } else {
     // 모아 보기: 같은 날이 쪽을 넘어 이어지면 그날 묶음에 칸을 합치고 장 수를 고친다
     autoMore((doc) => {

@@ -1274,6 +1274,27 @@
 .sp-v__meta {
   margin: 0;
 }
+/* 엄빠 크게 보기 '본 사람'(보신 기록, 95): 날짜 줄 바로 아래 */
+.sp-v__seen {
+  margin: -4px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9375rem;
+  line-height: 1.3125rem;
+  color: var(--label-2);
+}
+.sp-v__seen-icon {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+.sp-v__seen-who {
+  font-weight: 600;
+  color: var(--label);
+}
 /* 디자인: 반응 버튼은 회색 칸(밝은 화면에서 흰 반투명이면 판과 같은 색이라 안 보였음) */
 .sp-v__panel .sp-r__btn {
   background: var(--fill);

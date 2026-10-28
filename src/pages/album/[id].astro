@@ -31,7 +31,8 @@ const kid = open.length > 1 && !q.f ? `${kids.get(m.family_id)} ` : '';
 const src = await signedMediaUrl(m.view_key);
 const poster = m.poster_key ? await signedMediaUrl(m.poster_key) : undefined;
 const label = `${dayLabel(m.taken_at)} ${kid}${what}`;
-const [reacts, comments] = await Promise.all([loadReacts(pass, [m.id]), getBackend().mediaComments(pass, m.id)]);
+// 보신 기록(95): 크게 보기를 그릴 때 남긴다(옆으로 넘겨도 이 페이지를 받아 오므로 같이). 실패해도 화면은 연다
+const [reacts, comments] = await Promise.all([loadReacts(pass, [m.id]), getBackend().mediaComments(pass, m.id), getBackend().noteViews(pass, [m.id]).catch(() => {})]);
 const slides = await slideWindow(items, i, (x) => albumHref(q, `/album/${x.id}`), (x) => `${dayLabel(x.taken_at)} ${open.length > 1 && !q.f ? `${kids.get(x.family_id)} ` : ''}${x.kind === 'video' ? '영상' : '사진'}`);
 const here = albumHref(q, `/album/${m.id}`);
 const child = kids.get(m.family_id) ?? '아이';
