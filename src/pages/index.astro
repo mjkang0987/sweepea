@@ -16,56 +16,57 @@ if (pass) {
   if (families.length) return Astro.redirect('/wait');
 }
 const home = `${(SITE_ORIGIN || Astro.url.origin).replace(/\/$/, '')}/`;
-// 소개 3장(/start)과 같은 문구·그림
-const feats = [
-  { title: '카톡으로 보내면 끝', text: ['가족은 앱 설치도, 가입도 없이', '링크만 누르면 바로 보세요'] },
-  { title: '누가 볼지는 내가 정해요', text: ['외가·친가처럼 나눠 보낼 수 있고,', '처음 들어오는 사람은 내가 승인해요'] },
-  { title: '하트와 한마디가 나에게 와요', text: ['사진은 사라지지 않고 쌓이고,', '콩이도 아이 나이에 맞춰 함께 자라요'] },
+// 한 장(92): 처음 보는 사람이 '내 얘기'라고 느끼는 제목(단톡방) + 두 줄 + 실제 서비스 화면(할머니가 링크로 보는 넘겨 보기, 디자인 Landing) + 짧은 낱말 셋 + 시작하기. 제품 사실만
+const chips = ['외가·친가 따로', '하트·한마디', '지우기 전엔 그대로'];
+const reacts = [
+  { e: '❤️', n: 3, on: true },
+  { e: '👍', n: 1 },
+  { e: '😊' },
+  { e: '😭' },
+  { e: '✨' },
 ];
 ---
 
-<Parent title="스위피 · 카톡으로 보내고 설치 없이 보는 가족 앨범" description="아이 사진을 카톡 링크로 보내면 조부모님은 앱 설치도 가입도 없이 바로 봐요. 누가 볼지는 엄마아빠가 정하고, 하트와 한마디가 돌아와요." canonical={home}>
-  <section class="sp-p__brand sp-p__brand--landing" aria-labelledby="brand">
-    <img class="sp-p__brand-kongi" src="/kongi.svg" width="128" height="128" alt="" />
-    <h1 class="sp-p__brand-name" id="brand">스위피</h1>
-    <p class="sp-p__brand-text">카톡으로 보내고, 설치 없이 보고,<br />사라지지 않는 가족 앨범</p>
-    <div class="sp-p__landing-cta">
-      <a class="sp-p__login" href="/login">시작하기</a>
-      <p class="sp-p__note">가족에게 링크를 받으셨나요? 받은 링크를 눌러 주세요</p>
-    </div>
-  </section>
-  {
-    feats.map((f, i) => (
-      <section class="sp-p__feature" aria-labelledby={`f${i + 1}`}>
-        <div class="sp-p__intro-art" aria-hidden="true">
-          {i === 0 ? (
-            <div class="sp-p__mock">
-              <div class="sp-p__mock-photo" />
-              <p class="sp-p__mock-title">하린이 새 사진 12장</p>
-              <p class="sp-p__mock-sub">설치 없이 바로 볼 수 있어요</p>
-              <span class="sp-p__mock-btn">앨범 보기</span>
-            </div>
-          ) : i === 1 ? (
-            <div class="sp-p__mock">
-              <p class="sp-p__mock-sub">보낼 가족</p>
-              <p class="sp-p__mock-chips"><span class="sp-p__mock-chip sp-p__mock-chip--on">✓ 외가</span><span class="sp-p__mock-chip">친가</span></p>
-              <p class="sp-p__mock-row"><span class="sp-p__mock-av">큰</span><span class="sp-p__mock-who"><b>큰이모</b><br />들어오려고 해요</span><span class="sp-p__mock-ok">승인</span></p>
-            </div>
-          ) : (
-            <div class="sp-p__mock">
-              <img src="/kongi.svg" width="96" height="96" alt="" class="sp-p__mock-kongi" />
-              <p class="sp-p__mock-line"><b>외할머니</b> 하트를 보냈어요</p>
-              <p class="sp-p__mock-line"><b>외할아버지</b> "아이고 많이 컸네"</p>
-            </div>
-          )}
+<Parent
+  title="스위피 · 아기 사진, 단톡방 말고 가족 앨범에"
+  description="아기 사진을 올리고 카톡으로 링크만 보내면 할머니·할아버지는 앱 설치도 가입도 없이 바로 봐요. 외가·친가는 따로, 처음 보는 이름은 엄마아빠가 확인해요. 무료 5GB로 시작하세요."
+  canonical={home}
+>
+  <section class="sp-p__brand sp-p__landing" aria-labelledby="brand">
+    <p class="sp-p__landing-name"><img class="sp-p__landing-kongi" src="/kongi.svg" width="28" height="28" alt="" />스위피</p>
+    <h1 class="sp-p__landing-title" id="brand">아기 사진, <br />단톡방에 올리고 계신가요?</h1>
+    <p class="sp-p__brand-text">링크 하나만 보내세요.<br />할머니는 앱 설치도 가입도 없이 봐요.</p>
+    {/* 할머니가 링크를 누르면 보는 넘겨 보기 화면(장식). 아래 테두리만 배경으로 흐려 자른다 */}
+    <div class="sp-p__phone" aria-hidden="true">
+      <div class="sp-p__phone-body">
+        <div class="sp-p__phone-screen">
+          <p class="sp-p__phone-title">하린이 새 사진 12장</p>
+          <p class="sp-p__phone-sub">오늘 엄마가 올렸어요</p>
+          <div class="sp-p__phone-deck">
+            <span class="sp-p__phone-card sp-p__phone-card--prev"></span>
+            <span class="sp-p__phone-card sp-p__phone-card--next"></span>
+            <span class="sp-p__phone-card sp-p__phone-card--now">
+              <span class="sp-p__phone-photo"><img class="sp-p__phone-kongi" src="/kongi-crop.svg" width="84" height="110" alt="" /></span>
+              <span class="sp-p__phone-cap">생후 13개월 · 10월 21일</span>
+            </span>
+          </div>
+          <p class="sp-p__phone-pos"><span class="sp-p__phone-now">1</span> / 12 · 옆으로 밀거나 옆 사진을 누르세요</p>
+          <p class="sp-p__phone-sub">눌러서 바로 보내기</p>
+          <p class="sp-p__phone-reacts">
+            {reacts.map((r) => <span class:list={['sp-p__phone-react', r.on && 'sp-p__phone-react--on']}><span class="sp-p__phone-emoji">{r.e}</span>{r.n && <span class="sp-p__phone-count">{r.n}</span>}</span>)}
+          </p>
+          <p class="sp-p__phone-say"><span class="sp-p__phone-input">하린이에게 한마디</span><span class="sp-p__phone-send">보내기</span></p>
         </div>
-        <h2 class="sp-p__feature-title" id={`f${i + 1}`}>{f.title}</h2>
-        <p class="sp-p__intro-text">{f.text[0]}<br />{f.text[1]}</p>
-      </section>
-    ))
-  }
-  <div class="sp-p__landing-cta sp-p__landing-cta--end">
-    <a class="sp-p__login" href="/login">시작하기</a>
+      </div>
+      <span class="sp-p__phone-fade"></span>
+    </div>
+    <ul class="sp-p__landing-chips">
+      {chips.map((c) => <li class="sp-p__landing-chip">{c}</li>)}
+    </ul>
+  </section>
+  <div class="sp-p__bottom sp-p__landing-bottom">
+    <a class="sp-p__login" href="/login">무료로 시작하기</a>
+    <p class="sp-p__fine">5GB까지 무료</p>
+    <p class="sp-p__note">링크 받으셨나요? 받은 링크를 눌러 주세요</p>
   </div>
-  <footer class="sp-p__landing-foot">스위피 · sweepea.co.kr</footer>
 </Parent>
