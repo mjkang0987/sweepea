@@ -39,8 +39,10 @@ interface Props {
   comments?: MediaComment[];
   /** 엄빠 크게 보기: 이 사진을 본 가족 이름(보신 기록, 95). 횟수·시간은 안 보임 */
   viewers?: string[];
+  /** 가족 크게 보기: 옆으로 넘긴 사진은 1.5초 머물면 본 것으로 남긴다(보신 기록, 95) */
+  noteViews?: boolean;
 }
-const { m, label, toast, slides, comments = [], viewers = [], src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
+const { m, label, toast, slides, comments = [], viewers = [], noteViews, src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
 const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 const now = Date.now();
 const first = comments[0];
@@ -60,7 +62,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 
 {/* 시안엔 제목 줄이 없어 화면에선 숨기고 화면 읽기에만 */}
 <h1 class="sp-vh" id="v-title">{label}</h1>
-<div class="sp-v" data-v data-slides={m.kind === 'photo' && slides && slides.slides.length > 1 ? JSON.stringify(slides) : undefined} data-id={m.id}>
+<div class="sp-v" data-v data-slides={m.kind === 'photo' && slides && slides.slides.length > 1 ? JSON.stringify(slides) : undefined} data-id={m.id} data-views={noteViews ? '' : undefined}>
   {note && <Toast text={note.text} tone={note.tone} id={sheetOpen ? 'talk-note' : undefined} />}
   <figure class="sp-v__stage">
     {
@@ -306,6 +308,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     let busy: AbortController | undefined;
     // 화살표를 빠르게 여러 번 누르면 가는 중인 칸 기준으로
     let to: number | undefined;
+    let dwell: ReturnType<typeof setTimeout> | undefined;
     const settle = async () => {
       const i = Math.round(track.scrollLeft / track.clientWidth);
       // 손가락을 댄 채 멈춘 중간 위치에선 아무것도 안 한다(칸에 딱 맞았을 때만)
@@ -316,6 +319,14 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       const x = slides[i];
       if (x.video) return void location.replace(x.href);
       history.replaceState(null, '', x.href);
+      // 보신 기록: 휙 넘긴 사진은 안 남기고, 1.5초 머문 사진만(받아 오는 페이지는 x-sp-slide로 기록을 건너뜀)
+      clearTimeout(dwell);
+      if ('views' in v.dataset) {
+        dwell = setTimeout(() => {
+          if (at !== i) return;
+          fetch('/api/views', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [x.id] }), keepalive: true, credentials: 'same-origin' }).catch(() => {});
+        }, 1500);
+      }
       v.dataset.id = x.id;
       v.querySelector('.sp-toast')?.remove();
       // 새 내용이 올 때까지 위 메뉴·아래 판은 못 누르게(지난 사진에 반응하지 않게)
@@ -327,7 +338,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       // 늦게 온 응답은 버린다. 받지 못하면 그 화면을 새로 연다
       const mine = ++load;
       try {
-        const r = await fetch(x.href, { credentials: 'same-origin', signal: busy.signal });
+        const r = await fetch(x.href, { credentials: 'same-origin', signal: busy.signal, headers: { 'x-sp-slide': '1' } });
         if (!r.ok || r.redirected) throw new Error(String(r.status));
         const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
         if (mine !== load) return;

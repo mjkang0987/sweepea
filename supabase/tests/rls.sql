@@ -288,9 +288,12 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
 set role authenticated;
 select public.sp_delete_comment(:'c3');
+select pg_temp.ok(not exists (select 1 from public.sp_parent_media_viewers(:'m1')), '다른 집 부모는 본 사람 못 봄');
+select public.sp_note_views(array[:'m1']::uuid[]);
 reset role;
 \set ON_ERROR_STOP 1
 select pg_temp.ok((select deleted_at is null from public.comments where id = :'c3'), '다른 가족·다른 집 부모는 못 지움');
+select pg_temp.ok((select count(*) = 1 from public.views), '다른 집 부모는 본 기록을 못 남김');
 delete from public.comments where id = :'c3';
 
 -- 거절하면 그 기기도 막힌다

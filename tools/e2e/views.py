@@ -38,8 +38,10 @@ with sync_playwright() as p:
     check(seen(pg,ids[0])=='외할아버지가 봤어요','크게 보기 열면 "외할아버지가 봤어요"(승인 대기는 빠짐)')
     gp.goto(B+'/album/'+ids[0]); check(seen(pg,ids[0])=='외할아버지가 봤어요','여러 번 봐도 이름 한 번, 횟수 없음')
     # 크게 보기에서 옆으로 넘기면(페이지를 받아 옴) 그 사진도
-    gp.get_by_role('link',name='다음 사진').click(); gp.wait_for_function("document.querySelector('.sp-v__pos').textContent.trim()=='2 / 3'"); gp.wait_for_timeout(500)
-    check(seen(pg,ids[1])=='외할아버지가 봤어요','크게 보기에서 넘긴 사진도 남음')
+    gp.get_by_role('link',name='다음 사진').click(); gp.wait_for_function("document.querySelector('.sp-v__pos').textContent.trim()=='2 / 3'"); gp.wait_for_timeout(300)
+    check(seen(pg,ids[1])=='','크게 보기에서 휙 넘긴 사진은 바로 안 남음')
+    gp.wait_for_timeout(1700)
+    check(seen(pg,ids[1])=='외할아버지가 봤어요','크게 보기에서 넘긴 사진은 1.5초 머물면 남음')
     # 넘겨 보기: 세 번째 사진을 가운데로 → 1.5초 안엔 안 남고 지나면 남음
     gp.goto(B+'/album'); gp.wait_for_timeout(300)
     gp.locator('#p-'+ids[2]).scroll_into_view_if_needed(); gp.evaluate("id=>document.getElementById('p-'+id).scrollIntoView({inline:'center',behavior:'instant'})",ids[2])
