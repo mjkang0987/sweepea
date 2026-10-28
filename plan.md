@@ -10,7 +10,7 @@
 
 - dev = 0.4.31, dev에 푸시하면 운영 주소(https://sweepea.takeaseat-cs.workers.dev)로 자동 배포(40~60초). 배포 확인: `/i/zzzzzzzz`의 `/_astro/*.css`에서 새 클래스 이름을 찾는다
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
-- 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 16개 적용, **17번째 `20261027000004_finish_quota.sql`(완료 때 5GB 한도)는 사용자가 적용 OK(2026-10-28), 5GB 넘은 가족 없음 확인. 자동 모드 안전장치가 apply_migration을 막아 사용자가 SQL 편집기에서 직접 실행하거나 도구를 허용해야 함**(적용 전에도 앱은 동작, 한도만 시작 때 확인). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
+- 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 17개 모두 적용(17번째 `20261027000004_finish_quota.sql` 완료 때 5GB 한도는 2026-10-28 사용자 승인 후 적용, 권한 그대로 service_role만). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v157, Design 유형). 화면 바꾸기 전에 반드시 여기부터 고친다
 
 ### 다음 할 일 (순서대로)
