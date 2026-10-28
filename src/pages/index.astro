@@ -16,20 +16,20 @@ if (pass) {
   if (families.length) return Astro.redirect('/wait');
 }
 const home = `${(SITE_ORIGIN || Astro.url.origin).replace(/\/$/, '')}/`;
-// 한 장(92, 사용자 "한 장으로 설명되면 좋겠는데"): 제목에 검색어(아기 사진·할머니), 핵심 3줄, 시작하기, 가족 안내. 제품 사실만, 디자인 Landing
-const points = ['할머니·할아버지는 앱 설치·가입 없이 링크로 바로 봐요', '외가·친가 따로, 처음 보는 이름은 엄마아빠가 확인해요', '하트와 한마디가 돌아오고, 사진은 사라지지 않아요'];
+// 한 장(92, 사용자 "한 장으로 설명되면 좋겠는데"): 처음 보는 사람이 바로 '내 얘기'라고 느끼는 제목(사용자 고른 A: 단톡방) + 정체(가족 앨범) 한 줄, 핵심 3줄, 시작하기, 가족 안내. 제품 사실만, 디자인 Landing
+const points = ['외가·친가 따로, 처음 보는 이름은 엄마아빠가 확인해요', '단톡방처럼 만료되지 않고 앨범에 계속 쌓여요', '할머니의 하트와 한마디가 나에게 돌아와요'];
 ---
 
 <Parent
-  title="스위피 · 아기 사진을 카톡 링크로 조부모님과 함께 보는 가족 앨범"
+  title="스위피 · 아기 사진, 단톡방 말고 가족 앨범에"
   description="아기 사진을 올리고 카톡으로 링크만 보내면 할머니·할아버지는 앱 설치도 가입도 없이 바로 봐요. 외가·친가는 따로, 처음 보는 이름은 엄마아빠가 확인해요. 무료 5GB로 시작하세요."
   canonical={home}
 >
   <section class="sp-p__brand" aria-labelledby="brand">
     <img class="sp-p__brand-kongi sp-p__brand-kongi--sm" src="/kongi.svg" width="88" height="88" alt="" />
     <p class="sp-p__landing-name">스위피</p>
-    <h1 class="sp-p__landing-title" id="brand">아기 사진, 링크 하나면 <br />할머니도 바로 봐요</h1>
-    <p class="sp-p__brand-text">사진을 올리고 카톡으로 링크만 보내세요</p>
+    <h1 class="sp-p__landing-title" id="brand">아기 사진, <br />단톡방에 올리고 계신가요?</h1>
+    <p class="sp-p__brand-text">단톡방 말고 가족 앨범에 올리세요. 할머니·할아버지는 앱 설치 없이 링크로 바로 봐요.</p>
     <ul class="sp-p__points">
       {
         points.map((pt) => (

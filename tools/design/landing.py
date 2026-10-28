@@ -25,7 +25,7 @@ def art(f):
 H2='margin: 0; font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: -0.3px;'
 SEC='display: flex; flex-direction: column; gap: 20px; padding: 40px 0; border-top: 1px solid var(--separator);'
 BTN='<a href="ParentLogin{t}.dc.html" style="min-height: 52px; border-radius: 12px; font-size: 17px; line-height: 22px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--pea); color: var(--on-pea); text-decoration: none; width: 100%; max-width: 360px; box-sizing: border-box;">무료로 시작하기</a>'
-POINTS=['할머니·할아버지는 앱 설치·가입 없이 링크로 바로 봐요','외가·친가 따로, 처음 보는 이름은 엄마아빠가 확인해요','하트와 한마디가 돌아오고, 사진은 사라지지 않아요']
+POINTS=['외가·친가 따로, 처음 보는 이름은 엄마아빠가 확인해요','단톡방처럼 만료되지 않고 앨범에 계속 쌓여요','할머니의 하트와 한마디가 나에게 돌아와요']
 def page(t):
     """한 장(사용자 2026-10-28 "한 장으로 설명되면 좋겠는데"): 휴대폰 한 화면에 제목·핵심 3줄·시작하기·가족 안내"""
     pts=''.join(f'<li style="display: flex; align-items: flex-start; gap: 12px; text-align: left;"><span aria-hidden="true" style="flex: none; width: 24px; height: 24px; margin-top: 1px; border-radius: 50%; background: var(--pea-tint); color: var(--pea-deep); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800;">✓</span><span style="font-size: 17px; line-height: 24px;">{p}</span></li>' for p in POINTS)
@@ -34,8 +34,8 @@ def page(t):
     <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center;">
       <img class="sp-kongi-anim" src="{KONGI}" alt="" style="width: 88px; height: 88px; image-rendering: pixelated;">
       <p style="margin: 0; font-size: 17px; line-height: 22px; font-weight: 800; color: var(--pea-ink);">스위피</p>
-      <h1 style="margin: 0; font-size: 30px; line-height: 38px; font-weight: 800; letter-spacing: -0.4px;">아기 사진, 링크 하나면<br>할머니도 바로 봐요</h1>
-      <p style="margin: 0; font-size: 17px; line-height: 24px; color: var(--label-2);">사진을 올리고 카톡으로 링크만 보내세요</p>
+      <h1 style="margin: 0; font-size: 30px; line-height: 38px; font-weight: 800; letter-spacing: -0.4px;">아기 사진,<br>단톡방에 올리고 계신가요?</h1>
+      <p style="margin: 0; font-size: 17px; line-height: 24px; color: var(--label-2);">단톡방 말고 가족 앨범에 올리세요. 할머니·할아버지는 앱 설치 없이 링크로 바로 봐요.</p>
       <ul style="list-style: none; margin: 10px 0 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; width: 100%; box-sizing: border-box; border-radius: 18px; background: var(--surface);">{pts}</ul>
     </div>
     <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 24px;">
