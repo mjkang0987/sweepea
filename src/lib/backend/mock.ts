@@ -137,7 +137,7 @@ function visibleMedia(pass: Pass, opts: MediaQuery) {
   const parent = parents.get(pass.access);
   const c = opts.before ?? opts.after;
   return media
-    .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId) && (!opts.childId || x.childIds.includes(opts.childId)) && (!opts.id || x.id === opts.id))
+    .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId) && (!opts.childId || x.childIds.includes(opts.childId)) && (!opts.id || x.id === opts.id) && (!opts.takenFrom || Date.parse(x.taken_at) >= Date.parse(opts.takenFrom)) && (!opts.takenBefore || Date.parse(x.taken_at) < Date.parse(opts.takenBefore)))
     .filter((x) => !c || (opts.before ? newerFirst(x, { taken_at: c.takenAt, id: c.id }) > 0 : newerFirst(x, { taken_at: c.takenAt, id: c.id }) < 0))
     .filter((x) => {
       if (parent) return x.family_id === parent.familyId;

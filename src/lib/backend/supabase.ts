@@ -48,6 +48,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     if (opts.familyId) q.set('family_id', `eq.${opts.familyId}`);
     if (opts.childId) q.set('media_children.child_id', `eq.${opts.childId}`);
     if (opts.id) q.set('id', `eq.${opts.id}`);
+    if (opts.takenFrom) q.append('taken_at', `gte.${opts.takenFrom}`);
+    if (opts.takenBefore) q.append('taken_at', `lt.${opts.takenBefore}`);
     // 시각에 ':'·'+'가 있어 or 안에서는 따옴표로 감싼다
     const c = opts.before ?? opts.after;
     if (c) {

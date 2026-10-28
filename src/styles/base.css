@@ -401,3 +401,50 @@
     animation: none;
   }
 }
+
+/* 목록 끝(디자인 LoadMore·LoadMoreFamily): 스크립트 없을 때 '사진 더 보기', 불러오는 중·처음 사진까지 모두 봤어요 */
+.sp-more {
+  padding: var(--space-4) 0;
+}
+.sp-more__btn {
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--fill);
+  color: var(--pea-ink);
+  font-size: var(--headline-size);
+  line-height: var(--headline-line);
+  font-weight: 700;
+  text-decoration: none;
+}
+.sp-more__end {
+  margin: 0;
+  min-height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  color: var(--label-2);
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-more__kongi {
+  width: 2rem;
+  height: 2rem;
+  image-rendering: pixelated;
+}
+.sp-f .sp-more__btn {
+  min-height: var(--target-senior);
+  font-size: var(--senior-button-size);
+  line-height: var(--senior-button-line);
+}
+.sp-f .sp-more__end {
+  font-size: var(--senior-caption-size);
+  line-height: var(--senior-caption-line);
+}
+.sp-f .sp-more__kongi {
+  width: 2.5rem;
+  height: 2.5rem;
+}

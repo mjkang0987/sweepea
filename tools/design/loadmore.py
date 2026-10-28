@@ -1,6 +1,6 @@
 # 아래로 내리면 60장씩 더 불러오기(88, 사용자 2026-10-28 "60장씩, 끝까지"): 목록 끝 줄 세 상태를 한 보드에 차례로
 # ① 불러오는 중: 콩이 작게 + '사진 불러오는 중…'(role=status) ② 스크립트 없을 때: '사진 더 보기' 채운 알약 버튼(누르면 다음 60장 페이지)
-# ③ 끝: '처음 사진까지 모두 봤어요'. 부모 홈(LoadMore)·가족 모아 보기(LoadMoreFamily, 글자 한 단계 크게), 라이트·다크
+# ③ 끝: '처음 사진까지 모두 봤어요'. 부모 홈(LoadMore)·가족 모아 보기(LoadMoreFamily, senior 글자), 라이트·다크
 import os,re,json
 os.chdir(os.path.join(os.path.dirname(__file__),'..','canvas','project'))
 CAP='<p style="margin: 8px 0 0; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--label-3, var(--label-2)); letter-spacing: .2px;">{}</p>'
@@ -8,7 +8,7 @@ def cells(n,h=(150,110,130,150)):
     col=lambda xs:'<div style="display: flex; flex-direction: column; gap: 4px;">'+''.join(f'<div role="img" aria-label="사진 자리" style="height: {x}px; border-radius: 12px; background: var(--ph-{1+i%2});"></div>' for i,x in enumerate(xs))+'</div>'
     return f'<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; align-items: start;">{col(h[:n//2])}{col(h[n//2:n])}</div>'
 def rows(big):
-    f=19 if big else 15; lh=26 if big else 20; k=40 if big else 32; btn=56 if big else 52; bf=19 if big else 17
+    f=17 if big else 15; lh=24 if big else 20; k=40 if big else 32; btn=56 if big else 52; bf=21 if big else 17  # 가족은 senior 글자(캡션 17·버튼 21)
     load=f'<p role="status" style="margin: 0; min-height: 64px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: {f}px; line-height: {lh}px; color: var(--label-2);"><img src="/_blob/18a8457a415dd2214e041f90295e4f10" width="{k}" height="{k}" alt="" style="width: {k}px; height: {k}px; image-rendering: pixelated;">사진 불러오는 중…</p>'
     more=f'<a href="#" style="min-height: {btn}px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--fill); color: var(--pea-ink); text-decoration: none; font-size: {bf}px; line-height: 24px; font-weight: 700;">사진 더 보기</a>'
     end=f'<p role="status" style="margin: 0; min-height: 64px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: {f}px; line-height: {lh}px; color: var(--label-2);"><img src="/_blob/18a8457a415dd2214e041f90295e4f10" width="{k}" height="{k}" alt="" style="width: {k}px; height: {k}px; image-rendering: pixelated;">처음 사진까지 모두 봤어요</p>'

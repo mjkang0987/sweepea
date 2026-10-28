@@ -1,6 +1,6 @@
 // 앨범 화면 공통: 주소 쿼리(집 f, 보기 v, 칸 z) 읽기와 링크 만들기, 들어간 가족방·사진 목록
 import type { AstroCookies } from 'astro';
-import { BackendError, getBackend, REACTION_KINDS, type MediaItem, type MeFamily, type Pass, type ReactionCount, type ReactionKind } from './backend';
+import { BackendError, getBackend, REACTION_KINDS, type MediaItem, type MediaQuery, type MeFamily, type Pass, type ReactionCount, type ReactionKind } from './backend';
 import { currentPass } from './pass';
 import { isOpen } from './families';
 import { callName } from './ko';
@@ -34,6 +34,34 @@ export function albumHref(q: AlbumQuery, path = '/album'): string {
   if (q.z !== 2) p.set('z', String(q.z));
   const s = p.toString();
   return s ? `${path}?${s}` : path;
+}
+
+/** 목록 한 번에 그리는 장 수(사용자 2026-10-28 "60장씩, 끝까지") */
+export const PAGE = 60;
+export interface MediaPage {
+  items: MediaItem[];
+  /** 다음 쪽 첫 사진 바로 앞(이 쪽 마지막 사진) id. 끝이면 null */
+  next: string | null;
+  /** 앞 쪽에 이어지는 쪽(?before=)이면 true: 끝 줄 '모두 봤어요'를 보일지 */
+  more: boolean;
+}
+/** 주소에 맞는 한 쪽: ?before=<id>면 그 사진 다음 PAGE장, ?to=<id>면(크게 보기에서 닫고 돌아옴) 그 사진이 든 쪽까지 처음부터, 아니면 처음 PAGE장.
+ * 모르는 id면 처음 쪽 */
+export async function loadPage(pass: Pass, base: MediaQuery, url: URL): Promise<MediaPage> {
+  const backend = getBackend();
+  const before = url.searchParams.get('before');
+  const to = url.searchParams.get('to');
+  const anchorId = before && UUID.test(before) ? before : to && UUID.test(to) ? to : null;
+  const anchor = anchorId ? (await backend.listMedia(pass, { ...base, id: anchorId, limit: 1 }))[0] : undefined;
+  const cursor = anchor && { takenAt: anchor.taken_at, id: anchor.id };
+  let limit = PAGE;
+  if (cursor && anchorId === to) {
+    const newer = await backend.countMedia(pass, { ...base, after: cursor });
+    limit = Math.ceil((newer + 1) / PAGE) * PAGE;
+  }
+  const rows = await backend.listMedia(pass, { ...base, limit: limit + 1, before: cursor && anchorId === before ? cursor : undefined });
+  const items = rows.slice(0, limit);
+  return { items, next: rows.length > limit ? items[items.length - 1].id : null, more: !!cursor && (anchorId === before || limit > PAGE) };
 }
 
 export type AlbumLoad =

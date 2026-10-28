@@ -108,6 +108,9 @@ export interface MediaQuery {
   before?: MediaCursor;
   after?: MediaCursor;
   id?: string;
+  /** 찍은 날 범위 [takenFrom, takenBefore)(달별 개수) */
+  takenFrom?: string;
+  takenBefore?: string;
 }
 
 export interface MediaItem {
