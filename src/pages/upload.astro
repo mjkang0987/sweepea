@@ -101,7 +101,7 @@ const kid = callName(kids[0]?.name ?? '아이');
 </Parent>
 
 <script>
-  import { fitSize, mp4CreatedAt, photoTakenAt, plausible } from '../lib/exif';
+  import { fitSize, mp4CreatedAt, photoTakenAt, plausible, stripJpeg } from '../lib/exif';
 
   type Item = {
     kind: 'photo' | 'video';
@@ -221,10 +221,16 @@ const kid = callName(kids[0]?.name ?? '아이');
     if (file.type && !file.type.startsWith('image/')) throw new Error('type');
     const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
     const { view, thumb } = await viewAndThumb(bmp, bmp.width, bmp.height, 2048);
+    const small = Math.max(bmp.width, bmp.height) <= 2048;
     bmp.close();
     const exif = await photoTakenAt(file).catch(() => null);
+    // 이미 작은 JPEG(카톡으로 받은 사진 등)는 다시 저장하면 화질만 깎이고 커지기도 한다 → 정보만 뺀 원본이 작거나 같으면 그대로
+    const head = small ? new Uint8Array(await file.slice(0, 2).arrayBuffer()) : null;
+    const jpeg = head?.[0] === 0xff && head[1] === 0xd8; // 앞 2바이트 FF D8(PNG·HEIC는 통째로 안 읽게)
+    const kept = jpeg ? stripJpeg(await file.arrayBuffer()) : null;
+    const useOriginal = kept !== null && kept.byteLength <= view.blob.size;
     return {
-      kind: 'photo', view: view.blob, thumb: thumb.blob, width: view.width, height: view.height,
+      kind: 'photo', view: useOriginal ? new Blob([kept], { type: 'image/jpeg' }) : view.blob, thumb: thumb.blob, width: view.width, height: view.height,
       takenAt: exif ?? new Date(file.lastModified).toISOString(), takenAtSource: exif ? 'exif' : 'file',
       url: URL.createObjectURL(thumb.blob),
     };

@@ -1,4 +1,4 @@
-// 사진·영상 파일 안의 촬영 시각만 읽는다(라이브러리 없이). JPEG·PNG는 앞부분(128KB 정도)이면 충분하고, HEIC은 Exif 항목 자리를 찾아 그 부분만 더 읽는다
+// 사진·영상 파일 안의 촬영 시각을 읽고, JPEG의 위치·기기 정보를 뺀다(라이브러리 없이). JPEG·PNG는 앞부분(128KB 정도)이면 충분하고, HEIC은 Exif 항목 자리를 찾아 그 부분만 더 읽는다
 
 const HEAD = 128 * 1024;
 
@@ -233,6 +233,63 @@ function readTiff(v: DataView, t: number, end: number): string | null {
   const tz = off && /^[+-]\d{2}:\d{2}$/.test(ascii(off.at, off.count)) ? ascii(off.at, off.count) : '+09:00';
   const d = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}${tz}`);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/** JPEG에서 위치·기기 정보를 화질 손실 없이 뺀 바이트. 남기는 것: APP0 JFIF·APP2 색 정보(ICC)·APP14(Adobe 색 변환)·그림 데이터.
+ * 빼는 것: APP1(EXIF·XMP, GPS가 여기)·다른 APP·주석·EOI 뒤에 붙은 데이터(스캔 사이에 온 것도). 회전 정보(Orientation≠1)가 있거나 깨졌으면 null(다시 저장해야 함) */
+export function stripJpeg(buf: ArrayBuffer): Uint8Array<ArrayBuffer> | null {
+  const b = new Uint8Array(buf);
+  const v = new DataView(buf);
+  if (b.length < 4 || v.getUint16(0) !== 0xffd8) return null;
+  const keep: Uint8Array[] = [b.subarray(0, 2)];
+  let p = 2;
+  while (p + 2 <= b.length) {
+    const marker = v.getUint16(p);
+    if ((marker & 0xff00) !== 0xff00) return null;
+    if (marker === 0xffff) { p++; continue; } // 채움 바이트
+    if (marker === 0xffd9) {
+      keep.push(b.subarray(p, p + 2));
+      const out = new Uint8Array(keep.reduce((n, x) => n + x.length, 0));
+      let o = 0;
+      for (const x of keep) (out.set(x, o), (o += x.length));
+      return out;
+    }
+    // 길이 없는 표지(TEM·RSTn)는 그림 데이터 밖에 오면 깨진 파일
+    if (marker === 0xff01 || (marker >= 0xffd0 && marker <= 0xffd8) || p + 4 > b.length) return null;
+    const len = v.getUint16(p + 2);
+    if (len < 2 || p + 2 + len > b.length) return null;
+    let end = p + 2 + len;
+    if (marker === 0xffda) {
+      // 그림 데이터: FF 뒤에 00·RSTn·채움이면 데이터, 아니면 다음 표지(프로그레시브는 스캔 사이에 표지가 온다)
+      while (end + 1 < b.length && !(b[end] === 0xff && b[end + 1] !== 0x00 && b[end + 1] !== 0xff && (b[end + 1] < 0xd0 || b[end + 1] > 0xd7))) end++;
+      if (end + 1 >= b.length) return null;
+    }
+    const app = marker >= 0xffe0 && marker <= 0xffef;
+    if (marker === 0xffe1 && len >= 8 && v.getUint32(p + 4) === 0x45786966 && orientation(v, p + 10, p + 2 + len) > 1) return null;
+    const icc = marker === 0xffe2 && len >= 14 && String.fromCharCode(...b.subarray(p + 4, p + 15)) === 'ICC_PROFILE';
+    // APP0은 JFIF만(JFXX엔 잘리기 전 작은 그림이 들 수 있다)
+    const jfif = marker === 0xffe0 && len >= 7 && v.getUint32(p + 4) === 0x4a464946 && b[p + 8] === 0;
+    if (!(app || marker === 0xfffe) || jfif || marker === 0xffee || icc) keep.push(b.subarray(p, end));
+    p = end;
+  }
+  return null;
+}
+
+/** TIFF IFD0의 Orientation(0x0112). 없으면 1, 깨졌으면 9(다시 저장하게) */
+function orientation(v: DataView, t: number, end: number): number {
+  if (t + 8 > end) return 9;
+  const le = v.getUint16(t) === 0x4949;
+  if (!le && v.getUint16(t) !== 0x4d4d) return 9;
+  const ifd = t + v.getUint32(t + 4, le);
+  if (ifd + 2 > end) return 9;
+  const n = v.getUint16(ifd, le);
+  for (let i = 0; i < n; i++) {
+    const e = ifd + 2 + i * 12;
+    if (e + 12 > end) return 9;
+    // 보통 SHORT(3), 잘못 만든 파일은 LONG(4)
+    if (v.getUint16(e, le) === 0x0112) return v.getUint16(e + 2, le) === 4 ? v.getUint32(e + 8, le) : v.getUint16(e + 8, le);
+  }
+  return 1;
 }
 
 /** 긴 변을 max 이하로 줄인 크기(늘리지는 않는다) */
