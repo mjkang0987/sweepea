@@ -233,6 +233,27 @@
   flex-direction: column;
   gap: var(--space-2);
 }
+/* 주요 버튼을 화면 맨 아래 막대에 고정(엄빠 화면 .sp-p__savebar와 같은 모양). 사파리 아래 바·홈 막대 자리만큼 올린다 */
+.sp-f__bottom--fixed {
+  position: fixed;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: var(--space-3) max(var(--space-5), calc((100% - 32rem) / 2 + var(--space-5))) calc(var(--space-3) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--separator);
+  background: var(--bar);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+/* 막대 높이(버튼 둘)만큼 아래 여백. 포커스된 칸도 막대 밑에 숨지 않게 */
+.sp-f:has(.sp-f__bottom--fixed) {
+  padding-bottom: calc(2 * var(--target-senior) + var(--space-2) + 2 * var(--space-3) + 1px + var(--space-6) + env(safe-area-inset-bottom));
+}
+.sp-html:has(.sp-f__bottom--fixed) {
+  scroll-padding-bottom: calc(2 * var(--target-senior) + var(--space-2) + 2 * var(--space-3) + 1px + var(--space-4) + env(safe-area-inset-bottom));
+}
 
 /* 안내 화면(주소 지남, 닫힘 등): 가운데 콩이 + 제목 + 설명 */
 .sp-f__notice {

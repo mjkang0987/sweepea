@@ -180,6 +180,25 @@
     bottom: calc(var(--savebar-h) + 12px + env(safe-area-inset-bottom));
   }
 }
+/* 탭 없는 화면(처음 설정·소개): 막대를 화면 맨 아래에. 사파리 아래 바·홈 막대 자리(safe-area)만큼 버튼을 올린다(viewport-fit=cover) */
+.sp-p:not(.sp-p--tabbed) .sp-p__savebar {
+  bottom: 0;
+  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+}
+.sp-p--savebar:not(.sp-p--tabbed) {
+  padding-bottom: calc(var(--savebar-h) + var(--space-6) + env(safe-area-inset-bottom));
+}
+.sp-p.sp-p--savebar:not(.sp-p--tabbed) .sp-toast {
+  bottom: calc(var(--savebar-h) + 12px + env(safe-area-inset-bottom));
+}
+/* 버튼이 둘인 막대(올리기: 카톡으로 보내기 + 올리기만) */
+.sp-p--savebar:has(.sp-p__savebar .sp-p__btn + .sp-p__btn) {
+  --savebar-h: calc(2 * 3.25rem + var(--space-2) + 2 * var(--space-3) + 1px);
+}
+/* 포커스된 칸이 막대 밑에 숨지 않게(탭바 + 버튼 둘 막대까지) */
+.sp-html:has(.sp-p--savebar) {
+  scroll-padding-bottom: calc(3.5rem + 1px + 2 * 3.25rem + var(--space-2) + 2 * var(--space-3) + 1px + var(--space-4) + env(safe-area-inset-bottom));
+}
 .sp-p__btn,
 .sp-p__login {
   box-sizing: border-box;
@@ -370,6 +389,9 @@
   display: flex;
   justify-content: center;
   gap: 6px;
+}
+.sp-p__dots--end {
+  margin-top: auto;
 }
 .sp-p__dot {
   width: 8px;
@@ -1735,31 +1757,22 @@
 .sp-p__up-progress[hidden] {
   display: none;
 }
-/* 진행 막대(네이티브 progress, 모양만 맞춤) */
-.sp-p__progress {
-  display: block;
-  width: 100%;
-  height: 6px;
-  border: 0;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--fill);
-  color: var(--pea);
-  accent-color: var(--pea);
-  -webkit-appearance: none;
-  appearance: none;
+/* 올리기 상태 칸이 진행 막대(진행 중일 때만): 옅게 차오르는 바탕 + 아래 3px 진한 줄(글자 대비 4.5 유지, 막대는 진한 줄로 구분) */
+@property --p {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
 }
-.sp-p__progress::-webkit-progress-bar {
-  border-radius: 999px;
-  background: var(--fill);
+.sp-p__toast--live:has(+ .sp-p__up-progress:not([hidden])) {
+  background:
+    linear-gradient(var(--pea), var(--pea)) left bottom / var(--p) 3px no-repeat,
+    linear-gradient(to right, color-mix(in srgb, var(--pea) 20%, var(--pea-tint)) var(--p), var(--pea-tint) var(--p));
+  transition: --p 0.3s linear;
 }
-.sp-p__progress::-webkit-progress-value {
-  border-radius: 999px;
-  background: var(--pea);
-}
-.sp-p__progress::-moz-progress-bar {
-  border-radius: 999px;
-  background: var(--pea);
+@media (prefers-reduced-motion: reduce) {
+  .sp-p__toast--live:has(+ .sp-p__up-progress:not([hidden])) {
+    transition: none;
+  }
 }
 /* 끌어다 놓는 중(안쪽 글자에서 dragleave가 나지 않게) */
 .sp-p__pick-text {
