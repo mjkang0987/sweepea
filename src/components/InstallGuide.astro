@@ -83,11 +83,11 @@ const steps =
         done.focus();
       } else next?.focus();
     } catch {
-      // 연결이 끊기거나 서버 오류면 폼으로 다시 보낸다(누른 버튼 값을 붙여서)
+      // 연결이 끊기거나 서버 오류면 폼으로 다시 보낸다(누른 버튼 값을 붙여서). 이동하는 동안은 다시 안 보냄(busy 그대로)
       if (by) form.appendChild(Object.assign(document.createElement('input'), { type: 'hidden', name: by.name, value: by.value }));
       form.submit();
-    } finally {
-      busy = false;
+      return;
     }
+    busy = false;
   });
 </script>

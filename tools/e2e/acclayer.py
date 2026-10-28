@@ -1,7 +1,8 @@
 # 페이지 이동 줄이기 1-6(85): 계정 탈퇴 확인은 이 화면 위 레이어, 홈 화면에 두기 안내 버튼은 그 자리에서. 스크립트 없으면 예전처럼 주소·폼 (mock)
 import os
 from playwright.sync_api import sync_playwright
-B='http://localhost:4321'; D=os.path.dirname(os.path.abspath(__file__))+'/'
+B='http://localhost:4321'; D=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','shots')+'/'  # 스크린샷은 git 제외 폴더
+os.makedirs(D,exist_ok=True)
 IOS='Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
 AND='Mozilla/5.0 (Linux; Android 14; SM-S918N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36'
 KAKAO=IOS+' KAKAOTALK 10.8.0'
@@ -42,6 +43,10 @@ with sync_playwright() as p:
     check(btn.evaluate("e=>getComputedStyle(e).color")!=btn.evaluate("e=>getComputedStyle(e).backgroundColor") and btn.evaluate("e=>getComputedStyle(e).opacity")=='1','체크 전 탈퇴하기는 흐리지 않고 연한 바탕')
     check('사진 0장과' in dlg.inner_text(),'지워질 사진 수 안내')
     pg.wait_for_timeout(600); pg.screenshot(path=D+'acc-1.png')
+    pg.evaluate("document.documentElement.style.fontSize='200%'")
+    over=pg.evaluate("(()=>{const d=document.getElementById('del').getBoundingClientRect();return [...document.querySelectorAll('#del .sp-p__btn')].some(b=>b.getBoundingClientRect().right>d.right+0.5)})()")
+    check(not over,'글자 200%에서도 버튼이 레이어 밖으로 안 나감')
+    pg.evaluate("document.documentElement.style.fontSize=''")
     pg.get_by_role('button',name='취소').click()
     check(not dlg.is_visible() and pg.evaluate("document.activeElement.textContent.trim()")=='탈퇴하기','취소하면 닫히고 초점은 탈퇴하기로')
     pg.get_by_role('link',name='탈퇴하기').click(); pg.keyboard.press('Escape')
