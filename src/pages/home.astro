@@ -304,7 +304,7 @@ for (const mo of months) {
   import { masonry } from '../lib/masonry';
 
   // 엇갈린 배열 다시 계산(같은 달이 쪽을 넘어 이어지면 합친 뒤 그 달 전체로)
-  const relayout = (ul: Element) => {
+  const relayout = (ul: HTMLElement) => {
     const cells = [...ul.children] as HTMLElement[];
     const r = cells.map((c) => Number(c.dataset.ratio) || 1);
     const two = masonry(r, 2);
@@ -318,11 +318,11 @@ for (const mo of months) {
     for (const sec of doc.querySelectorAll<HTMLElement>('.sp-p__month')) {
       const last = [...document.querySelectorAll<HTMLElement>('.sp-p__month')].at(-1);
       if (!last) return;
-      const ul = last.querySelector('.sp-p__grid');
+      const ul = last.querySelector<HTMLElement>('.sp-p__grid');
       if (last.dataset.ym === sec.dataset.ym && ul) {
-        for (const li of sec.querySelectorAll('.sp-p__cell')) ul.append(document.importNode(li, true));
+        for (const li of sec.querySelectorAll<HTMLElement>('.sp-p__cell')) ul.appendChild(document.importNode(li, true));
         relayout(ul);
-      } else last.after(document.importNode(sec, true));
+      } else last.insertAdjacentElement('afterend', document.importNode(sec, true));
     }
   });
   keepSpot('.sp-p__cell-link');

@@ -44,6 +44,8 @@ export interface MediaPage {
   next: string | null;
   /** 앞 쪽에 이어지는 쪽(?before=)이면 true: 끝 줄 '모두 봤어요'를 보일지 */
   more: boolean;
+  /** 이 쪽 앞에 있는 사진 수(넘겨 보기 'n / 전체'의 n) */
+  offset: number;
 }
 /** 주소에 맞는 한 쪽: ?before=<id>면 그 사진 다음 PAGE장, ?to=<id>면(크게 보기에서 닫고 돌아옴) 그 사진이 든 쪽까지 처음부터, 아니면 처음 PAGE장.
  * 모르는 id면 처음 쪽 */
@@ -57,18 +59,38 @@ export async function loadPage(pass: Pass, base: MediaQuery, url: URL): Promise<
   let limit = PAGE;
   if (cursor && anchorId === to) {
     const newer = await backend.countMedia(pass, { ...base, after: cursor });
-    limit = Math.ceil((newer + 1) / PAGE) * PAGE;
+    // 그 사진 아래로도 30장은 있게(쪽 끝에 가까우면 아래가 짧아 같은 높이로 스크롤하지 못함)
+    limit = Math.ceil((newer + 1 + 30) / PAGE) * PAGE;
   }
-  const rows = await backend.listMedia(pass, { ...base, limit: limit + 1, before: cursor && anchorId === before ? cursor : undefined });
+  const cont = !!cursor && anchorId === before;
+  const [rows, ahead] = await Promise.all([
+    backend.listMedia(pass, { ...base, limit: limit + 1, before: cont ? cursor : undefined }),
+    cont ? backend.countMedia(pass, { ...base, after: cursor }) : 0,
+  ]);
   const items = rows.slice(0, limit);
-  return { items, next: rows.length > limit ? items[items.length - 1].id : null, more: !!cursor && (anchorId === before || limit > PAGE) };
+  return { items, next: rows.length > limit ? items[items.length - 1].id : null, more: cont || limit > PAGE, offset: cont ? ahead + 1 : 0 };
+}
+
+/** 크게 보기: 그 사진과 앞뒤 21장(창 ±20장 + 창 밖 한 장씩, slideWindow용), 몇 번째·전체. 볼 수 없는 사진이면 null */
+export async function loadWindow(pass: Pass, base: MediaQuery, id: string): Promise<{ items: MediaItem[]; i: number; pos: number; total: number } | null> {
+  const backend = getBackend();
+  const m = (await backend.listMedia(pass, { ...base, id, limit: 1 }))[0];
+  if (!m) return null;
+  const c = { takenAt: m.taken_at, id: m.id };
+  const [newer, older, ahead, total] = await Promise.all([
+    backend.listMedia(pass, { ...base, after: c, limit: 21 }),
+    backend.listMedia(pass, { ...base, before: c, limit: 21 }),
+    backend.countMedia(pass, { ...base, after: c }),
+    backend.countMedia(pass, base),
+  ]);
+  return { items: [...newer, m, ...older], i: newer.length, pos: ahead + 1, total };
 }
 
 export type AlbumLoad =
   | { redirect: string }
-  | { pass: Pass; open: MeFamily[]; kids: Map<string, string>; q: AlbumQuery; items: MediaItem[]; name: string | null };
+  | { pass: Pass; open: MeFamily[]; kids: Map<string, string>; q: AlbumQuery; base: MediaQuery; name: string | null };
 
-/** 들어간 가족방이 없으면 이동할 곳. 있으면 고른 집의 최근 사진(최대 200장) */
+/** 들어간 가족방이 없으면 이동할 곳. 있으면 고른 집과 사진 목록 조건(base: 쪽은 loadPage, 크게 보기는 loadWindow로) */
 export async function loadAlbum(cookies: AstroCookies, url: URL): Promise<AlbumLoad> {
   const pass = await currentPass(cookies);
   if (!pass) return { redirect: '/' };
@@ -77,10 +99,8 @@ export async function loadAlbum(cookies: AstroCookies, url: URL): Promise<AlbumL
   const open = families.filter(isOpen);
   if (open.length === 0) return { redirect: families.length ? '/wait' : '/' };
   const q = readQuery(url, open.map((f) => f.family_id));
-  // shortcut: 최근 200장까지만. 더 오래된 사진은 다음 쪽 넘기기((taken_at, id) 커서)를 만들 때
-  const items = await backend.listMedia(pass, { familyId: q.f, limit: 200 });
   const kids = new Map(open.map((f) => [f.family_id, callName(f.child_name ?? '아이')]));
-  return { pass, open, kids, q, items, name: (open.find((f) => f.family_id === q.f) ?? open[0]).name };
+  return { pass, open, kids, q, base: { familyId: q.f }, name: (open.find((f) => f.family_id === q.f) ?? open[0]).name };
 }
 
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
