@@ -9,6 +9,8 @@
   // 사진·영상 파일. 키: <가족방 id>/<사진 id>/<view|thumb|poster>
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "sweepea-media" }],
   // 대표 주소 sweepea.co.kr(가비아 등록, DNS Cloudflare). www는 미들웨어가 같은 경로로 넘긴다. workers.dev 주소도 계속 열림(이미 보낸 링크)
+  // routes를 두면 workers.dev 주소가 기본으로 꺼진다(1042) → 이미 보낸 링크가 열리게 켜 둔다
+  "workers_dev": true,
   "routes": [
     { "pattern": "sweepea.co.kr", "custom_domain": true },
     { "pattern": "www.sweepea.co.kr", "custom_domain": true }
