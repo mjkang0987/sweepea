@@ -10,7 +10,7 @@ const e = q.get('e');
 const today = seoulToday();
 ---
 
-<Parent title={e ? '다시 확인해 주세요 · 아이를 알려 주세요' : '아이를 알려 주세요'}>
+<Parent title={e ? '다시 확인해 주세요 · 아이를 알려 주세요' : '아이를 알려 주세요'} savebar>
   <form class="sp-p__form" method="get" action="/setup/password">
     <header class="sp-p__head">
       <p class="sp-p__step">1 / 2</p>
@@ -34,7 +34,7 @@ const today = seoulToday();
       </div>
       <p class="sp-p__hint">가족 화면에 "오늘 엄마가 올렸어요"처럼 보여요</p>
     </fieldset>
-    <div class="sp-p__bottom">
+    <div class="sp-p__bottom sp-p__savebar">
       <button class="sp-p__btn" type="submit">다음</button>
     </div>
   </form>

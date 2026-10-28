@@ -9,14 +9,16 @@ interface Props {
   size?: 'base' | 'large' | 'xlarge';
   /** 넓은 화면에서 넓게 쓸 화면(앨범·크게 보기) */
   wide?: boolean;
+  /** 주요 버튼을 아래 막대(.sp-f__bottom--fixed)에 고정한 화면: 막대 높이만큼 아래 여백 */
+  bar?: boolean;
 }
 
-const { title, wide } = Astro.props;
+const { title, wide, bar } = Astro.props;
 const size = Astro.props.size ?? readTextSize(Astro.cookies);
 ---
 
 <Base title={title} size={size}>
-  <main class:list={['sp-f', wide && 'sp-f--wide']}>
+  <main class:list={['sp-f', wide && 'sp-f--wide', bar && 'sp-f--bar']}>
     <slot />
   </main>
 </Base>
