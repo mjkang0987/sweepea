@@ -26,11 +26,37 @@ def glass(src,dst,title,t):
     s=s[:a]+nav+'\n  '+add+s[b:]
     # 앨범 위에 떠 있던 '사진 추가하기'는 탭바 옆 버튼으로 옮겨 뺌
     s=re.sub(r'\s*<a href="ParentUpload[^"]*" class="sp-glass-tint" style="position: absolute; left: 50%;.*?</a>','',s,count=1,flags=re.S)
+    # 아이 카드(콩이·생후·다음 접종)는 홈에서 뺌(사용자 "상단 접종 정보 너무 공간 차지" → 알림 탭 '다가오는 일정'·설정 › 아이로 이관)
+    s=re.sub(r'\s*<a href="Health[^"]*" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;.*?</a>','',s,count=1,flags=re.S)
     open(dst,'w').write(s)
+SYR=('<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="flex: none;"><path d="M14 4l6 6M17 7l-9 9-3 1 1-3 9-9M11 7l6 6M8 13l1.5 1.5M10 11l1.5 1.5M4 20l2-2" fill="none" style="stroke: var(--pea-ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>')
+def reactions(t):
+    glass(f'ParentReactions{t}.dc.html',f'ReactionsHealth{t}.dc.html','알림 · 다가오는 일정',t)
+    n=f'ReactionsHealth{t}.dc.html'; s=open(n).read()
+    anchor='앱이 나오면 알림으로도 알려 드릴게요.</p>'
+    card=('\n    <section aria-labelledby="r-soon"><h2 id="r-soon" style="margin: 0 0 8px 16px; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--label-2);">다가오는 일정</h2>'
+          f'<a href="Health{t}.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 12px 10px 16px; border-radius: 16px; background: var(--pea-tint); color: var(--pea-deep); text-decoration: none;">{SYR}'
+          '<span style="flex: 1; display: flex; flex-direction: column;"><span style="font-size: 17px; line-height: 22px; font-weight: 600;">하린 · DTaP 4차 접종</span><span style="font-size: 13px; line-height: 18px;">12월 17일부터 · 2주 남았어요</span></span>'
+          '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="flex: none;"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></a></section>')
+    assert anchor in s; s=s.replace(anchor,anchor+card,1); open(n,'w').write(s)
+def children(t):
+    n=f'ChildSettings{t}.dc.html'; s=open(n).read()
+    if '접종·검진 일정 <span' in s: return  # 이미 넣었으면 그대로(원본 보드를 고쳐 쓰는 것이라)
+    for kid,nxt in [('하린','DTaP 4차 12/17'),('도윤','B형간염 3차 2/28')]:
+        i=s.index(f'font-weight: 600;">{kid}</span>'); j=s.index('</div></li>',i)+len('</div>')
+        link=(f'<a href="Health{t}.dc.html" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px 0 76px; border-top: 1px solid var(--separator); color: var(--label); text-decoration: none;">'
+              f'<span style="flex: 1; font-size: 15px; line-height: 20px;">접종·검진 일정 <span style="color: var(--label-2);">· {nxt}</span></span>'
+              '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="flex: none;"><path d="M9 5l7 7-7 7" fill="none" style="stroke: var(--label-2)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>')
+        s=s[:j]+link+s[j:]
+    s=s.replace('부모 앨범 위 아이 카드에 다음 일정이 보여요. 가족 화면에는 보이지 않아요','다음 일정이 2주 안이면 알림 탭 맨 위에 보여요. 가족 화면에는 보이지 않아요').replace('>앨범에 접종·검진 일정 보기<','>알림 탭에 다가오는 일정 보기<')
+    open(n,'w').write(s)
 d=json.load(open('canvas.json')); B=d['boards']
 for t in ['','-Light']:
-    for base,name,label in [('ParentHome','ParentHomeGlass','부모 · 떠 있는 유리 탭바(앨범)'),('Settings','SettingsGlass','부모 · 떠 있는 유리 탭바(설정)')]:
-        n=f'{name}{t}.dc.html'; glass(f'{base}{t}.dc.html',n,'떠 있는 유리 탭바',t)
+    reactions(t); children(t)
+    for base,name,label in [('ParentHome','ParentHomeGlass','부모 · 떠 있는 유리 탭바(앨범, 아이 카드 뺌)'),('Settings','SettingsGlass','부모 · 떠 있는 유리 탭바(설정)'),('ParentReactions','ReactionsHealth','부모 · 알림 탭 맨 위 다가오는 일정(2주 안)')]:
+        if name!='ReactionsHealth': pass
+        n=f'{name}{t}.dc.html'
+        if name!='ReactionsHealth': glass(f'{base}{t}.dc.html',n,'떠 있는 유리 탭바',t)
         ref=B[base+t+'.dc.html']
         if n not in d['order']: d['order'].append(n)
         x=B[n]['x'] if n in B else max(v['x'] for v in B.values() if v['y']==ref['y'])+470
