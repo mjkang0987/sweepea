@@ -157,14 +157,20 @@
   box-sizing: border-box;
   margin: 0;
   padding: var(--space-3) max(var(--space-5), calc((100% - 32rem) / 2 + var(--space-5)));
-  border-top: 1px solid var(--separator);
+  /* 위 선 없이 흐린 막대만(사용자 2026-10-29 "savebar border-top도 삭제") */
   background: var(--bar);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
 }
-/* 막대가 있는 화면(Parent savebar): 막대 높이(버튼 3.25rem + 위아래 여백 + 선)만큼 아래 여백, 토스트는 막대 위 12px. 글자 크기를 키우면 rem이 같이 커진다 */
+/* 고대비 모드는 흐림이 사라져 막대와 내용 경계가 안 보이니 선을 둠 */
+@media (forced-colors: active) {
+  .sp-p__savebar {
+    border-top: 1px solid CanvasText;
+  }
+}
+/* 막대가 있는 화면(Parent savebar): 막대 높이(버튼 3.25rem + 위아래 여백)만큼 아래 여백, 토스트는 막대 위 12px. 글자 크기를 키우면 rem이 같이 커진다 */
 .sp-p--savebar {
-  --savebar-h: calc(3.25rem + 2 * var(--space-3) + 1px);
+  --savebar-h: calc(3.25rem + 2 * var(--space-3));
   padding-bottom: calc(var(--tabbar-top) + var(--space-2) + var(--savebar-h) + var(--space-6));
 }
 .sp-p.sp-p--savebar .sp-toast {
@@ -195,11 +201,11 @@
 }
 /* 버튼이 둘인 막대(올리기: 카톡으로 보내기 + 올리기만) */
 .sp-p--savebar2 {
-  --savebar-h: calc(2 * 3.25rem + var(--space-2) + 2 * var(--space-3) + 1px);
+  --savebar-h: calc(2 * 3.25rem + var(--space-2) + 2 * var(--space-3));
 }
 /* 포커스된 칸이 막대 밑에 숨지 않게(탭바 + 버튼 둘 막대까지, :has 모르는 브라우저는 탭바 기준 기본값) */
 .sp-html:has(.sp-p--savebar) {
-  scroll-padding-bottom: calc(var(--tabbar-top) + var(--space-2) + 2 * 3.25rem + var(--space-2) + 2 * var(--space-3) + 1px + var(--space-4));
+  scroll-padding-bottom: calc(var(--tabbar-top) + var(--space-2) + 2 * 3.25rem + var(--space-2) + 2 * var(--space-3) + var(--space-4));
 }
 /* 넓은 화면 올리기: 버튼은 오른쪽 칸 안 제자리(높이가 넉넉함) */
 @media (min-width: 64rem) {
@@ -1395,20 +1401,29 @@
     /* .sp-p 위·옆 여백까지 덮어 사진이 머리 밑으로만 지나가게 */
     margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-5)) calc(-1 * var(--space-3));
     padding: calc(var(--space-6) + env(safe-area-inset-top)) var(--space-5) var(--space-5);
-    /* 글자 자리는 화면색 그대로(사진 위 대비, 리뷰 2026-10-29), 아래 여백에서만 투명해짐 */
-    background: linear-gradient(var(--bg) calc(100% - var(--space-5)), transparent);
+    /* 흰 띠처럼 막지 않고 사진이 흐리게 비치는 유리(사용자 2026-10-29 "fixed 영역에 흰 배경 뭐야?").
+       글자 자리는 화면색 75% 막 + 흐림이라 어떤 사진 위에서도 읽히고, 아래 여백에서만 투명해짐 */
+    background: var(--bg);
   }
-  /* 투명해지는 아래 띠만 흐리게: 지나가는 사진이 또렷하게 끊기지 않게(머리 전체에 걸면 흐림이 글자 뒤로 번져 대비가 떨어짐) */
+  /* color-mix를 모르는 옛 브라우저는 var() 때문에 앞 줄로 못 돌아가고 투명해지므로 @supports로 나눔(리뷰 2026-10-29) */
+  @supports (background: color-mix(in srgb, red 50%, transparent)) {
+    .sp-p__albumhead {
+      background: linear-gradient(color-mix(in srgb, var(--bg) 75%, transparent) calc(100% - var(--space-5)), transparent);
+    }
+  }
+  /* 사진이 비쳐도 읽히게 작은 줄도 진한 글자 */
+  .sp-p__albumhead-sub {
+    color: var(--label);
+  }
   .sp-p__albumhead::before {
     content: '';
     position: absolute;
     z-index: -1;
-    inset: auto 0 0;
-    height: var(--space-5);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-    -webkit-mask-image: linear-gradient(#000, transparent);
-    mask-image: linear-gradient(#000, transparent);
+    inset: 0;
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    -webkit-mask-image: linear-gradient(#000 calc(100% - var(--space-5)), transparent);
+    mask-image: linear-gradient(#000 calc(100% - var(--space-5)), transparent);
   }
   /* 키보드로 올라갈 때 고른 칸이 머리 밑에 숨지 않게(포커스는 칸 안 링크가 받음) */
   .sp-p__cell-link {
@@ -1436,6 +1451,9 @@
   }
   .sp-p__albumhead::before {
     display: none;
+  }
+  .sp-p__albumhead-sub {
+    color: var(--label-2);
   }
 }
 @media (max-width: 63.98rem) and (forced-colors: active) {
