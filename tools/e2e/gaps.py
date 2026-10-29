@@ -1,4 +1,4 @@
-# 엄빠 앨범 엇갈린 배열: 세로 간격 = 가로 간격(4px)인지 2열·4열에서 잼
+# 엄빠 앨범 엇갈린 배열: 세로 간격 = 가로 간격인지 2열·4열에서 잼(폰 폭 32rem 이하는 사진 좌우 꽉이라 2px, 그보다 넓으면 4px — 103)
 import layerfix,sys
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D='/home/claude/sweepea/tools/e2e/'; S=D+'../shots/'
@@ -17,9 +17,9 @@ with sync_playwright() as p:
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.goto(B+'/upload'); pg.set_input_files('#up-files',[D+f for f in ['u0.jpg','u1.jpg','u2.jpg','tall.jpg','u0.jpg','tall.jpg','u1.jpg','u2.jpg']]); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=90000)
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home**',timeout=90000)
-    for w in (390,375,430,1280):
+    for w in (390,375,430,800,1280):
         pg.set_viewport_size({'width':w,'height':900}); pg.goto(B+'/home'); r=pg.evaluate(M)
         print(w,r)
-        check(all(abs(x-4)<=0.05 for x in r['v']) and all(abs(x-4)<=0.05 for x in r['h']),f'{w}px 세로·가로 간격 4px {r}')
+        g=2 if w<=512 else 4; check(all(abs(x-g)<=0.05 for x in r['v']) and all(abs(x-g)<=0.05 for x in r['h']),f'{w}px 세로·가로 간격 {g}px {r}')
     pg.set_viewport_size({'width':390,'height':844}); pg.goto(B+'/home'); pg.screenshot(path=S+'gaps.png')
 print('FAILS',fails)
