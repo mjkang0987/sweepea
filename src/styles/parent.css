@@ -2203,3 +2203,24 @@
 .sp-p__kid-health .sp-p__hint {
   display: inline;
 }
+
+/* 설정 › 가족 맨 위 '엄마아빠 · 함께 관리'(디자인 FamilyCoParent): 엄빠 줄, 상대 내보내기는 글자 버튼, 초대는 줄 아래 칸 */
+.sp-p__parent {
+  gap: var(--space-3);
+}
+.sp-p__parent .sp-p__avatar {
+  flex: none;
+}
+.sp-p__parent-out {
+  width: auto;
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  background: none;
+}
+.sp-p__invite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--separator);
+}

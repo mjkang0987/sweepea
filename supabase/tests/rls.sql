@@ -969,3 +969,113 @@ reset role;
 select pg_temp.ok((select storage_used_bytes = 5368709120 - 100 from public.families where id = :'fam3'), '완료한 크기만 더함');
 select pg_temp.ok((select status = 'ready' from public.media where id = :'q1'), '거절된 완료는 되돌려지고 다시 완료하면 ready');
 update public.families set storage_used_bytes = 0 where id = :'fam3';
+
+-- ── 공동 관리자(20261029000003): 엄빠 둘까지, 초대 링크 한 번·3일, 서로 내보내기, 한 명 탈퇴는 나만 나가기
+\set Q1 '00000000-0000-0000-0000-0000000000e1'
+\set Q2 '00000000-0000-0000-0000-0000000000e2'
+\set Q3 '00000000-0000-0000-0000-0000000000e3'
+insert into auth.users (id, is_anonymous) values (:'Q1', false), (:'Q2', false), (:'Q3', false);
+select set_config('request.jwt.claims', json_build_object('sub', :'Q1', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_create_family('mom', '지우', '서아', '2025-09-17', '1111') as qfam \gset
+select public.sp_create_media(:'qfam', 'photo', now(), 'exif') as qm \gset
+select public.sp_create_parent_invite() as inv1 \gset
+select pg_temp.ok(public.sp_parent_invite_info(:'inv1') @> '{"result": "ok", "child_name": "서아", "inviter_role": "mom"}', '초대 정보(아이 이름·초대한 역할)');
+select pg_temp.ok(public.sp_create_parent_invite() <> :'inv1', '다시 만들면 새 링크');
+select pg_temp.ok(public.sp_parent_invite_info(:'inv1') ->> 'result' = 'not_found', '예전 링크는 사라짐');
+select public.sp_create_parent_invite() as inv1 \gset
+select pg_temp.ok(jsonb_array_length(public.sp_family_parents() -> 'parents') = 1 and public.sp_family_parents() -> 'invite' ->> 'code' = :'inv1', '엄빠 목록·살아 있는 링크');
+reset role;
+update public.media set status = 'ready' where id = :'qm';
+-- 가족 기기(익명)는 초대를 못 받는다
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(익명 기기는 엄빠 초대를 못 받음)'
+select public.sp_accept_parent_invite(:'inv1', 'dad');
+\set ON_ERROR_STOP 1
+-- 이미 다른 가족방 엄빠(P2)도 못 받는다
+select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(이미 다른 가족방 엄빠)'
+select public.sp_accept_parent_invite(:'inv1', 'dad');
+\set ON_ERROR_STOP 1
+-- Q2가 아빠로 받음 → 같은 가족방 엄빠 화면
+select set_config('request.jwt.claims', json_build_object('sub', :'Q2', 'is_anonymous', false)::text, false);
+select pg_temp.ok(public.sp_accept_parent_invite(:'inv1', 'dad') = :'qfam', '초대 받으면 같은 가족방');
+select pg_temp.ok(public.sp_parent_family() = :'qfam' and public.sp_parent_home() @> '{"role": "dad"}', '받은 엄빠도 엄빠 화면(아빠)');
+select pg_temp.ok((select count(*) = 1 from public.media where id = :'qm'), '받은 엄빠도 사진을 봄');
+select pg_temp.ok(public.sp_parent_invite_info(:'inv1') ->> 'result' = 'expired', '쓴 링크는 지남');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 3줄은 의도된 거부(엄빠 둘이면 초대 못 만듦, 나 자신은 못 내보냄, 다른 가족방 엄빠는 못 내보냄)'
+select public.sp_create_parent_invite();
+select public.sp_remove_coparent(:'Q2');
+select public.sp_remove_coparent(:'P');
+\set ON_ERROR_STOP 1
+select pg_temp.ok(jsonb_array_length(public.sp_family_parents() -> 'parents') = 2 and (public.sp_family_parents() -> 'parents' -> 0 ->> 'me')::boolean, '엄빠 둘, 나 먼저');
+-- 아빠가 하트를 남긴 뒤 엄마가 내보내면 기록은 남고(removed_at) 아빠는 엄빠 화면을 잃음
+select public.sp_parent_react(:'qm', 'heart', true);
+select set_config('request.jwt.claims', json_build_object('sub', :'Q1', 'is_anonymous', false)::text, false);
+select public.sp_remove_coparent(:'Q2');
+select pg_temp.ok(jsonb_array_length(public.sp_family_parents() -> 'parents') = 1, '내보내면 엄빠 하나');
+reset role;
+select pg_temp.ok((select removed_at is not null from public.parents where user_id = :'Q2'), '기록이 있으면 행은 남기고 나감 표시');
+select pg_temp.ok((select count(*) = 1 from public.reactions where parent_user_id = :'Q2'), '내보낸 엄빠의 하트는 그대로');
+set role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'Q2', 'is_anonymous', false)::text, false);
+select pg_temp.ok(public.sp_parent_family() is null and public.sp_parent_home() ->> 'family_id' is null, '내보낸 엄빠는 엄빠 화면 없음');
+select pg_temp.ok((select count(*) = 0 from public.media where id = :'qm'), '내보낸 엄빠는 사진 못 봄');
+select pg_temp.ok(public.sp_parent_activity() is null, '내보낸 엄빠는 예전 가족방 최근 반응 못 읽음');
+-- 다시 초대받으면 남아 있던 행이 되살아남(막다른 길 없음), 같은 역할(엄마)은 거절
+select set_config('request.jwt.claims', json_build_object('sub', :'Q1', 'is_anonymous', false)::text, false);
+select public.sp_create_parent_invite() as invr \gset
+select pg_temp.ok(public.sp_parent_invite_info(:'invr') @> '{"result": "ok", "taken_roles": ["mom"], "mine": true}', '초대 정보: 이미 있는 역할·내 가족방 초대');
+select set_config('request.jwt.claims', json_build_object('sub', :'Q2', 'is_anonymous', false)::text, false);
+select pg_temp.ok(public.sp_parent_invite_info(:'invr') ->> 'mine' = 'false', '다른 사람이 열면 mine 아님');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(엄마가 이미 있으면 엄마로 못 받음)'
+select public.sp_accept_parent_invite(:'invr', 'mom');
+\set ON_ERROR_STOP 1
+select pg_temp.ok(public.sp_accept_parent_invite(:'invr', 'dad') = :'qfam', '나갔던 엄빠도 다시 초대받음');
+select pg_temp.ok(public.sp_parent_family() = :'qfam', '되살아나 엄빠 화면');
+select set_config('request.jwt.claims', json_build_object('sub', :'Q1', 'is_anonymous', false)::text, false);
+select public.sp_remove_coparent(:'Q2');
+select pg_temp.ok(public.sp_parent_invite_info(:'invr') - 'mine' = '{"result": "expired"}', '지난 초대는 이름을 안 줌');
+-- 나간 엄빠는 같은 로그인으로 새 가족방을 만들 수 있음(행을 옮김), 예전 하트는 그대로
+select set_config('request.jwt.claims', json_build_object('sub', :'Q2', 'is_anonymous', false)::text, false);
+select public.sp_create_family('dad', '민수', '도윤', '2026-01-02', '2222') as qfam2 \gset
+select pg_temp.ok(public.sp_parent_family() = :'qfam2', '나간 엄빠가 새 가족방 만듦');
+reset role;
+select pg_temp.ok((select count(*) = 1 from public.reactions where parent_user_id = :'Q2' and media_id = :'qm'), '예전 가족방 하트는 그대로');
+-- 옮겨 간 새 가족방이 지워져도 예전 가족방 하트는 남고, 그 로그인으로 다시 시작할 수 있음
+select public.sp_purge_family(:'qfam2');
+select pg_temp.ok((select count(*) = 1 from public.reactions where parent_user_id = :'Q2' and media_id = :'qm'), '새 가족방을 지워도 예전 하트는 그대로');
+select pg_temp.ok((select family_id is null from public.parents where user_id = :'Q2'), '기록 있는 엄빠 행은 가족방만 비고 남음');
+set role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'Q2', 'is_anonymous', false)::text, false);
+select pg_temp.ok(public.sp_parent_home() ->> 'family_id' is null, '가족방이 지워지면 처음 설정부터');
+select public.sp_create_family('dad', '민수', '도윤', '2026-01-02', '2222') as qfam3 \gset
+select pg_temp.ok(public.sp_parent_family() = :'qfam3', '다시 새 가족방을 만들 수 있음');
+set role authenticated;
+-- 새 초대로 Q3(아빠) → Q3 탈퇴는 나만 나가기(기록 없으면 행 삭제), 가족방은 그대로
+select set_config('request.jwt.claims', json_build_object('sub', :'Q1', 'is_anonymous', false)::text, false);
+select public.sp_create_parent_invite() as inv2 \gset
+select set_config('request.jwt.claims', json_build_object('sub', :'Q3', 'is_anonymous', false)::text, false);
+select public.sp_accept_parent_invite(:'inv2', 'dad');
+select pg_temp.ok(public.sp_request_delete() is null, '함께 관리 중 탈퇴는 나만 나가기(null)');
+select pg_temp.ok(public.sp_parent_family() is null, '나가면 엄빠 화면 없음');
+select set_config('request.jwt.claims', json_build_object('sub', :'Q1', 'is_anonymous', false)::text, false);
+select pg_temp.ok(public.sp_parent_home() ->> 'closing' = 'false', '남은 엄빠의 가족방은 그대로');
+reset role;
+select pg_temp.ok(not exists (select 1 from public.parents where user_id = :'Q3'), '기록 없이 나간 엄빠는 행 삭제');
+-- 3일 지난 초대는 지남
+set role authenticated;
+select public.sp_create_parent_invite() as inv3 \gset
+reset role;
+update public.parent_invites set expires_at = now() - interval '1 minute' where code = :'inv3';
+set role authenticated;
+select pg_temp.ok(public.sp_parent_invite_info(:'inv3') ->> 'result' = 'expired', '3일 지난 초대는 지남');
+-- 마지막 한 명 탈퇴는 지금처럼 3일 뒤 삭제
+select pg_temp.ok(public.sp_request_delete() is not null, '마지막 엄빠 탈퇴는 삭제 예정');
+select public.sp_restore_family();
+reset role;

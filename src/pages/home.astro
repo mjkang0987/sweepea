@@ -184,6 +184,7 @@ for (const mo of months) {
     )
   }
   {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !birthday && !storage}>지웠어요.</p>}
+  {Astro.url.searchParams.get('joined') === '1' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !birthday && !storage}>이제 {callName(a.home.children?.[0]?.name ?? '아이')} 앨범을 함께 관리해요.</p>}
   {
     s && s.waiting > 0 && (
       <a class="sp-p__alert" href="/settings/family">

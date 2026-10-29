@@ -1,5 +1,6 @@
 ---
-// 계정: 로그인 제공자·부모 호칭, 로그아웃, 탈퇴하기(이 화면 위 레이어에서 한 번 더 확인 + 확인 체크)
+// 계정: 로그인 제공자·부모 호칭, 로그아웃, 탈퇴하기(이 화면 위 레이어에서 한 번 더 확인 + 확인 체크).
+// 함께 관리하는 엄빠가 있으면 탈퇴 대신 '이 앨범에서 나가기'(나만 빠지고 가족방은 그대로, 디자인 AccountLeave)
 import Parent from '../../layouts/Parent.astro';
 import { BackendError, getBackend } from '../../lib/backend';
 import { goodbyeHref, loadParent, logoutParent, PROVIDER_NAMES } from '../../lib/parent';
@@ -7,13 +8,16 @@ import { goodbyeHref, loadParent, logoutParent, PROVIDER_NAMES } from '../../lib
 Astro.response.headers.set('cache-control', 'private, no-store');
 const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
+const b = getBackend();
+// 함께 관리하는 상대 엄빠(있으면 나만 나가기). 못 불러오면 혼자인 것처럼(지우기 확인 체크를 받는 쪽이 안전)
+const other = (await b.familyParents(a.pass).catch(() => null))?.parents.find((p) => !p.me) ?? null;
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
-  if (form.get('agree') !== '1') return Astro.redirect('/settings/account?confirm=delete&e=agree', 303);
+  if (!other && form.get('agree') !== '1') return Astro.redirect('/settings/account?confirm=delete&e=agree', 303);
   try {
-    const at = await getBackend().requestDelete(a.pass);
+    const at = await b.requestDelete(a.pass);
     await logoutParent(Astro.cookies);
-    return Astro.redirect(goodbyeHref(at), 303);
+    return Astro.redirect(at ? goodbyeHref(at) : '/goodbye?left=1', 303);
   } catch (err) {
     if (!(err instanceof BackendError)) throw err;
     return Astro.redirect(`/settings/account?confirm=${err.status === 402 ? 'subscribed' : 'error'}`, 303);
@@ -29,11 +33,11 @@ const agreeError = Astro.url.searchParams.get('e') === 'agree';
 const day = (iso: string) => new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(iso));
 const planUntil = a.home.plan_until ? day(a.home.plan_until) : null;
 // 구독 중이면(또는 서버가 402로 막았으면) 탈퇴 대신 구독 안내 레이어
-const kind = planUntil || confirm === 'subscribed' ? 'subscribed' : 'delete';
-const open = confirm === 'delete' || confirm === 'subscribed';
+const kind = other ? 'leave' : planUntil || confirm === 'subscribed' ? 'subscribed' : 'delete';
+const open = confirm === 'delete' || confirm === 'subscribed' || confirm === 'leave';
 ---
 
-<Parent title={open ? `${kind === 'delete' ? '정말 탈퇴할까요?' : '구독 중이에요'} · 계정` : '계정 · 설정'} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+<Parent title={open ? `${kind === 'delete' ? '정말 탈퇴할까요?' : kind === 'leave' ? '이 앨범에서 나갈까요?' : '구독 중이에요'} · 계정` : '계정 · 설정'} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <div class="sp-p__nav">
     <a class="sp-p__back" href="/settings">설정</a>
     <h1 class="sp-p__nav-title">계정</h1>
@@ -63,17 +67,28 @@ const open = confirm === 'delete' || confirm === 'subscribed';
       </form>
     </li>
     <li>
-      <a class="sp-p__rows-item sp-p__rows-button sp-p__rows-item--danger" href={`/settings/account?confirm=${kind}`} aria-haspopup="dialog" data-del-open>탈퇴하기</a>
+      <a class="sp-p__rows-item sp-p__rows-button sp-p__rows-item--danger" href={`/settings/account?confirm=${kind}`} aria-haspopup="dialog" data-del-open>{other ? '이 앨범에서 나가기' : '탈퇴하기'}</a>
     </li>
   </ul>
-  <p class="sp-p__hint">로그아웃해도 사진과 가족은 그대로예요. 탈퇴하면 3일 뒤 모두 지워져요.</p>
+  <p class="sp-p__hint">{other ? `로그아웃하거나 나가도 사진과 가족은 그대로예요. ${other.display_name}가 계속 관리해요.` : '로그아웃해도 사진과 가족은 그대로예요. 탈퇴하면 3일 뒤 모두 지워져요.'}</p>
   {/* 디자인 AccountDelete·AccountDeleteSub: 이 화면 위 가운데 레이어. 스크립트가 있으면 showModal, 없으면 주소(?confirm=)로 연 채 다시 그린다 */}
   <div class={open ? 'sp-layer' : undefined}>
     {open && <div class="sp-layer__scrim" aria-hidden="true"></div>}
     <dialog class:list={['sp-layer__box sp-layer__box--start', !open && 'sp-layer__modal']} id="del" open={open} aria-labelledby="del-t" aria-describedby="del-d">
       <img class="sp-layer__kongi sp-layer__kongi--sm" src="/sad.svg" width="40" height="40" alt="" />
       {
-        kind === 'delete' ? (
+        kind === 'leave' ? (
+          <>
+            <h2 class="sp-layer__title" id="del-t">이 앨범에서 나갈까요?</h2>
+            <p class="sp-layer__text" id="del-d">{other!.display_name}가 계속 관리해요. 사진과 가족은 그대로 남고, 내 계정만 빠져요. 다시 함께하려면 {other!.display_name}에게 초대를 받아 주세요.{planUntil && ' 내가 결제한 구독이 있으면 App Store나 Google Play에서 따로 해지해 주세요.'}</p>
+            <form class="sp-layer__actions" method="post">
+              <div class="sp-layer__pair">
+                {open ? <a class="sp-p__btn sp-p__btn--quiet" href="/settings/account" autofocus>취소</a> : <button class="sp-p__btn sp-p__btn--quiet" type="submit" formmethod="dialog" formnovalidate autofocus>취소</button>}
+                <button class="sp-p__btn sp-p__btn--danger-strong" type="submit">나가기</button>
+              </div>
+            </form>
+          </>
+        ) : kind === 'delete' ? (
           <>
             <h2 class="sp-layer__title" id="del-t">정말 탈퇴할까요?</h2>
             <p class="sp-layer__text" id="del-d">가족 화면은 바로 닫히고, <strong>3일 뒤</strong> {what} 가족·아이 정보가 모두 지워져요. 3일 안에 다시 로그인하면 되살릴 수 있어요.</p>

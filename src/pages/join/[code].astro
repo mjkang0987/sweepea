@@ -1,0 +1,110 @@
+---
+// 엄빠 함께 관리 초대 받은 화면(100, 디자인 JoinParent): 엄마·아빠 고르고 로그인하면 같은 앨범의 엄빠 화면.
+// 고른 역할과 코드는 잠깐 쓰는 쿠키로 로그인을 건너 /auth/callback까지 간다. 이미 로그인한 엄빠 계정(가족방 없음)이면 바로 받는다
+import Parent from '../../layouts/Parent.astro';
+import { BackendError, getBackend } from '../../lib/backend';
+import { callName } from '../../lib/ko';
+import { enabledProviders, JOIN_COOKIE, joinError, PROVIDERS, type Provider } from '../../lib/parent';
+import { currentParent } from '../../lib/pass';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const code = Astro.params.code ?? '';
+if (!/^[A-Za-z0-9]{8}$/.test(code)) return Astro.redirect('/start');
+const b = getBackend();
+const pass = await currentParent(Astro.cookies);
+const home = pass ? await b.parentHome(pass).catch(() => null) : null;
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const role = form.get('role') === 'mom' ? 'mom' : form.get('role') === 'dad' ? 'dad' : null;
+  if (!role) return Astro.redirect(`/join/${code}?e=role`, 303);
+  // 로그인한 엄빠 계정이고 아직 가족방이 없으면 바로
+  if (pass && home && !home.family_id) {
+    try {
+      await b.acceptParentInvite(pass, code, role);
+      return Astro.redirect('/home?joined=1', 303);
+    } catch (e) {
+      if (!(e instanceof BackendError) || e.status >= 500) throw e;
+      return Astro.redirect(`/join/${code}?e=${joinError(e)}`, 303);
+    }
+  }
+  const provider = String(form.get('provider') ?? '');
+  if (!enabledProviders().includes(provider)) return Astro.redirect(`/join/${code}`, 303);
+  Astro.cookies.set(JOIN_COOKIE, `${code}:${role}`, { path: '/', httpOnly: true, secure: import.meta.env.PROD, sameSite: 'lax', maxAge: 900 });
+  return Astro.redirect(`/login/${provider}`, 303);
+}
+const info = await b.parentInviteInfo(pass, code);
+// 초대한 본인(같은 앨범 엄빠)이 열었으면 함께 관리 칸으로
+if (info.mine) return Astro.redirect('/settings/family#parents');
+const e = Astro.url.searchParams.get('e');
+// 다른 앨범 엄빠·이 링크로 못 들어오는 계정이면 안내, 같은 역할을 골랐으면 다시 고르기
+const state = home?.family_id || e === 'other' ? 'other' : e === 'device' ? 'device' : e === 'full' || info.result === 'full' ? 'full' : e === 'expired' || info.result !== 'ok' ? 'expired' : 'invite';
+const kid = callName(info.child_name ?? '아이');
+const by = info.inviter_role === 'dad' ? '아빠' : '엄마';
+const taken = new Set(info.taken_roles ?? []);
+const want = taken.has('dad') ? 'mom' : taken.has('mom') ? 'dad' : info.inviter_role === 'dad' ? 'mom' : 'dad';
+const list = enabledProviders();
+---
+
+<Parent title={state === 'invite' ? `${kid} 앨범 함께 관리 · 스위피` : state === 'other' ? '이미 다른 앨범을 관리하고 있어요 · 스위피' : state === 'device' ? '이 계정으로는 함께할 수 없어요 · 스위피' : state === 'full' ? '엄마아빠가 이미 둘이에요 · 스위피' : '초대 링크가 지났어요 · 스위피'}>
+  <section class="sp-p__brand" aria-labelledby="join-t">
+    <img class="sp-p__brand-kongi" src="/kongi.svg" width="128" height="128" alt="" />
+    {
+      state === 'invite' ? (
+        <>
+          <h1 class="sp-p__title" id="join-t">{kid} 앨범을<br />함께 관리해요</h1>
+          <p class="sp-p__brand-text">{by}가 초대했어요. 로그인하면 사진 올리기·가족 승인·설정을 같이 할 수 있어요.</p>
+        </>
+      ) : state === 'full' ? (
+        <>
+          <h1 class="sp-p__title" id="join-t">엄마아빠가<br />이미 둘이에요</h1>
+          <p class="sp-p__brand-text">한 앨범은 엄마아빠 둘까지 함께 관리할 수 있어요. 초대한 사람에게 확인해 주세요.</p>
+        </>
+      ) : state === 'device' ? (
+        <>
+          <h1 class="sp-p__title" id="join-t">이 계정으로는<br />함께할 수 없어요</h1>
+          <p class="sp-p__brand-text">가족 앨범을 보는 휴대폰 계정이에요. 엄마아빠 로그인(카카오·네이버·구글)으로 다시 열어 주세요.</p>
+        </>
+      ) : state === 'other' ? (
+        <>
+          <h1 class="sp-p__title" id="join-t">이미 다른 앨범을<br />관리하고 있어요</h1>
+          <p class="sp-p__brand-text">한 계정은 앨범 하나만 관리할 수 있어요. 다른 계정으로 로그인하거나, 지금 앨범에서 나간 뒤 다시 열어 주세요.</p>
+        </>
+      ) : (
+        <>
+          <h1 class="sp-p__title" id="join-t">초대 링크가<br />지났어요</h1>
+          <p class="sp-p__brand-text">이미 썼거나 3일이 지났어요. 초대한 사람에게 새 링크를 부탁해 주세요.</p>
+        </>
+      )
+    }
+  </section>
+  {
+    state === 'invite' && (
+      <form class="sp-p__bottom" method="post">
+        {e === 'role' && <p class="sp-p__error" role="alert">{taken.size ? `${taken.has('mom') ? '엄마' : '아빠'}는 이미 있어요. ${want === 'mom' ? '엄마' : '아빠'}를 골라 주세요.` : '엄마인지 아빠인지 골라 주세요.'}</p>}
+        <fieldset class="sp-p__field sp-p__fieldset">
+          <legend class="sp-p__label">나는 아이의</legend>
+          <div class="sp-p__choices">
+            <label class="sp-p__choice"><input class="sp-p__radio" type="radio" name="role" value="mom" checked={want === 'mom'} disabled={taken.has('mom')} required /> 엄마{taken.has('mom') && <span class="sp-p__hint"> · 이미 있어요</span>}</label>
+            <label class="sp-p__choice"><input class="sp-p__radio" type="radio" name="role" value="dad" checked={want === 'dad'} disabled={taken.has('dad')} /> 아빠{taken.has('dad') && <span class="sp-p__hint"> · 이미 있어요</span>}</label>
+          </div>
+        </fieldset>
+        {
+          pass && home && !home.family_id ? (
+            <button class="sp-p__btn" type="submit">함께하기</button>
+          ) : (
+            list.map((p) =>
+              p === 'dev' ? (
+                <button class="sp-p__login sp-p__login--dev" type="submit" name="provider" value="dev">개발용으로 계속하기</button>
+              ) : (
+                <button class:list={['sp-p__login', PROVIDERS[p as Provider].cls]} type="submit" name="provider" value={p}>{PROVIDERS[p as Provider].label}</button>
+              ),
+            )
+          )
+        }
+        <p class="sp-p__fine">시작하면 이용약관과 개인정보 처리방침에 동의하게 돼요</p>
+      </form>
+    )
+  }
+  {state === 'other' && <div class="sp-p__bottom"><a class="sp-p__btn sp-p__btn--quiet" href="/home">내 앨범으로</a></div>}
+  {(state === 'expired' || state === 'device' || state === 'full') && <div class="sp-p__bottom"><a class="sp-p__btn sp-p__btn--quiet" href="/start">처음으로</a></div>}
+</Parent>

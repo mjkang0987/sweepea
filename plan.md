@@ -1267,6 +1267,25 @@
 - 검사: e2e(엄빠 올리기 → 링크 → 새 이름 → 대기 화면에 그 사진만, 다른 사진 안 보임, 빈 묶음 글), 기존 entry 검사
 - 결과: 검토 3회(못 불러오면 '불러오지 못했어요' 안내, 크기 모르는 것만 4:3 자리, 영상 섞이면 '사진·영상 N개', 대체 글 순번, mock 공유도 다른 가족방 사진은 거절). tools/e2e/waitphotos.py 크롬·사파리 엔진(`webkit` 인자), entry·bottombar·members·groups·family e2e, DB 검사(거절 63) 통과. 디자인 WaitPhotos v180. 남은 것: 영상 섞인 묶음·불러오기 실패는 e2e 없음(코드로만), 실제 아이폰·실제 DB 화면 확인은 안 함
 
+### 100. feature/co-parent — 엄마아빠 공동 관리자 (개발·검토 완료, 운영 DB 적용 대기)
+- 요구(사용자 2026-10-29): "승인은 무조건 엄마만 할 수 있는 거야? 아빠가 가입하는 경우도 있지 않을까" → 세 안(그대로 / 승인만 나눠 주기 / 공동 관리자) 중 "권한은 공동으로"
+- 지금: 처음 가입한 한 명(엄마 또는 아빠)만 엄빠 계정(`parents.family_id unique`). 배우자는 링크로 들어온 구성원 + '사진 올리기 허용'이라 승인·설정 못 함
+- 하려는 것: 가족방마다 엄빠 계정 둘까지. 둘 다 같은 엄빠 화면(앨범·올리기·승인·설정·알림), 각자 자기 로그인(카카오·네이버·구글). 가족 화면엔 각자 이름(엄마/아빠)으로 '오늘 아빠가 올렸어요'
+- 초대: 설정 › 가족에 '공동 관리자' 줄 → '초대 링크 만들기'(한 번만, 72시간, 카톡·문자로 보냄) → 받은 사람이 링크 `/join/<코드>` → 엄마·아빠 고르기 → 로그인 → 같은 가족방 엄빠 화면. 이미 다른 가족방의 엄빠 계정이면 들어오지 않고 안내
+- 내보내기·나가기: 엄빠 둘 중 누구나 상대를 내보낼 수 있음(확인 레이어). 탈퇴는 '나만 나가기', 마지막 한 명이 탈퇴할 때만 지금처럼 가족방 3일 뒤 삭제(구독 중이면 막음)
+- 배우자가 이미 '올리기 허용' 구성원이면: 초대받아 엄빠가 된 뒤 예전 구성원은 그대로 둠(반응·한마디 기록 보존), 엄빠 화면에 '예전 가족 이름 내보내기' 안내만
+- DB(새 마이그레이션, 운영 적용 전 사용자 확인): `parents.family_id` unique 풀기(가족방당 2명은 함수에서 확인), 초대 표 `parent_invites`(코드·가족방·만든 사람·만료·쓴 때), `sp_create_parent_invite`·`sp_accept_parent_invite(code, role)`·`sp_remove_coparent`, `sp_request_delete`는 남은 엄빠가 있으면 나만 빠지게. 반응·한마디·최근 반응 읽음(activity_seen_at)은 이미 사람마다라 그대로
+  - 주의: unique를 푸는 건 `drop constraint`라 적용 도구가 막음 → 이 한 줄은 사용자가 Supabase SQL 편집기에서 직접 실행
+- 디자인 보드(v182, 스크립트 tools/design/coparent.py): FamilyCoParent(설정 › 가족 맨 위 '엄마아빠 · 함께 관리', 속성 state 초대 전/링크 만듦/함께 관리 중/내보내기 확인)·FamilyCoParentInvite(링크 카드, GroupLinkCard 모양)·CoParentRemoveLayer(FamilyRevokeLayer 모양)·JoinParent(/join, 나는 엄마/아빠 고르기 + ParentLogin 버튼, 이미 다른 앨범·기간 지남)·AccountLeave(엄빠 둘일 때 탈퇴 레이어 = '이 앨범에서 나갈까요?', 확인 체크 없음, 다크 버튼 글자 대비 맞춤)
+- 화면 구현(초안): `/settings/family` 맨 위 줄(스크립트 있으면 그 자리에서, 없으면 폼), `/join/[code]`(코드·역할을 쿠키에 담아 `/login` → `/auth/callback`에서 `sp_accept_parent_invite`), 계정 탈퇴는 엄빠 수에 따라 레이어 글·동작만 갈라짐. 가족 화면 '오늘 아빠가 올렸어요'는 올린 엄빠의 역할로(지금은 가족방 첫 엄빠 기준인지 확인 필요)
+- 검사: DB 검사(초대 만들기는 엄빠만·하나만 살아 있음·3일·한 번, 셋째 엄빠 거절, 다른 가족방 엄빠 거절, 내보내면 그 계정은 가족방 못 봄, 한 명 탈퇴는 가족방 유지·마지막은 3일 뒤 삭제), e2e(초대 링크 → 로그인 → 같은 앨범·승인 가능, 내보내기, 나가기)
+- iOS 앱(sweepea-ios)도 같은 흐름은 웹 다음
+- 정함(사용자 2026-10-29 "응"): 엄빠 최대 둘, 둘 다 상대를 내보낼 수 있음, 한 명 탈퇴는 나만 나가기(마지막 한 명일 때만 가족방 삭제)
+- 결과(개발): DB `20261029000002_coparent_unique.sql`(사용자가 SQL 편집기에서 직접: 가족방당 한 명 unique 풀기, parents.family_id null 허용 + 가족방 지우면 set null) → `20261029000003_coparent.sql`(적용 도구: removed_at, parent_invites, sp_family_parents·sp_create_parent_invite·sp_parent_invite_info(anon)·sp_accept_parent_invite·sp_remove_coparent, sp_request_delete는 함께 관리면 나만 빠짐, sp_parent_family·sp_parent_home·sp_parent_activity·sp_mark_activity_seen·sp_create_family·sp_purge_family 교체, 000002 먼저 했는지 가드). 화면: 설정 › 가족 #parents, /join/[code](역할·제공자 → sp_join 쿠키 → 로그인 → /auth/callback에서 받기), 계정 '이 앨범에서 나가기', /goodbye?left=1, 홈 '함께 관리해요' 안내. BackendError.reason(DB raise 글)·joinError
+- 정한 동작: 기록(반응·한마디) 있는 엄빠를 내보내거나 나가면 행은 removed_at으로 남고, 다시 초대받거나 새 가족방을 만들면 그 행을 옮겨 씀(예전 한마디 이름은 새 역할로 보임). 가족방이 지워져도 다른 가족방 기록이 있는 엄빠 행은 family_id만 빔. 같은 역할(엄마 둘)은 막음. 초대는 가족방당 하나, 3일, 한 번
+- 검토 3회: 나간 엄빠의 최근 반응 읽기(높음)·나간 엄빠 막다른 길(높음)·운영 오류 이유 구분·같은 역할·잠금(엄빠 셋·교착·동시에 서로 내보내 0명)·새 가족방 삭제 때 예전 기록 연쇄 삭제·적용 도구 DROP 이름 회피(sp_unlink_parent)·000002 다시 실행 안전. 검사: DB rls.sql(의도된 거부 69), supabase/tests/race.sh(동시 처리 3가지), tools/e2e/coparent.py 크롬·사파리 엔진, glasstab 회귀
+- 남은 것: 운영 DB 적용(000002 직접 → 000003 승인 후 도구, 매일 정리 작업 시각 피해 연달아), 실제 카카오·구글 로그인으로 초대 받기 확인, 결제한 엄빠가 나가면 구독 해지 주체(결제 붙일 때 결정), iOS 앱
+
 ### 101. fix/copy-link — 링크 '주소 복사' 버튼 (완료, 0.5.6)
 - 요구(사용자 2026-10-29 "길게 눌러도 복사 안 되던데"): 원인은 아이폰 사파리가 읽기 전용 칸을 길게 눌러도 복사 메뉴를 안 띄움 + 링크 카드에 복사 버튼이 없었음
 - 고침: `src/lib/copy.ts`(wireCopy·revealCopy·copyText) — 설정 › 가족·그룹 화면 링크 카드에 '주소 복사'(스크립트 있을 때만 보임), 복사 못 하면 칸을 골라 두고 "휴대폰은 칸을 길게 눌러 복사를, 컴퓨터는 Ctrl+C" 안내(벗어나면 다시 읽기 전용). 올리기 화면도 같은 함수. 칸 이름의 '(길게 눌러 복사)' 지움, 디자인 GroupLinkCard·공동 관리자 카드 v183
