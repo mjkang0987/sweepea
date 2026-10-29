@@ -288,6 +288,8 @@ export interface Backend {
   familyAdmin(pass: Pass): Promise<FamilyAdmin>;
   /** 새 이름 승인(active, 승인 대기만)·거절(rejected, 승인 대기·승인된 사람 모두 = 내보내기). 거절하면 그 사람 기기도 막힌다(DB 트리거) */
   setMemberStatus(pass: Pass, memberId: string, status: 'active' | 'rejected'): Promise<void>;
+  /** 승인된 구성원 이름 바꾸기(1~12자). 같은 그룹에 같은 이름이면 BackendError 409(23505), 없으면 404 */
+  renameMember(pass: Pass, memberId: string, name: string): Promise<void>;
   /** 승인 대기 기기 승인(active, 들어가려던 이름을 붙임)·내 가족 아님(revoked) */
   setDeviceStatus(pass: Pass, deviceId: string, status: 'active' | 'revoked'): Promise<void>;
   /** 공유 링크 코드(8자). targetMemberId를 주면 그 사람 전용 한 번 쓰는 링크 */

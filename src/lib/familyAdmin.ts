@@ -46,6 +46,19 @@ export async function handleFamilyPost(request: Request, cookies: AstroCookies):
     }
   }
   if (!ID.test(id ?? '')) return '/settings/family';
+  // 이름 바꾸기(사용자 2026-10-29 "이름 바꿀 수 있게 해줘, 접속한 사람"): 앞뒤 공백 빼고 1~12자(DB와 같게)
+  if (kind === 'rename') {
+    const name = String(form?.get('name') ?? '').trim().replace(/\s+/g, ' ');
+    const back = `/settings/family/member/${id}`;
+    if (name.length < 1 || name.length > 12) return `${back}?done=name-bad`;
+    try {
+      await b.renameMember(pass, id, name);
+      return `${back}?done=renamed`;
+    } catch (e) {
+      if (!(e instanceof BackendError) || e.status >= 500) throw e;
+      return e.status === 404 ? '/settings/family?done=gone' : `${back}?done=${e.code === '23505' ? 'name-taken' : 'error'}`;
+    }
+  }
   const irreversible = (kind === 'member' && status === 'rejected') || (kind === 'device' && status === 'revoked') || kind === 'reset' || (kind === 'parent' && status === 'removed');
   if (irreversible && form?.get('confirm') !== '1') return `/settings/family?confirm=${encodeURIComponent(action)}#confirm`;
   try {

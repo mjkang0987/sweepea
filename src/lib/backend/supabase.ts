@@ -224,6 +224,16 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       });
       if (!rows.length) throw new BackendError('not_found', 404);
     },
+    async renameMember(pass, id, name) {
+      const q = new URLSearchParams({ id: `eq.${id}`, status: 'eq.active', select: 'id' });
+      const rows = await call<{ id: string }[]>(`/rest/v1/members?${q}`, {
+        method: 'PATCH',
+        token: pass.access,
+        headers: { prefer: 'return=representation' },
+        body: JSON.stringify({ display_name: name }),
+      });
+      if (!rows.length) throw new BackendError('not_found', 404);
+    },
     async setDeviceStatus(pass, id, status) {
       const q = new URLSearchParams({ id: `eq.${id}`, status: 'eq.pending', select: 'id' });
       const rows = await call<{ id: string }[]>(`/rest/v1/devices?${q}`, {
