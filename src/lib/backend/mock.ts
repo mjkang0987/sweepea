@@ -489,12 +489,12 @@ export function createMockBackend(): Backend {
     },
     async createShare(pass, groupIds, target, mediaIds = []) {
       const fam = parents.get(pass.access)?.familyId;
-      if (!fam || isClosing(fam) || !groupIds.length || groupIds.some((id) => groups.find((g) => g.id === id)?.familyId !== fam)) {
+      if (!fam || isClosing(fam) || !groupIds.length || groupIds.some((id) => groups.find((g) => g.id === id)?.familyId !== fam) || mediaIds.some((id) => media.find((x) => x.id === id)?.family_id !== fam)) {
         throw new BackendError('bad_request', 400, '22023');
       }
       const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
       const code = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => abc[b % abc.length]).join('');
-      shares.push({ code, groupIds, createdAt: Date.now(), targetMemberId: target, mediaIds: mediaIds.filter((id) => media.some((x) => x.id === id && x.family_id === fam)) });
+      shares.push({ code, groupIds, createdAt: Date.now(), targetMemberId: target, mediaIds });
       return code;
     },
     async parentHome(pass): Promise<ParentHome> {
