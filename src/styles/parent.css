@@ -2545,3 +2545,7 @@
 .sp-p__albumhead-sub:empty {
   display: none;
 }
+/* 달 묶음 사이 큰 틈 없앰(사용자 2026-10-29 "시기별 gap 삭제"): 달 제목 줄을 뺐으니 사진 간격만 남겨 한 판으로 이어 보이게 */
+.sp-p__month + .sp-p__month {
+  margin-top: calc(-1 * var(--space-5));
+}
