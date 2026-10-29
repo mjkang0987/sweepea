@@ -9,8 +9,8 @@ import { SWEEPEA_MOCK_USED_BYTES } from 'astro:env/server';
 const MOCK_USED = SWEEPEA_MOCK_USED_BYTES ?? 0;
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string; exclude?: boolean }
-interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean; helpAt?: number }
-interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean; revoked?: boolean }
+interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean; helpAt?: number; entryShare?: string }
+interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean; revoked?: boolean; mediaIds?: string[] }
 interface Device { id: string; familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]>; canUpload?: boolean }
 
 const HOUR = 3600_000;
@@ -58,7 +58,7 @@ const shares: Share[] = [
 ];
 // 기기(출입증) × 가족방마다 하나
 const devices = new Map<string, Device>();
-// 그룹별 공개는 목록(listMedia)만 흉내 낸다(승인 대기·공유 묶음 규칙은 DB 검사 rls.sql이 맡는다)
+// 그룹별 공개·승인 대기의 공유 묶음은 목록(listMedia)만 흉내 낸다(나머지 규칙은 DB 검사 rls.sql이 맡는다)
 const media: (MediaItem & { status: 'uploading' | 'ready'; uploader: string; groupIds: string[]; childIds: string[]; bytes: number })[] = [];
 const deviceOf = (pass: Pass, familyId: string) => devices.get(key(pass, familyId));
 const canUpload = (d: Device | undefined) => !!d && d.status === 'active' && !!d.canUpload;
@@ -146,8 +146,11 @@ function visibleMedia(pass: Pass, opts: MediaQuery) {
       if (isClosing(x.family_id)) return false;
       const d = deviceOf(pass, x.family_id);
       const mem = members.find((m) => m.id === d?.memberId);
-      // 올리기 권한 가족은 모든 그룹 사진을 본다(DB sp_can_view_media와 같게)
-      return d?.status === 'active' && mem?.status === 'active' && (canUpload(d) || x.groupIds.includes(mem.groupId));
+      if (d?.status !== 'active') return false;
+      // 승인 대기는 들어온 링크의 사진 묶음만(DB sp_can_view_media와 같게)
+      if (mem?.status === 'pending') return !!shares.find((s) => s.code === mem.entryShare)?.mediaIds?.includes(x.id);
+      // 올리기 권한 가족은 모든 그룹 사진을 본다
+      return mem?.status === 'active' && (canUpload(d) || x.groupIds.includes(mem.groupId));
     })
     .sort(newerFirst);
 }
@@ -237,7 +240,7 @@ export function createMockBackend(): Backend {
       if (!member) {
         const name = (i.newName ?? '').trim();
         if (members.some((m) => m.groupId === groupId && m.name === name)) return { result: 'name_taken' };
-        member = { id: crypto.randomUUID(), groupId, name, status: 'pending' };
+        member = { id: crypto.randomUUID(), groupId, name, status: 'pending', entryShare: s.code };
         members.push(member);
       }
       dev.memberId = member.id;
@@ -484,14 +487,14 @@ export function createMockBackend(): Backend {
       if (!k) throw new BackendError('not_found', 404);
       Object.assign(k, { name, birth_date: birthDate });
     },
-    async createShare(pass, groupIds, target) {
+    async createShare(pass, groupIds, target, mediaIds = []) {
       const fam = parents.get(pass.access)?.familyId;
-      if (!fam || isClosing(fam) || !groupIds.length || groupIds.some((id) => groups.find((g) => g.id === id)?.familyId !== fam)) {
+      if (!fam || isClosing(fam) || !groupIds.length || groupIds.some((id) => groups.find((g) => g.id === id)?.familyId !== fam) || mediaIds.some((id) => media.find((x) => x.id === id)?.family_id !== fam)) {
         throw new BackendError('bad_request', 400, '22023');
       }
       const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
       const code = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => abc[b % abc.length]).join('');
-      shares.push({ code, groupIds, createdAt: Date.now(), targetMemberId: target });
+      shares.push({ code, groupIds, createdAt: Date.now(), targetMemberId: target, mediaIds });
       return code;
     },
     async parentHome(pass): Promise<ParentHome> {
