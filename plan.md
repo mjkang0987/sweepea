@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-29 기준, dev 0.10.0 배포됨)
+## 새 세션 인계 (2026-10-29 기준, dev 0.10.1 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(86~96이 최근).
 
 ### 지금 상태
 
-- dev = 0.10.0, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
+- dev = 0.10.1, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 21개 모두 적용(19번째 `20261029000002_coparent_unique.sql`은 사용자가 SQL 편집기에서, 20번째 `20261029000003_coparent.sql`은 2026-10-29 사용자 지시로 적용 도구). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v174). 화면 바꾸기 전에 반드시 여기부터 고친다. 보드 콩이 그림은 data URI로 넣는다(`/_blob`은 새 보드에서 깨짐)
@@ -1298,6 +1298,7 @@
 - 엄빠 앨범·가족 모아 보기 둘 다
 - 구현: src/lib/zoomswap.ts zoomInPlace(누른 링크 주소를 받아 [data-album] 묶음과 −/+·머리 작은 줄만 갈아 끼움, 보이던 칸 80개까지 view-transition-name, 보던 칸 같은 높이, 초점은 누른 버튼, 실패하면 링크 이동). 묶음은 display: contents라 배치 그대로. 이어 붙이기는 'sp:album-swapped'로 다시 지켜봄
 - 결과(0.10.0): 검토 3회(더 불러오기 중 바꾸면 옛 단계 칸 섞임·중복 → more.ts 세대 번호로 늦은 쪽 버리고 다시 지켜봄, 가족 탭·집 칩·저장 링크의 옛 z → 같이 갈아 끼움, 알림 칸 미리 두기, 갈아 끼우기 실패면 링크 이동, −/+ 키보드 순서는 목록 뒤). e2e parentzoom·familyzoom·albumbleed·loadmore(크롬·웹킷). 남은 것: 실기기 사파리 애니메이션, 핀치
+- 0.10.1: 달 묶음 사이 큰 틈 없앰(사용자 "시기별 gap 삭제"), 사진 간격(2px)만
 - 같이 바꿈(사용자 2026-10-29): 엄빠 달 제목 줄(.sp-p__month-head) 뺌("중복 내용") → 생후 개월은 머리 날짜 줄로('10월 29일 · 생후 21개월', 1·2칸, 아이 하나거나 고른 경우), 화면 읽기용 달 제목만. −/+는 머리 오른쪽 → 오른쪽 아래 떠 있는 유리 알약(탭바 위, "우측 아래 플로팅"). 월별·연별 카드 글자 막은 사용자 값 linear-gradient(#0000, #000000a6 120%)
 
 ### 99. feature/wait-photos — 승인 대기 화면에 받은 사진 보여 주기 (완료, 0.5.5)
