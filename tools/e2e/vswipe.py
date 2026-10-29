@@ -15,7 +15,7 @@ with sync_playwright() as p:
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.goto(B+'/upload'); pg.set_input_files('#up-files',[D+'u0.jpg',D+'u1.jpg',D+'u2.jpg']); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=60000)
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home**',timeout=60000)
-    ids=[h.split('/view/')[1] for h in pg.locator('.sp-p__cell-link').evaluate_all('e=>e.map(a=>a.getAttribute("href"))')]
+    ids=[h.split('/view/')[1].split('?')[0] for h in pg.locator('.sp-p__cell-link').evaluate_all('e=>e.map(a=>a.getAttribute("href"))')]
     pg.goto(B+'/view/'+ids[0]); pg.wait_for_selector('.sp-v__track'); pg.evaluate('window.__same=1')
     check(pg.locator('.sp-v__slide').count()==3,'엄빠: 슬라이드 3장')
     check(pg.locator('a[rel=prev]').is_hidden() and not pg.locator('a[rel=next]').is_hidden(),'첫 장: 다음만')

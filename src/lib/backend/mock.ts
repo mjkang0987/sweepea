@@ -158,8 +158,11 @@ function visibleMedia(pass: Pass, opts: MediaQuery) {
     .sort(newerFirst);
 }
 /** 찍은 날·id 내림차순 비교(앞이 더 최근이면 음수) */
-const newerFirst = (a: { taken_at: string; id: string }, b: { taken_at: string; id: string }) =>
-  a.taken_at === b.taken_at ? (a.id < b.id ? 1 : a.id > b.id ? -1 : 0) : a.taken_at < b.taken_at ? 1 : -1;
+// 시각은 글자가 아니라 시각으로(달 카드 커서는 +09:00, 사진은 Z라 글자로 비교하면 서울 1일 0~9시가 틀림)
+const newerFirst = (a: { taken_at: string; id: string }, b: { taken_at: string; id: string }) => {
+  const ta = Date.parse(a.taken_at), tb = Date.parse(b.taken_at);
+  return ta === tb ? (a.id < b.id ? 1 : a.id > b.id ? -1 : 0) : ta < tb ? 1 : -1;
+};
 
 export function createMockBackend(): Backend {
   return {
@@ -321,6 +324,22 @@ export function createMockBackend(): Backend {
         throw new BackendError('too_many_comments', 429, 'PT429');
       }
       comments.push({ id: crypto.randomUUID(), mediaId: id, memberId: parentKey(pass), at: Date.now(), body: text });
+    },
+    async mediaMonths(pass, opts = {}) {
+      // DB(sp_media_months)처럼: 볼 수 있는 사진, 서울 달, 반응·한마디 많은 순 → 최근
+      const all = visibleMedia(pass, { familyId: opts.familyId, childId: opts.childId });
+      const score = (id: string) => [...reactions].filter((r) => r.startsWith(`${id}|`) && authorName(r.split('|')[1])).length + comments.filter((c) => c.mediaId === id && !c.deleted && authorName(c.memberId)).length;
+      const ym = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
+      const by = new Map<string, typeof all>();
+      for (const x of all) by.set(ym(x.taken_at), [...(by.get(ym(x.taken_at)) ?? []), x]);
+      const k = Math.min(4, Math.max(1, opts.reps ?? 3));
+      return [...by]
+        .sort(([a], [b]) => (a < b ? 1 : -1))
+        .map(([m, xs]) => ({
+          ym: m,
+          n: xs.length,
+          reps: [...xs].sort((a, b) => score(b.id) - score(a.id) || newerFirst(a, b)).slice(0, k).map(({ id, kind, thumb_key, width, height }) => ({ id, kind, thumb_key, width, height })),
+        }));
     },
     async reactionCounts(pass, ids) {
       // DB(sp_reaction_counts)처럼 앞 200장만, 볼 수 있는 사진만(sp_can_view_media 흉내)

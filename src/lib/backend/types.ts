@@ -128,6 +128,13 @@ export interface MediaItem {
   created_at?: string;
 }
 
+/** 월별 보기 한 달(98a): 서울 달, 볼 수 있는 사진 수, 대표(반응·한마디 많은 순 → 최근) */
+export interface MediaMonth {
+  ym: string;
+  n: number;
+  reps: Pick<MediaItem, 'id' | 'kind' | 'thumb_key' | 'width' | 'height'>[];
+}
+
 /** 부모 최근 반응 한 줄 */
 export interface ActivityItem {
   type: 'reaction' | 'comment';
@@ -257,6 +264,8 @@ export interface Backend {
   /** 부모 계정 한마디(1~200자, 하루 30개) */
   parentComment(pass: Pass, mediaId: string, body: string): Promise<void>;
   reactionCounts(pass: Pass, mediaIds: string[]): Promise<ReactionCount[]>;
+  /** 월별 보기: 달마다 사진 수와 대표 reps장(1~4, 기본 3), 최근 달부터 */
+  mediaMonths(pass: Pass, opts?: { familyId?: string; childId?: string; reps?: number }): Promise<MediaMonth[]>;
   /** 크게 보기 한마디 목록(최근 것부터, 볼 수 있는 사진만, 승인된 가족·엄빠 것) */
   mediaComments(pass: Pass, mediaId: string): Promise<MediaComment[]>;
   /** 가족 기기가 본 사진 남기기(볼 수 있는 사진만, 승인된 구성원만, 한 번에 50장). 엄빠 계정은 아무것도 안 남음 */

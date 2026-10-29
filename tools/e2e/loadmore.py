@@ -102,7 +102,7 @@ with sync_playwright() as p:
     back=gp.locator('#'+cid)
     check(back.count()==1 and abs(back.evaluate("e=>e.getBoundingClientRect().top")-top)<3,'가족도 닫으면 같은 사진이 같은 높이')
     # 넘겨 보기: 옆으로 밀면 카드가 더 붙고 'n / 130'
-    gp.goto(B+'/album'); gp.wait_for_timeout(300)
+    gp.goto(B+'/album?v=swipe'); gp.wait_for_timeout(300)  # 앞서 고른 모아 보기가 기억돼 있어 넘겨 보기를 직접 고름(98a)
     check(gp.locator('.sp-a__slide').count()==60 and '/ 130' in gp.locator('.sp-a__pos').first.inner_text(),'넘겨 보기 60장, n / 130')
     gp.evaluate("(()=>{const s=document.querySelector('.sp-a__swipe');s.scrollLeft=s.scrollWidth})()")
     gp.wait_for_function("document.querySelectorAll('.sp-a__slide').length===120",timeout=20000)

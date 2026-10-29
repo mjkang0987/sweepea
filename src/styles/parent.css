@@ -2313,3 +2313,143 @@
   padding: var(--space-3) var(--space-4) var(--space-4);
   border-top: 1px solid var(--separator);
 }
+
+/* 앨범 사진 크기 −/+ (98a, 디자인 ParentHomeZoom): 머리 오른쪽 둥근 유리 버튼. 1·2·3칸(2 = 엇갈린 배열) → 월별 달 카드 */
+.sp-p__albumhead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-3);
+  align-items: center;
+}
+.sp-p__zoom {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  gap: var(--space-2);
+}
+.sp-p__zoom-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--glass-clear);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator);
+  color: var(--label);
+  font-size: 1.5rem;
+  line-height: 1;
+  text-decoration: none;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__zoom-btn {
+    background: var(--fill);
+  }
+}
+@media (forced-colors: active) {
+  .sp-p__zoom-btn {
+    border: 1px solid CanvasText;
+  }
+}
+/* 1칸: 휴대폰은 한 줄에 한 장 원래 모양(--ar, 아주 긴 사진은 0.6~1.6 비율로 잘림), 넓은 화면은 2줄 엇갈림(아래) */
+.sp-p .sp-p__grid--z1 {
+  --cols: 1;
+  grid-auto-rows: auto;
+}
+.sp-p .sp-p__grid--z1 .sp-p__cell {
+  grid-column: 1;
+  grid-row: auto;
+  aspect-ratio: var(--ar, 1);
+}
+/* 3칸: 정사각 격자 */
+.sp-p .sp-p__grid--z3 {
+  --cols: 3;
+  grid-auto-rows: auto;
+}
+.sp-p .sp-p__grid--z3 .sp-p__cell {
+  grid-column: auto;
+  grid-row: auto;
+  aspect-ratio: 1;
+}
+@media (min-width: 64rem) {
+  .sp-p.sp-p--wide .sp-p__grid--z1 {
+    --cols: 2;
+    grid-auto-rows: var(--u);
+  }
+  .sp-p.sp-p--wide .sp-p__grid--z1 .sp-p__cell {
+    grid-column: var(--c2);
+    grid-row: var(--r2) / span var(--s2);
+    aspect-ratio: auto;
+  }
+  .sp-p.sp-p--wide .sp-p__grid--z3 {
+    --cols: 6;
+  }
+}
+/* cqi를 모르는 옛 브라우저: 넓은 화면 1칸도 엇갈림 대신 한 줄 원래 모양(줄 높이 계산이 깨지지 않게, 리뷰 2026-10-29) */
+@supports not (container-type: inline-size) {
+  .sp-p.sp-p--wide .sp-p__grid--z1 {
+    grid-auto-rows: auto;
+  }
+  .sp-p.sp-p--wide .sp-p__grid--z1 .sp-p__cell {
+    grid-row: auto;
+    aspect-ratio: var(--ar, 1);
+  }
+}
+/* 끝 단계 버튼(href 없는 링크) */
+.sp-p__zoom-btn[aria-disabled='true'] {
+  opacity: 0.35;
+}
+@media (forced-colors: active) {
+  .sp-p__zoom-btn[aria-disabled='true'] {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}
+/* 월별(98a): 달 카드 = 대표 3장 + 달·장 수, 누르면 그 달부터 3칸 */
+.sp-p__mcards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-5);
+}
+.sp-p__mcard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  row-gap: var(--space-2);
+  align-items: baseline;
+  color: var(--label);
+  text-decoration: none;
+}
+.sp-p__mcard-pics {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--fill);
+}
+.sp-p__mcard-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+.sp-p__mcard-title {
+  font-size: var(--title-2-size);
+  line-height: var(--title-2-line);
+  font-weight: 700;
+}
+.sp-p__mcard-count {
+  font-size: var(--footnote-size);
+  color: var(--label-2);
+}
+@media (min-width: 64rem) {
+  .sp-p--wide .sp-p__mcards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+}

@@ -7,8 +7,12 @@ import { callName } from './ko';
 import { signedMediaUrl } from './signed';
 import { UUID } from './media';
 
-export const ZOOMS = [1, 2, 3, 5] as const;
+/** 사진 크기 단계(98a): 1·2·3칸 = 사진 전부, 'm' = 월별(달마다 대표). 크게 = 전부, 줄이면 대표(사진 앱처럼) */
+export const ZOOMS = [1, 2, 3, 'm'] as const;
 export type Zoom = (typeof ZOOMS)[number];
+const toZoom = (v: string | null | undefined): Zoom | undefined => ZOOMS.find((z) => String(z) === v);
+const chosen = (url: URL) => (url.pathname === '/home' || url.pathname === '/album') && !url.searchParams.has('before') && !url.searchParams.has('to');
+const KEEP = { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: import.meta.env.PROD, maxAge: 365 * 24 * 3600 };
 
 export interface AlbumQuery {
   f?: string;
@@ -16,24 +20,43 @@ export interface AlbumQuery {
   z: Zoom;
 }
 
-export function readQuery(url: URL, familyIds: string[]): AlbumQuery {
-  const f = url.searchParams.get('f') ?? undefined;
-  const z = Number(url.searchParams.get('z'));
-  return {
-    f: f && familyIds.includes(f) ? f : undefined,
-    v: url.searchParams.get('v') === 'list' ? 'list' : 'swipe',
-    z: (ZOOMS as readonly number[]).includes(z) ? (z as Zoom) : 2,
-  };
+/** 칸 단계: 주소 ?z=가 있으면 그것, 없으면 기억한 단계, 그것도 없으면 2(사용자 2026-10-29 "보기 형식은 기억하도록").
+ *  기억은 목록 화면에서 −/+·탭으로 고른 것만: 달 카드로 들어간 쪽·이어지는 쪽(?before=), 크게 보기에서 닫고 돌아온 쪽(?to=), 크게 보기 화면은 빼고 */
+export function pickZoom(url: URL, cookies: AstroCookies, name: string): Zoom {
+  const z = toZoom(url.searchParams.get('z'));
+  if (z !== undefined) {
+    if (chosen(url)) cookies.set(name, String(z), KEEP);
+    return z;
+  }
+  const saved = toZoom(cookies.get(name)?.value) ?? 2;
+  // 크게 보기·사진 정보 수정에서 돌아온 쪽(?to=)은 기억한 단계가 월별이어도 칸으로(보던 사진 자리로, 리뷰 2026-10-29)
+  return saved === 'm' && url.searchParams.has('to') ? 3 : saved;
 }
 
-/** 기본값은 주소에서 뺀다(짧은 주소) */
+/** 가족 앨범 주소 읽기. 보기(넘겨/모아)와 칸 단계는 주소에 없으면 그 기기에 기억한 것(sp_av·sp_az) */
+export function readQuery(url: URL, cookies: AstroCookies, familyIds: string[]): AlbumQuery {
+  const f = url.searchParams.get('f') ?? undefined;
+  const vp = url.searchParams.get('v');
+  if ((vp === 'list' || vp === 'swipe') && chosen(url)) cookies.set('sp_av', vp, KEEP);
+  const v = vp === 'list' || vp === 'swipe' ? vp : cookies.get('sp_av')?.value === 'list' ? 'list' : 'swipe';
+  return { f: f && familyIds.includes(f) ? f : undefined, v, z: pickZoom(url, cookies, 'sp_az') };
+}
+
+/** 보기·칸은 늘 주소에 적는다(기억한 값보다 링크가 먼저라, 빼면 기억한 값으로 바뀌어 버림) */
 export function albumHref(q: AlbumQuery, path = '/album'): string {
   const p = new URLSearchParams();
   if (q.f) p.set('f', q.f);
-  if (q.v === 'list') p.set('v', 'list');
-  if (q.z !== 2) p.set('z', String(q.z));
-  const s = p.toString();
-  return s ? `${path}?${s}` : path;
+  p.set('v', q.v);
+  p.set('z', String(q.z));
+  return `${path}?${p}`;
+}
+
+/** 달 카드에서 그 달로: 그 달 끝(다음 달 1일 0시, 서울) 앞부터 3칸으로. 이어지는 쪽이라 단계는 기억하지 않음 */
+export function monthCursor(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+  // id는 가장 작은 값: 다음 달 1일 0시 정각에 찍힌 사진이 이 달 쪽에 섞이지 않게
+  return `${next}-01T00:00:00+09:00~00000000-0000-0000-0000-000000000000`;
 }
 
 /** 목록 한 번에 그리는 장 수(사용자 2026-10-28 "60장씩, 끝까지") */
@@ -121,7 +144,7 @@ export async function loadAlbum(cookies: AstroCookies, url: URL): Promise<AlbumL
   const { families } = await backend.me(pass);
   const open = families.filter(isOpen);
   if (open.length === 0) return { redirect: families.length ? '/wait' : '/' };
-  const q = readQuery(url, open.map((f) => f.family_id));
+  const q = readQuery(url, cookies, open.map((f) => f.family_id));
   const kids = new Map(open.map((f) => [f.family_id, callName(f.child_name ?? '아이')]));
   return { pass, open, kids, q, base: { familyId: q.f }, name: (open.find((f) => f.family_id === q.f) ?? open[0]).name };
 }

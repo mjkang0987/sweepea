@@ -9,7 +9,7 @@ import { sayNote } from '../../lib/say';
 import InstallGuide from '../../components/InstallGuide.astro';
 import { callName } from '../../lib/ko';
 import { INSTALL_COOKIE } from '../../lib/install';
-import { albumHref, dayLabel, loadAlbum, loadPage, loadReacts, ZOOMS } from '../../lib/album';
+import { albumHref, dayLabel, loadAlbum, loadPage, loadReacts, monthCursor, ZOOMS } from '../../lib/album';
 import { getBackend } from '../../lib/backend';
 import { signedMediaUrl } from '../../lib/signed';
 import { masonry, ratioOf } from '../../lib/masonry';
@@ -39,7 +39,8 @@ const [page, total, recent200] = await Promise.all([
 ]);
 const { items } = page;
 const sep = albumHref(q).includes('?') ? '&' : '?';
-const nextHref = page.next ? `${albumHref(q)}${sep}before=${encodeURIComponent(page.next)}` : null;
+// 월별(달 카드)은 다음 쪽이 없다
+const nextHref = page.next && !(q.v === 'list' && q.z === 'm') ? `${albumHref(q)}${sep}before=${encodeURIComponent(page.next)}` : null;
 // 넘겨 보기 반응·한마디 뒤 돌아올 곳: 그 카드까지 그리게 to=, 가운데로 #p-
 const backTo = (id: string) => `${here}${sep}to=${id}#p-${id}`;
 // 한마디 결과는 보낸 카드에만(sm=사진 id)
@@ -47,7 +48,9 @@ const say = Astro.url.searchParams.get('say');
 const sayFor = Astro.url.searchParams.get('sm');
 // 한마디 보낸 결과는 카드 아래 상자 대신 화면 아래 토스트로(디자인)
 const sayToast = sayFor ? sayNote(say) : null;
-const reacts = await loadReacts(pass, items.map((m) => m.id));
+// 월별은 달 카드만 그려서 칸 반응 수·사진 주소가 필요 없다
+const monthView = q.v === 'list' && q.z === 'm';
+const reacts = monthView ? new Map() : await loadReacts(pass, items.map((m) => m.id));
 const here = albumHref(q);
 const many = open.length > 1;
 const kidTitle = q.f ? kids.get(q.f)! : [...kids.values()].join('·');
@@ -57,7 +60,7 @@ const latest = items[0] && page.offset === 0 ? dayLabel(items[0].taken_at) : nul
 const showTag = many && !q.f;
 
 const cards = await Promise.all(
-  items.map(async (m, i) => ({
+  (monthView ? [] : items).map(async (m, i) => ({
     ...m,
     href: albumHref(q, `/album/${m.id}`),
     // 넘겨 보기는 큰 카드라 보기용(영상은 포스터, 없으면 썸네일), 모아 보기는 썸네일. 넘겨 보기는 앞 2장 말고는 lazy
@@ -103,6 +106,19 @@ const freshThumbs = await Promise.all(fresh.slice(0, 3).map((m) => signedMediaUr
 const freshKid = fresh.length ? kids.get(fresh[0].family_id) ?? '아이' : '';
 const fewer = zi < ZOOMS.length - 1 ? albumHref({ ...q, z: ZOOMS[zi + 1] }) : null;
 const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
+// 월별(98a): 달 카드(대표 3장 + 'N장'), 누르면 그 달부터 3칸. 이 단계의 본문이라 실패하면 안내 글
+const monthRows = q.v === 'list' && q.z === 'm' && items.length ? await getBackend().mediaMonths(pass, { familyId: q.f, reps: 3 }).catch(() => null) : null;
+const thisYear = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric' }).format(new Date());
+const monthCards = monthRows
+  ? await Promise.all(
+      monthRows.map(async (mo) => ({
+        label: mo.ym.slice(0, 4) === thisYear ? `${Number(mo.ym.slice(5))}월` : `${mo.ym.slice(0, 4)}년 ${Number(mo.ym.slice(5))}월`,
+        n: mo.n,
+        href: `${albumHref({ ...q, z: 3 })}&before=${encodeURIComponent(monthCursor(mo.ym))}`,
+        pics: await Promise.all(mo.reps.map((r) => signedMediaUrl(r.thumb_key))),
+      })),
+    )
+  : null;
 ---
 
 <Family title={title} wide={q.v !== 'swipe'}>
@@ -224,10 +240,29 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
           </a>
         )}
         <nav class="sp-a__zoom" aria-label="사진 크기">
-          {fewer ? <a class="sp-a__zoom-btn" href={fewer} aria-label="작게(한 줄에 더 많이)">−</a> : <span class="sp-a__zoom-btn sp-a__zoom-btn--off" aria-hidden="true">−</span>}
-          {more ? <a class="sp-a__zoom-btn" href={more} aria-label="크게(한 줄에 더 적게)">+</a> : <span class="sp-a__zoom-btn sp-a__zoom-btn--off" aria-hidden="true">+</span>}
+          {/* 끝 단계는 꺼진 링크(화면 읽기에도 '사용 불가'로 들리게) */}
+          <a class="sp-a__zoom-btn" href={fewer ?? undefined} role="link" aria-disabled={fewer ? undefined : 'true'} aria-label={q.z === 3 ? '작게(달마다 대표 사진)' : '작게(한 줄에 더 많이)'}>−</a>
+          <a class="sp-a__zoom-btn" href={more ?? undefined} role="link" aria-disabled={more ? undefined : 'true'} aria-label="크게(한 줄에 더 적게)">+</a>
         </nav>
-        {days.map((d) => (
+        {q.z === 'm' ? (
+          monthCards ? (
+            <ul class="sp-a__mcards">
+              {monthCards.map((mo) => (
+                <li>
+                  <a class="sp-a__mcard" href={mo.href}>
+                    <span class="sp-a__mcard-pics" aria-hidden="true">
+                      {mo.pics.map((src) => <img class="sp-a__mcard-img" src={src} alt="" loading="lazy" decoding="async" />)}
+                    </span>
+                    <span class="sp-a__mcard-title">{mo.label}</span>
+                    <span class="sp-a__mcard-count">{mo.n.toLocaleString('ko-KR')}장</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p class="sp-a__lead">달마다 모아 보기를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
+          )
+        ) : days.map((d) => (
           <section class="sp-a__day" data-day={d.day} aria-label={`${d.day} ${d.cards.length}장`}>
             <h2 class="sp-a__day-title">
               {d.day} <span class="sp-a__day-count">· {d.cards.length}장</span>
@@ -245,9 +280,9 @@ const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
                       loading="lazy"
                       decoding="async"
                     />
-                    {showTag && q.z <= 2 && <span class="sp-a__tag sp-a__tag--on" aria-hidden="true">{c.kid}</span>}
+                    {showTag && (q.z === 1 || q.z === 2) && <span class="sp-a__tag sp-a__tag--on" aria-hidden="true">{c.kid}</span>}
                     {c.kind === 'video' && <span class="sp-a__play" aria-hidden="true">▶</span>}
-                    {(reacts.get(c.id)?.counts.heart || reacts.get(c.id)?.counts.comment) && q.z <= 3 && (
+                    {(reacts.get(c.id)?.counts.heart || reacts.get(c.id)?.counts.comment) && (
                       <span class="sp-a__badge">
                         {reacts.get(c.id)?.counts.heart ? <span><svg class="sp-a__badge-heart" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.2 5 6.7 5c2.1 0 3.6 1.2 4.3 2.4h2C13.7 6.2 15.2 5 17.3 5c3.5 0 5.5 3.6 4.2 6.8C19.5 16.4 12 21 12 21z"></path></svg><span class="sp-vh">하트 </span>{reacts.get(c.id)?.counts.heart}</span> : null}
                         {reacts.get(c.id)?.counts.comment ? <span><span class="sp-vh">, </span>한마디 {reacts.get(c.id)?.counts.comment}</span> : null}

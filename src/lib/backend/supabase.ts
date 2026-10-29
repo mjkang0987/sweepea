@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaComment, MediaItem, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
+import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaComment, MediaItem, MediaMonth, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -320,6 +320,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     noteViews: (pass, ids) => (ids.length ? rpc<void>(pass, 'sp_note_views', { p_media_ids: ids }) : Promise.resolve()),
     mediaViewers: async (pass, id) => (await rpc<{ name: string }[]>(pass, 'sp_parent_media_viewers', { p_media_id: id })).map((x) => x.name),
     deleteComment: (pass, id) => rpc<void>(pass, 'sp_delete_comment', { p_comment_id: id }),
+    mediaMonths: (pass, opts = {}) => rpc<MediaMonth[]>(pass, 'sp_media_months', { p_family: opts.familyId ?? null, p_child: opts.childId ?? null, p_reps: opts.reps ?? 3 }),
     reactionCounts: (pass, ids) => (ids.length ? rpc<ReactionCount[]>(pass, 'sp_reaction_counts', { p_media_ids: ids }) : Promise.resolve([])),
   };
 }
