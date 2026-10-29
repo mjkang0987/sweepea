@@ -437,6 +437,14 @@ export function createMockBackend(): Backend {
       m.status = status;
       if (status === 'rejected') for (const d of devices.values()) if (d.memberId === id) d.status = 'revoked';
     },
+    async renameMember(pass, id, name) {
+      // DB(members_parent_write + unique(group_id, display_name))처럼: 내 가족방 승인된 사람만, 같은 그룹 같은 이름이면 409
+      const fam = parents.get(pass.access)?.familyId;
+      const m = members.find((x) => x.id === id && x.status === 'active' && groups.find((g) => g.id === x.groupId)?.familyId === fam);
+      if (!m) throw new BackendError('not_found', 404);
+      if (members.some((x) => x.id !== id && x.groupId === m.groupId && x.name === name)) throw new BackendError('duplicate', 409, '23505');
+      m.name = name;
+    },
     async setDeviceStatus(pass, id, status) {
       const fam = parents.get(pass.access)?.familyId;
       const d = [...devices.values()].find((x) => x.id === id && x.familyId === fam && x.status === 'pending');

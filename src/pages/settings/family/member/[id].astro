@@ -26,6 +26,10 @@ const doneText: Record<string, string> = {
   'upload-on': '이제 사진을 올릴 수 있어요.',
   'upload-off': '사진 올리기를 껐어요.',
   gone: '들어와 있는 휴대폰이 없어요. 휴대폰으로 들어온 뒤에 켤 수 있어요.',
+  renamed: '이름을 바꿨어요. 그분 휴대폰에도 이 이름으로 보여요.',
+  // 목록에 안 보이는 예전 이름(거절·내보낸 분)도 같은 그룹에선 막혀서 '쓰고 있거나 예전에 쓴'(리뷰 2026-10-29)
+  'name-taken': '이 그룹에서 쓰고 있거나 예전에 쓴 이름이에요. 다른 이름으로 해 주세요.',
+  'name-bad': '이름은 1~12자로 써 주세요.',
   error: '처리하지 못했어요. 다시 눌러 주세요.',
 };
 ---
@@ -42,10 +46,21 @@ const doneText: Record<string, string> = {
       <p class="sp-p__hint">{group} · 휴대폰 {devices.length}대{lastSeen && ` · ${seenLabel(lastSeen, Date.now())}`}</p>
     </div>
   </div>
-  {done && doneText[done] && <Toast text={doneText[done]} tone={['gone', 'error'].includes(done) ? 'error' : 'ok'} focus />}
+  {done && doneText[done] && <Toast text={doneText[done]} tone={['gone', 'error', 'name-taken', 'name-bad'].includes(done) ? 'error' : 'ok'} focus />}
   {/* 스크립트로 바꾼 결과를 읽어 주는 늘 있는 알림 칸 */}
   <p class="sp-vh" id="mem-live" role="status"></p>
   <p class="sp-vh" id="mem-urgent" role="alert"></p>
+
+  {/* 이름 바꾸기(사용자 2026-10-29 "이름 바꿀 수 있게 해줘, 접속한 사람", 디자인 MemberDetail): 가족이 스스로 적은 이름을 엄빠가 부르는 이름으로 */}
+  <form class="sp-p__form sp-p__form--fit" method="post">
+    <div class="sp-p__field">
+      <label class="sp-p__label" for="m-name">부르는 이름</label>
+      <input class="sp-p__input sp-p__input--filled" id="m-name" name="name" type="text" required maxlength="12" autocomplete="off" value={m.display_name} aria-describedby={done === 'name-taken' || done === 'name-bad' ? 'm-name-err m-name-hint' : 'm-name-hint'} aria-invalid={done === 'name-taken' || done === 'name-bad' ? 'true' : undefined} />
+      {(done === 'name-taken' || done === 'name-bad') && <p class="sp-p__error" id="m-name-err">{doneText[done]}</p>}
+      <p class="sp-p__hint" id="m-name-hint">앨범·반응에 보이는 이름이에요. 그분 휴대폰에도 이 이름으로 보여요.</p>
+    </div>
+    <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value={`rename:${m.id}`}>이름 바꾸기</button>
+  </form>
 
   <form class="sp-p__panel" method="post">
     <div class="sp-p__panel-row sp-p__panel-line">
