@@ -26,7 +26,6 @@ with sync_playwright() as p:
     seg.get_by_role('link',name='하린').click(); pg.wait_for_url('**k=**')
     check(pg.locator('.sp-p__cell').count()==1,'하린 1장')
     check(pg.get_by_role('navigation',name='아이 고르기').get_by_role('link',name='하린').get_attribute('aria-current')=='page','하린 선택 표시')
-    check(pg.locator('.sp-p__kid').count()<=1 and '도윤' not in ''.join(pg.locator('.sp-p__kid').all_inner_texts()),'아이 카드도 하린만')
     pg.get_by_role('navigation',name='아이 고르기').get_by_role('link',name='도윤').click(); pg.wait_for_url('**k=**')
     check(pg.locator('.sp-p__cell').count()==1,'도윤 1장')
     pg.goto(B+'/home?k=nope'); check(pg.locator('.sp-p__cell').count()==2,'모르는 값이면 전체')

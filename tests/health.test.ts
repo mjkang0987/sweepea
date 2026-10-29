@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addAge, HEALTH_ITEMS, healthState, splitSchedule } from '../src/lib/health.ts';
+import { addAge, HEALTH_ITEMS, healthState, monthDay, nextOf, splitSchedule } from '../src/lib/health.ts';
 
 const item = (k: string) => HEALTH_ITEMS.find((i) => i.key === k)!;
 
@@ -42,4 +42,29 @@ test('A형간염 2차는 1차를 한 날 6개월 뒤부터', () => {
   assert.deepEqual(row.state, { kind: 'soon', from: '2028-01-17' });
   const later = keys(new Map([['hepa-1', '2027-07-17']]), '2028-06-01');
   assert.ok(later.upcoming.some((x) => x.item.key === 'hepa-2'), '오래돼도 다가오는 일정');
+});
+
+test('다음 일정 하나: 아직이면 시작일·남은 날, 이미 가능하면 0', () => {
+  const today = '2026-10-29';
+  for (const birth of ['2025-11-08', '2026-08-30', '2024-01-10']) {
+    const n = nextOf(birth, today, new Map());
+    const want = splitSchedule(birth, today, new Map()).upcoming[0];
+    assert.equal(n.what, want?.item.name ?? null);
+    if (want?.state.kind === 'soon') {
+      assert.equal(n.from, want.start);
+      assert.equal(n.inDays, Math.round((Date.parse(want.start) - Date.parse(today)) / 86_400_000));
+      assert.ok(n.inDays > 0);
+    } else {
+      assert.equal(n.from, null);
+      assert.equal(n.inDays, 0);
+    }
+  }
+});
+test('다음 일정이 아직이면 시작일과 남은 날(앞 항목을 다 한 신생아)', () => {
+  // 2026-09-20생, 10월 29일: B형간염 1·2차를 했으면 다음은 2개월 DTaP 1차(11월 20일부터, 22일 남음)
+  const done = new Map([['hepb-1', '2026-09-20'], ['hepb-2', '2026-10-20']]);
+  assert.deepEqual(nextOf('2026-09-20', '2026-10-29', done), { what: 'DTaP 1차', from: '2026-11-20', inDays: 22 });
+});
+test('월 일 글자', () => {
+  assert.equal(monthDay('2026-12-07'), '12월 7일');
 });

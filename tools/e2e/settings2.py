@@ -1,4 +1,4 @@
-# 아이 추가·고치기, 가족 화면 글자 크기, 계정
+# 아이 추가·변경, 가족 화면 글자 크기, 계정
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D='/home/claude/sweepea/tools/e2e/'
 def check(c,msg):
@@ -19,11 +19,11 @@ with sync_playwright() as p:
     pg.get_by_role('button',name='추가').click(); check(pg.get_by_role('alert').inner_text().startswith('이름을'),'빈 이름은 오류')
     check(pg.locator('#name').get_attribute('aria-invalid')=='true','오류 칸 표시')
     pg.fill('#name','도윤'); pg.get_by_role('button',name='추가').click(); pg.wait_for_url('**done=added**')
-    check(pg.locator('.sp-p__row',has_text='도윤').count()==1,'아이 추가됨'); shot('2')
-    pg.locator('.sp-p__row',has_text='도윤').click(); pg.wait_for_url('**/children/**')
-    check(pg.locator('#birth').input_value()=='2026-08-30','고치기에 원래 값')
+    check(pg.locator('.sp-p__row--tall',has_text='도윤').count()==1,'아이 추가됨'); shot('2')
+    pg.locator('.sp-p__row--tall',has_text='도윤').click(); pg.wait_for_url('**/children/**')
+    check(pg.locator('#birth').input_value()=='2026-08-30','변경 화면에 원래 값')
     pg.fill('#name','도윤이'); pg.get_by_role('button',name='저장').click(); pg.wait_for_url('**done=saved**')
-    check(pg.locator('.sp-p__row',has_text='도윤이').count()==1,'고친 이름')
+    check(pg.locator('.sp-p__row--tall',has_text='도윤이').count()==1,'변경한 이름')
     pg.goto(B+'/settings/children/00000000-0000-4000-8000-000000000999'); check(pg.url.endswith('/settings/children'),'없는 아이는 목록으로')
     pg.goto(B+'/upload'); check(pg.get_by_label('도윤이').count()==1,'올리기 화면 아이 고르기에 새 아이')
     # 글자 크기

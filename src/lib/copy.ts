@@ -17,12 +17,25 @@ export function copyText(input: HTMLInputElement, text: string, say: (text: stri
   else pick();
 }
 
-/** 복사 버튼 누르기를 한 번만 걸어 둔다 */
+/** 화면 아래 토스트(Toast.astro와 같은 모양, 잠시 뒤 사라짐). 화면 읽기는 say가 맡아 역할은 뺀다 */
+function toast(text: string, near: Element) {
+  const area = near.closest('.sp-p') ?? document.body;
+  area.querySelector('.sp-toast')?.remove();
+  const p = document.createElement('p');
+  p.className = 'sp-toast';
+  const span = document.createElement('span');
+  span.className = 'sp-toast__text';
+  span.textContent = text;
+  p.appendChild(span); // append는 Worker 타입(HTMLRewriter)과 겹쳐 타입 검사가 막음
+  area.insertBefore(p, area.firstChild);
+}
+
+/** 복사 버튼 누르기를 한 번만 걸어 둔다. 결과는 토스트로 보이고 say로 읽힌다 */
 export function wireCopy(say: (text: string) => void) {
   revealCopy(document);
   document.addEventListener('click', (e) => {
     const b = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-copy]') : null;
     const input = b && document.getElementById(b.dataset.copy!);
-    if (input instanceof HTMLInputElement) copyText(input, input.value, say);
+    if (input instanceof HTMLInputElement) copyText(input, input.value, (t) => (toast(t, input), say(t)));
   });
 }

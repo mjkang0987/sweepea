@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-29 기준, dev 0.5.6 배포됨)
+## 새 세션 인계 (2026-10-29 기준, dev 0.6.0 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(86~96이 최근).
 
 ### 지금 상태
 
-- dev = 0.5.6, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
+- dev = 0.6.0, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 18개 모두 적용(18번째 `20261029000001_views.sql` 보신 기록, 2026-10-29 사용자 승인). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v174). 화면 바꾸기 전에 반드시 여기부터 고친다. 보드 콩이 그림은 data URI로 넣는다(`/_blob`은 새 보드에서 깨짐)
@@ -1286,3 +1286,12 @@
 - 요구(사용자 2026-10-29 "길게 눌러도 복사 안 되던데"): 원인은 아이폰 사파리가 읽기 전용 칸을 길게 눌러도 복사 메뉴를 안 띄움 + 링크 카드에 복사 버튼이 없었음
 - 고침: `src/lib/copy.ts`(wireCopy·revealCopy·copyText) — 설정 › 가족·그룹 화면 링크 카드에 '주소 복사'(스크립트 있을 때만 보임), 복사 못 하면 칸을 골라 두고 "휴대폰은 칸을 길게 눌러 복사를, 컴퓨터는 Ctrl+C" 안내(벗어나면 다시 읽기 전용). 올리기 화면도 같은 함수. 칸 이름의 '(길게 눌러 복사)' 지움, 디자인 GroupLinkCard·공동 관리자 카드 v183
 - 검사: tools/e2e/copylink.py 크롬·사파리 엔진, groups·family·bottombar e2e. 검토 1회(3관점) 반영. 남은 것: 실제 아이폰 사파리·카톡 안 브라우저 확인(사용자), 비동기 실패 뒤 칸 선택이 아이폰에서 보이는지 모름
+- 0.5.7(사용자 2026-10-29): 주소 복사하면 '주소를 복사했어요.' 토스트("토스트 하나만"), 화면 글 '고치기'는 '변경'으로(아이 설정, 보드 ChildSettings·ChildHealthToast)
+
+### 102. feature/glass-tabbar — 엄빠 아래 탭바를 떠 있는 유리 캡슐로 (완료, 0.6.0)
+- 요구(사용자 2026-10-29 "애플에서 사용하는 원형 유리배경 … 배너 말고 네비게이션", "보드부터 바꾸기"): iOS 26 리퀴드 글래스 탭바처럼 화면 끝에 붙은 막대 대신 양옆 20px·아래 여백(safe-area 위)을 둔 둥근 캡슐
+- 디자인(보드 ParentHomeGlass·SettingsGlass 라이트·다크, 스크립트 tools/design/glasstab.py): 기존 유리 토큰 `sp-glass-clear`(흐림·반투명·테두리 빛, 투명도 줄이기면 단색), 고른 탭은 캡슐 안 둥근 강조(--fill), 배지는 아이콘 오른쪽 위, 내용이 탭바 밑으로 비침. 캡슐 오른쪽에 둥근 유리 '사진 추가(+)' 버튼(사용자 "하단 네비에 사진추가 버튼 하나", iOS 26 탭바 옆 원형 버튼처럼, 탭 있는 모든 엄빠 화면), 앨범 위에 떠 있던 '사진 추가하기'는 뺌
+- 구현 방향: `src/layouts/Parent.astro` 탭 nav와 parent.css 탭바만 바꿈(마크업 거의 그대로), 아래 고정 막대(`.sp-p__savebar`·토스트 자리)와 겹치지 않게 높이 변수 정리, 넓은 화면(64rem~ 메뉴 위)은 그대로. 웹은 빛 굴절 효과는 못 냄
+- 나머지 보드(탭바 있는 엄빠 보드 수십 장)는 구현 뒤 한꺼번에 같은 모양으로
+- 접종·검진 이관(사용자 2026-10-29 "상단에 접종정보 영역 너무 공간 차지" → "알림 탭+설정으로 이관"): 홈 맨 위 아이 카드(콩이·생후·다음 접종) 뺌. 알림 탭 맨 위 '다가오는 일정' 카드(다음 접종·검진이 2주 안일 때만, 보드 ReactionsHealth), 설정 › 아이 각 아이 아래 '접종·검진 일정 · DTaP 4차 12/17' 줄(보드 ChildSettings), 스위치 이름 '알림 탭에 다가오는 일정 보기'. 지금 /health로 가는 길은 홈 카드뿐이라 두 길을 먼저 만든 뒤 홈 카드를 뺀다. 홈 카드에 있던 콩이 자라는 그림·백일/생일은 어디로 갈지 따로 확인 필요
+- 결과(0.6.0): Parent.astro 탭 nav를 캡슐(.sp-p__tabs-pill) + 둥근 사진 추가(.sp-p__tab-add)로, 탭바 높이는 `--tabbar-top` 한 변수(아래 막대·토스트·여백), 넓은 화면은 위 메뉴(지금 탭 밑줄), 캡슐 최대 30rem, 탭바 전용 유리 토큰 `--glass-nav`(다크 0.8), 고르지 않은 탭도 --label, 고대비 테두리. 홈 아이 카드·떠 있던 사진 추가하기 지움. `src/lib/kidHealth.ts`(nextHealth)·health.ts(nextOf·monthDay) → 알림 탭 '다가오는 일정'(2주 안), 설정 › 아이 '접종·검진 일정 · ○○ M월 D일부터', 접종 화면 돌아가기는 ?from=alerts|settings(바로 저장해도 유지 — AutoSave가 done만 지우게). 검토 2회(두 번째 저장 뒤 돌아가기 버그·대비·고대비·가로 폭·넓은 화면 구분) + 전체 e2e 재실행. 검사 tools/e2e/glasstab.py(크롬·사파리 엔진), 예전 화면 기준 e2e 6개 맞춤. 남은 것: 실제 아이폰 safe-area·주소창 접힘, 나머지 엄빠 보드의 옛 탭바 그림, 홈에서 빠진 '자라는 콩이' 그림 둘 곳
