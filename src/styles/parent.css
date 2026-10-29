@@ -744,24 +744,6 @@
   /* 칸 높이 단위를 이 폭(cqi) 기준으로 */
   container-type: inline-size;
 }
-.sp-p__month-title {
-  margin: 0;
-  font-size: var(--title-2-size);
-  line-height: var(--title-2-line);
-  font-weight: 700;
-}
-.sp-p__month-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.sp-p__month-count {
-  margin: 0;
-  font-size: var(--footnote-size);
-  line-height: 1.125rem;
-  color: var(--label-2);
-}
 /* 엇갈린 배열(디자인): 서버가 정한 줄·칸 자리(--c·--r·--s, src/lib/masonry.ts). 높이 단위 --u = 줄 폭 / 40 */
 .sp-p__grid {
   --cols: 2;
@@ -1440,9 +1422,6 @@
 @media (max-width: 32rem) {
   .sp-p--wide .sp-p__month {
     margin-inline: calc(-1 * var(--space-5));
-  }
-  .sp-p--wide .sp-p__month-head {
-    padding-inline: var(--space-5);
   }
   .sp-p--wide .sp-p__grid {
     --gap: 2px;
@@ -2314,18 +2293,20 @@
   border-top: 1px solid var(--separator);
 }
 
-/* 앨범 사진 크기 −/+ (98a, 디자인 ParentHomeZoom): 머리 오른쪽 둥근 유리 버튼. 1·2·3칸(2 = 엇갈린 배열) → 월별 달 카드 */
-.sp-p__albumhead {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: var(--space-3);
-  align-items: center;
-}
+/* 앨범 사진 크기 −/+ (98a·98e, 디자인 ParentHomeZoom): 오른쪽 아래 떠 있는 유리 알약(사용자 "우측 아래 플로팅"),
+   탭바 위에(넓은 화면은 탭이 위라 화면 아래). 1·2·3·5칸(2 = 엇갈린 배열) → 월별 → 연별 */
 .sp-p__zoom {
-  grid-column: 2;
-  grid-row: 1 / span 2;
+  position: fixed;
+  z-index: 3;
+  right: max(var(--space-5), env(safe-area-inset-right));
+  bottom: calc(var(--tabbar-top) + var(--space-3));
   display: flex;
-  gap: var(--space-2);
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--glass-nav);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator), 0 8px 24px rgba(0, 0, 0, 0.16);
 }
 .sp-p__zoom-btn {
   width: 2.75rem;
@@ -2334,22 +2315,37 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--glass-clear);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator);
   color: var(--label);
   font-size: 1.5rem;
   line-height: 1;
   text-decoration: none;
 }
+/* 떠 있는 −/+ 아래로 마지막 줄·포커스가 가리지 않게 */
+.sp-p--tabbed:has(.sp-p__zoom) {
+  padding-bottom: calc(var(--tabbar-top) + var(--space-3) + 3rem + var(--space-6));
+}
+.sp-html:has(.sp-p__zoom) {
+  scroll-padding-bottom: calc(var(--tabbar-top) + var(--space-3) + 3rem + var(--space-4));
+}
+@media (min-width: 64rem) {
+  .sp-p__zoom {
+    bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
+    right: max(var(--space-6), calc((100vw - 72rem) / 2 + var(--space-6)));
+  }
+  .sp-p--tabbed:has(.sp-p__zoom) {
+    padding-bottom: calc(3rem + var(--space-5) + var(--space-6));
+  }
+  .sp-html:has(.sp-p__zoom) {
+    scroll-padding-bottom: calc(3rem + var(--space-5) + var(--space-4));
+  }
+}
 @media (prefers-reduced-transparency: reduce) {
-  .sp-p__zoom-btn {
-    background: var(--fill);
+  .sp-p__zoom {
+    background: var(--bg);
   }
 }
 @media (forced-colors: active) {
-  .sp-p__zoom-btn {
+  .sp-p__zoom {
     border: 1px solid CanvasText;
   }
 }
@@ -2494,8 +2490,8 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-8) var(--space-4) var(--space-3);
-  /* 글자가 놓이는 자리(위 3분의 1 아래)부터는 진한 막: 흰 사진 위에서도 흰 글자 대비 6:1 이상(리뷰 2026-10-29) */
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.65) 35%);
+  /* 사용자 지정 값(2026-10-29): 아래로 갈수록 진해짐. 아주 밝은 사진 위에선 흰 글자 대비가 기준보다 낮을 수 있음 */
+  background: linear-gradient(#0000, #000000a6 120%);
 }
 .sp-p__mcard-title {
   font-size: var(--title-2-size);
@@ -2540,4 +2536,12 @@
   .sp-p.sp-p--wide .sp-p__grid--z5 {
     --cols: 8;
   }
+}
+
+/* 사진 목록 묶음(98e, −/+가 그 자리에서 갈아 끼움): 배치에는 끼지 않음 */
+.sp-p__album {
+  display: contents;
+}
+.sp-p__albumhead-sub:empty {
+  display: none;
 }

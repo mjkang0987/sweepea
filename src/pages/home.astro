@@ -115,7 +115,7 @@ const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'lon
 const reacts = cardView ? null : await loadReacts(a.pass, items.map((m) => m.id)).catch(() => null);
 const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
 type Cell = { id: string; src: string; video: boolean; day: string; d: string; ratio: number; hearts: number; says: number; length: string | null; at2?: string };
-const months: { ym: string; label: string; age: string; count: number; cells: Cell[] }[] = [];
+const months: { ym: string; label: string; count: number; cells: Cell[] }[] = [];
 // 달 제목(디자인): 올해면 '10월', 아니면 '2025년 10월'. 오른쪽에 그 달 끝(이번 달이면 오늘) 아이 개월 수 · 사진 수
 const ageKid = picked ?? (kids.length === 1 ? kids[0] : undefined);
 const seoulDay = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(iso));
@@ -125,7 +125,7 @@ for (const m of cardView ? [] : items) {
   const label = ym.slice(0, 4) === today.slice(0, 4) ? `${Number(ym.slice(5, 7))}월` : monthFmt.format(new Date(m.taken_at));
   if (months.at(-1)?.label !== label) {
     const end = ym === today.slice(0, 7) ? today : new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).toISOString().slice(0, 10);
-    months.push({ ym, label, age: ageKid && end >= ageKid.birth_date ? `${ageKid.name} 생후 ${monthsOld(ageKid.birth_date, end)}개월 · ` : '', count: 0, cells: [] });
+    months.push({ ym, label, count: 0, cells: [] });
   }
   const r = reacts?.get(m.id)?.counts;
   months.at(-1)!.cells.push({
@@ -151,7 +151,11 @@ await Promise.all(
   }),
 );
 // 머리 작은 줄 첫 값(스크립트 없어도): 맨 위 사진의 찍은 날, 올해가 아니면 연도도
-const whenFirst = items[0] && !cardView ? `${seoulDay(items[0].taken_at).slice(0, 4) === today.slice(0, 4) ? '' : `${seoulDay(items[0].taken_at).slice(0, 4)}년 `}${dayFmt.format(new Date(items[0].taken_at))}` : null;
+// 1·2칸은 그날 아이 생후 개월도(달 제목 줄을 빼며 옮김, 사용자 "중복 내용", 아이가 하나거나 고른 경우)
+const d0 = items[0] ? seoulDay(items[0].taken_at) : '';
+const whenFirst = d0 && !cardView
+  ? `${d0.slice(0, 4) === today.slice(0, 4) ? '' : `${d0.slice(0, 4)}년 `}${dayFmt.format(new Date(items[0].taken_at))}${(z === 1 || z === 2) && ageKid && d0 >= ageKid.birth_date ? ` · 생후 ${monthsOld(ageKid.birth_date, d0)}개월` : ''}`
+  : null;
 // 엇갈린 배열 자리: 휴대폰 2줄, 넓은 화면 4줄(CSS가 화면 폭에 맞는 쪽을 씀). 1칸은 휴대폰 한 줄(원래 모양 --ar), 넓은 화면 2줄. 3·5칸은 정사각이라 자리 없음
 for (const mo of months) {
   if (z === 3 || z === 5) continue;
@@ -168,18 +172,13 @@ for (const mo of months) {
   <header class="sp-p__albumhead">
     <h1 class="sp-p__title sp-p__title--large">앨범</h1>
     {/* 칸 단계는 화면 맨 위 사진의 찍은 날(3·5칸은 보이는 기간, 스크립트가 스크롤 따라 바꿈), 카드 단계는 사진·영상 수 */}
+    {/* 늘 그려 두고 비면 숨김: 크기를 그 자리에서 바꿀 때 이 줄도 짝지어 갈아 끼운다(98e) */}
     {!cardView && whenFirst ? (
-      <p class="sp-p__albumhead-sub" data-when={z === 3 || z === 5 ? 'range' : 'day'} data-year={today.slice(0, 4)}>{whenFirst}</p>
-    ) : !picked && (a.home.photo_count ?? 0) + (a.home.video_count ?? 0) > 0 && (
+      <p class="sp-p__albumhead-sub" data-when={z === 3 || z === 5 ? 'range' : 'day'} data-year={today.slice(0, 4)} data-birth={ageKid?.birth_date}>{whenFirst}</p>
+    ) : picked || (a.home.photo_count ?? 0) + (a.home.video_count ?? 0) === 0 ? (
+      <p class="sp-p__albumhead-sub"></p>
+    ) : (
       <p class="sp-p__albumhead-sub">{[['사진', a.home.photo_count ?? 0], ['영상', a.home.video_count ?? 0]].filter(([, n]) => +n > 0).map(([w, n]) => `${w} ${n.toLocaleString('ko-KR')}`).join(' · ')}</p>
-    )}
-    {/* 사진 크기(디자인 ParentHomeZoom): 사진 앱 보관함 버튼 자리의 둥근 유리 −/+ */}
-    {items.length > 0 && (
-      <nav class="sp-p__zoom" aria-label="사진 크기">
-        {/* 끝 단계는 꺼진 링크(화면 읽기에도 '사용 불가'로 들리게) */}
-        <a class="sp-p__zoom-btn" href={smaller ?? undefined} role="link" aria-disabled={smaller ? undefined : 'true'} aria-label={z === 5 ? '작게(달마다 대표 사진)' : z === 'm' ? '작게(해마다 대표 사진)' : z === 'y' ? '작게' : '작게(한 줄에 더 많이)'}>−</a>
-        <a class="sp-p__zoom-btn" href={bigger ?? undefined} role="link" aria-disabled={bigger ? undefined : 'true'} aria-label="크게(한 줄에 더 적게)">+</a>
-      </nav>
     )}
   </header>
   {
@@ -261,6 +260,8 @@ for (const mo of months) {
       </nav>
     )
   }
+  {/* 사진 목록: −/+가 그 자리에서 이 묶음만 갈아 끼운다(98e, 배치에는 끼지 않는 묶음) */}
+  <div class="sp-p__album" data-album>
   {
     items.length === 0 && cont ? null : items.length === 0 && picked ? (
       <p class="sp-p__lead">{callName(picked.name)} 사진은 아직 없어요.</p>
@@ -292,10 +293,8 @@ for (const mo of months) {
     ) : (
       months.map((mo) => (
         <section class="sp-p__month" data-ym={mo.ym} aria-label={`${mo.label} ${mo.count}장`}>
-          <div class="sp-p__month-head">
-            <h2 class="sp-p__month-title">{mo.label}</h2>
-            <p class="sp-p__month-count">{mo.age}사진 {mo.count}</p>
-          </div>
+          {/* 달 제목 줄은 위 날짜 줄과 겹쳐 뺌(사용자 "중복 내용"), 화면 읽기용 제목만 */}
+          <h2 class="sp-vh">{mo.label} 사진 {mo.count}장</h2>
           <ul class={`sp-p__grid sp-p__grid--z${z}`}>
             {mo.cells.map((c) => (
               <li class="sp-p__cell" id={`c-${c.id}`} style={c.at2} data-ratio={c.ratio} data-d={c.d}>
@@ -339,10 +338,21 @@ for (const mo of months) {
       </p>
     )
   )}
+  </div>
+  {/* 사진 크기(디자인 ParentHomeZoom): 오른쪽 아래 떠 있는 유리 −/+. 키보드 순서도 사진 목록 뒤(화면 자리와 맞게) */}
+  {items.length > 0 && (
+    <nav class="sp-p__zoom" aria-label="사진 크기">
+      {/* 끝 단계는 꺼진 링크(화면 읽기에도 '사용 불가'로 들리게) */}
+      <a class="sp-p__zoom-btn" href={smaller ?? undefined} role="link" aria-disabled={smaller ? undefined : 'true'} aria-label={z === 5 ? '작게(달마다 대표 사진)' : z === 'm' ? '작게(해마다 대표 사진)' : z === 'y' ? '작게' : '작게(한 줄에 더 많이)'}>−</a>
+      <a class="sp-p__zoom-btn" href={bigger ?? undefined} role="link" aria-disabled={bigger ? undefined : 'true'} aria-label="크게(한 줄에 더 적게)">+</a>
+    </nav>
+  )}
 </Parent>
 
 <script>
   import { autoMore, keepSpot, relayout } from '../lib/more';
+  import { zoomInPlace } from '../lib/zoomswap';
+  import { monthsOld } from '../lib/age';
 
   // 다음 60장: 같은 달이면 그 달에 칸을 합치고, 아니면 달 묶음을 뒤에 붙인다(달 사진 수는 서버가 그 달 전체로 셈)
   autoMore((doc) => {
@@ -365,14 +375,16 @@ for (const mo of months) {
   keepSpot('.sp-p__cell-link');
 
   // 머리 작은 줄(98c): 스크롤 따라 화면 맨 위 사진의 찍은 날, 3·5칸은 보이는 사진들의 기간('10월 1일 ~ 21일'). 한 프레임에 한 번만
-  const when = document.querySelector<HTMLElement>('[data-when]');
+  // 줄은 크기를 그 자리에서 바꿀 때 갈아 끼워지므로 그때그때 찾는다
   const head = document.querySelector<HTMLElement>('.sp-p__albumhead');
-  if (when && head) {
-    const year = when.dataset.year;
+  if (head) {
     const label = (d: string, withYear: boolean) => `${withYear ? `${d.slice(0, 4)}년 ` : ''}${Number(d.slice(5, 7))}월 ${Number(d.slice(8))}일`;
     let queued = false;
     const update = () => {
       queued = false;
+      const when = document.querySelector<HTMLElement>('[data-when]');
+      if (!when) return;
+      const year = when.dataset.year, birth = when.dataset.birth;
       const top = head.getBoundingClientRect().bottom;
       const seen: string[] = [];
       for (const li of document.querySelectorAll<HTMLElement>('.sp-p__cell[data-d]')) {
@@ -390,12 +402,15 @@ for (const mo of months) {
           ? oldest.slice(0, 7) === newest.slice(0, 7)
             ? `${label(oldest, oy)} ~ ${Number(newest.slice(8))}일`
             : `${label(oldest, oy)} ~ ${label(newest, ny)}`
-          : label(newest, newest.slice(0, 4) !== year);
+          : label(newest, newest.slice(0, 4) !== year) + (birth && newest >= birth ? ` · 생후 ${monthsOld(birth, newest)}개월` : '');
       if (when.textContent !== text) when.textContent = text;
     };
     addEventListener('scroll', () => queued || ((queued = true), requestAnimationFrame(update)), { passive: true });
+    document.addEventListener('sp:album-swapped', update);
     update();
   }
+  // 사진 크기 −/+: 페이지 전환 없이 그 자리에서(98e)
+  zoomInPlace({ button: '.sp-p__zoom-btn', cell: '.sp-p__cell', head: '.sp-p__albumhead', also: ['.sp-p__zoom', '.sp-p__albumhead-sub'] });
 
   // 가운데 레이어(들어오기 신청·백일/생일·저장 공간): 스크립트가 있으면 모달로 올려(Esc·초점 가두기) 닫기·나중에는 그 자리에서 닫고 다음 것을 띄운다.
   // 다른 화면으로 가는 버튼(확인하기·사진 올리기·저장 용량 보기)은 지금처럼 폼으로 이동. 스크립트 없으면 모두 폼

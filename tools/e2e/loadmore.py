@@ -43,11 +43,11 @@ with sync_playwright() as p:
     cells=lambda: pg.locator('.sp-p__cell').count()
     # 1) 처음 60장, 달 사진 수는 그 달 전체
     check(cells()==60,'처음 60장 (%d)'%cells())
-    check(pg.locator('.sp-p__month[data-ym="2024-05"] .sp-p__month-count').inner_text().endswith('사진 70'),'5월 사진 수는 처음부터 70')
+    check(pg.locator('.sp-p__month[data-ym="2024-05"] h2').inner_text().endswith('사진 70장'),'5월 사진 수는 처음부터 70')
     check(pg.locator('[data-more] a').count()==1,'끝에 다음 쪽 링크')
     # 2) 내리면 120 → 130, 걸친 달은 한 묶음, 안 겹침
     bottom(pg); pg.wait_for_function("document.querySelectorAll('.sp-p__cell').length===120",timeout=20000)
-    check('60장을 더 불러왔어요' in pg.locator('p.sp-vh[role=status]').inner_text(),'화면 읽기 알림: 60장을 더 불러왔어요')
+    check('60장을 더 불러왔어요' in pg.locator('p.sp-vh[role=status]:not([data-zoom])').inner_text(),'화면 읽기 알림: 60장을 더 불러왔어요')
     check(pg.locator('.sp-p__month[data-ym="2024-05"]').count()==1,'5월은 한 묶음')
     check(pg.locator('.sp-p__month[data-ym="2024-05"] .sp-p__cell').count()==70,'5월 칸 70')
     check(overlap(pg,'2024-05')==0,'합친 5월 칸이 안 겹침')

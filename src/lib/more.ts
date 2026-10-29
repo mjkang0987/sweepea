@@ -22,6 +22,8 @@ export function autoMore(merge: (doc: Document) => HTMLElement[], { observe = tr
   document.body.appendChild(live);
   const io = observe && typeof IntersectionObserver === 'function' ? new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && void load(e.target as HTMLElement)), { rootMargin: '600px 0px' }) : null;
   let busy = false;
+  // 사진 크기를 그 자리에서 바꾸면 세대가 바뀐다: 그 전에 받기 시작한 쪽은 버린다(옛 단계 칸이 새 목록에 섞이지 않게, 리뷰 2026-10-29)
+  let gen = 0;
   const watch = () => {
     const el = document.querySelector<HTMLElement>('[data-more]');
     if (io && el?.querySelector('a')) io.observe(el);
@@ -39,12 +41,15 @@ export function autoMore(merge: (doc: Document) => HTMLElement[], { observe = tr
     el.replaceWith(wait);
     if (focused) wait.tabIndex = -1, wait.focus();
     live.textContent = '사진 불러오는 중';
+    const mine = gen;
     try {
       const res = await fetch(a.href, { credentials: 'same-origin' });
+      if (mine !== gen) return void (live.textContent = '');
       // 로그인이 풀리면 다른 화면으로 돌려보낸다
       if (res.redirected && new URL(res.url).pathname !== new URL(a.href).pathname) return void location.assign(res.url);
       if (!res.ok) throw new Error(String(res.status));
       const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      if (mine !== gen) return void (live.textContent = '');
       const added = merge(doc);
       const end = doc.querySelector('[data-more]');
       if (end) wait.replaceWith(document.importNode(end, true));
@@ -53,6 +58,7 @@ export function autoMore(merge: (doc: Document) => HTMLElement[], { observe = tr
       live.textContent = end && !end.querySelector('a') ? `사진 ${added.length}장을 더 불러왔어요. 처음 사진까지 모두 봤어요` : `사진 ${added.length}장을 더 불러왔어요`;
       watch();
     } catch {
+      if (mine !== gen) return void (live.textContent = '');
       // 다시 저절로 받지는 않는다(끝없이 되풀이하지 않게). 누르면 그 쪽 페이지로
       wait.replaceWith(el);
       el.dataset.failed = '';
@@ -60,9 +66,16 @@ export function autoMore(merge: (doc: Document) => HTMLElement[], { observe = tr
       live.textContent = '사진을 불러오지 못했어요. 사진 더 보기를 눌러 주세요';
     } finally {
       busy = false;
+      // 세대가 바뀌어 버린 쪽이면, 그사이 새 목록 끝을 보던 감시가 busy라 그냥 끝났을 수 있어 다시 지켜본다(리뷰 2026-10-29)
+      if (mine !== gen) watch();
     }
   }
   watch();
+  // 사진 크기를 그 자리에서 바꾸면(zoomswap) 새 목록 끝을 다시 지켜본다
+  document.addEventListener('sp:album-swapped', () => {
+    gen++;
+    watch();
+  });
   return () => {
     const el = document.querySelector<HTMLElement>('[data-more]');
     if (el && !('failed' in el.dataset)) void load(el);

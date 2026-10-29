@@ -4,15 +4,16 @@ import os,re,json
 os.chdir(os.path.join(os.path.dirname(__file__),'..','canvas','project'))
 def btn(label,sign,off=False):
     o=' opacity: 0.35;' if off else ''
-    return (f'<a href="#" aria-label="{label}" class="sp-glass-clear" style="width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--label); font-size: 24px; line-height: 1;{o}">{sign}</a>')
+    return (f'<a href="#" aria-label="{label}" style="width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--label); font-size: 24px; line-height: 1;{o}">{sign}</a>')
 def zoom(t,z):
     s=open(f'ParentHomeBleed{t}.dc.html').read()
     s=re.sub(r'<title>.*?</title>','<title>앨범 사진 크기</title>',s,count=1)
-    nav=('<nav aria-label="사진 크기" style="position: absolute; top: 54px; right: 20px; display: flex; gap: 8px;">'
+    # 오른쪽 아래 떠 있는 유리 알약(사용자 "플러스 마이너스 버튼 아래에, 우측 아래 플로팅"), 탭바 위
+    nav=('<nav aria-label="사진 크기" class="sp-glass-clear" style="position: absolute; z-index: 6; right: 20px; bottom: 102px; display: flex; padding: 2px; border-radius: 999px;">'
          +btn('작게(한 줄에 더 많이)','−',z=='y')+btn('크게(한 줄에 더 적게)','+',z==1)+'</nav>')
-    when={1:'10월 21일',3:'10월 1일 ~ 21일',5:'9월 3일 ~ 10월 21일'}.get(z)
+    when={1:'10월 21일 · 생후 13개월',3:'10월 1일 ~ 21일',5:'9월 3일 ~ 10월 21일'}.get(z)
     if when: s=s.replace('>사진 1,284 · 영상 37</p>','>'+when+'</p>',1)
-    s=s.replace('</header>',nav+'</header>',1)
+    s=s.replace('</main>','</main>\n  '+nav,1)
     i=s.index('<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px;')
     depth=0
     for m in re.finditer(r'<(/?)div\b',s[i:]):
@@ -47,7 +48,8 @@ def zoom(t,z):
               '<div role="img" aria-label="사진" style="aspect-ratio: 4 / 3; background: var(--ph-2);"></div></div>')
     s=s[:i]+grid+s[j:]
     # 월별은 달 카드에 달 이름이 있어 위 달 제목 줄은 뺌
-    if z in ('m','y'): s=re.sub(r'<div style="margin-inline: 20px; display: flex; align-items: baseline; justify-content: space-between;.*?</div>','',s,count=1,flags=re.S)
+    # 달 제목 줄은 위 날짜 줄과 겹쳐 뺌(사용자 "중복 내용", 생후 개월은 날짜 줄로)
+    if True: s=re.sub(r'<div style="margin-inline: 20px; display: flex; align-items: baseline; justify-content: space-between;.*?</div>','',s,count=1,flags=re.S)
     open(f'ParentHomeZoom{z}{t}.dc.html','w').write(s)
 d=json.load(open('canvas.json')); B=d['boards']
 for t in ['','-Light']:
