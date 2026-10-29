@@ -18,7 +18,7 @@ with sync_playwright() as p:
     pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
     pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
-    pg.get_by_role('link',name='사진 추가하기').click(); pg.wait_for_url('**/upload')
+    pg.get_by_role('link',name='사진 추가').click(); pg.wait_for_url('**/upload')
     check(pg.get_by_role('button',name='올리고 카톡으로 보내기').is_disabled(),'고르기 전엔 올리기 버튼 꺼짐')
     check(not pg.locator('#up-done').is_visible(),'끝 카드는 처음엔 숨김')
     pg.set_input_files('#up-files',files); pg.wait_for_function("document.getElementById('up-title').textContent.includes('3장')",timeout=30000)
@@ -36,7 +36,7 @@ with sync_playwright() as p:
     check(pg.locator('.sp-p__cell').count()==3,'부모 앨범에 3장')
     pg.wait_for_function("[...document.querySelectorAll('.sp-p__cell-img')].every(i=>i.complete && i.naturalWidth>0)",timeout=15000)
     check(True,'부모 앨범 썸네일이 실제로 보임')
-    check('2026년 10월' in pg.content() and '2026년 9월' in pg.content(),'EXIF 찍은 날로 월 묶음')
+    hs=pg.locator('.sp-p__month h2, h2').all_inner_texts(); check(any('10월' in h for h in hs) and any('9월' in h for h in hs),'EXIF 찍은 날로 월 묶음(올해는 연도 없이)')
     pg.screenshot(path=D+'up-3.png')
     b.close()
 from PIL import Image as I

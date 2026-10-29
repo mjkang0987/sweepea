@@ -36,12 +36,19 @@ with sync_playwright() as p:
     check('알림 탭에 다가오는 일정 보기' in pg.content(),'스위치 이름 바뀜')
     pg.screenshot(path=W+'/gt-children.png')
     line.click(); pg.wait_for_url('**/health/**'); check(pg.locator('.sp-p__back').inner_text()=='아이','설정에서 오면 돌아가기도 아이')
-    # 체크하고 저장(스크립트 없이 폼)해도 돌아가기 유지
-    # 아래 막대 있는 탭 화면: 막대가 캡슐 위
-    pg.goto(B+'/settings/family/sms'); bar=pg.locator('.sp-p__savebar')
-    if bar.count():
-        bb=bar.bounding_box(); nb=pill.bounding_box(); check(bb['y']+bb['height']<=nb['y']+1,'아래 막대가 캡슐 위')
-        pg.screenshot(path=W+'/gt-sms.png')
+    # 그 자리에서 두 번 체크(바로 저장)해도 돌아가기·주소의 from 유지
+    for i in range(2):
+        pg.locator('#sec-next ~ ul input[name=done]').nth(i).check(); pg.wait_for_function("document.getElementById('as-live')?.textContent.includes('저장했어요')"); pg.wait_for_timeout(300)
+    check(pg.locator('.sp-p__back').inner_text()=='아이' and 'from=settings' in pg.url and 'done=' not in pg.url,f'두 번 저장해도 돌아가기 아이 ({pg.url})')
+    pg.reload(); check(pg.locator('.sp-p__back').inner_text()=='아이','새로 고침해도 돌아가기 아이')
+    # 아래 막대 있는 탭 화면(아이 변경): 막대가 캡슐 위 8px
+    pg.goto(B+'/settings/children'); pg.locator('.sp-p__row--tall').first.click(); pg.wait_for_url('**/children/**')
+    bb=pg.locator('.sp-p__savebar').bounding_box(); nb=pill.bounding_box(); check(abs(bb['y']+bb['height']-(nb['y']-8))<=2,'아래 막대가 캡슐 위 8px')
+    pg.screenshot(path=W+'/gt-child.png')
+    # 가로로 든 폰: 캡슐이 너무 넓지 않게
+    pg.set_viewport_size({'width':844,'height':390}); pg.goto(B+'/settings'); w=pill.bounding_box()['width']+pg.locator('.sp-p__tab-add').bounding_box()['width']
+    check(w<=30*16+2,f'가로 화면 탭바 폭 30rem 안 ({w})')
+    pg.set_viewport_size({'width':390,'height':H})
     pg.goto(B+'/settings'); pg.screenshot(path=W+'/gt-settings.png')
     # 마지막 줄이 캡슐 밑에 숨지 않음
     pg.evaluate("window.scrollTo(0,document.documentElement.scrollHeight)")
