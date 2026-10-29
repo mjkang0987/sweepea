@@ -264,6 +264,7 @@
 .sp-a__kongi,
 .sp-p__mock-kongi,
 .sp-p__brand-kongi,
+.sp-p__landing-kongi,
 .sp-p__empty-kongi,
 .sp-p__kid-kongi {
   animation: sp-kongi-hop 2.4s steps(1, end) infinite;
@@ -281,6 +282,7 @@
   .sp-a__kongi,
   .sp-p__mock-kongi,
   .sp-p__brand-kongi,
+  .sp-p__landing-kongi,
   .sp-p__empty-kongi,
   .sp-p__kid-kongi {
     animation: none;
