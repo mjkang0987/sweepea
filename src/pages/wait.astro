@@ -30,14 +30,16 @@ const listed = state === 'pending' ? await getBackend().listMedia(pass, { family
 const got =
   listed &&
   (await Promise.all(
-    listed.map(async (m) => ({
+    listed.map(async (m, i) => ({
       ...m,
       src: await signedMediaUrl(m.view_key),
       poster: m.poster_key ? await signedMediaUrl(m.poster_key) : undefined,
-      label: `${dayLabel(m.taken_at)} ${m.kind === 'video' ? '영상' : '사진'}`,
+      label: `${dayLabel(m.taken_at)} ${m.kind === 'video' ? '영상' : '사진'}, ${i + 1}/${listed.length}`,
     })),
   ));
 const shown = got?.length ?? 0;
+// 영상이 섞이면 '사진·영상 N개'(어르신이 사진만 찾다 헷갈리지 않게)
+const withVideo = !!got?.some((m) => m.kind === 'video');
 ---
 
 <Family title="승인 기다림" bar={shown > 0}>
@@ -65,7 +67,7 @@ const shown = got?.length ?? 0;
         {got && shown > 0 && (
           <section class="sp-f__got" aria-labelledby="got-h">
             <h2 class="sp-f__got-title" id="got-h">
-              받은 사진 <span class="sp-f__got-count">{shown}장</span>
+              {withVideo ? '받은 사진·영상' : '받은 사진'} <span class="sp-f__got-count">{shown}{withVideo ? '개' : '장'}</span>
             </h2>
             <ul class="sp-f__got-list">
               {got.map((m, i) => (

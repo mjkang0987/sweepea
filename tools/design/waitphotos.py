@@ -33,7 +33,7 @@ def board(t):
     </section>
     <sc-if value="{{{{hasPhotos}}}}" hint-placeholder-val="{{{{true}}}}">
     <section aria-labelledby="got-h" style="display: flex; flex-direction: column; gap: 12px;">
-      <h2 id="got-h" style="margin: 8px 0 0; font-size: 17px; line-height: 24px; font-weight: 700;">받은 사진 <span style="font-weight: 500; color: var(--label-2);">3장</span></h2>
+      <h2 id="got-h" style="margin: 8px 0 0; font-size: 17px; line-height: 24px; font-weight: 700;">받은 사진·영상 <span style="font-weight: 500; color: var(--label-2);">3개</span></h2>
       <ul style="margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">{photos}</ul>
     </section>
     </sc-if>
