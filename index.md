@@ -14,6 +14,7 @@
 - 설정: 아이(`/settings/children` 목록, `/settings/children/<id|new>` 고치기·추가, 가족방당 10명), 가족 화면 글자 크기(`/settings/text-size`, 가족이 처음 들어올 때 크기 `families.text_size_mode`), 계정(`/settings/account` 제공자·로그아웃, 탈퇴 확인은 이 화면 위 레이어 0.4.30~) 완료.
 - PC 화면(64rem 이상): 가족 모아 보기·크게 보기 넓게(4·6·8칸), 부모 앨범 넓게·메뉴 위, 올리기 두 칸·끌어다 놓기 완료.
 - 매일 정리 예약 작업(`src/worker.ts` scheduled, 서울 새벽 3:17): 탈퇴 기한 지난 가족방·하루 지난 올리기 지우기, R2 정리 대기열 폴더 지우기(`src/jobs/cleanup.ts`). 무료 가족방 5GB가 차면 새로 올리기만 멈춤 완료.
+- 엄빠 탭바(0.6.0~, 디자인 ParentHomeGlass): 화면 아래 떠 있는 유리 캡슐(앨범·알림·설정) + 옆 둥근 '사진 추가', 넓은 화면은 위 메뉴. 접종·검진은 홈 카드 대신 알림 탭 '다가오는 일정'(2주 안)과 설정 › 아이 줄(`src/lib/kidHealth.ts`).
 - 홈 화면에 두기: `public/manifest.webmanifest`·`public/icons/`(콩이), 가족 앨범 위 안내(`src/components/InstallGuide.astro`, 기기 판별 `src/lib/install.ts`), 앱 안 브라우저는 엄마아빠에게 부탁(`members.install_help_at`) → 부모 최근 반응 '도와줄 사람' 완료. 버튼은 이동 없이 그 자리에서(0.4.30~, 스크립트 없으면 폼).
 - 접종·검진(`/health/<아이 id>`, 앨범 위 아이별 다음 일정, 설정 > 아이에서 켜고 끄기): 일정 표 `src/lib/health.ts`, 완료 기록 `health_done`(부모만) 완료.
 - 부모 최근 반응(`/reactions`, 앨범 위 '최근 반응 새 N'): 승인된 가족의 반응·한마디, 확인할 사람, 열면 읽음 완료.
