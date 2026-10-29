@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-29 기준, dev 0.8.0 배포됨)
+## 새 세션 인계 (2026-10-29 기준, dev 0.9.0 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(86~96이 최근).
 
 ### 지금 상태
 
-- dev = 0.8.0, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
+- dev = 0.9.0, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 21개 모두 적용(19번째 `20261029000002_coparent_unique.sql`은 사용자가 SQL 편집기에서, 20번째 `20261029000003_coparent.sql`은 2026-10-29 사용자 지시로 적용 도구). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v174). 화면 바꾸기 전에 반드시 여기부터 고친다. 보드 콩이 그림은 data URI로 넣는다(`/_blob`은 새 보드에서 깨짐)
@@ -1277,6 +1277,25 @@
 - shortcut: 달 카드로 들어가면 그 달부터 아래로만(위 달은 탭 '앨범'으로 처음부터), 대표 점수는 사진마다 세서 아주 큰 가족방이면 느려질 수 있음 → 그때 점수 칸을 미리 모아 두기
 - 결과(0.8.0): 검토 3회(월별 함수가 서비스 전체 사진을 훑던 것 → 내 가족방으로 먼저 좁힘, 월별 기억 중 크게 보기·사진 정보 수정에서 돌아오면 자리 잃던 것 → ?to=면 칸으로·크게 보기 닫기에 z, 달 경계 커서 0 uuid, mock 시각 비교). 운영 DB에 20261029000004 적용(2026-10-29 사용자 "Yes, apply"). e2e parentzoom·familyzoom(크롬·웹킷), pview·vswipe·loadmore 맞춤. 남은 것: 98b 나이별·연도별, 큰 가족방 월별 성능
 - 영향 파일: supabase/migrations/20261029000004_media_months.sql, supabase/tests/rls.sql, src/lib/backend/{types,mock,supabase}.ts, src/lib/album.ts, src/pages/home.astro, src/pages/album/index.astro, src/styles/{parent,family}.css, tools/design/parentzoom.py, e2e parentzoom.py·familyzoom.py
+
+#### 98c. 월별·연별 카드 시안대로 + 연별 단계 + 위에 붙는 찍은 날 (완료, 0.9.0)
+- 요구(사용자 2026-10-29): "월별 보기 지금 디자인이랑 시안 안 맞음, 왼쪽에 큰 그림 하나 우측에 몇 개, 날짜가 사진 위에", "연별 보기 필요", "사진 찍은 시기 fixed 같이 이동(1·3칸은 그날, 기간으로)", "찍은 날짜 맞아, 디자인 가이드 맞춰서"
+- 단계: 1·2·3·5칸(사진 전부, 사용자 "5칸 레이아웃 추가"로 5칸 다시) → 월별 → 연별(새로) = 처음 시안 GrandList 단계 그대로. 나이별은 98b
+- 월별 카드(시안 GrandList v176): 왼쪽 큰 사진 1장(두 줄) + 오른쪽 2장 위아래, 높이 180(가족 더 큼). 달 이름·'N장'은 사진 위 왼쪽 아래에 겹침(어두운 그라데이션 위 흰 글자)
+- 연별 카드(시안): 왼쪽 큰 사진 1장(2×2) + 오른쪽 작은 4장, '2026년' + '1–10월 · 312장' 사진 위에 겹침. 대표는 달마다 대표 1번부터(최근 달 먼저), 모자라면 2·3번 — DB 새 함수 없이 sp_media_months 결과로. 누르면 그 해 마지막 달부터 3칸
+- 위에 붙는 찍은 날(엄빠 앨범 머리 작은 줄): 1·2칸은 화면 맨 위 사진의 날, 3·5칸은 화면에 보이는 사진들의 기간('10월 1일 ~ 21일'). 스크롤하면 바뀜(작은 스크립트, 서버가 첫 값을 그려 스크립트 없어도 첫 날짜). 월별·연별은 사진·영상 수. 가족 모아 보기는 날짜 제목(이미 있음)을 위에 붙게(CSS만)
+- 결과(0.9.0): 검토 3회(연별 기억 중 돌아오면 자리 잃음 → ?to=면 칸, 연별 더 보기 링크 없앰, 카드 글자 대비 → 글자 자리부터 진한 막(6.5:1 이상), 연별 대표 1~4장 배치, 가족 붙는 날짜 제목 노치·초점 가림, 기간 연도 표기). 단위 검사 months.test.ts. 남은 것: 98e 그 자리에서 크기 바꾸기, 98d 엄빠 넘겨 보기, 98b 나이별
+- 영향 파일: src/lib/album.ts(ZOOMS에 'y', 연 묶기), src/pages/home.astro, src/pages/album/index.astro, src/styles/{parent,family}.css, tools/design/parentzoom.py, e2e parentzoom·familyzoom
+
+#### 98d. 엄빠 앨범에도 넘겨 보기·모아 보기 (계획, 98c 다음)
+- 요구(사용자 2026-10-29 "모아보기 넘겨보기도 없고"): 가족 앨범처럼 엄빠 앨범에도 '넘겨 보기 · 모아 보기' 세그먼트. 모아 보기 = 지금 앨범(−/+ 단계), 넘겨 보기 = 큰 카드 옆으로 넘기기(가족 넘겨 보기와 같은 부품). 고른 보기는 기기에 기억
+- 순서: 보드 → 계획 자세히 → 개발
+
+#### 98e. 사진 크기 바꿀 때 페이지 전환 없이 그 자리에서 (계획, 98c 다음)
+- 요구(사용자 2026-10-29): "키우고 작아지는 거 페이지 전환이라 너무 구린데 방법 없어?"
+- 방향: −/+를 누르면 스크립트가 다음 단계 화면을 받아 사진 목록만 그 자리에서 갈아 끼움(주소·기억은 그대로 바꿈, history.replaceState). 화면에 보이는 칸에 view-transition-name을 잠깐 붙여 startViewTransition으로 칸이 커지고 작아지며 자리 옮기는 애니메이션(사진 앱처럼). 보던 사진이 화면 위에 그대로 있게 스크롤 맞춤. 스크립트·View Transitions 없으면 지금처럼 링크 이동. 움직임 줄이기 설정이면 애니메이션 없이 바로
+- 더 나중: 두 손가락 오므리기·벌리기(핀치)로 단계 바꾸기
+- 엄빠 앨범·가족 모아 보기 둘 다
 
 ### 99. feature/wait-photos — 승인 대기 화면에 받은 사진 보여 주기 (완료, 0.5.5)
 - 요구(사용자 2026-10-29 "먼저 고치기"): 기억하신 규칙 '승인 안 받은 사람은 받은 링크의 사진만'이 화면에 없음
