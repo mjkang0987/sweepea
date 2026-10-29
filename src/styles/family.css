@@ -272,6 +272,43 @@
   }
 }
 
+/* 승인 대기 화면의 받은 사진(디자인 WaitPhotos): 한 줄에 한 장 크게, 원래 모양 */
+.sp-f__got {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.sp-f__got-title {
+  margin: var(--space-2) 0 0;
+  font-size: var(--senior-body-size);
+  line-height: var(--senior-body-line);
+  font-weight: 700;
+}
+.sp-f__got-count {
+  font-weight: 500;
+  color: var(--label-2);
+}
+.sp-f__got-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.sp-f__got-media {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+  background: var(--ph-1);
+}
+/* 크기를 모르는 사진·영상도 자리를 잡아 둠(아는 것은 width·height 속성 비율) */
+.sp-f__got-media--any {
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+}
+
 /* 안내 화면(주소 지남, 닫힘 등): 가운데 콩이 + 제목 + 설명 */
 .sp-f__notice {
   flex: 1;
