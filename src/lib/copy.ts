@@ -18,8 +18,8 @@ export function copyText(input: HTMLInputElement, text: string, say: (text: stri
 }
 
 /** 화면 아래 토스트(Toast.astro와 같은 모양, 잠시 뒤 사라짐). 화면 읽기는 say가 맡아 역할은 뺀다 */
-function toast(text: string, near: Element) {
-  const area = near.closest('.sp-p') ?? document.body;
+export function toast(text: string, near: Element) {
+  const area = near.closest('.sp-p, .sp-v') ?? document.body;
   area.querySelector('.sp-toast')?.remove();
   const p = document.createElement('p');
   p.className = 'sp-toast';
