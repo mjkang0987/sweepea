@@ -36,6 +36,16 @@ with sync_playwright() as p:
     check('아빠 (나)' in t and '엄마' in t,'아빠 화면에도 엄마아빠 둘')
     # 쓴 링크는 다시 못 씀
     h=new(br); h.goto(url); check('지났어요' in h.content(),'쓴 링크는 지남'); h.context.close()
+    # 함께 관리 시작 알림: 엄마가 다음에 앨범을 열면 한 번(아빠 쪽엔 없음, 사용자 2026-10-29 "아빠 접속했다고 알람은 안 뜨네?")
+    g.goto(B+'/home'); check('함께 관리하기 시작했어요' not in g.content(),'들어온 아빠에겐 알림 없음')
+    mom.goto(B+'/home'); mom.wait_for_timeout(400)
+    lay=mom.get_by_role('dialog',name='아빠가 앨범을 함께 관리하기 시작했어요')
+    check(lay.is_visible(),'엄마가 앨범을 열면 아빠 함께 관리 시작 알림')
+    mom.screenshot(path=W+'/cp-notice.png')
+    lay.get_by_role('button',name='좋아요').click(); mom.wait_for_timeout(500)
+    check(not lay.is_visible(),'좋아요 누르면 닫힘')
+    mom.goto(B+'/home'); mom.wait_for_timeout(300)
+    check('함께 관리하기 시작했어요' not in mom.content(),'다시 열면 안 뜸(한 번만)')
     # 엄마 화면: 아빠 줄 + 내보내기, 초대 버튼 없음
     mom.goto(B+'/settings/family'); t=mom.locator('#parents').inner_text()
     check('아빠' in t and mom.get_by_role('button',name='아빠 초대하기').count()==0,'엄마 화면에 아빠, 초대 버튼 없음')
