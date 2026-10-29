@@ -533,6 +533,21 @@ select pg_temp.ok((select n = 2 and mine from public.sp_reaction_counts(array[:'
 select public.sp_parent_comment(:'m3', '  우리 딸 최고  ');
 select pg_temp.ok((select body = '우리 딸 최고' and member_id is null from public.comments where parent_user_id = :'P'), '부모 한마디(공백 정리), 부모가 읽음');
 select pg_temp.ok((public.sp_parent_home() ->> 'new_activity')::int = :na0, '내 반응·한마디는 새 반응 수에 안 셈');
+-- 월별 대표(98a): 반응 많은 사진이 그 달 대표 1번, 달 사진 수, 안 보이는 사진은 가족 쪽 수에서 빠짐
+reset role;
+select to_char(taken_at at time zone 'Asia/Seoul', 'YYYY-MM') as ym3 from public.media where id = :'m3' \gset
+select count(*) as all3 from public.media where status = 'ready' and family_id = (select family_id from public.media where id = :'m3') and to_char(taken_at at time zone 'Asia/Seoul', 'YYYY-MM') = :'ym3' \gset
+set role authenticated;
+select pg_temp.ok((select reps -> 0 ->> 'id' = :'m3' and n = :all3 and jsonb_array_length(reps) <= 3 from public.sp_media_months() where ym = :'ym3'), '엄빠 월별: 반응 많은 사진이 대표 1번, 달 사진 수 전부');
+select pg_temp.ok((select jsonb_array_length(reps) = 1 from public.sp_media_months(null, null, 1) where ym = :'ym3'), '대표 장 수 지정');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select pg_temp.ok(coalesce((select sum(n) from public.sp_media_months()), 0) = (select count(*) from public.media where status = 'ready'), '가족 월별 수 = 볼 수 있는 사진 수');
+select pg_temp.ok(not exists (select 1 from public.sp_media_months(), jsonb_array_elements(reps) e where e ->> 'id' = :'m2'), '안 보이는 사진은 대표에 없음');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
 select pg_temp.ok(not exists (select 1 from jsonb_array_elements(public.sp_parent_activity() -> 'items') i where i ->> 'body' = '우리 딸 최고'), '최근 반응 목록에 내 것은 없음');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
