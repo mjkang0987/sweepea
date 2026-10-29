@@ -77,7 +77,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
   <nav class="sp-v__bar sp-v__hide" aria-label="사진 이동">
     <a class="sp-v__link" href={closeHref}>닫기</a>
     <p class="sp-v__pos">{pos} / {total}</p>
-    {save ? <a class="sp-v__link" href={save.href} download={save.name}>저장<span class="sp-vh"> ({save.label})</span></a> : <span class="sp-v__spacer"></span>}
+    {save ? <a class="sp-v__link" href={save.href} download={save.name} data-kind={m.kind}>저장<span class="sp-vh"> ({save.label})</span></a> : <span class="sp-v__spacer"></span>}
   </nav>
   {(prev || next) && (
     <a class="sp-v__arrow sp-v__arrow--prev sp-v__hide" href={prev?.href ?? here} rel="prev" hidden={!prev} aria-label={`이전 ${prev?.video ? '영상' : '사진'}`}>

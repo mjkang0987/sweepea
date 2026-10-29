@@ -7,7 +7,7 @@ W=sys.argv[1] if len(sys.argv)>1 else '/tmp'
 eng=sys.argv[2] if len(sys.argv)>2 else 'chromium'
 fails=[]
 def check(c,m): print(('OK ' if c else 'FAIL ')+m); c or fails.append(m)
-STUB="""window.__shared=null;navigator.canShare=()=>true;navigator.share=async(d)=>{window.__shared=d.files.map(f=>[f.name,f.type,f.size]);if(window.__abort)throw new DOMException('x','AbortError')};"""
+STUB="""window.__shared=null;navigator.canShare=()=>true;navigator.share=async(d)=>{window.__shared=d.files.map(f=>[f.name,f.type,f.size]);if(window.__abort)throw new DOMException('x','AbortError');if(window.__block)throw new DOMException('x','NotAllowedError')};"""
 with sync_playwright() as p:
     br=getattr(p,eng).launch()
     phone=br.new_context(viewport={'width':390,'height':844},has_touch=True,is_mobile=eng=='chromium')
@@ -31,6 +31,10 @@ with sync_playwright() as p:
     dl=[]; pg.on('download',lambda d: dl.append(d))
     pg.get_by_role('link',name='저장').first.click(); pg.wait_for_timeout(1500)
     check(pg.evaluate("window.__shared") is not None and not dl,'공유 창에서 그만두면 내려받기 없음')
+    # 휴대폰이 공유 창을 막으면(누른 뒤 늦음): 내려받기로 넘기지 않고 '한 번 더 눌러 주세요'(실기기 "다운로드로 들어가는디")
+    pg.evaluate("window.__abort=0;window.__block=1")
+    pg.get_by_role('link',name='저장').first.click(); pg.wait_for_timeout(800)
+    check(not dl and '한 번 더 눌러 주세요' in pg.locator('.sp-toast').last.inner_text(),'공유 창이 막히면 내려받기 대신 다시 누르기 안내')
     # PC: 내려받기 그대로
     cookies=phone.cookies(); pc=br.new_context(viewport={'width':1280,'height':900},accept_downloads=True); pc.add_cookies(cookies); pc.add_init_script(STUB)
     q=pc.new_page(); q.goto(pg.url)
