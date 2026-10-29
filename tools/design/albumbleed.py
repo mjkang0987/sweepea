@@ -10,8 +10,8 @@ HEAD=('<header style="position: absolute; z-index: 5; top: 0; left: 0; right: 0;
       'background: linear-gradient(color-mix(in srgb, var(--bg) 35%, transparent), color-mix(in srgb, var(--bg) 13%, transparent) 52%, transparent);">'
       '<div aria-hidden="true" style="position: absolute; inset: 0; z-index: -1; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); '
       '-webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent);"></div>'
-      '<h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: -0.4px;">앨범</h1>'
-      '<p style="margin: 2px 0 0; font-size: 15px; line-height: 20px; color: var(--label); font-weight: 600;">사진 1,284 · 영상 37</p></header>')
+      '<h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: -0.4px; text-shadow: 0 0 10px color-mix(in srgb, var(--bg) 50%, transparent);">앨범</h1>'
+      '<p style="margin: 2px 0 0; font-size: 15px; line-height: 20px; color: var(--label); font-weight: 600; text-shadow: 0 0 10px color-mix(in srgb, var(--bg) 50%, transparent);">사진 1,284 · 영상 37</p></header>')
 def bleed(t):
     s=open(f'ParentHomeGlass{t}.dc.html').read()
     s=re.sub(r'<title>.*?</title>','<title>앨범 고정 머리</title>',s,count=1)

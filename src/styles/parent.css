@@ -1416,6 +1416,11 @@
     color: var(--label);
     font-weight: 600;
   }
+  /* 글자 둘레 은은한 번짐: 밝은 테마는 흰색, 어두운 테마는 검은색 50%(사용자 2026-10-29 "0 0 10px rgb(255 255 255 / .5) 테마에 맞춰서") */
+  .sp-p__albumhead .sp-p__title--large,
+  .sp-p__albumhead-sub {
+    text-shadow: 0 0 10px color-mix(in srgb, var(--bg) 50%, transparent);
+  }
   .sp-p__albumhead::before {
     content: '';
     position: absolute;
