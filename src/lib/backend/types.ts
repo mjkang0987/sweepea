@@ -309,8 +309,18 @@ export interface Backend {
   updateMedia(pass: Pass, mediaId: string, u: { takenAt: string; childIds: string[]; groupIds: string[] }): Promise<void>;
   /** 사진 지우기(부모만): 용량에서 빼고 R2 정리 대기열에 */
   deleteMedia(pass: Pass, mediaId: string): Promise<void>;
-  /** 탈퇴 신청: 가족 화면을 바로 닫고 3일 뒤 지울 시각(ISO). 구독 중이면 BackendError 402 */
-  requestDelete(pass: Pass): Promise<string>;
+  /** 탈퇴 신청: 가족 화면을 바로 닫고 3일 뒤 지울 시각(ISO). 함께 관리하는 엄빠가 있으면 나만 빠지고 null. 구독 중이면 BackendError 402 */
+  requestDelete(pass: Pass): Promise<string | null>;
+  /** 함께 관리하는 엄빠(나 먼저)와 살아 있는 초대 링크 */
+  familyParents(pass: Pass): Promise<FamilyParents>;
+  /** 엄빠 초대 링크 코드(예전 안 쓴 링크는 지움). 엄빠가 둘이면 409 */
+  createParentInvite(pass: Pass): Promise<string>;
+  /** 초대 받은 화면 정보(로그인 전에도) */
+  parentInviteInfo(pass: Pass | null, code: string): Promise<ParentInviteInfo>;
+  /** 초대 받기(로그인한 엄빠 계정): 가족방 id. 이미 엄빠 계정이면 409 family_exists, 지났으면 400 expired, 둘이 차면 409 parents_full */
+  acceptParentInvite(pass: Pass, code: string, role: 'mom' | 'dad'): Promise<string>;
+  /** 함께 관리하는 상대 엄빠 내보내기 */
+  removeCoparent(pass: Pass, userId: string): Promise<void>;
   /** 유예 중 되살리기. 유예가 아니거나 기한이 지났으면 400 */
   restoreFamily(pass: Pass): Promise<void>;
   /** 그룹 추가(10개까지, 넘으면 409). 그룹 id */
@@ -335,4 +345,16 @@ export interface MediaComment {
   body: string;
   created_at: string;
   mine: boolean;
+}
+
+/** 함께 관리하는 엄빠(설정 › 가족 맨 위) */
+export interface FamilyParents {
+  parents: { user_id: string; role: 'mom' | 'dad'; display_name: string; since: string; me: boolean }[];
+  invite: { code: string; expires_at: string } | null;
+}
+/** 엄빠 초대 받은 화면(/join) */
+export interface ParentInviteInfo {
+  result: 'ok' | 'expired' | 'full' | 'closed' | 'not_found';
+  child_name?: string;
+  inviter_role?: 'mom' | 'dad';
 }

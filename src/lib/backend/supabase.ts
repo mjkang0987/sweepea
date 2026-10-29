@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, MediaComment, MediaItem, MediaQuery, Me, ParentHome, Pass, ReactionCount, UploadTarget } from './types';
+import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaComment, MediaItem, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -284,7 +284,12 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     updateMedia: (pass, id, u) =>
       rpc<void>(pass, 'sp_update_media', { p_media_id: id, p_taken_at: u.takenAt, p_child_ids: u.childIds, p_group_ids: u.groupIds }),
     deleteMedia: (pass, id) => rpc<void>(pass, 'sp_delete_media', { p_media_id: id }),
-    requestDelete: (pass) => rpc<string>(pass, 'sp_request_delete', {}),
+    requestDelete: (pass) => rpc<string | null>(pass, 'sp_request_delete', {}),
+    familyParents: async (pass) => (await rpc<FamilyParents | null>(pass, 'sp_family_parents', {})) ?? { parents: [], invite: null },
+    createParentInvite: (pass) => rpc<string>(pass, 'sp_create_parent_invite', {}),
+    parentInviteInfo: (pass, code) => rpc<ParentInviteInfo>(pass, 'sp_parent_invite_info', { p_code: code }),
+    acceptParentInvite: (pass, code, role) => rpc<string>(pass, 'sp_accept_parent_invite', { p_code: code, p_role: role }),
+    removeCoparent: (pass, userId) => rpc<void>(pass, 'sp_remove_coparent', { p_user: userId }),
     restoreFamily: (pass) => rpc<void>(pass, 'sp_restore_family', {}),
     setDownloadAllowed: (pass, familyId, on) => patchOne(pass, 'families', familyId, { download_allowed: on }),
     setTextSizeMode: (pass, familyId, mode) => patchOne(pass, 'families', familyId, { text_size_mode: mode }),
