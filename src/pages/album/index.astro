@@ -250,6 +250,8 @@ const monthCards = !monthRows
           <a class="sp-a__zoom-btn" href={fewer ?? undefined} role="link" aria-disabled={fewer ? undefined : 'true'} aria-label={q.z === 5 ? '작게(달마다 대표 사진)' : q.z === 'm' ? '작게(해마다 대표 사진)' : q.z === 'y' ? '작게' : '작게(한 줄에 더 많이)'}>−</a>
           <a class="sp-a__zoom-btn" href={more ?? undefined} role="link" aria-disabled={more ? undefined : 'true'} aria-label="크게(한 줄에 더 적게)">+</a>
         </nav>
+        {/* 사진 목록: −/+가 그 자리에서 이 묶음만 갈아 끼운다(98e, 배치에는 끼지 않는 묶음) */}
+        <div class="sp-a__album" data-album>
         {monthView ? (
           monthCards ? (
             <ul class="sp-a__mcards">
@@ -315,6 +317,7 @@ const monthCards = !monthRows
             </p>
           )
         )}
+        </div>
         {/* 떠 있는 칸 크기 버튼 아래로 마지막 줄이 가리지 않게 */}
         <div class="sp-a__zoom-space" aria-hidden="true"></div>
       </>
@@ -324,6 +327,7 @@ const monthCards = !monthRows
 
 <script>
   import { autoMore, keepSpot, relayout } from '../../lib/more';
+  import { zoomInPlace } from '../../lib/zoomswap';
 
   const swipe = document.querySelector<HTMLElement>('.sp-a__swipe');
   if (swipe) {
@@ -395,5 +399,8 @@ const monthCards = !monthRows
       return added;
     });
     keepSpot('.sp-a__cell-link');
+    // 사진 크기 −/+: 페이지 전환 없이 그 자리에서(98e)
+    zoomInPlace({ button: '.sp-a__zoom-btn', cell: '.sp-a__cell', also: ['.sp-a__zoom', '.sp-a__tabs', '.sp-a__chips', '.sp-a__save'] });
+    // 위 탭·집 칩·저장 링크에도 새 단계(z)가 들어 있어 같이 바꾼다(옛 단계로 되돌아가지 않게, 리뷰 2026-10-29)
   }
 </script>
