@@ -19,6 +19,8 @@ def glass(src,dst,title,t):
     nav=re.sub(r'(<a [^>]*?)style="(position: relative; )?display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 44px;',
                lambda m: m.group(1)+'style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 52px; border-radius: 999px;',nav)
     nav=re.sub(r'(<a [^>]*aria-current="page"[^>]*?style=")',r'\1background: var(--fill); ',nav)
+    # 유리 위라 고르지 않은 탭도 진한 글자·아이콘(뒤 사진에 따라 흐린 글자는 대비 부족, 리뷰 2026-10-29)
+    nav=nav.replace('color: var(--label-2); text-decoration: none; font-size: 11px','color: var(--label); text-decoration: none; font-size: 11px').replace('style="stroke: var(--label-2)"','style="stroke: var(--label)"')
     # 배지 자리: 아이콘 오른쪽 위
     nav=nav.replace('top: -2px; left: calc(50% + 6px);','top: 2px; left: calc(50% + 6px);')
     add=(f'<a href="ParentUpload{t}.dc.html" class="sp-glass-tint" aria-label="사진 추가" style="position: absolute; z-index: 6; right: 20px; bottom: 26px; width: 64px; height: 64px; border-radius: 999px; display: flex; align-items: center; justify-content: center; text-decoration: none;">'
