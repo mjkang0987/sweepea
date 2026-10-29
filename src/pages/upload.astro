@@ -102,6 +102,7 @@ const kid = callName(kids[0]?.name ?? '아이');
 
 <script>
   import { fitSize, mp4CreatedAt, photoTakenAt, plausible, stripJpeg } from '../lib/exif';
+  import { copyText } from '../lib/copy';
 
   type Item = {
     kind: 'photo' | 'video';
@@ -628,10 +629,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       $('up-done-title').focus();
       const text = `${form.dataset.kid} 새 사진 ${ids.length}장이에요. 누르면 바로 볼 수 있어요.`;
       const tell = (t: string) => ($('up-done-status').textContent = t);
-      const copy = (what: string, ok: string) =>
-        navigator.clipboard
-          ? navigator.clipboard.writeText(what).then(() => tell(ok), () => tell('복사하지 못했어요. 주소 칸을 길게 눌러 복사해 주세요.'))
-          : tell('주소 칸을 길게 눌러 복사해 주세요.');
+      const copy = (what: string, ok: string) => copyText($<HTMLInputElement>('up-link'), what, tell, ok);
       $('up-share').addEventListener('click', () => {
         // 휴대폰 공유 창(카톡 포함). 카카오 카드 공유는 앱 키를 받은 뒤
         if (navigator.share) navigator.share({ text, url }).catch(() => undefined);

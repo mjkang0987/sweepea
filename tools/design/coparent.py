@@ -20,9 +20,10 @@ def section(state):
             '<button type="button" style="min-height: 52px; border: 0; border-radius: 12px; background: var(--pea); color: var(--on-pea); font-family: inherit; font-size: 17px; font-weight: 600;">아빠 초대하기</button></li>')
     card=('<li style="border-top: 1px solid var(--separator); padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 10px;">'
           '<strong style="font-size: 17px; line-height: 22px;">아빠에게 보낼 링크를 만들었어요</strong>'
-          '<label for="cp-u" style="font-size: 15px; font-weight: 700;">주소(길게 눌러 복사)</label>'
+          '<label for="cp-u" style="font-size: 15px; font-weight: 700;">주소</label>'
           '<input id="cp-u" type="url" readonly value="https://sweepea.co.kr/join/Pq8wZ3nT" style="box-sizing: border-box; width: 100%; height: 52px; padding: 0 16px; border: 1.5px solid var(--label-2); border-radius: 12px; background: var(--bg); color: var(--label); font-family: inherit; font-size: 17px;">'
           '<a href="#" style="min-height: 52px; border-radius: 12px; background: var(--pea); color: var(--on-pea); display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 17px; font-weight: 600;">카톡·문자로 보내기</a>'
+          '<button type="button" style="min-height: 52px; border: 0; border-radius: 12px; background: var(--fill); color: var(--label); font-family: inherit; font-size: 17px; font-weight: 600;">주소 복사</button>'
           '<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--label-2);">한 번만 쓸 수 있고 3일 뒤에 사라져요. 받은 사람이 로그인하면 바로 함께 관리해요.</p></li>')
     return (f'<section aria-labelledby="f-par">\n      <h2 style="{H2}"><span id="f-par">엄마아빠</span> · 함께 관리</h2>\n'
             '      <ul style="list-style: none; margin: 0; padding: 0; border-radius: 16px; overflow: hidden; background: var(--surface);">'
