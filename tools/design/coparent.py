@@ -74,11 +74,14 @@ def join(t):
     s=s[:a]+head+s[b:]
     # 로그인 버튼 위에 엄마·아빠 고르기(가족 화면에 '오늘 아빠가 올렸어요'로 보임)
     k=s.index('<button type="button"',s.index('<div style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 28px;">'))
-    pick=('<fieldset style="margin: 0 0 6px; padding: 0; border: 0; min-width: 0;"><legend style="margin: 0 0 8px; font-size: 15px; font-weight: 700;">나는</legend>'
-          '<div style="display: flex; gap: 2px; padding: 2px; background: var(--fill); border-radius: 10px;">'
-          '<label style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 17px; font-weight: 500;"><input type="radio" name="role" value="mom" style="position: absolute; opacity: 0; width: 1px; height: 1px;">엄마</label>'
-          '<label style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--seg); box-shadow: 0 1px 2px rgba(0,0,0,0.12); font-size: 17px; font-weight: 600;"><input type="radio" name="role" value="dad" checked style="position: absolute; opacity: 0; width: 1px; height: 1px;">아빠</label>'
-          '</div></fieldset>')
+    # 엄마·아빠 고르기는 처음 설정(ParentSetup)과 같은 고르기 부품(네이티브 라디오 + 상자)
+    def choice(label, on):
+        dot=('<span style="width: 22px; height: 22px; border-radius: 999px; border: 2px solid var(--pea); display: flex; align-items: center; justify-content: center;"><span style="width: 12px; height: 12px; border-radius: 999px; background: var(--pea);"></span></span>' if on else
+             '<span style="width: 22px; height: 22px; border-radius: 999px; border: 2px solid var(--label-2);"></span>')
+        return (f'<label style="flex: 1; min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-radius: 12px; background: var(--surface); font-size: 17px; font-weight: 500;">'
+                f'<input type="radio" name="role" value="{"dad" if label=="아빠" else "mom"}"{" checked" if on else ""} style="position: absolute; opacity: 0; width: 1px; height: 1px;">{dot}{label}</label>')
+    pick=('<fieldset style="margin: 0 0 6px; padding: 0; border: 0; min-width: 0;"><legend style="margin: 0 0 8px; font-size: 15px; font-weight: 700;">나는 아이의</legend>'
+          '<div style="display: flex; gap: 8px;">'+choice('엄마',False)+choice('아빠',True)+'</div></fieldset>')
     s=s[:k]+'<sc-if value="{{isInvite}}" hint-placeholder-val="{{true}}">'+pick+'</sc-if>'+s[k:]
     s=re.sub(r"<script type=\"text/x-dc\" data-dc-script data-props='[^']*'>.*?</script>",
              "<script type=\"text/x-dc\" data-dc-script data-props='"+props(th,'state',['초대','이미 다른 앨범','기간 지남'],'초대')+"'>\nclass Component extends DCLogic {\nrenderVals() {\nconst s = this.props.state ?? '초대';\nreturn { theme: this.props.theme ?? '"+th+"', isInvite: s === '초대', isOther: s === '이미 다른 앨범', isOld: s === '기간 지남' };\n}\n}\n</script>",s,count=1,flags=re.S)
