@@ -3,6 +3,13 @@
 -- 내보내거나 나간 엄빠가 반응·한마디를 남겼으면 그 기록이 지워지지 않게(반응·한마디가 parents를 cascade로 참조) 행을 지우지 않고 removed_at만 적는다
 -- (가족 구성원 내보내기와 같은 방식). 알려진 한계: 그렇게 남은 계정은 같은 로그인으로 새 가족방을 만들거나 다른 초대를 받을 수 없다
 
+-- 20261029000002(가족방당 한 명 unique 풀기, SQL 편집기에서 직접)를 먼저 실행했는지 확인
+do $$ begin
+  if exists (select 1 from pg_constraint where conname = 'parents_family_id_key') then
+    raise exception '20261029000002_coparent_unique.sql을 먼저 실행해 주세요';
+  end if;
+end $$;
+
 alter table public.parents add column removed_at timestamptz;
 
 -- 엄빠 판정은 나가지 않은 행만
@@ -50,6 +57,76 @@ as $$
   ), jsonb_build_object('family_id', null))
 $$;
 
+-- 나간 엄빠는 예전 가족방의 최근 반응을 못 읽고(리뷰 2026-10-29), 같은 로그인으로 새 가족방을 만들 수 있다
+create or replace function public.sp_parent_activity() returns jsonb
+language sql stable security definer set search_path = ''
+as $$
+  with p as (select family_id, activity_seen_at from public.parents where user_id = auth.uid() and removed_at is null),
+  items as (
+    select 'reaction' as type, r.kind, null::text as body, r.created_at as at, m.display_name as who, x.id as media_id, x.thumb_key
+      from public.reactions r join public.media x on x.id = r.media_id and x.status = 'ready'
+      join public.members m on m.id = r.member_id and m.status = 'active'
+      where x.family_id = (select family_id from p) and r.created_at > now() - interval '30 days'
+    union all
+    select 'comment', null, c.body, c.created_at, m.display_name, x.id, x.thumb_key
+      from public.comments c join public.media x on x.id = c.media_id and x.status = 'ready'
+      join public.members m on m.id = c.member_id and m.status = 'active'
+      where x.family_id = (select family_id from p) and c.deleted_at is null and c.created_at > now() - interval '30 days'
+    order by at desc
+    limit 50
+  )
+  select jsonb_build_object(
+    'seen_at', (select activity_seen_at from p),
+    -- 이 목록을 읽은 시각. 읽음 표시는 이 시각까지만(그 사이 온 반응은 다음에 새 반응으로)
+    'read_at', now(),
+    'items', coalesce((select jsonb_agg(to_jsonb(i) order by i.at desc) from items i), '[]'::jsonb)
+  )
+  where exists (select 1 from p)
+$$;
+
+create or replace function public.sp_mark_activity_seen(p_read_at timestamptz) returns void
+language sql security definer set search_path = ''
+as $$
+  update public.parents set activity_seen_at = greatest(activity_seen_at, least(p_read_at, now()))
+    where user_id = auth.uid() and removed_at is null
+$$;
+
+create or replace function public.sp_create_family(
+  p_role text, p_display_name text, p_child_name text, p_birth_date date,
+  p_password text, p_hint text default null
+) returns uuid
+language plpgsql security definer set search_path = ''
+as $$
+declare v_family uuid;
+begin
+  if auth.uid() is null or public.sp_is_anonymous() then
+    raise exception 'parent_login_required' using errcode = '42501';
+  end if;
+  -- 지울 날이 지난 내 가족방은(지우는 작업이 아직 안 돌았어도) 먼저 지우고 새로 만든다
+  perform public.sp_purge_family(p.family_id) from public.parents p join public.families f on f.id = p.family_id
+    where p.user_id = auth.uid() and f.delete_after <= now();
+  if exists (select 1 from public.parents where user_id = auth.uid() and removed_at is null) then
+    raise exception 'family_exists' using errcode = '23505';
+  end if;
+  -- 한 사용자가 부모이면서 다른 가족방 기기일 수 없다
+  if exists (select 1 from public.devices where auth_user_id = auth.uid()) then
+    raise exception 'is_device' using errcode = '42501';
+  end if;
+  if p_password !~ '^[0-9]{4}$' then
+    raise exception 'password_4_digits' using errcode = '22023';
+  end if;
+  insert into public.families default values returning id into v_family;
+  -- 예전 가족방에서 나간 엄빠(기록 때문에 행이 남음)면 그 행을 새 가족방으로 옮긴다(예전 반응·한마디 이름은 그대로)
+  insert into public.parents (user_id, family_id, role, display_name)
+    values (auth.uid(), v_family, p_role, p_display_name)
+    on conflict (user_id) do update set family_id = excluded.family_id, role = excluded.role, display_name = excluded.display_name,
+      removed_at = null, activity_seen_at = now(), created_at = now();
+  insert into public.groups (family_id, name, password_hash, password_hint)
+    values (v_family, '가족', extensions.crypt(p_password, extensions.gen_salt('bf')), p_hint);
+  insert into public.children (family_id, name, birth_date) values (v_family, p_child_name, p_birth_date);
+  return v_family;
+end $$;
+
 create table public.parent_invites (
   id uuid primary key default gen_random_uuid(),
   family_id uuid not null references public.families (id) on delete cascade,
@@ -92,6 +169,8 @@ begin
   if v_family is null or exists (select 1 from public.families where id = v_family and delete_after is not null) then
     raise exception 'not_allowed' using errcode = '42501';
   end if;
+  -- 받기와 겹쳐 엄빠가 셋이 되지 않게 가족방을 잠근다
+  perform 1 from public.families where id = v_family for update;
   if (select count(*) from public.parents where family_id = v_family and removed_at is null) >= 2 then
     raise exception 'parents_full' using errcode = '23505';
   end if;
@@ -110,15 +189,19 @@ create function public.sp_parent_invite_info(p_code text) returns jsonb
 language sql stable security definer set search_path = ''
 as $$
   select coalesce((
-    select jsonb_build_object(
-      'result', case
+    select jsonb_build_object('result', r.result, 'mine', coalesce(i.family_id = public.sp_parent_family(), false))
+      -- 쓸 수 있는 초대일 때만 아이 이름·초대한 역할(지난 코드로는 아무것도 알 수 없게)
+      || case when r.result = 'ok' then jsonb_build_object(
+           'child_name', (select c.name from public.children c where c.family_id = i.family_id order by c.sort_order, c.created_at limit 1),
+           'inviter_role', (select p.role from public.parents p where p.user_id = i.created_by),
+           'taken_roles', (select jsonb_agg(p.role) from public.parents p where p.family_id = i.family_id and p.removed_at is null))
+         else '{}'::jsonb end
+    from public.parent_invites i join public.families f on f.id = i.family_id
+    cross join lateral (select case
         when f.delete_after is not null then 'closed'
         when i.used_at is not null or i.expires_at <= now() then 'expired'
         when (select count(*) from public.parents p where p.family_id = i.family_id and p.removed_at is null) >= 2 then 'full'
-        else 'ok' end,
-      'child_name', (select c.name from public.children c where c.family_id = i.family_id order by c.sort_order, c.created_at limit 1),
-      'inviter_role', (select p.role from public.parents p where p.user_id = i.created_by))
-    from public.parent_invites i join public.families f on f.id = i.family_id
+        else 'ok' end as result) r
     where i.code = p_code), jsonb_build_object('result', 'not_found'))
 $$;
 
@@ -143,17 +226,25 @@ begin
   -- 지울 날이 지난 내 가족방은 먼저 지운다(sp_create_family와 같게)
   perform public.sp_purge_family(p.family_id) from public.parents p join public.families f on f.id = p.family_id
     where p.user_id = auth.uid() and f.delete_after <= now();
-  if exists (select 1 from public.parents where user_id = auth.uid()) then
+  if exists (select 1 from public.parents where user_id = auth.uid() and removed_at is null) then
     raise exception 'family_exists' using errcode = '23505';
   end if;
   if exists (select 1 from public.devices where auth_user_id = auth.uid()) then
     raise exception 'is_device' using errcode = '42501';
   end if;
+  perform 1 from public.families where id = v_inv.family_id for update;
   if (select count(*) from public.parents where family_id = v_inv.family_id and removed_at is null) >= 2 then
     raise exception 'parents_full' using errcode = '23505';
   end if;
+  -- 엄마 둘·아빠 둘이면 가족 화면 이름이 겹친다
+  if exists (select 1 from public.parents where family_id = v_inv.family_id and removed_at is null and role = p_role) then
+    raise exception 'role_taken' using errcode = '22023';
+  end if;
+  -- 예전에 나간 엄빠(기록 때문에 행이 남음)면 그 행을 이 가족방으로 되살린다
   insert into public.parents (user_id, family_id, role, display_name)
-    values (auth.uid(), v_inv.family_id, p_role, case p_role when 'mom' then '엄마' else '아빠' end);
+    values (auth.uid(), v_inv.family_id, p_role, case p_role when 'mom' then '엄마' else '아빠' end)
+    on conflict (user_id) do update set family_id = excluded.family_id, role = excluded.role, display_name = excluded.display_name,
+      removed_at = null, activity_seen_at = now(), created_at = now();
   update public.parent_invites set used_at = now(), used_by = auth.uid() where id = v_inv.id;
   return v_inv.family_id;
 end $$;
