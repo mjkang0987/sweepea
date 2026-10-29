@@ -119,7 +119,7 @@ begin
     raise exception 'password_4_digits' using errcode = '22023';
   end if;
   insert into public.families default values returning id into v_family;
-  -- 예전 가족방에서 나간 엄빠(기록 때문에 행이 남음)면 그 행을 새 가족방으로 옮긴다(예전 반응·한마디 이름은 그대로)
+  -- 예전 가족방에서 나간 엄빠(기록 때문에 행이 남음)면 그 행을 새 가족방으로 옮긴다(예전 한마디 이름은 새 역할 이름으로 보임)
   insert into public.parents (user_id, family_id, role, display_name)
     values (auth.uid(), v_family, p_role, p_display_name)
     on conflict (user_id) do update set family_id = excluded.family_id, role = excluded.role, display_name = excluded.display_name,
