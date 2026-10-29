@@ -26,7 +26,7 @@ function toast(text: string, near: Element) {
   const span = document.createElement('span');
   span.className = 'sp-toast__text';
   span.textContent = text;
-  p.append(span);
+  p.appendChild(span); // append는 Worker 타입(HTMLRewriter)과 겹쳐 타입 검사가 막음
   area.insertBefore(p, area.firstChild);
 }
 
