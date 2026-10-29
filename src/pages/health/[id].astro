@@ -5,6 +5,7 @@ import AutoSave from '../../components/AutoSave.astro';
 import Toast from '../../components/Toast.astro';
 import { monthsOld } from '../../lib/age';
 import { BackendError, getBackend } from '../../lib/backend';
+import { monthDay } from '../../lib/kidHealth';
 import { HEALTH_ITEMS, splitSchedule, type HealthState } from '../../lib/health';
 import { loadParent, seoulToday } from '../../lib/parent';
 
@@ -43,11 +44,7 @@ const doneRows = await b.healthDone(a.pass, kid.id);
 const doneOn = new Map(doneRows.map((d) => [d.item_key, d.done_on]));
 const { upcoming, past } = splitSchedule(kid.birth_date, today, doneOn);
 const doneList = HEALTH_ITEMS.filter((i) => doneOn.has(i.key)).sort((x, y) => (doneOn.get(x.key)! < doneOn.get(y.key)! ? 1 : -1));
-const md = (iso: string) => {
-  const [, m, d] = iso.split('-').map(Number);
-  return `${m}월 ${d}일`;
-};
-const stateText = (s: HealthState) => (s.kind === 'now' ? '지금 가능' : s.kind === 'late' ? '시기 지남' : `${md(s.from)}부터`);
+const stateText = (s: HealthState) => (s.kind === 'now' ? '지금 가능' : s.kind === 'late' ? '시기 지남' : `${monthDay(s.from)}부터`);
 const KIND = { vaccine: '접종', checkup: '검진' };
 const done = Astro.url.searchParams.get('done');
 const back = from === 'alerts' ? { href: '/reactions', label: '알림', tab: 'alerts' as const } : from === 'settings' ? { href: '/settings/children', label: '아이', tab: 'settings' as const } : { href: '/home', label: '앨범', tab: 'home' as const };
@@ -123,7 +120,7 @@ const back = from === 'alerts' ? { href: '/reactions', label: '알림', tab: 'al
                     <span class="sp-p__who-name">{i.name}</span>
                     <span class="sp-p__hint">{i.age}</span>
                   </span>
-                  <span class="sp-p__health-when">{md(doneOn.get(i.key)!)}</span>
+                  <span class="sp-p__health-when">{monthDay(doneOn.get(i.key)!)}</span>
                 </label>
               </li>
             ))}

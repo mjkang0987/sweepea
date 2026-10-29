@@ -840,6 +840,9 @@
   left: max(var(--space-5), env(safe-area-inset-left));
   right: max(var(--space-5), env(safe-area-inset-right));
   bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
+  /* 가로로 든 폰·태블릿에서 캡슐이 너무 넓어지지 않게 가운데 */
+  max-width: 30rem;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -867,7 +870,8 @@
   justify-content: center;
   gap: 1px;
   border-radius: 999px;
-  color: var(--label-2);
+  /* 유리 위라 뒤 사진에 따라 바탕 밝기가 바뀜: 고르지 않은 탭도 진한 글자로(--label-2는 대비 부족) */
+  color: var(--label);
   font-size: 0.6875rem;
   font-weight: 600;
   text-decoration: none;
@@ -875,6 +879,16 @@
 .sp-p__tab[aria-current='page'] {
   color: var(--pea-ink);
   background: var(--fill);
+}
+/* 고대비: 그림자·배경이 꺼져도 캡슐·둥근 버튼 경계가 보이게 */
+@media (forced-colors: active) {
+  .sp-p__tabs-pill,
+  .sp-p__tab-add {
+    border: 1px solid CanvasText;
+  }
+  .sp-p__tab[aria-current='page'] {
+    outline: 2px solid Highlight;
+  }
 }
 /* 캡슐 옆 둥근 사진 추가 */
 .sp-p__tab-add {
@@ -1677,7 +1691,6 @@
   min-width: 0;
   font-size: var(--subhead-size);
 }
-/* 앨범 위 아이 카드(콩이·월령·다음 접종). 누르면 접종·검진 일정 */
 /* 접종·검진 줄(체크박스 + 이름 + 시기) */
 .sp-p__health {
   min-height: 3.5rem;
@@ -1745,6 +1758,12 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     box-shadow: none;
+  }
+  .sp-p__tabs {
+    max-width: none;
+  }
+  .sp-p__tab[aria-current='page'] {
+    background: none;
   }
   .sp-p__tab-add {
     width: 2.75rem;

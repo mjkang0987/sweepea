@@ -13,7 +13,10 @@ Astro.response.headers.set('cache-control', 'private, no-store');
 const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const b = getBackend();
-const act = await b.parentActivity(a.pass);
+const today = seoulToday();
+// 다가오는 일정: 접종·검진 보기를 켠 아이의 다음 일정이 2주 안(이미 가능한 것 포함)일 때만. 홈 맨 위 카드를 여기로 옮김(사용자 2026-10-29)
+const [act, next] = await Promise.all([b.parentActivity(a.pass), nextHealth(b, a.pass, (a.home.children ?? []).filter((k) => k.show_health), today)]);
+const soon = next.filter((k) => k.what && k.inDays <= 14);
 const now = Date.now();
 const rows = await Promise.all(
   (act?.items ?? []).map(async (x) => ({
@@ -25,9 +28,6 @@ const rows = await Promise.all(
 );
 // 다 그린 뒤에 읽음 표시(읽은 시각까지만)
 if (act) await b.markActivitySeen(a.pass, act.read_at);
-// 다가오는 일정: 접종·검진 보기를 켠 아이의 다음 일정이 2주 안(이미 가능한 것 포함)일 때만. 홈 맨 위 카드를 여기로 옮김(사용자 2026-10-29)
-const today = seoulToday();
-const soon = (await nextHealth(b, a.pass, (a.home.children ?? []).filter((k) => k.show_health), today)).filter((k) => k.what && k.inDays <= 14);
 const fresh = rows.filter((r) => r.isNew);
 const old = rows.filter((r) => !r.isNew);
 ---
