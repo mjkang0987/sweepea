@@ -19,7 +19,7 @@ with sync_playwright() as p:
     # 아이
     pg.goto(B+'/settings/children'); check(pg.get_by_role('link',name='변경 (하린)').count()==1,'아이 줄 변경')
     a=pg.get_by_role('link',name='아이 추가'); check(a.evaluate("e=>getComputedStyle(e).color")!='rgb(29, 29, 31)','아이 추가 초록')
-    pg.screenshot(path=S+'ChildSettings.png'); c=pg.get_by_label('앨범에 접종·검진 일정 보기'); was=c.is_checked(); c.click(); pg.wait_for_function("document.getElementById('as-live')?.textContent.trim().length>0"); check(pg.get_by_label('앨범에 접종·검진 일정 보기').is_checked()!=was,'접종 보기 바로 저장')
+    pg.screenshot(path=S+'ChildSettings.png'); c=pg.get_by_label('알림 탭에 다가오는 일정 보기'); was=c.is_checked(); c.click(); pg.wait_for_function("document.getElementById('as-live')?.textContent.trim().length>0"); check(pg.get_by_label('알림 탭에 다가오는 일정 보기').is_checked()!=was,'접종 보기 바로 저장')
     # 그룹 상세
     pg.goto(B+'/settings/family/groups'); g=pg.locator('a[href^="/settings/family/groups/"]:not([href$="new"])').first.get_attribute('href'); pg.goto(B+g)
     pg.screenshot(path=S+'GroupDetail.png')

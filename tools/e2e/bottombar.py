@@ -76,10 +76,10 @@ with sync_playwright() as p:
     gp.evaluate("document.documentElement.style.fontSize='200%'")
     bb=gp.locator('.sp-f__bottom--fixed').bounding_box(); check(bb['y']>=0 and bb['y']+bb['height']<=H+1,'글자 200%: 막대가 화면 안')
     gp.fill('#pw','0917'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/wait')
-    # 문자 공유: 승인한 가족이 있으면 탭바 위
+    # 문자 공유: 승인한 가족이 있으면 떠 있는 탭바 위
     pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 외할머니').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
-    pg.goto(B+'/settings/family/sms'); tab=pg.locator('.sp-p__tabs').bounding_box()
-    bar_at_bottom(pg,'.sp-p__savebar',H-tab['y'],'문자 공유: 링크 만들기 막대가 탭바 바로 위')
+    pg.goto(B+'/settings/family/sms'); tab=pg.locator('.sp-p__tabs-pill').bounding_box()
+    bar_at_bottom(pg,'.sp-p__savebar',H-tab['y']+8,'문자 공유: 링크 만들기 막대가 떠 있는 탭바 위 8px')
     pg.screenshot(path=W+'/bb-sms.png')
     br.close()
 print('FAILS',fails) if fails else print('ALL OK')
