@@ -30,7 +30,13 @@ if (Astro.request.method === 'POST') {
   const provider = String(form.get('provider') ?? '');
   if (!enabledProviders().includes(provider)) return Astro.redirect(`/join/${code}`, 303);
   Astro.cookies.set(JOIN_COOKIE, `${code}:${role}`, { path: '/', httpOnly: true, secure: import.meta.env.PROD, sameSite: 'lax', maxAge: 900 });
-  return Astro.redirect(`/login/${provider}`, 303);
+  // 폼 제출에서 바로 리다이렉트로 로그인(다른 사이트: Supabase → 카카오)까지 가면 CSP form-action 'self'에 막힌다(사용자 2026-10-29 "아빠 초대 카카오 로그인 안 됨").
+  // 같은 사이트 작은 화면을 한 번 그리고 거기서 새로 이동(폼 제출이 아닌 이동이라 막히지 않음). 스크립트 없어도 meta refresh·링크
+  const to = `/login/${provider}`;
+  return new Response(
+    `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=${to}"><title>로그인으로 이동 · 스위피</title></head><body><p><a href="${to}">로그인으로 이동해요</a></p></body></html>`,
+    { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'private, no-store' } },
+  );
 }
 const info = await b.parentInviteInfo(pass, code);
 // 초대한 본인(같은 앨범 엄빠)이 열었으면 함께 관리 칸으로
