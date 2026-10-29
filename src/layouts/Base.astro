@@ -23,6 +23,8 @@ const origin = (SITE_ORIGIN || Astro.url.origin).replace(/\/$/, '');
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content={description} />
+    {/* 네이버 서치어드바이저 사이트 소유 확인(사용자 2026-10-29). 구글은 DNS TXT로 확인 */}
+    <meta name="naver-site-verification" content="4d57f3a77a32f390daa4248bcad1804ade6f03b8" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
