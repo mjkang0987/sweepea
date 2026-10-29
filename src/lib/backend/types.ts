@@ -355,6 +355,11 @@ export interface FamilyParents {
 /** 엄빠 초대 받은 화면(/join) */
 export interface ParentInviteInfo {
   result: 'ok' | 'expired' | 'full' | 'closed' | 'not_found';
+  /** 지금 로그인한 엄빠의 가족방 초대(초대한 본인이 연 경우) */
+  mine?: boolean;
+  /** 쓸 수 있는 초대일 때만 */
   child_name?: string;
   inviter_role?: 'mom' | 'dad';
+  /** 이미 있는 엄빠 역할(같은 역할은 못 고름) */
+  taken_roles?: ('mom' | 'dad')[];
 }

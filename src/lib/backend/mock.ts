@@ -499,7 +499,9 @@ export function createMockBackend(): Backend {
       const i = parentInvites.find((x) => x.code === code);
       if (!i) return { result: 'not_found' };
       const result = isClosing(i.familyId) ? 'closed' : i.usedAt || i.at + 72 * HOUR <= Date.now() ? 'expired' : familyParentsOf(i.familyId).length >= 2 ? 'full' : 'ok';
-      return { result, child_name: kids.find((k) => k.familyId === i.familyId)?.name, inviter_role: parents.get(i.by)?.role };
+      const mine = !!_pass && parents.get(_pass.access)?.familyId === i.familyId;
+      if (result !== 'ok') return { result, mine };
+      return { result, mine, child_name: kids.find((k) => k.familyId === i.familyId)?.name, inviter_role: parents.get(i.by)?.role, taken_roles: familyParentsOf(i.familyId).map(([, p]) => p.role) };
     },
     async acceptParentInvite(pass, code, role) {
       if (!pass.access.startsWith('parent-')) throw new BackendError('parent_login_required', 403, '42501');
@@ -508,6 +510,7 @@ export function createMockBackend(): Backend {
       if (i.usedAt || i.at + 72 * HOUR <= Date.now() || isClosing(i.familyId)) throw new BackendError('expired', 400, '22023');
       if (parents.has(pass.access)) throw new BackendError('family_exists', 409, '23505');
       if (familyParentsOf(i.familyId).length >= 2) throw new BackendError('parents_full', 409, '23505');
+      if (familyParentsOf(i.familyId).some(([, p]) => p.role === role)) throw new BackendError('role_taken', 400, '22023');
       parents.set(pass.access, { familyId: i.familyId, role, since: Date.now() });
       i.usedAt = Date.now();
       return i.familyId;

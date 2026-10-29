@@ -2,7 +2,7 @@
 import type { APIRoute } from 'astro';
 import { getBackend } from '../../lib/backend';
 import { BackendError } from '../../lib/backend';
-import { JOIN_COOKIE, PKCE_COOKIE } from '../../lib/parent';
+import { JOIN_COOKIE, joinError, PKCE_COOKIE } from '../../lib/parent';
 import { PARENT, writePass } from '../../lib/pass';
 
 export const GET: APIRoute = async ({ url, cookies, redirect }) => {
@@ -22,7 +22,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
       return redirect('/home?joined=1', 302);
     } catch (e) {
       if (!(e instanceof BackendError) || e.status >= 500) throw e;
-      return redirect(`/join/${joinCode}?e=${e.message === 'family_exists' ? 'other' : 'expired'}`, 302);
+      return redirect(`/join/${joinCode}?e=${joinError(e)}`, 302);
     }
   }
   return redirect('/home', 302);

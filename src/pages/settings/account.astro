@@ -80,7 +80,7 @@ const open = confirm === 'delete' || confirm === 'subscribed' || confirm === 'le
         kind === 'leave' ? (
           <>
             <h2 class="sp-layer__title" id="del-t">이 앨범에서 나갈까요?</h2>
-            <p class="sp-layer__text" id="del-d">{other!.display_name}가 계속 관리해요. 사진과 가족은 그대로 남고, 내 계정만 빠져요. 다시 함께하려면 {other!.display_name}에게 초대를 받아 주세요.</p>
+            <p class="sp-layer__text" id="del-d">{other!.display_name}가 계속 관리해요. 사진과 가족은 그대로 남고, 내 계정만 빠져요. 다시 함께하려면 {other!.display_name}에게 초대를 받아 주세요.{planUntil && ' 내가 결제한 구독이 있으면 App Store나 Google Play에서 따로 해지해 주세요.'}</p>
             <form class="sp-layer__actions" method="post">
               <div class="sp-layer__pair">
                 {open ? <a class="sp-p__btn sp-p__btn--quiet" href="/settings/account" autofocus>취소</a> : <button class="sp-p__btn sp-p__btn--quiet" type="submit" formmethod="dialog" formnovalidate autofocus>취소</button>}

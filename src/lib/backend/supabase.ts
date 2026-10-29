@@ -14,6 +14,8 @@ export class BackendError extends Error {
     message: string,
     readonly status: number,
     readonly code?: string,
+    /** DB raise 글(family_exists·role_taken 등). 같은 errcode를 여러 이유가 쓸 때 가른다 */
+    readonly reason?: string,
   ) {
     super(message);
   }
@@ -34,8 +36,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     headers.set('authorization', `Bearer ${init.token ?? anonKey}`);
     const res = await fetch(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(8000) });
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error_code?: string; code?: string; error?: string };
-      throw new BackendError(`${path} ${res.status}`, res.status, body.error_code ?? body.code ?? body.error);
+      const body = (await res.json().catch(() => ({}))) as { error_code?: string; code?: string; error?: string; message?: string };
+      throw new BackendError(`${path} ${res.status}`, res.status, body.error_code ?? body.code ?? body.error, body.message);
     }
     // return=minimal은 본문이 없다(PATCH 204, POST 201)
     const text = await res.text();

@@ -28,6 +28,7 @@ with sync_playwright() as p:
     g=new(br); g.goto(url)
     check(g.get_by_role('heading',name='하린이 앨범을 함께 관리해요').count()==1 or '함께 관리해요' in g.content(),'초대 받은 화면 제목')
     check(g.locator('input[name=role][value=dad]').is_checked(),'엄마가 초대하면 아빠가 미리 골라짐')
+    check(g.locator('input[name=role][value=mom]').is_disabled() and '이미 있어요' in g.content(),'이미 있는 엄마는 못 고름')
     g.screenshot(path=W+'/cp-join.png')
     g.get_by_role('button',name='개발용으로 계속하기').click(); g.wait_for_url('**/home**')
     check('함께 관리해요' in g.content(),'받으면 홈에 함께 관리 안내')
@@ -48,8 +49,10 @@ with sync_playwright() as p:
     check('앨범에서 나왔어요' in g.content(),'나가면 작별 화면(가족방 그대로)')
     mom.goto(B+'/home'); check(mom.url.endswith('/home'),'엄마 앨범은 그대로')
     mom.goto(B+'/settings/family'); check(mom.get_by_role('button',name='아빠 초대하기').is_visible(),'나가면 다시 초대할 수 있음')
+    # 초대한 본인이 자기 링크를 열면 함께 관리 칸으로
+    url1=invite(mom); mom.goto(url1); check(mom.url.endswith('/settings/family#parents') or '/settings/family' in mom.url,'내 초대 링크를 열면 함께 관리 칸으로')
     # 새 아빠를 엄마가 내보냄
-    url2=invite(mom); d=join(br,url2)
+    url2=B+'/join/'+mom.locator('#pinvite-url').input_value().rsplit('/join/',1)[1]; d=join(br,url2)
     mom.goto(B+'/settings/family'); mom.get_by_role('button',name='내보내기 (아빠)').click(); mom.wait_for_selector('#fam-ask[open]')
     check('함께 관리에서 내보낼까요' in mom.locator('#fam-ask').inner_text(),'내보내기 확인 레이어')
     mom.locator('#fam-ask').get_by_role('button',name='내보내기').click(); toast(mom,'내보냈어요')

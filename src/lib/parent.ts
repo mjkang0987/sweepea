@@ -48,6 +48,9 @@ export const PROVIDER_NAMES: Record<string, string> = { kakao: '카카오', nave
 export const INTRO_COOKIE = 'sp_intro';
 /** 엄빠 함께 관리 초대: 로그인을 건너 콜백까지 가는 '코드:역할'(15분) */
 export const JOIN_COOKIE = 'sp_join';
+/** 초대 받기 실패 → 초대 화면 안내(?e=). DB raise 글로 가른다(23505를 family_exists·parents_full이 같이 써서) */
+export const joinError = (e: { reason?: string; message: string }) =>
+  ({ family_exists: 'other', role_taken: 'role', parents_full: 'full', is_device: 'device' } as Record<string, string>)[e.reason ?? e.message] ?? 'expired';
 
 /** 부모 화면 들어오기: 로그인 안 했으면 소개(처음)·로그인, 설정 전이면 처음 설정으로 */
 export async function loadParent(
