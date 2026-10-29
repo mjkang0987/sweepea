@@ -136,6 +136,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
 </Parent>
 
 <script>
+  import { revealCopy, wireCopy } from '../../../../../lib/copy';
   // 주소 보내기·다시 만들기를 이 화면에서: 보내고 돌아온 설정 > 가족 화면의 링크 카드(#link)를 가져와 목록 아래에 붙인다.
   // 다시 만들기는 먼저 확인 레이어. 스크립트 없거나 옛 브라우저면 지금처럼 설정 > 가족으로
   const root = document.querySelector<HTMLElement>('.sp-p');
@@ -154,6 +155,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
       region.textContent = '';
       setTimeout(() => (region.textContent = text), 50);
     };
+    wireCopy((t) => say(t));
     const toast = (src: Element | null, text: string) => {
       area.querySelector('.sp-toast')?.remove();
       const p = src ? (document.importNode(src, true) as HTMLElement) : document.createElement('p');
@@ -216,6 +218,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
         card?.remove();
         card = document.importNode(next, true);
         place();
+        revealCopy(card);
         const title = document.getElementById('link-title');
         title?.focus({ preventScroll: true });
         title?.scrollIntoView({ block: 'nearest' });

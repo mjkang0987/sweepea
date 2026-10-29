@@ -102,9 +102,10 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
     link && (
       <section class="sp-p__card" id="link" aria-labelledby="link-title">
         <h2 class="sp-p__card-title" id="link-title" tabindex="-1">{linkGroup} 링크를 만들었어요</h2>
-        <label class="sp-p__label" for="link-url">주소(길게 눌러 복사)</label>
+        <label class="sp-p__label" for="link-url">주소</label>
         <input class="sp-p__input" id="link-url" type="url" readonly value={link} />
         <a class="sp-p__btn" href={smsHref(`${kid} 사진 보시라고 주소 보내요. 누르면 바로 볼 수 있어요.\n${link}`)}>문자로 보내기</a>
+        <button class="sp-p__btn sp-p__btn--quiet" type="button" data-copy="link-url" hidden>주소 복사</button>
         <p class="sp-p__hint">3일 안에는 새 이름으로도 들어올 수 있어요. 이미 등록된 이름은 언제든 들어와요.</p>
       </section>
     )
@@ -195,6 +196,15 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
 </Parent>
 
 <script>
+  import { wireCopy } from '../../../lib/copy';
+  wireCopy((t) => {
+    const live = document.getElementById('fam-live');
+    if (live) live.textContent = t;
+  });
+</script>
+
+<script>
+  import { revealCopy } from '../../../lib/copy';
   // 그 자리에서: 이 화면 폼은 fetch로 보내고 돌아온 화면의 내용·탭 배지만 갈아 끼운다(하얀 깜빡임·스크롤 처음으로 없이).
   // 거절·내 가족 아님은 먼저 확인 레이어. 스크립트가 없거나 옛 브라우저면 지금처럼 폼 → 페이지 이동
   const root = document.querySelector<HTMLElement>('.sp-p');
@@ -267,6 +277,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
       const keep = new Set(['fam-live', 'fam-urgent', 'fam-ask']);
       area.replaceChildren(...[...from.childNodes].filter((n) => !(n instanceof Element && keep.has(n.id))).map((n) => document.importNode(n, true)), live, urgent, ask);
       area.removeAttribute('aria-busy');
+      revealCopy(area);
       // ?confirm=·?done=을 떼어 새로 고침해도 확인·안내가 다시 뜨지 않게
       if (location.search) history.replaceState(history.state, '', location.pathname);
       const tabs = doc.querySelector('.sp-p__tabs');
