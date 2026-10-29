@@ -2224,8 +2224,3 @@
   padding: var(--space-3) var(--space-4) var(--space-4);
   border-top: 1px solid var(--separator);
 }
-/* 초대 받은 화면(디자인 JoinParent): 제목이 두 줄이라 브랜드 이름보다 작게 */
-.sp-p__join-title {
-  font-size: var(--title2-size, 1.75rem);
-  line-height: 2.25rem;
-}
