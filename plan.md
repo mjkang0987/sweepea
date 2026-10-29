@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-29 기준, dev 0.12.0 배포됨)
+## 새 세션 인계 (2026-10-29 기준, dev 0.12.1 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(86~96이 최근).
 
 ### 지금 상태
 
-- dev = 0.12.0, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
+- dev = 0.12.1, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 23개 모두 적용(19번째 `20261029000002_coparent_unique.sql`은 사용자가 SQL 편집기에서, 20번째 `20261029000003_coparent.sql`은 2026-10-29 사용자 지시로 적용 도구). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v174). 화면 바꾸기 전에 반드시 여기부터 고친다. 보드 콩이 그림은 data URI로 넣는다(`/_blob`은 새 보드에서 깨짐)
@@ -1314,6 +1314,11 @@
 - 달·해 카드 → 그 달: ?at=YYYY-MM이면 처음부터 그 달까지 그려(900장까지) #m-YYYY-MM으로. 위로 올리면 최근 달도 보임. 너무 아래면 예전처럼 그 달부터. 기억 안 함
 - 결과(0.12.0): 검토 3회(전체 탭 '서이'의 '이'를 떼던 것 → 이름 그대로·쌍둥이 둘 다, 아이 여럿이면 달 이동 여백 9rem, 승인 대기 기기 생일 안 줌 검사). 운영 DB에 20261029000005 적용(2026-10-29 사용자 "넣고 배포")
 - e2e tools/e2e/milestones.py(오늘 100일 아이·오늘 찍은 사진), parentzoom·familyzoom 달 카드 검사 바꿈
+
+#### 103a. fix/join-login — 엄빠 초대 화면에서 카카오 로그인이 안 넘어감 (완료, 0.12.1)
+- 신고(사용자 2026-10-29): "아빠 초대 카카오 로그인 안 됨". 운영 로그: 초대 화면은 열렸는데 Supabase authorize 요청이 없음
+- 원인: /join 폼 POST → 303 /login/kakao → 302 Supabase → 카카오. CSP form-action 'self'가 폼 제출의 리다이렉트 끝(다른 사이트)까지 막음(크롬·사파리 둘 다 재현). 첫 로그인 화면은 링크(GET)라 괜찮았음
+- 고침: POST는 쿠키만 두고 같은 사이트 작은 화면(meta refresh + 링크)으로 응답 → 거기서 새로 이동(폼 제출이 아니라 막히지 않음). coparent.py 크롬·웹킷 통과
 
 ### 99. feature/wait-photos — 승인 대기 화면에 받은 사진 보여 주기 (완료, 0.5.5)
 - 요구(사용자 2026-10-29 "먼저 고치기"): 기억하신 규칙 '승인 안 받은 사람은 받은 링크의 사진만'이 화면에 없음
