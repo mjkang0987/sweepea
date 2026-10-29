@@ -74,7 +74,8 @@ with sync_playwright() as p:
     for to in ('5','3','2','1'):
         pg.get_by_role('link',name='크게(한 줄에 더 적게)').click(); pg.wait_for_url(f'**z={to}**'); pg.wait_for_selector(f'.sp-p__grid--z{to} .sp-p__cell-img'); pg.wait_for_timeout(400)
     check('z=1' in pg.url and pg.evaluate(COLS)==1,'크게 끝까지 → 1칸')
-    w=pg.locator('[data-when]').inner_text(); check(w.startswith('10월') and '~' not in w and '생후' in w,f'1칸 머리 작은 줄은 맨 위 사진의 날·생후 개월 ({w})')
+    w=pg.locator('[data-when]').inner_text(); check(w.startswith('10월') and '~' not in w,f'1칸 머리 작은 줄은 맨 위 사진의 날 ({w})')
+    k=pg.locator('.sp-p__albumhead-kid').inner_text(); check(k.startswith('하린 · ') and '개월' in k,f'머리 오른쪽 위에 아이 오늘 나이 ({k})')
     pg.evaluate("window.scrollTo(0,document.body.scrollHeight)"); pg.wait_for_timeout(300)
     w2=pg.locator('[data-when]').inner_text(); check(w2.startswith('9월'),f'스크롤하면 날짜가 따라 바뀜 ({w2})')
     pg.evaluate("window.scrollTo(0,0)")
