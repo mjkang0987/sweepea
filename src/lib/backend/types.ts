@@ -63,6 +63,8 @@ export interface MeFamily extends EntryMe {
   /** 부모가 '가족도 사진 저장하기'를 켰는지 */
   download_allowed?: boolean;
   child_name: string | null;
+  /** 아이들(기념일 표시용). 승인된 가족 기기만, 아니면 null */
+  children?: { name: string; birth_date: string }[] | null;
 }
 
 export interface Me {

@@ -634,6 +634,7 @@ insert into public.comments (media_id, parent_user_id, body) values (:'km_media'
 select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
 set role authenticated;
 select pg_temp.ok(public.sp_can_view_media(:'km_media') and not exists (select 1 from public.sp_comment_list(:'km_media')), '승인 대기는 사진은 봐도 한마디 목록은 못 봄');
+select pg_temp.ok((select e -> 'children' = 'null'::jsonb from jsonb_array_elements(public.sp_me() -> 'families') e where e ->> 'member' = 'pending' limit 1), 'sp_me 승인 대기 구성원(기기 active)엔 아이 생일 없음');
 reset role;
 update public.members set status = :'km_status', pending_until = nullif(:'km_until', '')::timestamptz where display_name = '큰이모';
 update public.devices set status = :'km_dev' where auth_user_id = :'AU' and member_id = (select id from public.members where display_name = '큰이모');
@@ -677,6 +678,8 @@ select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anon
 set role authenticated;
 select pg_temp.ok(public.sp_me() -> 'families' @> '[{"device": "active", "member": "active", "name": "외할머니", "closed": true, "child_name": "하린"}]', 'sp_me 외할머니(앨범 닫힘)');
 select pg_temp.ok(public.sp_me() -> 'families' @> '[{"device": "revoked", "name": "할머니", "closed": false}]', 'sp_me 다른 가족방은 따로');
+select pg_temp.ok((select (e -> 'children' -> 0 ->> 'name') = '하린' and (e -> 'children' -> 0 ->> 'birth_date') is not null from jsonb_array_elements(public.sp_me() -> 'families') e where e ->> 'name' = '외할머니'), 'sp_me 승인된 가족에게 아이 이름·생일(기념일)');
+select pg_temp.ok((select e -> 'children' = 'null'::jsonb from jsonb_array_elements(public.sp_me() -> 'families') e where e ->> 'device' = 'revoked' limit 1), 'sp_me 막힌 기기엔 아이 생일 없음');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'X', 'is_anonymous', true)::text, false);
 set role authenticated;

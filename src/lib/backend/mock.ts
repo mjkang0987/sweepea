@@ -259,7 +259,7 @@ export function createMockBackend(): Backend {
       const families: MeFamily[] = [];
       for (const [k, d] of devices) {
         if (k.startsWith(`${pass.access}|`)) {
-          families.push({ ...meOf(d)!, family_id: d.familyId, closed: isClosing(d.familyId), child_name: firstChild(d.familyId), download_allowed: !!downloads[d.familyId] });
+          families.push({ ...meOf(d)!, family_id: d.familyId, closed: isClosing(d.familyId), child_name: firstChild(d.familyId), download_allowed: !!downloads[d.familyId], children: d.status === 'active' && meOf(d)?.member === 'active' ? kids.filter((k) => k.familyId === d.familyId).map((k) => ({ name: k.name, birth_date: k.birth_date })) : null });
         }
       }
       return { families };
