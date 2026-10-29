@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ageLabel, agoLabel, birthLabel, milestone, monthsOld, remainingLabel, seenLabel } from '../src/lib/age.ts';
+import { ageLabel, agoLabel, birthLabel, dayMark, milestone, monthsOld, remainingLabel, seenLabel } from '../src/lib/age.ts';
 
 test('생후 개월은 생일 날짜가 지나야 한 달 늘어난다', () => {
   assert.equal(monthsOld('2025-09-17', '2026-10-16'), 12);
@@ -45,8 +45,8 @@ test('지난 시간', () => {
 test('백일·돌·생일은 그날만', () => {
   assert.equal(milestone('2026-07-19', '2026-10-26'), '태어난 지 100일이에요');
   assert.equal(milestone('2026-07-18', '2026-10-26'), null);
-  assert.equal(milestone('2025-10-26', '2026-10-26'), '첫 생일이에요');
-  assert.equal(milestone('2024-10-26', '2026-10-26'), '두 번째 생일이에요');
+  assert.equal(milestone('2025-10-26', '2026-10-26'), '첫돌이에요');
+  assert.equal(milestone('2024-10-26', '2026-10-26'), '두 돌이에요');
   assert.equal(milestone('2026-10-26', '2026-10-26'), null);
   assert.equal(milestone('2025-10-25', '2026-10-26'), null);
 });
@@ -63,4 +63,17 @@ test('앨범 머리 나이: N개월 N일', () => {
   assert.equal(ageLabel('2026-03-31', '2026-04-30'), '1개월');
   assert.equal(ageLabel('2024-02-29', '2025-02-28'), '12개월');
   assert.equal(ageLabel('2024-02-29', '2028-02-29'), '48개월');
+});
+
+test('기념일 표시: 50일, 100~1000일 백 단위, 그다음은 돌만', () => {
+  assert.equal(dayMark('2026-01-01', '2026-02-19'), '50일');
+  assert.equal(dayMark('2025-01-01', '2027-09-27'), '1000일');
+  assert.equal(dayMark('2025-01-01', '2028-06-23'), null); // 1270일째(2000일 같은 건 안 침)
+  assert.equal(dayMark('2026-07-19', '2026-10-26'), '100일');
+  assert.equal(dayMark('2026-01-01', '2026-07-19'), '200일');
+  assert.equal(dayMark('2025-01-01', '2026-05-15'), '500일');
+  assert.equal(dayMark('2025-01-03', '2026-01-03'), '첫돌');
+  assert.equal(dayMark('2024-01-03', '2026-01-03'), '두 돌');
+  assert.equal(dayMark('2025-01-03', '2026-01-04'), null);
+  assert.equal(milestone('2026-01-01', '2026-07-19'), '태어난 지 200일이에요');
 });

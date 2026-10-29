@@ -36,15 +36,25 @@ export function agoLabel(iso: string, nowMs: number): string {
   return seenLabel(iso, nowMs);
 }
 
-const NTH = ['첫', '두 번째', '세 번째', '네 번째', '다섯 번째', '여섯 번째', '일곱 번째', '여덟 번째', '아홉 번째', '열 번째'];
+/** 기념일로 치는 날 수(사용자 2026-10-29 "1000일까지는 백 단위로, 50일 100일 … 1000일, 그다음에는 돌만"). 태어난 날이 1일째 */
+const DAYS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+const DOL = ['첫돌', '두 돌', '세 돌', '네 돌', '다섯 돌', '여섯 돌', '일곱 돌', '여덟 돌', '아홉 돌', '열 돌'];
 
-/** 오늘이 백일·돌·생일이면 레이어 제목 뒷부분("태어난 지 100일이에요"), 아니면 null. 태어난 날이 1일째(서울 날짜)
+/** 그날이 기념일이면 짧은 이름("100일", "첫돌", "두 돌"), 아니면 null(앨범 사진 표시·머리 날짜 줄). 날짜는 서울 YYYY-MM-DD
  * shortcut: 2월 29일생은 평년엔 생일 없음, 필요하면 2월 28일로 */
+export function dayMark(birth: string, day: string): string | null {
+  const n = Math.round((Date.parse(day) - Date.parse(birth)) / 86_400_000) + 1;
+  if (DAYS.includes(n)) return `${n}일`;
+  const years = Number(day.slice(0, 4)) - Number(birth.slice(0, 4));
+  if (years < 1 || day.slice(5) !== birth.slice(5)) return null;
+  return DOL[years - 1] ?? `${years}돌`;
+}
+
+/** 오늘이 기념일이면 레이어 제목 뒷부분("태어난 지 200일이에요", "첫돌이에요", "두 돌이에요"), 아니면 null */
 export function milestone(birth: string, today: string): string | null {
-  if (Math.round((Date.parse(today) - Date.parse(birth)) / 86_400_000) + 1 === 100) return '태어난 지 100일이에요';
-  const years = Number(today.slice(0, 4)) - Number(birth.slice(0, 4));
-  if (years < 1 || today.slice(5) !== birth.slice(5)) return null;
-  return `${NTH[years - 1] ?? `${years}번째`} 생일이에요`;
+  const m = dayMark(birth, today);
+  if (!m) return null;
+  return m.endsWith('일') && /^\d/.test(m) ? `태어난 지 ${m}이에요` : `${m}이에요`;
 }
 
 /** 오늘 나이 'N개월 N일'(앨범 머리, 사용자 2026-10-29 "아기 정보는 항상 노출, N개월 NN일"). 한 달 전이면 'N일', 딱 달이 차면 'N개월'.
