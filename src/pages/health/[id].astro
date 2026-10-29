@@ -5,8 +5,7 @@ import AutoSave from '../../components/AutoSave.astro';
 import Toast from '../../components/Toast.astro';
 import { monthsOld } from '../../lib/age';
 import { BackendError, getBackend } from '../../lib/backend';
-import { monthDay } from '../../lib/kidHealth';
-import { HEALTH_ITEMS, splitSchedule, type HealthState } from '../../lib/health';
+import { HEALTH_ITEMS, splitSchedule, type HealthState, monthDay } from '../../lib/health';
 import { loadParent, seoulToday } from '../../lib/parent';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
