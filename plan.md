@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-29 기준, dev 0.14.4 배포됨)
+## 새 세션 인계 (2026-10-29 기준, dev 0.14.5 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(86~96이 최근).
 
 ### 지금 상태
 
-- dev = 0.14.4, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
+- dev = 0.14.5, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 23개 모두 적용(19번째 `20261029000002_coparent_unique.sql`은 사용자가 SQL 편집기에서, 20번째 `20261029000003_coparent.sql`은 2026-10-29 사용자 지시로 적용 도구). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v174). 화면 바꾸기 전에 반드시 여기부터 고친다. 보드 콩이 그림은 data URI로 넣는다(`/_blob`은 새 보드에서 깨짐)
@@ -1314,6 +1314,11 @@
 - 달·해 카드 → 그 달: ?at=YYYY-MM이면 처음부터 그 달까지 그려(900장까지) #m-YYYY-MM으로. 위로 올리면 최근 달도 보임. 너무 아래면 예전처럼 그 달부터. 기억 안 함
 - 결과(0.12.0): 검토 3회(전체 탭 '서이'의 '이'를 떼던 것 → 이름 그대로·쌍둥이 둘 다, 아이 여럿이면 달 이동 여백 9rem, 승인 대기 기기 생일 안 줌 검사). 운영 DB에 20261029000005 적용(2026-10-29 사용자 "넣고 배포")
 - e2e tools/e2e/milestones.py(오늘 100일 아이·오늘 찍은 사진), parentzoom·familyzoom 달 카드 검사 바꿈
+
+#### 103e. fix/viewer-prefetch — 크게 보기에서 넘기면 '누가 봤어요'가 늦게 뜸 (완료, 0.14.5)
+- 신고(사용자 2026-10-29): "누가 본 게 너무 늦게 떠, 그 부분만"
+- 원인: 옆으로 넘기면 사진은 바로 바뀌지만 아래 판('봤어요'·반응)은 다음 사진 화면 전체를 서버에서 받은 뒤에야 바뀜(DB 조회 자체는 40ms, 화면 한 장 받기가 몇백 ms)
+- 고침: Viewer 스크립트가 지금 사진의 양옆 화면을 미리 받아 두고(30초 안이면 다시 씀, x-sp-slide라 보신 기록 안 남김), 넘기면 바로 갈아 끼움. 반응·한마디를 보내면 미리 받은 화면은 버림. 넘긴 뒤 판 바뀜 11ms(mock)
 
 #### 103d. feature/save-to-photos — 사진 저장은 휴대폰 사진 앱 앨범으로 (완료, 0.14.1)
 - 요구(사용자 2026-10-29): "사진 저장 누르니까 다운로드로 가는데 앨범으로 가는 게 맞는데", "모바일이 중요해"
