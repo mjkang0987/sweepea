@@ -7,7 +7,7 @@ import { callName, hasBatchim } from '../lib/ko';
 import { agoLabel, milestone, monthsOld } from '../lib/age';
 import { loadParent, seoulToday } from '../lib/parent';
 import { signedMediaUrl } from '../lib/signed';
-import { loadPage, loadReacts } from '../lib/album';
+import { loadPage, loadReacts, monthCursor, pickZoom, ZOOMS, type Zoom } from '../lib/album';
 import { masonry, ratioOf } from '../lib/masonry';
 import { EMOJI } from '../lib/emoji';
 import { JOIN_SEEN, MILESTONE_SEEN, STORAGE_SEEN, seenAt, setLayerCookie } from '../lib/layers';
@@ -34,6 +34,8 @@ const kid = callName(a.home.children?.[0]?.name ?? '아이');
 const kids = a.home.children ?? [];
 const picked = kids.length > 1 ? kids.find((k) => k.id === Astro.url.searchParams.get('k')) : undefined;
 const b = getBackend();
+// 사진 크기(−/+, 98a): 1·2·3칸 = 사진 전부, 월별 = 달마다 대표 3장. 기기 쿠키에 기억
+const z = pickZoom(Astro.url, Astro.cookies, 'sp_pz');
 // 60장씩: ?before=<찍은 날~id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
 const cont = Astro.url.searchParams.has('before');
 const today = seoulToday();
@@ -43,9 +45,28 @@ const [page, admin] = await Promise.all([
   loadPage(a.pass, { childId: picked?.id }, Astro.url),
   cont ? null : b.familyAdmin(a.pass).catch(() => null),
 ]);
+// 월별 달 카드(옆 기능이 아니라 이 단계의 본문이라 실패하면 안내 글)
+const monthCards = z === 'm' && page.items.length ? await b.mediaMonths(a.pass, { childId: picked?.id, reps: 3 }).catch(() => null) : null;
 const { items } = page;
 const kq = picked ? `k=${encodeURIComponent(picked.id)}&` : '';
-const nextHref = page.next ? `/home?${kq}before=${encodeURIComponent(page.next)}` : null;
+// 월별은 달 카드라 다음 쪽이 없다
+const nextHref = page.next && z !== 'm' ? `/home?${kq}z=${z}&before=${encodeURIComponent(page.next)}` : null;
+const zoomHref = (to: Zoom) => `/home?${kq}z=${to}`;
+const zi = ZOOMS.indexOf(z);
+const smaller = zi < ZOOMS.length - 1 ? zoomHref(ZOOMS[zi + 1]) : null;
+const bigger = zi > 0 ? zoomHref(ZOOMS[zi - 1]) : null;
+// 달 카드: 제목은 달 묶음과 같게(올해면 '10월'), 대표 3장, 누르면 그 달부터 3칸
+const cardMonths = monthCards
+  ? await Promise.all(
+      monthCards.map(async (mo) => ({
+        ym: mo.ym,
+        label: mo.ym.slice(0, 4) === today.slice(0, 4) ? `${Number(mo.ym.slice(5))}월` : `${mo.ym.slice(0, 4)}년 ${Number(mo.ym.slice(5))}월`,
+        n: mo.n,
+        href: `/home?${kq}z=3&before=${encodeURIComponent(monthCursor(mo.ym))}`,
+        pics: await Promise.all(mo.reps.map((r) => signedMediaUrl(r.thumb_key))),
+      })),
+    )
+  : null;
 const now = Date.now();
 const s = admin && summarize(admin);
 const firstWait = s && s.pendingDevices.length === 0 && s.pendingMembers.length === 1 ? s.pendingMembers[0] : null;
@@ -85,14 +106,14 @@ const helpers = admin?.members.filter((m) => m.status === 'active' && m.install_
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
 // 칸마다 받은 하트·한마디 수(디자인: 칸 왼쪽 아래 알약). 옆 기능이라 실패하면 알약만 뺀다
-const reacts = await loadReacts(a.pass, items.map((m) => m.id)).catch(() => null);
+const reacts = z === 'm' ? null : await loadReacts(a.pass, items.map((m) => m.id)).catch(() => null);
 const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
 type Cell = { id: string; src: string; video: boolean; day: string; ratio: number; hearts: number; says: number; length: string | null; at2?: string };
 const months: { ym: string; label: string; age: string; count: number; cells: Cell[] }[] = [];
 // 달 제목(디자인): 올해면 '10월', 아니면 '2025년 10월'. 오른쪽에 그 달 끝(이번 달이면 오늘) 아이 개월 수 · 사진 수
 const ageKid = picked ?? (kids.length === 1 ? kids[0] : undefined);
 const seoulYM = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
-for (const m of items) {
+for (const m of z === 'm' ? [] : items) {
   const ym = seoulYM(m.taken_at);
   const label = ym.slice(0, 4) === today.slice(0, 4) ? `${Number(ym.slice(5, 7))}월` : monthFmt.format(new Date(m.taken_at));
   if (months.at(-1)?.label !== label) {
@@ -102,7 +123,8 @@ for (const m of items) {
   const r = reacts?.get(m.id)?.counts;
   months.at(-1)!.cells.push({
     id: m.id,
-    src: await signedMediaUrl(m.thumb_key),
+    // 1칸은 한 줄에 한 장을 크게 보여서 작은 그림(480px) 대신 사진(영상은 포스터)
+    src: await signedMediaUrl(z === 1 ? (m.kind === 'video' ? (m.poster_key ?? m.thumb_key) : m.view_key) : m.thumb_key),
     video: m.kind === 'video',
     day: dayFmt.format(new Date(m.taken_at)),
     ratio: ratioOf(m.width, m.height),
@@ -120,12 +142,13 @@ await Promise.all(
     mo.count = await b.countMedia(a.pass, { childId: picked?.id, takenFrom: `${mo.ym}-01T00:00:00+09:00`, takenBefore: `${nextYM(mo.ym)}-01T00:00:00+09:00` }).catch(() => mo.cells.length);
   }),
 );
-// 엇갈린 배열 자리: 휴대폰 2줄, 넓은 화면 4줄(CSS가 화면 폭에 맞는 쪽을 씀)
+// 엇갈린 배열 자리: 휴대폰 2줄, 넓은 화면 4줄(CSS가 화면 폭에 맞는 쪽을 씀). 1칸은 휴대폰 한 줄(원래 모양 --ar), 넓은 화면 2줄. 3·5칸은 정사각이라 자리 없음
 for (const mo of months) {
+  if (z === 3) continue;
   const two = masonry(mo.cells.map((c) => c.ratio), 2);
   const four = masonry(mo.cells.map((c) => c.ratio), 4);
   mo.cells.forEach((c, i) => {
-    c.at2 = `--c2:${two[i].col};--r2:${two[i].row};--s2:${two[i].span};--c4:${four[i].col};--r4:${four[i].row};--s4:${four[i].span}`;
+    c.at2 = `--c2:${two[i].col};--r2:${two[i].row};--s2:${two[i].span};--c4:${four[i].col};--r4:${four[i].row};--s4:${four[i].span};--ar:${1 / c.ratio}`;
   });
 }
 ---
@@ -136,6 +159,14 @@ for (const mo of months) {
     <h1 class="sp-p__title sp-p__title--large">앨범</h1>
     {!picked && (a.home.photo_count ?? 0) + (a.home.video_count ?? 0) > 0 && (
       <p class="sp-p__albumhead-sub">{[['사진', a.home.photo_count ?? 0], ['영상', a.home.video_count ?? 0]].filter(([, n]) => +n > 0).map(([w, n]) => `${w} ${n.toLocaleString('ko-KR')}`).join(' · ')}</p>
+    )}
+    {/* 사진 크기(디자인 ParentHomeZoom): 사진 앱 보관함 버튼 자리의 둥근 유리 −/+ */}
+    {items.length > 0 && (
+      <nav class="sp-p__zoom" aria-label="사진 크기">
+        {/* 끝 단계는 꺼진 링크(화면 읽기에도 '사용 불가'로 들리게) */}
+        <a class="sp-p__zoom-btn" href={smaller ?? undefined} role="link" aria-disabled={smaller ? undefined : 'true'} aria-label={z === 3 ? '작게(달마다 대표 사진)' : '작게(한 줄에 더 많이)'}>−</a>
+        <a class="sp-p__zoom-btn" href={bigger ?? undefined} role="link" aria-disabled={bigger ? undefined : 'true'} aria-label="크게(한 줄에 더 적게)">+</a>
+      </nav>
     )}
   </header>
   {
@@ -226,6 +257,22 @@ for (const mo of months) {
         <h2 class="sp-p__empty-title" id="empty-title">{kid} 첫 사진을 올려 주세요</h2>
         <p class="sp-p__lead">올리고 카톡으로 보내면 조부모님이<br />설치 없이 바로 보실 수 있어요</p>
       </section>
+    ) : cardMonths ? (
+      <ul class="sp-p__mcards">
+        {cardMonths.map((mo) => (
+          <li>
+            <a class="sp-p__mcard" href={mo.href}>
+              <span class="sp-p__mcard-pics" aria-hidden="true">
+                {mo.pics.map((src) => <img class="sp-p__mcard-img" src={src} alt="" loading="lazy" decoding="async" />)}
+              </span>
+              <span class="sp-p__mcard-title">{mo.label}</span>
+              <span class="sp-p__mcard-count">{mo.n.toLocaleString('ko-KR')}장</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    ) : z === 'm' ? (
+      <p class="sp-p__lead">달마다 모아 보기를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
     ) : (
       months.map((mo) => (
         <section class="sp-p__month" data-ym={mo.ym} aria-label={`${mo.label} ${mo.count}장`}>
@@ -233,10 +280,10 @@ for (const mo of months) {
             <h2 class="sp-p__month-title">{mo.label}</h2>
             <p class="sp-p__month-count">{mo.age}사진 {mo.count}</p>
           </div>
-          <ul class="sp-p__grid">
+          <ul class={`sp-p__grid sp-p__grid--z${z}`}>
             {mo.cells.map((c) => (
               <li class="sp-p__cell" id={`c-${c.id}`} style={c.at2} data-ratio={c.ratio}>
-                <a class="sp-p__cell-link" href={`/view/${c.id}${picked ? `?k=${encodeURIComponent(picked.id)}` : ''}`}>
+                <a class="sp-p__cell-link" href={`/view/${c.id}?${kq}z=${z}`}>
                   <img
                     class="sp-p__cell-img"
                     src={c.src}

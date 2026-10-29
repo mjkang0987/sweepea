@@ -17,7 +17,10 @@ if ('redirect' in a) return Astro.redirect(a.redirect);
 const b = getBackend();
 const kids = a.home.children ?? [];
 const picked = kids.length > 1 ? kids.find((x) => x.id === Astro.url.searchParams.get('k')) : undefined;
-const kq = picked ? `?k=${encodeURIComponent(picked.id)}` : '';
+// 앨범 칸 단계(1·2·3)도 이어 받아 닫을 때 그 단계로(기억한 단계가 월별이어도 보던 자리로 돌아가게, 리뷰 2026-10-29)
+const zp = ['1', '2', '3'].includes(Astro.url.searchParams.get('z') ?? '') ? Astro.url.searchParams.get('z') : null;
+const qs = [picked && `k=${encodeURIComponent(picked.id)}`, zp && `z=${zp}`].filter(Boolean).join('&');
+const kq = qs ? `?${qs}` : '';
 // 반응·한마디: 부모 계정으로. 돌아갈 곳은 이 화면 주소만
 if (Astro.request.method === 'POST') {
   const pass = a.pass;
@@ -55,7 +58,7 @@ const slides = await slideWindow(items, i, view, (x) => `${dayLabel(x.taken_at)}
     poster={poster}
     pos={win.pos}
     total={win.total}
-    closeHref={`/home?${picked ? `k=${encodeURIComponent(picked.id)}&` : ''}to=${m.id}#c-${m.id}`}
+    closeHref={`/home?${qs ? `${qs}&` : ''}to=${m.id}#c-${m.id}`}
     save={{ href: src, name: saveName, label }}
     prev={prev && { href: view(prev), video: prev.kind === 'video' }}
     next={next && { href: view(next), video: next.kind === 'video' }}
