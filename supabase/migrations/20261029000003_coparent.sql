@@ -7,7 +7,8 @@
 -- 20261029000002(가족방당 한 명 unique 풀기, SQL 편집기에서 직접)를 먼저 실행했는지 확인
 do $$ begin
   if exists (select 1 from pg_constraint where conname = 'parents_family_id_key')
-     or exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'parents' and column_name = 'family_id' and is_nullable = 'NO') then
+     or exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'parents' and column_name = 'family_id' and is_nullable = 'NO')
+     or exists (select 1 from pg_constraint where conname = 'parents_family_id_fkey' and confdeltype <> 'n') then
     raise exception '20261029000002_coparent_unique.sql을 먼저 실행해 주세요';
   end if;
 end $$;
@@ -135,8 +136,8 @@ as $$
   insert into public.r2_cleanup (prefix) values (p_family::text || '/') on conflict do nothing;
   -- 다른 가족방에 반응·한마디가 남은 엄빠 행은 남긴다(가족방을 지우면 family_id가 빔)
   delete from public.parents p where p.family_id = p_family
-    and not exists (select 1 from public.reactions r where r.parent_user_id = p.user_id)
-    and not exists (select 1 from public.comments c where c.parent_user_id = p.user_id);
+    and not exists (select 1 from public.reactions r join public.media x on x.id = r.media_id where r.parent_user_id = p.user_id and x.family_id <> p_family)
+    and not exists (select 1 from public.comments c join public.media x on x.id = c.media_id where c.parent_user_id = p.user_id and x.family_id <> p_family);
   delete from public.families where id = p_family;
 $$;
 
@@ -264,7 +265,7 @@ begin
 end $$;
 
 -- 엄빠 한 명 빼기(내보내기·나만 나가기 공통). 반응·한마디가 있으면 행은 남기고 removed_at만
-create function public.sp_drop_parent(p_user uuid) returns void
+create function public.sp_unlink_parent(p_user uuid) returns void
 language plpgsql security definer set search_path = ''
 as $$
 begin
@@ -275,7 +276,7 @@ begin
   end if;
   delete from public.parent_invites where created_by = p_user and used_at is null;
 end $$;
-revoke execute on function public.sp_drop_parent(uuid) from public, anon, authenticated;
+revoke execute on function public.sp_unlink_parent(uuid) from public, anon, authenticated;
 
 -- 함께 관리하는 상대 엄빠 내보내기(나는 못 내보냄 → 나가기는 탈퇴)
 create function public.sp_remove_coparent(p_user uuid) returns void
@@ -283,11 +284,14 @@ language plpgsql security definer set search_path = ''
 as $$
 declare v_family uuid := public.sp_parent_family();
 begin
+  -- 둘이 동시에 서로 내보내도 엄빠 0명이 되지 않게 가족방을 잠근 뒤 나와 상대가 아직 있는지 다시 본다
+  perform 1 from public.families where id = v_family for update;
   if v_family is null or p_user = auth.uid()
+     or not exists (select 1 from public.parents where user_id = auth.uid() and family_id = v_family and removed_at is null)
      or not exists (select 1 from public.parents where user_id = p_user and family_id = v_family and removed_at is null) then
     raise exception 'not_allowed' using errcode = '42501';
   end if;
-  perform public.sp_drop_parent(p_user);
+  perform public.sp_unlink_parent(p_user);
 end $$;
 
 -- 탈퇴: 함께 관리하는 엄빠가 있으면 나만 나가고(null), 마지막 한 명이면 지금처럼 3일 뒤 삭제 예정 시각
@@ -297,8 +301,13 @@ as $$
 declare v_family uuid := public.sp_parent_family(); v_at timestamptz;
 begin
   if v_family is null then raise exception 'parent_only' using errcode = '42501'; end if;
+  -- 둘이 동시에 나가도 마지막 한 명은 삭제 예정으로 가게 잠근 뒤 다시 본다
+  perform 1 from public.families where id = v_family for update;
+  if not exists (select 1 from public.parents where user_id = auth.uid() and family_id = v_family and removed_at is null) then
+    raise exception 'parent_only' using errcode = '42501';
+  end if;
   if exists (select 1 from public.parents where family_id = v_family and removed_at is null and user_id <> auth.uid()) then
-    perform public.sp_drop_parent(auth.uid());
+    perform public.sp_unlink_parent(auth.uid());
     return null;
   end if;
   -- 스토어 구독은 탈퇴해도 결제가 멈추지 않으니 먼저 해지하게 한다(PT402 → HTTP 402)
