@@ -18,7 +18,7 @@ with sync_playwright() as p:
     pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=60000)
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home**',timeout=60000)
     pg.goto(B+'/home'); pg.wait_for_selector('.sp-p__cell-img')
-    check(pg.locator('.sp-p__albumhead-sub').inner_text()=='사진 6','작은 줄에 사진 수')
+    check(pg.locator('.sp-p__albumhead-sub').inner_text().endswith('일'),'칸 단계 작은 줄은 찍은 날(98c)')
     g=pg.evaluate("(()=>{const r=[...document.querySelectorAll('.sp-p__cell')].map(c=>c.getBoundingClientRect());return [Math.min(...r.map(x=>x.left)),Math.max(...r.map(x=>x.right)),getComputedStyle(document.querySelector('.sp-p__cell')).borderTopLeftRadius,getComputedStyle(document.querySelector('.sp-p__grid')).columnGap]})()")
     check(abs(g[0])<0.5 and abs(g[1]-390)<0.5,f'사진이 화면 끝까지 {g[:2]}')
     check(g[2]=='0px' and g[3]=='2px',f'모서리 0·간격 2px {g[2:]}')
