@@ -265,16 +265,8 @@
 .sp-p__mock-kongi,
 .sp-p__brand-kongi,
 .sp-p__landing-kongi,
-.sp-p__empty-kongi,
-.sp-p__kid-kongi {
+.sp-p__empty-kongi {
   animation: sp-kongi-hop 2.4s steps(1, end) infinite;
-}
-/* 여러 마리가 나란히 있으면 0.3초씩 늦게 */
-.sp-p__kid + .sp-p__kid .sp-p__kid-kongi {
-  animation-delay: 0.3s;
-}
-.sp-p__kid + .sp-p__kid + .sp-p__kid .sp-p__kid-kongi {
-  animation-delay: 0.6s;
 }
 @media (prefers-reduced-motion: reduce) {
   .sp-layer__kongi,
@@ -283,8 +275,7 @@
   .sp-p__mock-kongi,
   .sp-p__brand-kongi,
   .sp-p__landing-kongi,
-  .sp-p__empty-kongi,
-  .sp-p__kid-kongi {
+  .sp-p__empty-kongi {
     animation: none;
   }
 }

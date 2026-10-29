@@ -41,8 +41,8 @@ with sync_playwright() as p:
     pg.unroute('**/settings/text-size')
     # 아이: 접종·검진 보기 체크
     pg.goto(B+'/settings/children'); same(pg)
-    hc=pg.get_by_label('앨범에 접종·검진 일정 보기'); was=hc.is_checked(); hc.click(); said(pg,'저장했어요')
-    check(still(pg) and pg.get_by_label('앨범에 접종·검진 일정 보기').is_checked()!=was,'아이 접종 보기: 그 자리에서')
+    hc=pg.get_by_label('알림 탭에 다가오는 일정 보기'); was=hc.is_checked(); hc.click(); said(pg,'저장했어요')
+    check(still(pg) and pg.get_by_label('알림 탭에 다가오는 일정 보기').is_checked()!=was,'아이 접종 보기: 그 자리에서')
     # 그룹: 이름(빈칸이면 오류)·기본 포함
     pg.goto(B+'/settings/family/groups'); pg.locator('a[href^="/settings/family/groups/"]').filter(has_text='가족').first.click(); pg.wait_for_url('**/groups/*'); same(pg)
     pg.fill('#name','   '); pg.press('#name','Enter'); pg.wait_for_selector('#g-err')
