@@ -193,6 +193,9 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 
 <script>
   // 크게 보기 전용(가족 화면 중 유일한 스크립트). 영상 재생 막대·소리, 옆으로 밀어 넘기기
+  import { wireSave } from '../lib/savephoto';
+  // 저장: 휴대폰은 공유 창으로 사진 앱 앨범에(사용자 "다운로드로 가는데 앨범으로")
+  wireSave('.sp-v__link[download]');
   const v = document.querySelector<HTMLElement>('[data-v]');
   const video = v?.querySelector('video');
   if (v) v.dataset.js = '';
