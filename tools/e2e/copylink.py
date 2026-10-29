@@ -24,6 +24,7 @@ with sync_playwright() as p:
     if eng=='chromium':
         btn.click(); pg.wait_for_function("document.getElementById('as-live')?.textContent.includes('복사했어요')")
         check(pg.evaluate('navigator.clipboard.readText()')==url,'클립보드에 주소')
+        t=pg.locator('.sp-toast'); check(t.count()==1 and t.inner_text()=='주소를 복사했어요.' and t.is_visible(),'복사했어요 토스트가 보임')
     # 복사 못 하는 경우(권한 거절 등): 칸을 골라 두기
     pg.evaluate("navigator.clipboard && (navigator.clipboard.writeText=()=>Promise.reject(new Error('x'))); 0")
     btn.click(); pg.wait_for_function("document.getElementById('as-live')?.textContent.includes('골라 두었어요')")
