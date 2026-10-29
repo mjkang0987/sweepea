@@ -1,5 +1,5 @@
 # 사진 한 장 저장(사용자 2026-10-29 "사진 저장 누르니까 다운로드로 가는데, 앨범으로 가는 게 맞는데"):
-# 휴대폰(터치)은 공유 창(navigator.share, '이미지 저장' → 사진 앱)으로, PC는 지금처럼 내려받기. 공유를 그만두면 아무 일 없음 (mock, 인자: 폴더 엔진)
+# 아이폰(터치)은 공유 창(navigator.share, '이미지 저장' → 사진 앱)으로, 안드로이드·PC는 내려받기. 공유를 그만두면 아무 일 없음 (mock, 인자: 폴더 엔진)
 import os,sys
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D=os.path.dirname(os.path.abspath(__file__))+'/'
@@ -35,6 +35,14 @@ with sync_playwright() as p:
     pg.evaluate("window.__abort=0;window.__block=1")
     pg.get_by_role('link',name='저장').first.click(); pg.wait_for_timeout(800)
     check(not dl and '한 번 더 눌러 주세요' in pg.locator('.sp-toast').last.inner_text(),'공유 창이 막히면 내려받기 대신 다시 누르기 안내')
+    # 안드로이드: 공유 창엔 갤러리 저장이 없어 내려받기(갤러리 'Download'에 보임, 사용자 "안드로이드는 공유하기 뜨는데")
+    if eng=='chromium':
+        an=br.new_context(viewport={'width':390,'height':844},has_touch=True,is_mobile=True,accept_downloads=True,user_agent='Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36')
+        an.add_cookies(phone.cookies()); an.add_init_script(STUB); a=an.new_page(); a.goto(pg.url)
+        with a.expect_download(timeout=10000) as d2:
+            a.get_by_role('link',name='저장').first.tap()
+        check(a.evaluate("window.__shared") is None and d2.value.suggested_filename.endswith('.jpg'),'안드로이드: 공유 창 대신 내려받기')
+        an.close()
     # PC: 내려받기 그대로
     cookies=phone.cookies(); pc=br.new_context(viewport={'width':1280,'height':900},accept_downloads=True); pc.add_cookies(cookies); pc.add_init_script(STUB)
     q=pc.new_page(); q.goto(pg.url)

@@ -4,6 +4,10 @@
 // 그래서 사진은 화면을 열 때 미리 받아 두고, 아직 덜 받았거나 막히면 내려받기로 넘기지 않고 '한 번 더 눌러 주세요'
 import { toast } from './copy';
 
+/** 공유 창으로 사진 앱에 저장할 수 있는 기기(아이폰·아이패드, 손가락 화면, 파일 공유 지원) */
+export const sharesToPhotos = () =>
+  typeof navigator.canShare === 'function' && matchMedia('(pointer: coarse)').matches && !/Android/i.test(navigator.userAgent);
+
 const files = new Map<string, Promise<File>>();
 const ready = new Map<string, File>();
 const load = (href: string, name: string) => {
@@ -29,8 +33,8 @@ const download = (a: HTMLAnchorElement) => {
 
 /** selector: download 속성이 있는 저장 링크. data-kind="photo"면 화면을 열 때 미리 받는다(영상은 커서 누르기 시작할 때) */
 export function wireSave(selector: string) {
-  // 손가락으로 쓰는 휴대폰만(PC는 지금처럼 내려받기가 편함)
-  if (typeof navigator.canShare !== 'function' || !matchMedia('(pointer: coarse)').matches) return;
+  // 공유 창은 아이폰·아이패드만('이미지 저장'이 있음). 안드로이드 공유 창엔 갤러리 저장이 없고 내려받으면 갤러리 'Download'에 바로 보여서 내려받기(사용자 2026-10-29 "애플은 저장 뜬다, 안드로이드는 공유하기 뜨는데"). PC도 내려받기
+  if (!sharesToPhotos()) return;
   const warm = (a: HTMLAnchorElement) => void load(a.href, a.download || 'sweepea').catch(() => {});
   for (const a of document.querySelectorAll<HTMLAnchorElement>(selector)) if (a.dataset.kind === 'photo') warm(a);
   document.addEventListener('pointerdown', (e) => {
