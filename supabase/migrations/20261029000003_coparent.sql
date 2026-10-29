@@ -1,11 +1,13 @@
 -- 공동 관리자(100, 사용자 2026-10-29 "권한은 공동으로"): 가족방마다 엄빠 계정 둘까지, 둘 다 같은 엄빠 화면.
 -- 초대 링크(한 번, 3일) → 받은 사람이 로그인하면 엄빠로. 서로 내보낼 수 있고, 한 명 탈퇴는 나만 나가기(마지막 한 명일 때만 가족방 삭제).
 -- 내보내거나 나간 엄빠가 반응·한마디를 남겼으면 그 기록이 지워지지 않게(반응·한마디가 parents를 cascade로 참조) 행을 지우지 않고 removed_at만 적는다
--- (가족 구성원 내보내기와 같은 방식). 알려진 한계: 그렇게 남은 계정은 같은 로그인으로 새 가족방을 만들거나 다른 초대를 받을 수 없다
+-- (가족 구성원 내보내기와 같은 방식). 그 계정이 다시 초대받거나 새 가족방을 만들면 그 행을 옮겨 쓴다(예전 한마디 이름은 새 역할 이름으로 보임).
+-- 가족방이 지워지면 기록 있는 엄빠 행은 family_id만 비고(20261029000002) 남는다
 
 -- 20261029000002(가족방당 한 명 unique 풀기, SQL 편집기에서 직접)를 먼저 실행했는지 확인
 do $$ begin
-  if exists (select 1 from pg_constraint where conname = 'parents_family_id_key') then
+  if exists (select 1 from pg_constraint where conname = 'parents_family_id_key')
+     or exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'parents' and column_name = 'family_id' and is_nullable = 'NO') then
     raise exception '20261029000002_coparent_unique.sql을 먼저 실행해 주세요';
   end if;
 end $$;
@@ -105,7 +107,7 @@ begin
   -- 지울 날이 지난 내 가족방은(지우는 작업이 아직 안 돌았어도) 먼저 지우고 새로 만든다
   perform public.sp_purge_family(p.family_id) from public.parents p join public.families f on f.id = p.family_id
     where p.user_id = auth.uid() and f.delete_after <= now();
-  if exists (select 1 from public.parents where user_id = auth.uid() and removed_at is null) then
+  if exists (select 1 from public.parents where user_id = auth.uid() and removed_at is null and family_id is not null) then
     raise exception 'family_exists' using errcode = '23505';
   end if;
   -- 한 사용자가 부모이면서 다른 가족방 기기일 수 없다
@@ -126,6 +128,17 @@ begin
   insert into public.children (family_id, name, birth_date) values (v_family, p_child_name, p_birth_date);
   return v_family;
 end $$;
+
+create or replace function public.sp_purge_family(p_family uuid) returns void
+language sql security definer set search_path = ''
+as $$
+  insert into public.r2_cleanup (prefix) values (p_family::text || '/') on conflict do nothing;
+  -- 다른 가족방에 반응·한마디가 남은 엄빠 행은 남긴다(가족방을 지우면 family_id가 빔)
+  delete from public.parents p where p.family_id = p_family
+    and not exists (select 1 from public.reactions r where r.parent_user_id = p.user_id)
+    and not exists (select 1 from public.comments c where c.parent_user_id = p.user_id);
+  delete from public.families where id = p_family;
+$$;
 
 create table public.parent_invites (
   id uuid primary key default gen_random_uuid(),
@@ -217,6 +230,8 @@ begin
   if p_role not in ('mom', 'dad') then
     raise exception 'bad_request' using errcode = '22023';
   end if;
+  -- 잠금은 초대 만들기와 같은 순서(가족방 → 초대)로: 엄마가 새 링크를 누르는 순간 받아도 교착이 없게
+  perform 1 from public.families where id = (select family_id from public.parent_invites where code = p_code) for update;
   select * into v_inv from public.parent_invites where code = p_code for update;
   if not found then raise exception 'not_found' using errcode = 'P0002'; end if;
   if v_inv.used_at is not null or v_inv.expires_at <= now()
@@ -226,13 +241,12 @@ begin
   -- 지울 날이 지난 내 가족방은 먼저 지운다(sp_create_family와 같게)
   perform public.sp_purge_family(p.family_id) from public.parents p join public.families f on f.id = p.family_id
     where p.user_id = auth.uid() and f.delete_after <= now();
-  if exists (select 1 from public.parents where user_id = auth.uid() and removed_at is null) then
+  if exists (select 1 from public.parents where user_id = auth.uid() and removed_at is null and family_id is not null) then
     raise exception 'family_exists' using errcode = '23505';
   end if;
   if exists (select 1 from public.devices where auth_user_id = auth.uid()) then
     raise exception 'is_device' using errcode = '42501';
   end if;
-  perform 1 from public.families where id = v_inv.family_id for update;
   if (select count(*) from public.parents where family_id = v_inv.family_id and removed_at is null) >= 2 then
     raise exception 'parents_full' using errcode = '23505';
   end if;

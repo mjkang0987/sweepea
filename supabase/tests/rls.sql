@@ -1047,6 +1047,15 @@ select public.sp_create_family('dad', '민수', '도윤', '2026-01-02', '2222') 
 select pg_temp.ok(public.sp_parent_family() = :'qfam2', '나간 엄빠가 새 가족방 만듦');
 reset role;
 select pg_temp.ok((select count(*) = 1 from public.reactions where parent_user_id = :'Q2' and media_id = :'qm'), '예전 가족방 하트는 그대로');
+-- 옮겨 간 새 가족방이 지워져도 예전 가족방 하트는 남고, 그 로그인으로 다시 시작할 수 있음
+select public.sp_purge_family(:'qfam2');
+select pg_temp.ok((select count(*) = 1 from public.reactions where parent_user_id = :'Q2' and media_id = :'qm'), '새 가족방을 지워도 예전 하트는 그대로');
+select pg_temp.ok((select family_id is null from public.parents where user_id = :'Q2'), '기록 있는 엄빠 행은 가족방만 비고 남음');
+set role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'Q2', 'is_anonymous', false)::text, false);
+select pg_temp.ok(public.sp_parent_home() ->> 'family_id' is null, '가족방이 지워지면 처음 설정부터');
+select public.sp_create_family('dad', '민수', '도윤', '2026-01-02', '2222') as qfam3 \gset
+select pg_temp.ok(public.sp_parent_family() = :'qfam3', '다시 새 가족방을 만들 수 있음');
 set role authenticated;
 -- 새 초대로 Q3(아빠) → Q3 탈퇴는 나만 나가기(기록 없으면 행 삭제), 가족방은 그대로
 select set_config('request.jwt.claims', json_build_object('sub', :'Q1', 'is_anonymous', false)::text, false);
