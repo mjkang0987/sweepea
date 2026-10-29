@@ -6,6 +6,7 @@ import Toast from '../../../components/Toast.astro';
 import { birthLabel, monthsOld } from '../../../lib/age';
 import { BackendError, getBackend } from '../../../lib/backend';
 import { loadParent, seoulToday } from '../../../lib/parent';
+import { monthDay, nextHealth } from '../../../lib/kidHealth';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
 const a = await loadParent(Astro.cookies);
@@ -23,8 +24,10 @@ if (Astro.request.method === 'POST') {
 }
 const showHealth = kids.some((k) => k.show_health);
 const today = seoulToday();
+// 아이마다 다음 접종·검진(홈 카드를 알림 탭·여기로 옮김, 사용자 2026-10-29). 보기를 끈 아이는 줄만
+const next = new Map((await nextHealth(getBackend(), a.pass, kids.filter((k) => k.show_health), today)).map((n) => [n.id, n]));
 const done = Astro.url.searchParams.get('done');
-const doneText: Record<string, string> = { added: '아이를 추가했어요.', saved: '고쳤어요.', health: '저장했어요.', error: '저장하지 못했어요. 다시 눌러 주세요.' };
+const doneText: Record<string, string> = { added: '아이를 추가했어요.', saved: '변경했어요.', health: '저장했어요.', error: '저장하지 못했어요. 다시 눌러 주세요.' };
 ---
 
 <Parent title="아이 · 설정" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
@@ -45,6 +48,13 @@ const doneText: Record<string, string> = { added: '아이를 추가했어요.', 
             </span>
             <span class="sp-p__row-action">변경<span class="sp-vh"> ({k.name})</span></span>
           </a>
+          <a class="sp-p__row sp-p__kid-health" href={`/health/${k.id}?from=settings`}>
+            <span class="sp-p__row-label">
+              접종·검진 일정<span class="sp-vh"> ({k.name})</span>
+              {next.get(k.id)?.what && <span class="sp-p__hint"> · {next.get(k.id)!.what} {next.get(k.id)!.from ? monthDay(next.get(k.id)!.from!) : '지금'}</span>}
+            </span>
+            <svg class="sp-p__icon-chev" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
+          </a>
         </li>
       ))
     }
@@ -57,8 +67,8 @@ const doneText: Record<string, string> = { added: '아이를 추가했어요.', 
         <li>
           <label class="sp-p__rows-item sp-p__rows-item--check">
             <span class="sp-p__radio-text">
-              <span class="sp-p__who-name">앨범에 접종·검진 일정 보기</span>
-              <span class="sp-p__hint" id="health-note">부모 앨범 위 아이 카드에 다음 일정이 보여요. 가족 화면에는 보이지 않아요</span>
+              <span class="sp-p__who-name">알림 탭에 다가오는 일정 보기</span>
+              <span class="sp-p__hint" id="health-note">다음 일정이 2주 안이면 알림 탭 맨 위에 보여요. 가족 화면에는 보이지 않아요</span>
             </span>
             <input class="sp-p__checkbox" type="checkbox" name="health" value="1" checked={showHealth} aria-describedby="health-note" />
           </label>

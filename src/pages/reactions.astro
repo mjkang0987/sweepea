@@ -5,7 +5,8 @@ import { agoLabel } from '../lib/age';
 import { getBackend } from '../lib/backend';
 import { EMOJI } from '../lib/emoji';
 import { hasBatchim } from '../lib/ko';
-import { loadParent } from '../lib/parent';
+import { loadParent, seoulToday } from '../lib/parent';
+import { monthDay, nextHealth } from '../lib/kidHealth';
 import { signedMediaUrl } from '../lib/signed';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
@@ -24,6 +25,9 @@ const rows = await Promise.all(
 );
 // 다 그린 뒤에 읽음 표시(읽은 시각까지만)
 if (act) await b.markActivitySeen(a.pass, act.read_at);
+// 다가오는 일정: 접종·검진 보기를 켠 아이의 다음 일정이 2주 안(이미 가능한 것 포함)일 때만. 홈 맨 위 카드를 여기로 옮김(사용자 2026-10-29)
+const today = seoulToday();
+const soon = (await nextHealth(b, a.pass, (a.home.children ?? []).filter((k) => k.show_health), today)).filter((k) => k.what && k.inDays <= 14);
 const fresh = rows.filter((r) => r.isNew);
 const old = rows.filter((r) => !r.isNew);
 ---
@@ -31,6 +35,21 @@ const old = rows.filter((r) => !r.isNew);
 <Parent title="알림 · 스위피" tab="alerts" alerts={0} waiting={a.home.waiting ?? 0}>
   <h1 class="sp-p__title sp-p__title--large">알림</h1>
   {rows.length > 0 && <p class="sp-p__lead">가족이 남긴 하트와 말이에요. 앱이 나오면 알림으로도 알려 드릴게요.</p>}
+  {
+    soon.length > 0 && (
+      <section class="sp-p__section" aria-labelledby="sec-soon">
+        <h2 class="sp-p__section-title" id="sec-soon">다가오는 일정</h2>
+        {soon.map((k) => (
+          <a class="sp-p__cta sp-p__soon" href={`/health/${k.id}?from=alerts`}>
+            <svg class="sp-p__soon-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4l6 6M17 7l-9 9-3 1 1-3 9-9M11 7l6 6M8 13l1.5 1.5M10 11l1.5 1.5M4 20l2-2" /></svg>
+            <span class="sp-p__cta-title">{k.name} · {k.what}</span>
+            <span class="sp-p__cta-sub">{k.from ? `${monthDay(k.from)}부터 · ${k.inDays}일 남았어요` : '지금 할 수 있어요'}</span>
+            <span class="sp-p__chev" aria-hidden="true">›</span>
+          </a>
+        ))}
+      </section>
+    )
+  }
   {
     [
       { id: 'sec-new', title: `새 반응 · ${fresh.length}`, list: fresh },

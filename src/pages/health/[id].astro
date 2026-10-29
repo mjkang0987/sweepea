@@ -15,7 +15,9 @@ const kid = a.home.children?.find((k) => k.id === Astro.params.id);
 if (!kid) return Astro.redirect('/home');
 const b = getBackend();
 const today = seoulToday();
-const here = `/health/${kid.id}`;
+// 들어온 곳(알림 탭 다가오는 일정·설정 › 아이)으로 돌아가기. 저장 뒤에도 이어지게 주소에 남긴다
+const from = Astro.url.searchParams.get('from');
+const here = `/health/${kid.id}${from === 'alerts' || from === 'settings' ? `?from=${from}&` : '?'}`;
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const valid = new Set(HEALTH_ITEMS.map((i) => i.key));
@@ -31,10 +33,10 @@ if (Astro.request.method === 'POST') {
   const remove = one ? (tWant === 'off' && before.has(tKey) ? [tKey] : []) : [...was].filter((k) => before.has(k) && !checked.has(k));
   try {
     await b.setHealthDone(a.pass, a.home.family_id!, kid.id, add, remove, today);
-    return Astro.redirect(`${here}?done=saved`, 303);
+    return Astro.redirect(`${here}done=saved`, 303);
   } catch (e) {
     if (!(e instanceof BackendError)) throw e;
-    return Astro.redirect(`${here}?done=error`, 303);
+    return Astro.redirect(`${here}done=error`, 303);
   }
 }
 const doneRows = await b.healthDone(a.pass, kid.id);
@@ -48,11 +50,12 @@ const md = (iso: string) => {
 const stateText = (s: HealthState) => (s.kind === 'now' ? '지금 가능' : s.kind === 'late' ? '시기 지남' : `${md(s.from)}부터`);
 const KIND = { vaccine: '접종', checkup: '검진' };
 const done = Astro.url.searchParams.get('done');
+const back = from === 'alerts' ? { href: '/reactions', label: '알림', tab: 'alerts' as const } : from === 'settings' ? { href: '/settings/children', label: '아이', tab: 'settings' as const } : { href: '/home', label: '앨범', tab: 'home' as const };
 ---
 
-<Parent title={`접종·검진 · ${kid.name}`} tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+<Parent title={`접종·검진 · ${kid.name}`} tab={back.tab} alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
   <div class="sp-p__nav">
-    <a class="sp-p__back" href="/home">앨범</a>
+    <a class="sp-p__back" href={back.href}>{back.label}</a>
     <h1 class="sp-p__nav-title">접종·검진</h1>
   </div>
   <h2 class="sp-p__title">{kid.name} · 생후 {monthsOld(kid.birth_date, today)}개월</h2>
