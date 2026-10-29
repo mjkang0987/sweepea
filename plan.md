@@ -2,13 +2,13 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-10-29 기준, dev 0.7.1 배포됨)
+## 새 세션 인계 (2026-10-29 기준, dev 0.7.2 배포됨)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(86~96이 최근).
 
 ### 지금 상태
 
-- dev = 0.7.1, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
+- dev = 0.7.2, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 20개 모두 적용(19번째 `20261029000002_coparent_unique.sql`은 사용자가 SQL 편집기에서, 20번째 `20261029000003_coparent.sql`은 2026-10-29 사용자 지시로 적용 도구). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (v174). 화면 바꾸기 전에 반드시 여기부터 고친다. 보드 콩이 그림은 data URI로 넣는다(`/_blob`은 새 보드에서 깨짐)
@@ -1266,6 +1266,10 @@
 - 디자인: 캔버스 새 보드 WaitPhotos(라이트·다크) 먼저
 - 검사: e2e(엄빠 올리기 → 링크 → 새 이름 → 대기 화면에 그 사진만, 다른 사진 안 보임, 빈 묶음 글), 기존 entry 검사
 - 결과: 검토 3회(못 불러오면 '불러오지 못했어요' 안내, 크기 모르는 것만 4:3 자리, 영상 섞이면 '사진·영상 N개', 대체 글 순번, mock 공유도 다른 가족방 사진은 거절). tools/e2e/waitphotos.py 크롬·사파리 엔진(`webkit` 인자), entry·bottombar·members·groups·family e2e, DB 검사(거절 63) 통과. 디자인 WaitPhotos v180. 남은 것: 영상 섞인 묶음·불러오기 실패는 e2e 없음(코드로만), 실제 아이폰·실제 DB 화면 확인은 안 함
+
+### 104. fix/album-head-glass — 앨범 머리 흰 띠 → 비치는 유리, 저장 막대 위 선 없앰 (완료, 0.7.2)
+- 요구(사용자 2026-10-29): "fixed 영역에 흰 배경 뭐야?"(103 머리가 대비 때문에 단색 흰 띠가 됨), "sp-p__savebar border-top도 삭제"
+- 결과: 머리는 화면색 75% 막 + 흐림 20px(아래 띠에서 투명), 작은 줄도 진한 글자 → 사진이 흐리게 비치면서 대비 최저 8.48:1(크롬, 밝은 모드 검은 사진·어두운 모드 흰 사진). color-mix 모르는 옛 브라우저는 @supports로 단색. 저장 막대 위 선 없앰(--savebar-h에서 1px 뺌, 고대비 모드만 선), 보드 10개도. 낡은 검사 savebar.py(탭바 위 0.5rem·접종 링크는 설정 › 아이) 맞춤. 남은 것: 실제 사파리 흐림(웹킷 헤드리스는 backdrop-filter를 안 그림)
 
 ### 103. feature/album-bleed — 앨범 위 고정 머리 + 사진 좌우 꽉 (완료, 0.7.1)
 - 요구(사용자 2026-10-29, 아이폰 사진 앱 보관함 화면 캡처): "헤더 고정 영역 디자인 맞춰 주고, 사진 영역은 좌우 여백 없이 채워 줘"
