@@ -11,7 +11,7 @@ import { UUID } from './media';
 export const ZOOMS = [1, 2, 3, 5, 'm', 'y'] as const;
 export type Zoom = (typeof ZOOMS)[number];
 const toZoom = (v: string | null | undefined): Zoom | undefined => ZOOMS.find((z) => String(z) === v);
-const chosen = (url: URL) => (url.pathname === '/home' || url.pathname === '/album') && !url.searchParams.has('before') && !url.searchParams.has('to');
+const chosen = (url: URL) => (url.pathname === '/home' || url.pathname === '/album') && !url.searchParams.has('before') && !url.searchParams.has('to') && !url.searchParams.has('at');
 const KEEP = { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: import.meta.env.PROD, maxAge: 365 * 24 * 3600 };
 
 export interface AlbumQuery {
@@ -90,6 +90,19 @@ export async function loadPage(pass: Pass, base: MediaQuery, url: URL): Promise<
       backend.countMedia(pass, { ...base, before }),
     ]);
     return page(rows, PAGE, true, total - older);
+  }
+  // ?at=YYYY-MM(달·해 카드): 처음부터 그 달까지 그려 위로 올리면 최근 달도 보이게(사용자 "월별에서 들어가면 이전 달이 안 보여"). 너무 아래면 그 달부터(?before= 방식)
+  const at = url.searchParams.get('at');
+  if (at && /^\d{4}-(0[1-9]|1[0-2])$/.test(at)) {
+    const [cy, cm] = at.split('-').map(Number);
+    const next = cm === 12 ? `${cy + 1}-01` : `${cy}-${String(cm + 1).padStart(2, '0')}`;
+    const c = { takenAt: `${next}-01T00:00:00+09:00`, id: '00000000-0000-0000-0000-000000000000' };
+    // 그 달보다 최근 사진 수(다음 달 1일 0시 이후) + 그 달 앞부분이 보이게 한 쪽 더
+    const newer = await backend.countMedia(pass, { ...base, after: c });
+    const want = Math.ceil((newer + PAGE) / PAGE) * PAGE;
+    if (want <= TO_MAX) return page(await backend.listMedia(pass, { ...base, limit: want + 1 }), want, want > PAGE, 0);
+    const [rows, total] = await Promise.all([backend.listMedia(pass, { ...base, before: c, limit: PAGE + 1 }), backend.countMedia(pass, base)]);
+    return page(rows, PAGE, true, newer > total ? 0 : newer);
   }
   const toId = url.searchParams.get('to');
   const to = toId && UUID.test(toId) ? (await backend.listMedia(pass, { ...base, id: toId, limit: 1 }))[0] : undefined;
