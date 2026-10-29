@@ -131,7 +131,13 @@ for (const mo of months) {
 ---
 
 <Parent title="앨범 · 스위피" tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0} wide>
-  <h1 class="sp-p__title sp-p__title--large">앨범</h1>
+  {/* 위에 붙는 머리(디자인 ParentHomeBleed, 아이폰 사진 앱처럼 사진이 밑으로 흐리게 지나감). 아이를 고르면 수는 가족 전체라 숨김 */}
+  <header class="sp-p__albumhead">
+    <h1 class="sp-p__title sp-p__title--large">앨범</h1>
+    {!picked && (a.home.photo_count ?? 0) + (a.home.video_count ?? 0) > 0 && (
+      <p class="sp-p__albumhead-sub">{[['사진', a.home.photo_count ?? 0], ['영상', a.home.video_count ?? 0]].filter(([, n]) => +n > 0).map(([w, n]) => `${w} ${n.toLocaleString('ko-KR')}`).join(' · ')}</p>
+    )}
+  </header>
   {
     join && (
       <div class="sp-layer">

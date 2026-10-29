@@ -759,14 +759,15 @@
 /* 엇갈린 배열(디자인): 서버가 정한 줄·칸 자리(--c·--r·--s, src/lib/masonry.ts). 높이 단위 --u = 줄 폭 / 40 */
 .sp-p__grid {
   --cols: 2;
-  --u: calc((100cqi - (var(--cols) - 1) * 4px) / var(--cols) / 40);
+  --gap: 4px;
+  --u: calc((100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols) / 40);
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   grid-auto-rows: var(--u);
-  column-gap: 4px;
+  column-gap: var(--gap);
 }
 .sp-p__cell {
   position: relative;
@@ -774,7 +775,7 @@
   grid-row: var(--r2) / span var(--s2);
   /* 칸이 차지한 줄 중 아래 1단위 자리에 가로 간격과 같은 4px만 비움(남는 몇 분의 1px은 사진이 가짐).
      예전엔 1단위(화면 폭에 따라 4~7px)를 통째로 비워 세로 간격이 가로보다 넓었음 */
-  margin-bottom: 4px;
+  margin-bottom: var(--gap);
   border-radius: 12px;
   background: var(--fill);
   overflow: hidden;
@@ -1378,6 +1379,69 @@
 .sp-p__panel-legend {
   float: left;
   width: 100%;
+}
+
+/* 앨범 위에 붙는 머리 + 사진 좌우 꽉(디자인 ParentHomeBleed, 아이폰 사진 앱 보관함처럼). 넓은 화면은 위 메뉴가 있어 예전 그대로 */
+.sp-p__albumhead-sub {
+  margin: 2px 0 0;
+  font-size: var(--subhead-size);
+  color: var(--label-2);
+}
+@media (max-width: 63.98rem) {
+  .sp-p__albumhead {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    /* .sp-p 위·옆 여백까지 덮어 사진이 머리 밑으로만 지나가게 */
+    margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-5)) calc(-1 * var(--space-3));
+    padding: calc(var(--space-6) + env(safe-area-inset-top)) var(--space-5) var(--space-5);
+    /* 글자 자리는 화면색 그대로(사진 위 대비, 리뷰 2026-10-29), 아래 여백에서만 투명해짐 */
+    background: linear-gradient(var(--bg) calc(100% - var(--space-5)), transparent);
+  }
+  /* 투명해지는 아래 띠만 흐리게: 지나가는 사진이 또렷하게 끊기지 않게(머리 전체에 걸면 흐림이 글자 뒤로 번져 대비가 떨어짐) */
+  .sp-p__albumhead::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: auto 0 0;
+    height: var(--space-5);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    -webkit-mask-image: linear-gradient(#000, transparent);
+    mask-image: linear-gradient(#000, transparent);
+  }
+  /* 키보드로 올라갈 때 고른 칸이 머리 밑에 숨지 않게(포커스는 칸 안 링크가 받음) */
+  .sp-p__cell-link {
+    scroll-margin-top: 7rem;
+  }
+}
+/* 사진 좌우 꽉은 폰 폭(.sp-p 최대 32rem 안)만. 더 넓으면 가운데 띠가 잘려 보여 예전 모서리·간격 그대로 */
+@media (max-width: 32rem) {
+  .sp-p--wide .sp-p__month {
+    margin-inline: calc(-1 * var(--space-5));
+  }
+  .sp-p--wide .sp-p__month-head {
+    padding-inline: var(--space-5);
+  }
+  .sp-p--wide .sp-p__grid {
+    --gap: 2px;
+  }
+  .sp-p--wide .sp-p__cell {
+    border-radius: 0;
+  }
+}
+@media (max-width: 63.98rem) and (prefers-reduced-transparency: reduce) {
+  .sp-p__albumhead {
+    background: var(--bg);
+  }
+  .sp-p__albumhead::before {
+    display: none;
+  }
+}
+@media (max-width: 63.98rem) and (forced-colors: active) {
+  .sp-p__albumhead {
+    background: Canvas;
+  }
 }
 
 /* 아이 고르기: 한 줄 세그먼트 탭. 폰은 가로 꽉, 넘치면 옆으로 밀림(PC는 글자 폭만큼) */
