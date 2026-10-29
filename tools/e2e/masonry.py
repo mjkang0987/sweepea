@@ -18,7 +18,7 @@ with sync_playwright() as p:
     xs=sorted(set(c[0] for c in cells)); check(len(xs)==2,'휴대폰 2줄 %s'%xs)
     ok=all(abs(c[2]-c[1]*min(1.6,max(0.6,c[4]/c[3])))<4 for c in cells if c[3]); check(ok,'칸 높이 = 사진 비율 %s'%cells)
     check(pg.locator('.sp-p__cell-meta').count()==1 and '하트 1개' in pg.locator('.sp-p__cell-img').first.get_attribute('alt'),'하트 받은 칸에 알약·이름')
-    w=pg.locator('[data-when]').inner_text(); check('생후' in w and '개월' in w,'머리 날짜 줄에 생후 개월(달 제목 줄은 뺌, 98e) '+w)
+    k=pg.locator('.sp-p__albumhead-kid').inner_text(); check('개월' in k or k.endswith('일'),'머리 오른쪽 위에 아이 오늘 나이(달 제목 줄은 뺌) '+k)
     pg.screenshot(path=S+'masonry.png')
     pg.set_viewport_size({'width':1280,'height':900}); pg.reload()
     w=pg.locator('.sp-p__cell').first.evaluate('c=>c.getBoundingClientRect().width'); gw=pg.locator('.sp-p__grid').first.evaluate('g=>g.getBoundingClientRect().width'); check(abs(w-(gw-12)/4)<2,'넓은 화면 4줄 폭 %d/%d'%(w,gw))

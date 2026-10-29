@@ -11,9 +11,12 @@ def zoom(t,z):
     # 오른쪽 아래 떠 있는 유리 알약(사용자 "플러스 마이너스 버튼 아래에, 우측 아래 플로팅"), 탭바 위
     nav=('<nav aria-label="사진 크기" class="sp-glass-clear" style="position: absolute; z-index: 6; right: 20px; bottom: 102px; display: flex; padding: 2px; border-radius: 999px;">'
          +btn('작게(한 줄에 더 많이)','−',z=='y')+btn('크게(한 줄에 더 적게)','+',z==1)+'</nav>')
-    when={1:'10월 21일 · 생후 13개월',3:'10월 1일 ~ 21일',5:'9월 3일 ~ 10월 21일'}.get(z)
+    when={1:'10월 21일',3:'10월 1일 ~ 21일',5:'9월 3일 ~ 10월 21일'}.get(z)
     if when: s=s.replace('>사진 1,284 · 영상 37</p>','>'+when+'</p>',1)
     s=s.replace('</main>','</main>\n  '+nav,1)
+    # 머리 오른쪽 위 아이 오늘 나이(사용자 "아기 정보는 항상 노출", −/+가 아래로 빠진 자리)
+    s=s.replace('</h1>','</h1><p style="position: absolute; top: 66px; right: 20px; margin: 0; font-size: 15px; line-height: 20px; color: var(--label-2);">하린 · <strong style="color: var(--label);">13개월 4일</strong></p>',1)
+    s=s.replace(' · 생후 13개월</p>','</p>',1)
     i=s.index('<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px;')
     depth=0
     for m in re.finditer(r'<(/?)div\b',s[i:]):

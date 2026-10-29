@@ -46,3 +46,19 @@ export function milestone(birth: string, today: string): string | null {
   if (years < 1 || today.slice(5) !== birth.slice(5)) return null;
   return `${NTH[years - 1] ?? `${years}번째`} 생일이에요`;
 }
+
+/** 오늘 나이 'N개월 N일'(앨범 머리, 사용자 2026-10-29 "아기 정보는 항상 노출, N개월 NN일"). 한 달 전이면 'N일', 딱 달이 차면 'N개월'.
+ *  달 생일이 없는 달(31일생의 30일 달)은 그 달 마지막 날을 달 생일로. 태어나기 전이면 null */
+export function ageLabel(birth: string, today: string): string | null {
+  if (today < birth) return null;
+  const [by, bm, bd] = birth.split('-').map(Number);
+  const [ty, tm, td] = today.split('-').map(Number);
+  // 달 수도 같은 규칙으로: 이번 달 생일(없으면 그 달 마지막 날)이 지났으면 한 달 참(1/31생은 2/28에 1개월, 리뷰 2026-10-29)
+  const lastNow = new Date(Date.UTC(ty, tm, 0)).getUTCDate();
+  const m = (ty - by) * 12 + (tm - bm) - (td < Math.min(bd, lastNow) ? 1 : 0);
+  const y = by + Math.floor((bm - 1 + m) / 12), mo = (bm - 1 + m) % 12;
+  const last = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+  const anniv = Date.UTC(y, mo, Math.min(bd, last));
+  const d = Math.round((Date.UTC(ty, tm - 1, td) - anniv) / 86_400_000);
+  return m === 0 ? `${d}일` : d === 0 ? `${m}개월` : `${m}개월 ${d}일`;
+}
