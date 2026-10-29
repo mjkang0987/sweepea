@@ -35,7 +35,7 @@ if (Astro.request.method === 'POST') {
   }
 }
 const errText = { name: '이름을 1~12자로 써 주세요.', birth: '생일을 골라 주세요.', limit: '아이는 10명까지 넣을 수 있어요.', error: '저장하지 못했어요. 다시 눌러 주세요.' };
-const title = kid ? `${kid.name} 고치기` : '아이 추가';
+const title = kid ? `${kid.name} 정보 변경` : '아이 추가';
 ---
 
 <Parent title={e ? `다시 확인해 주세요 · ${title}` : `${title} · 설정`} tab="settings" savebar alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>

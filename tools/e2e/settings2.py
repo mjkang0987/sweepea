@@ -1,4 +1,4 @@
-# 아이 추가·고치기, 가족 화면 글자 크기, 계정
+# 아이 추가·변경, 가족 화면 글자 크기, 계정
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D='/home/claude/sweepea/tools/e2e/'
 def check(c,msg):
@@ -21,7 +21,7 @@ with sync_playwright() as p:
     pg.fill('#name','도윤'); pg.get_by_role('button',name='추가').click(); pg.wait_for_url('**done=added**')
     check(pg.locator('.sp-p__row',has_text='도윤').count()==1,'아이 추가됨'); shot('2')
     pg.locator('.sp-p__row',has_text='도윤').click(); pg.wait_for_url('**/children/**')
-    check(pg.locator('#birth').input_value()=='2026-08-30','고치기에 원래 값')
+    check(pg.locator('#birth').input_value()=='2026-08-30','변경 화면에 원래 값')
     pg.fill('#name','도윤이'); pg.get_by_role('button',name='저장').click(); pg.wait_for_url('**done=saved**')
     check(pg.locator('.sp-p__row',has_text='도윤이').count()==1,'고친 이름')
     pg.goto(B+'/settings/children/00000000-0000-4000-8000-000000000999'); check(pg.url.endswith('/settings/children'),'없는 아이는 목록으로')
