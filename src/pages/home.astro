@@ -11,7 +11,7 @@ import { loadPage, loadReacts, pickZoom, ZOOMS, type Zoom } from '../lib/album';
 import { groupYears } from '../lib/months';
 import { masonry, ratioOf } from '../lib/masonry';
 import { EMOJI } from '../lib/emoji';
-import { JOIN_SEEN, MILESTONE_SEEN, STORAGE_SEEN, seenAt, setLayerCookie } from '../lib/layers';
+import { COPARENT_SEEN, JOIN_SEEN, MILESTONE_SEEN, STORAGE_SEEN, seenAt, setLayerCookie } from '../lib/layers';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
 // 가운데 레이어 버튼: 지금 보이는 것까지 '봤음'으로 적고 이동(PRG). 닫기·나중에를 스크립트가 그 자리에서 보내면(x-sp-inplace) 적기만 하고 204
@@ -21,9 +21,11 @@ if (Astro.request.method === 'POST') {
   const at = String(form?.get('at') ?? '');
   const day = String(form?.get('day') ?? '');
   const level = String(form?.get('level') ?? '');
+  const since = String(form?.get('since') ?? '');
   if (Number.isFinite(Date.parse(at))) setLayerCookie(Astro.cookies, JOIN_SEEN, new Date(at).toISOString());
   if (/^[\w-]{1,64}:\d{4}-\d{2}-\d{2}$/.test(day)) setLayerCookie(Astro.cookies, MILESTONE_SEEN, day);
   if (level === '90' || level === '100') setLayerCookie(Astro.cookies, STORAGE_SEEN, level);
+  if (Number.isFinite(Date.parse(since))) setLayerCookie(Astro.cookies, COPARENT_SEEN, new Date(since).toISOString());
   const go = GO[String(form?.get('do'))];
   if (!go && Astro.request.headers.get('x-sp-inplace') === '1') return new Response(null, { status: 204 });
   return Astro.redirect(go ?? '/home', 303);
@@ -42,10 +44,16 @@ const cont = Astro.url.searchParams.has('before');
 const today = seoulToday();
 // 승인 대기·설치 부탁 띠도 옆 기능이라 실패하면 띠만 뺀다
 // 이어지는 쪽은 사진만 쓰므로 띠는 건너뛴다
-const [page, admin] = await Promise.all([
+const [page, admin, fp] = await Promise.all([
   loadPage(a.pass, { childId: picked?.id }, Astro.url),
   cont ? null : b.familyAdmin(a.pass).catch(() => null),
+  cont ? null : b.familyParents(a.pass).catch(() => null),
 ]);
+// 함께 관리 시작 알림(사용자 2026-10-29 "아빠 접속했다고 알람은 안 뜨네?"): 나보다 나중에 들어온 엄빠가 있고 이 기기에서 아직 안 봤으면 한 번.
+// 옆 기능이라 실패하면 레이어만 뺀다. 30일 지난 일은 띄우지 않음
+const meP = fp?.parents.find((p) => p.me);
+const newP = fp?.parents.find((p) => !p.me && meP && Date.parse(p.since) > Date.parse(meP.since) && Date.now() - Date.parse(p.since) < 30 * 86_400_000);
+const coparent = newP && Date.parse(newP.since) > (seenAt(Astro.cookies, COPARENT_SEEN) ?? 0) ? { who: newP.role === 'dad' ? '아빠' : '엄마', since: newP.since } : null;
 // 월별·연별 카드(옆 기능이 아니라 이 단계의 본문이라 실패하면 안내 글)
 const cardView = z === 'm' || z === 'y';
 const monthCards = cardView && page.items.length ? await b.mediaMonths(a.pass, { childId: picked?.id, reps: 3 }).catch(() => null) : null;
@@ -96,7 +104,8 @@ const join = joins[0] && Date.parse(joins[0].at) > joinSeen ? joins[0] : null;
 const dayKid = (a.home.children ?? []).map((k) => ({ k, what: milestone(k.birth_date, today) })).find((x) => x.what);
 const dayKey = dayKid ? `${dayKid.k.id}:${today}` : '';
 const birthday = dayKid && Astro.cookies.get(MILESTONE_SEEN)?.value !== dayKey ? { title: `오늘은 ${callName(dayKid.k.name)}`, what: dayKid.what! } : null;
-const birthdayLater = !!join;
+const coparentLater = !!join;
+const birthdayLater = !!(join || coparent);
 // 저장 공간: 무료 5GB의 90%·100%에서 한 번씩. 90 밑으로 내려가면 기록을 지워 다시 넘을 때 또 뜸
 // shortcut: 가족 플랜(plan_until 있음)은 상한이 달라 건너뜀, 결제 이슈에서 플랜별 상한으로
 const LIMIT = 5 * 1024 ** 3;
@@ -106,8 +115,8 @@ const level = a.home.plan_until ? null : pct >= 100 ? '100' : pct >= 90 ? '90' :
 const storageSeen = Number(Astro.cookies.get(STORAGE_SEEN)?.value ?? 0);
 if (!level && storageSeen) Astro.cookies.delete(STORAGE_SEEN, { path: '/' });
 const storage = level && Number(level) > storageSeen ? { level, full: level === '100' } : null;
-// 들어오기 신청·백일/생일과 겹치면 숨겨 둔다(위와 같이). 레이어는 한 번에 하나: 들어오기 신청 → 백일/생일 → 저장 공간
-const storageLater = !!(join || birthday);
+// 들어오기 신청·백일/생일과 겹치면 숨겨 둔다(위와 같이). 레이어는 한 번에 하나: 들어오기 신청 → 함께 관리 시작 → 백일/생일 → 저장 공간
+const storageLater = !!(join || coparent || birthday);
 const helpers = admin?.members.filter((m) => m.status === 'active' && m.install_help_at && now - Date.parse(m.install_help_at) < 7 * 86_400_000) ?? [];
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
@@ -218,6 +227,22 @@ for (const mo of months) {
     )
   }
   {
+    coparent && (
+      <div class="sp-layer" hidden={coparentLater} data-layer-later={coparentLater ? '' : undefined}>
+        <div class="sp-layer__scrim" aria-hidden="true"></div>
+        <dialog class="sp-layer__box" open aria-labelledby="cop-t" aria-describedby="cop-d">
+          <span class="sp-layer__emoji" aria-hidden="true">{EMOJI.good.char}</span>
+          <h2 class="sp-layer__title" id="cop-t">{coparent.who}가 앨범을<br />함께 관리하기 시작했어요</h2>
+          <p class="sp-layer__text" id="cop-d">이제 사진 올리기·가족 승인·설정을 같이 할 수 있어요.</p>
+          <form class="sp-layer__actions" method="post">
+            <input type="hidden" name="since" value={coparent.since} />
+            <button class="sp-p__btn" type="submit" name="do" value="cop-ok" autofocus={!join}>좋아요</button>
+          </form>
+        </dialog>
+      </div>
+    )
+  }
+  {
     birthday && (
       <div class="sp-layer" hidden={birthdayLater} data-layer-later={birthdayLater ? '' : undefined}>
         <div class="sp-layer__scrim" aria-hidden="true"></div>
@@ -251,8 +276,8 @@ for (const mo of months) {
       </div>
     )
   }
-  {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !birthday && !storage}>지웠어요.</p>}
-  {Astro.url.searchParams.get('joined') === '1' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !birthday && !storage}>이제 {callName(a.home.children?.[0]?.name ?? '아이')} 앨범을 함께 관리해요.</p>}
+  {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !coparent && !birthday && !storage}>지웠어요.</p>}
+  {Astro.url.searchParams.get('joined') === '1' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !coparent && !birthday && !storage}>이제 {callName(a.home.children?.[0]?.name ?? '아이')} 앨범을 함께 관리해요.</p>}
   {
     s && s.waiting > 0 && (
       <a class="sp-p__alert" href="/settings/family">
@@ -434,7 +459,7 @@ for (const mo of months) {
 
   // 가운데 레이어(들어오기 신청·백일/생일·저장 공간): 스크립트가 있으면 모달로 올려(Esc·초점 가두기) 닫기·나중에는 그 자리에서 닫고 다음 것을 띄운다.
   // 다른 화면으로 가는 버튼(확인하기·사진 올리기·저장 용량 보기)은 지금처럼 폼으로 이동. 스크립트 없으면 모두 폼
-  const LATER = new Set(['join-later', 'day-close', 'storage-later']);
+  const LATER = new Set(['join-later', 'cop-ok', 'day-close', 'storage-later']);
   // 보이는 것 하나 → 숨겨 둔 것(백일/생일·저장 공간) 순서로 하나씩
   const all = [...document.querySelectorAll<HTMLElement>('.sp-layer')];
   const layers = all.filter((x) => !x.hidden).concat(all.filter((x) => x.hidden && x.hasAttribute('data-layer-later')));
