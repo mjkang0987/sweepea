@@ -1398,9 +1398,14 @@
     color: var(--label);
     font-weight: 600;
   }
+  /* 아래 기본 회색 규칙보다 뒤에 오지 않아 두 단계로 */
+  .sp-p__albumhead .sp-p__albumhead-kid {
+    color: var(--label);
+  }
   /* 글자 둘레 은은한 번짐: 밝은 테마는 흰색, 어두운 테마는 검은색 50%(사용자 2026-10-29 "0 0 10px rgb(255 255 255 / .5) 테마에 맞춰서") */
   .sp-p__albumhead .sp-p__title--large,
-  .sp-p__albumhead-sub {
+  .sp-p__albumhead-sub,
+  .sp-p__albumhead-kid {
     text-shadow: 0 0 10px color-mix(in srgb, var(--bg) 50%, transparent);
   }
   .sp-p__albumhead::before {
@@ -1440,6 +1445,9 @@
   .sp-p__albumhead-sub {
     color: var(--label-2);
     font-weight: 400;
+  }
+  .sp-p__albumhead .sp-p__albumhead-kid {
+    color: var(--label-2);
   }
 }
 @media (max-width: 63.98rem) and (forced-colors: active) {
@@ -2548,4 +2556,45 @@
 /* 달 묶음 사이 큰 틈 없앰(사용자 2026-10-29 "시기별 gap 삭제"): 달 제목 줄을 뺐으니 사진 간격만 남겨 한 판으로 이어 보이게 */
 .sp-p__month + .sp-p__month {
   margin-top: calc(-1 * var(--space-5));
+}
+/* 머리 오른쪽 위 아이 오늘 나이(사용자 "아기 정보는 항상 노출", −/+가 아래로 빠진 자리) */
+.sp-p__albumhead {
+  display: grid;
+  /* 제목은 제 폭, 나이 줄이 남는 폭에서 줄바꿈(아이가 여럿·글자 200%여도 제목이 눌리거나 화면 밖으로 안 나가게, 리뷰 2026-10-29) */
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-3);
+  align-items: baseline;
+}
+.sp-p__albumhead > .sp-p__title {
+  grid-column: 1;
+}
+.sp-p__albumhead-sub {
+  grid-column: 1 / -1;
+}
+.sp-p__albumhead-kid {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  column-gap: var(--space-1);
+  font-size: var(--subhead-size);
+  color: var(--label-2);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.sp-p__albumhead-kid-age {
+  color: var(--label);
+  font-weight: 700;
+}
+/* 아이가 여럿이면 제목 아래 한 줄로(오른쪽 좁은 칸에 세로로 쌓이지 않게) */
+.sp-p__albumhead-kid--many {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-content: flex-start;
+  text-align: left;
+}
+.sp-p__albumhead-kid--many ~ .sp-p__albumhead-sub {
+  grid-row: 3;
 }
