@@ -1401,14 +1401,14 @@
     /* .sp-p 위·옆 여백까지 덮어 사진이 머리 밑으로만 지나가게 */
     margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-5)) calc(-1 * var(--space-3));
     padding: calc(var(--space-6) + env(safe-area-inset-top)) var(--space-5) var(--space-5);
-    /* 아이폰 사진 앱 보관함처럼 사진이 비치는 유리(사용자 2026-10-29 "지금도 배경 너무 짙어"): 위가 조금 진하고 아래로 갈수록 투명.
-       막이 옅은 대신 강한 흐림 + 글자 둘레 화면색 번짐(text-shadow)으로 읽힘을 지킨다 */
+    /* 아이폰 사진 앱 보관함처럼 사진이 비치는 막(사용자 2026-10-29 값 지정: 35% → 52% 지점 13% → 투명, 흐림 2px, 글자 번짐 없음).
+       사진에 따라 작은 줄 대비가 기준(4.5:1)보다 낮아질 수 있음 — 투명도 줄이기를 켜면 단색 */
     background: var(--bg);
   }
   /* color-mix를 모르는 옛 브라우저는 var() 때문에 앞 줄로 못 돌아가고 투명해지므로 @supports로 나눔(리뷰 2026-10-29) */
   @supports (background: color-mix(in srgb, red 50%, transparent)) {
     .sp-p__albumhead {
-      background: linear-gradient(color-mix(in srgb, var(--bg) 55%, transparent), color-mix(in srgb, var(--bg) 30%, transparent) 70%, transparent);
+      background: linear-gradient(color-mix(in srgb, var(--bg) 35%, transparent), color-mix(in srgb, var(--bg) 13%, transparent) 52%, transparent);
     }
   }
   /* 사진이 비쳐도 읽히게 작은 줄도 진한 글자, 둘레에 화면색 번짐 */
@@ -1416,18 +1416,13 @@
     color: var(--label);
     font-weight: 600;
   }
-  /* 큰 제목은 굵고 커서 번짐 없이도 읽힘(대비 10:1 이상), 작은 줄만 */
-  .sp-p__albumhead-sub {
-    /* 같은 번짐을 겹쳐 글자 바로 둘레를 화면색으로 두껍게(옅은 막 위에서도 글자 가장자리가 섞이지 않게) */
-    text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 6px var(--bg), 0 0 6px var(--bg), 0 0 12px var(--bg);
-  }
   .sp-p__albumhead::before {
     content: '';
     position: absolute;
     z-index: -1;
     inset: 0;
-    -webkit-backdrop-filter: blur(24px);
-    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
     -webkit-mask-image: linear-gradient(#000 60%, transparent);
     mask-image: linear-gradient(#000 60%, transparent);
   }
@@ -1461,9 +1456,6 @@
   .sp-p__albumhead-sub {
     color: var(--label-2);
     font-weight: 400;
-  }
-  .sp-p__albumhead-sub {
-    text-shadow: none;
   }
 }
 @media (max-width: 63.98rem) and (forced-colors: active) {
