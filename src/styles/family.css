@@ -609,7 +609,7 @@
   font-weight: 700;
 }
 
-/* 모아 보기: 날짜별, 칸 수는 ?z=. 1칸은 원본 비율 그대로(CSS columns), 2줄은 엇갈린 배열(masonry.ts), 3칸은 정사각 격자, 월별은 달 카드(.sp-a__mcard) */
+/* 모아 보기: 날짜별, 칸 수는 ?z=. 1칸은 원본 비율 그대로(CSS columns), 2줄은 엇갈린 배열(masonry.ts), 3·5칸은 정사각 격자, 월별·연별은 카드(.sp-a__mcard) */
 .sp-a__day {
   display: flex;
   flex-direction: column;
@@ -657,8 +657,9 @@
 .sp-a__grid--2 .sp-a__cell-img {
   object-fit: cover;
 }
-/* 3칸은 정사각형 격자(줄 단위로 채워야 촘촘하다) */
-.sp-a__grid--3 {
+/* 3·5칸은 정사각형 격자(줄 단위로 채워야 촘촘하다) */
+.sp-a__grid--3,
+.sp-a__grid--5 {
   display: grid;
   gap: var(--gap);
 }
@@ -666,7 +667,12 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   --gap: 4px;
 }
-.sp-a__grid--3 .sp-a__cell {
+.sp-a__grid--5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  --gap: 2px;
+}
+.sp-a__grid--3 .sp-a__cell,
+.sp-a__grid--5 .sp-a__cell {
   margin-bottom: 0;
 }
 .sp-a__cell {
@@ -680,7 +686,8 @@
   overflow: hidden;
   background: var(--fill);
 }
-.sp-a__grid--3 .sp-a__cell-link {
+.sp-a__grid--3 .sp-a__cell-link,
+.sp-a__grid--5 .sp-a__cell-link {
   border-radius: 2px;
 }
 .sp-a__cell-img {
@@ -688,8 +695,9 @@
   width: 100%;
   height: auto;
 }
-/* 3칸은 정사각형으로 맞춰 촘촘하게 */
-.sp-a__grid--3 .sp-a__cell-img {
+/* 3·5칸은 정사각형으로 맞춰 촘촘하게 */
+.sp-a__grid--3 .sp-a__cell-img,
+.sp-a__grid--5 .sp-a__cell-img {
   aspect-ratio: 1;
   object-fit: cover;
 }
@@ -966,6 +974,9 @@
   }
   .sp-f--wide .sp-a__grid--3 {
     grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .sp-f--wide .sp-a__grid--5 {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 }
 
@@ -1840,44 +1851,119 @@
   }
 }
 
-/* 월별(98a): 달 카드 = 대표 3장 + 달·장 수(어르신 글자), 누르면 그 달부터 3칸 */
+/* 월별·연별(98a·98c, 시안 GrandList): 월별 = 왼쪽 큰 1장(두 줄) + 오른쪽 2장, 연별 = 왼쪽 큰 1장(2×2) + 오른쪽 작은 4장.
+   날짜·장 수는 사진 위(어르신 글자, 어두운 그라데이션 위 흰 글자). 누르면 그 달부터 3칸 */
 .sp-a__mcards {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-5);
 }
 .sp-a__mcard {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  row-gap: var(--space-2);
-  align-items: baseline;
-  min-height: var(--target-senior);
-  color: var(--label);
+  position: relative;
+  display: block;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--fill);
+  color: #fff;
   text-decoration: none;
 }
 .sp-a__mcard-pics {
-  grid-column: 1 / -1;
   display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  height: 13.75rem;
+}
+.sp-a__mcard-pics--m {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  border-radius: 16px;
-  overflow: hidden;
-  background: var(--fill);
+}
+.sp-a__mcard-pics--y {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  height: 16.25rem;
 }
 .sp-a__mcard-img {
   display: block;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
+  min-height: 0;
   object-fit: cover;
+}
+.sp-a__mcard-pics--m .sp-a__mcard-img:first-child {
+  grid-row: span 2;
+}
+.sp-a__mcard-pics--m .sp-a__mcard-img:not(:first-child) {
+  grid-column: span 2;
+}
+.sp-a__mcard-pics--y .sp-a__mcard-img:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+/* 연별 대표가 5장보다 적은 해(옛 해·한두 달): 4장이면 오른쪽 위 한 장을 넓게, 3장이면 월별 모양, 2장이면 반반 */
+.sp-a__mcard-pics--y.sp-a__mcard-pics--n4 .sp-a__mcard-img:nth-child(2) {
+  grid-column: span 2;
+}
+.sp-a__mcard-pics--y.sp-a__mcard-pics--n3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.sp-a__mcard-pics--y.sp-a__mcard-pics--n3 .sp-a__mcard-img:first-child {
+  grid-column: auto;
+}
+.sp-a__mcard-pics--y.sp-a__mcard-pics--n3 .sp-a__mcard-img:not(:first-child) {
+  grid-column: span 2;
+}
+.sp-a__mcard-pics--y.sp-a__mcard-pics--n2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.sp-a__mcard-pics--y.sp-a__mcard-pics--n2 .sp-a__mcard-img {
+  grid-column: auto;
+  grid-row: span 2;
+}
+/* 두 장뿐이면 오른쪽 한 장이 두 줄을 채움 */
+.sp-a__mcard-pics--m .sp-a__mcard-img:nth-child(2):last-child {
+  grid-row: span 2;
+}
+.sp-a__mcard-pics .sp-a__mcard-img:only-child,
+.sp-a__mcard-pics--y.sp-a__mcard-pics--n1 .sp-a__mcard-img {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+}
+.sp-a__mcard-text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-8) var(--space-5) var(--space-4);
+  /* 글자가 놓이는 자리부터 진한 막: 흰 사진 위에서도 흰 글자 대비 6:1 이상(리뷰 2026-10-29) */
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7) 35%);
 }
 .sp-a__mcard-title {
   font-size: var(--senior-title-size);
-  font-weight: 700;
+  font-weight: 800;
 }
-.sp-a__mcard-count {
-  color: var(--label-2);
+@media (forced-colors: active) {
+  .sp-a__mcard {
+    border: 1px solid CanvasText;
+  }
+  .sp-a__mcard-text {
+    background: Canvas;
+    color: CanvasText;
+  }
+}
+/* 모아 보기 날짜 제목은 화면 위에 붙어 같이 이동(98c, 사용자 "찍은 시기 fixed 같이 이동") */
+.sp-a__day-title {
+  position: sticky;
+  z-index: 1;
+  /* 홈 화면 앱(viewport-fit=cover)에서 노치 밑으로 들어가지 않게 */
+  top: env(safe-area-inset-top);
+  padding-block: var(--space-2);
+  background: var(--bg);
+}
+/* 키보드로 올라갈 때 붙은 날짜 제목이 고른 칸을 가리지 않게(WCAG 2.4.11) */
+.sp-a__cell-link {
+  scroll-margin-top: calc(env(safe-area-inset-top) + 4rem);
 }
 .sp-a__lead {
   margin: 0;
