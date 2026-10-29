@@ -2598,3 +2598,29 @@
 .sp-p__albumhead-kid--many ~ .sp-p__albumhead-sub {
   grid-row: 3;
 }
+/* 기념일 표시(100일·첫돌·생일…, 사용자 "이벤트로"): 칸 왼쪽 위 작은 알약. 사진 위라 틸 바탕 흰 글자(대비 5.4:1) */
+.sp-p__cell-mark {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--pea);
+  color: var(--on-pea);
+  font-size: var(--footnote-size);
+  font-weight: 700;
+  line-height: 1.125rem;
+  pointer-events: none;
+}
+@media (forced-colors: active) {
+  .sp-p__cell-mark {
+    border: 1px solid CanvasText;
+  }
+}
+/* 달·해 카드에서 #m-YYYY-MM으로 올 때 그 달이 위에 붙은 머리 밑에 숨지 않게(아이가 여럿이면 머리가 한 줄 더 높음) */
+.sp-p__month {
+  scroll-margin-top: 7rem;
+}
+.sp-p:has(.sp-p__albumhead-kid--many) .sp-p__month {
+  scroll-margin-top: 9rem;
+}

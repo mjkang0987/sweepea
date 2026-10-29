@@ -4,11 +4,11 @@ import Parent from '../layouts/Parent.astro';
 import { getBackend } from '../lib/backend';
 import { sizeLabel, summarize } from '../lib/familyAdmin';
 import { callName, hasBatchim } from '../lib/ko';
-import { ageLabel, agoLabel, milestone } from '../lib/age';
+import { ageLabel, agoLabel, dayMark, milestone } from '../lib/age';
 import { loadParent, seoulToday } from '../lib/parent';
 import { signedMediaUrl } from '../lib/signed';
 import { loadPage, loadReacts, pickZoom, ZOOMS, type Zoom } from '../lib/album';
-import { groupYears, monthCursor } from '../lib/months';
+import { groupYears } from '../lib/months';
 import { masonry, ratioOf } from '../lib/masonry';
 import { EMOJI } from '../lib/emoji';
 import { JOIN_SEEN, MILESTONE_SEEN, STORAGE_SEEN, seenAt, setLayerCookie } from '../lib/layers';
@@ -58,7 +58,7 @@ const zi = ZOOMS.indexOf(z);
 const smaller = zi < ZOOMS.length - 1 ? zoomHref(ZOOMS[zi + 1]) : null;
 const bigger = zi > 0 ? zoomHref(ZOOMS[zi - 1]) : null;
 // 카드(시안 GrandList): 월별 = 큰 1장 + 2장('10월' · 'N장'), 연별 = 큰 1장 + 4장('2026년' · '1–10월 · N장'). 누르면 그 달(해는 가장 최근 달)부터 3칸
-const cardHref = (ym: string) => `/home?${kq}z=3&before=${encodeURIComponent(monthCursor(ym))}`;
+const cardHref = (ym: string) => `/home?${kq}z=3&at=${ym}#m-${ym}`;
 const cards = !monthCards
   ? null
   : await Promise.all(
@@ -114,9 +114,17 @@ const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'lon
 // 칸마다 받은 하트·한마디 수(디자인: 칸 왼쪽 아래 알약). 옆 기능이라 실패하면 알약만 뺀다
 const reacts = cardView ? null : await loadReacts(a.pass, items.map((m) => m.id)).catch(() => null);
 const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
-type Cell = { id: string; src: string; video: boolean; day: string; d: string; ratio: number; hearts: number; says: number; length: string | null; at2?: string };
+type Cell = { id: string; src: string; video: boolean; day: string; d: string; mark: string | null; ratio: number; hearts: number; says: number; length: string | null; at2?: string };
 const months: { ym: string; label: string; count: number; cells: Cell[] }[] = [];
 // 달 묶음 이름(화면 읽기용 제목): 올해면 '10월', 아니면 '2025년 10월'
+// 기념일(100일·200일·첫돌·생일…) 표시: 고른 아이·아이 하나면 그 아이, 전체면 그날 기념일인 아이 이름과 함께(사용자 "이벤트로", 2026-10-29)
+const ageKid = picked ?? (kids.length === 1 ? kids[0] : undefined);
+const markOf = (d: string) => {
+  if (ageKid) return dayMark(ageKid.birth_date, d);
+  // 그날 기념일인 아이 모두(쌍둥이 생일 같은 날), 이름은 그대로('서이'의 '이'를 떼지 않게, 리뷰 2026-10-29)
+  const hits = kids.map((k) => ({ k, m: dayMark(k.birth_date, d) })).filter((x) => x.m);
+  return hits.length ? hits.map((x) => `${x.k.name} ${x.m}`).join(', ') : null;
+};
 const seoulDay = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(iso));
 const seoulYM = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
 for (const m of cardView ? [] : items) {
@@ -134,6 +142,7 @@ for (const m of cardView ? [] : items) {
     video: m.kind === 'video',
     day: dayFmt.format(new Date(m.taken_at)),
     d: seoulDay(m.taken_at),
+    mark: markOf(seoulDay(m.taken_at)),
     ratio: ratioOf(m.width, m.height),
     hearts: r?.heart ?? 0,
     says: r?.comment ?? 0,
@@ -151,7 +160,8 @@ await Promise.all(
 );
 // 머리 작은 줄 첫 값(스크립트 없어도): 맨 위 사진의 찍은 날, 올해가 아니면 연도도
 const d0 = items[0] ? seoulDay(items[0].taken_at) : '';
-const whenFirst = d0 && !cardView ? `${d0.slice(0, 4) === today.slice(0, 4) ? '' : `${d0.slice(0, 4)}년 `}${dayFmt.format(new Date(items[0].taken_at))}` : null;
+const mark0 = d0 && (z === 1 || z === 2) ? markOf(d0) : null;
+const whenFirst = d0 && !cardView ? `${d0.slice(0, 4) === today.slice(0, 4) ? '' : `${d0.slice(0, 4)}년 `}${dayFmt.format(new Date(items[0].taken_at))}${mark0 ? ` · ${mark0}` : ''}` : null;
 // 머리 오른쪽 위 아이 오늘 나이(사용자 2026-10-29 "아기 정보는 항상 노출, N개월 NN일", 디자인 ParentHomeZoom): 고른 아이, 전체면 아이마다
 const kidAges = (picked ? [picked] : kids).map((k) => ({ name: k.name, age: ageLabel(k.birth_date, today) })).filter((k) => k.age);
 // 엇갈린 배열 자리: 휴대폰 2줄, 넓은 화면 4줄(CSS가 화면 폭에 맞는 쪽을 씀). 1칸은 휴대폰 한 줄(원래 모양 --ar), 넓은 화면 2줄. 3·5칸은 정사각이라 자리 없음
@@ -301,17 +311,17 @@ for (const mo of months) {
       <p class="sp-p__lead">{z === 'y' ? '해마다' : '달마다'} 모아 보기를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
     ) : (
       months.map((mo) => (
-        <section class="sp-p__month" data-ym={mo.ym} aria-label={`${mo.label} ${mo.count}장`}>
+        <section class="sp-p__month" id={`m-${mo.ym}`} data-ym={mo.ym} aria-label={`${mo.label} ${mo.count}장`}>
           {/* 달 제목 줄은 위 날짜 줄과 겹쳐 뺌(사용자 "중복 내용"), 화면 읽기용 제목만 */}
           <h2 class="sp-vh">{mo.label} 사진 {mo.count}장</h2>
           <ul class={`sp-p__grid sp-p__grid--z${z}`}>
             {mo.cells.map((c) => (
-              <li class="sp-p__cell" id={`c-${c.id}`} style={c.at2} data-ratio={c.ratio} data-d={c.d}>
+              <li class="sp-p__cell" id={`c-${c.id}`} style={c.at2} data-ratio={c.ratio} data-d={c.d} data-mark={c.mark ?? undefined}>
                 <a class="sp-p__cell-link" href={`/view/${c.id}?${kq}z=${z}`}>
                   <img
                     class="sp-p__cell-img"
                     src={c.src}
-                    alt={`${c.day} ${c.video ? `영상${c.length ? ` ${c.length}` : ''}` : '사진'}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''}`}
+                    alt={`${c.day}${c.mark ? ` ${c.mark}` : ''} ${c.video ? `영상${c.length ? ` ${c.length}` : ''}` : '사진'}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''}`}
                     loading="lazy"
                     decoding="async"
                   />
@@ -327,6 +337,7 @@ for (const mo of months) {
                     </span>
                   )}
                   {z !== 5 && c.length && <span class="sp-p__cell-length" aria-hidden="true">{c.length}</span>}
+                  {z !== 5 && c.mark && <span class="sp-p__cell-mark" aria-hidden="true">{c.mark}</span>}
                 </a>
               </li>
             ))}
@@ -402,6 +413,7 @@ for (const mo of months) {
         seen.push(li.dataset.d!);
       }
       if (!seen.length) return;
+      const topMark = document.querySelector<HTMLElement>(`.sp-p__cell[data-d="${seen[0]}"][data-mark]`)?.dataset.mark;
       // 목록은 최근 것부터: 기간은 '오래된 날 ~ 최근 날'
       const newest = seen[0], oldest = seen.reduce((a, b) => (b < a ? b : a));
       const oy = oldest.slice(0, 4) !== year, ny = newest.slice(0, 4) !== oldest.slice(0, 4);
@@ -410,7 +422,7 @@ for (const mo of months) {
           ? oldest.slice(0, 7) === newest.slice(0, 7)
             ? `${label(oldest, oy)} ~ ${Number(newest.slice(8))}일`
             : `${label(oldest, oy)} ~ ${label(newest, ny)}`
-          : label(newest, newest.slice(0, 4) !== year);
+          : label(newest, newest.slice(0, 4) !== year) + (topMark ? ` · ${topMark}` : '');
       if (when.textContent !== text) when.textContent = text;
     };
     addEventListener('scroll', () => queued || ((queued = true), requestAnimationFrame(update)), { passive: true });
