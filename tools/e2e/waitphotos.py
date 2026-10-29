@@ -33,6 +33,8 @@ with sync_playwright() as p:
     check('그동안 받은 사진은 여기서 볼 수 있어요' in g.content(),'안내 글: 받은 사진 볼 수 있음')
     ok=g.evaluate("Promise.all([...document.querySelectorAll('img.sp-f__got-media')].map(i=>i.decode().then(()=>i.naturalWidth>0,()=>false)))")
     check(all(ok) and len(ok)==2,f'사진이 열림 {ok}')
+    ratio=g.evaluate("[...document.querySelectorAll('img.sp-f__got-media')].map(i=>Math.abs(i.clientWidth/i.clientHeight-i.naturalWidth/i.naturalHeight)<0.02)")
+    check(all(ratio),f'사진은 원래 비율 그대로 {ratio}')
     check(all(a for a in g.locator('img.sp-f__got-media').evaluate_all("l=>l.map(i=>i.alt)")),'사진마다 대체 글')
     bar=g.locator('.sp-f__bottom').bounding_box()
     check(bar and abs(bar['y']+bar['height']-844)<=2,'다시 확인하기 막대가 화면 아래 고정')

@@ -24,21 +24,23 @@ const child = callName(me.child_name ?? '아이');
 // 승인되고 앨범을 처음 열 때 '엄마아빠가 확인했어요' 레이어를 한 번 띄우려고 기다리던 가족방을 적어 둔다
 if (waiting) setLayerCookie(Astro.cookies, WAITED, waiting.family_id);
 const state = me.closed ? 'closed' : me.device === 'revoked' ? 'revoked' : me.member === 'expired' ? 'pending_expired' : me.device === 'pending' ? 'attempts' : 'pending';
-// 새 이름 승인 대기는 들어온 링크의 사진 묶음만 볼 수 있다(DB sp_can_view_media). 비밀번호 10번 틀림(기기 대기)은 DB가 안 보여 줌
+// 새 이름 승인 대기는 들어온 링크의 사진 묶음만 볼 수 있다(DB sp_can_view_media). 비밀번호 10번 틀림(기기 대기)은 DB가 안 보여 줌.
+// 못 불러오면 null(사진이 없다고 잘못 안내하지 않게). 서명 주소는 1~2시간이라 오래 열어 두면 '다시 확인하기'로 새로 받는다
+const listed = state === 'pending' ? await getBackend().listMedia(pass, { familyId: me.family_id, limit: 200 }).catch((e) => (console.error('wait listMedia', e), null)) : [];
 const got =
-  state === 'pending'
-    ? await Promise.all(
-        (await getBackend().listMedia(pass, { familyId: me.family_id, limit: 200 }).catch(() => [])).map(async (m) => ({
-          ...m,
-          src: await signedMediaUrl(m.view_key),
-          poster: m.poster_key ? await signedMediaUrl(m.poster_key) : undefined,
-          label: `${dayLabel(m.taken_at)} ${m.kind === 'video' ? '영상' : '사진'}`,
-        })),
-      )
-    : [];
+  listed &&
+  (await Promise.all(
+    listed.map(async (m) => ({
+      ...m,
+      src: await signedMediaUrl(m.view_key),
+      poster: m.poster_key ? await signedMediaUrl(m.poster_key) : undefined,
+      label: `${dayLabel(m.taken_at)} ${m.kind === 'video' ? '영상' : '사진'}`,
+    })),
+  ));
+const shown = got?.length ?? 0;
 ---
 
-<Family title="승인 기다림" bar={got.length > 0}>
+<Family title="승인 기다림" bar={shown > 0}>
   {
     state === 'pending' || state === 'attempts' ? (
       <>
@@ -56,29 +58,29 @@ const got =
               엄마아빠가 확인하면 다 열려요
             </h2>
             <p class="sp-f__text">
-              {got.length > 0 ? '그동안 받은 사진은 여기서 볼 수 있어요.' : '그때 사진을 볼 수 있어요.'} 3일 안에 확인하지 않으면 다시 받아야 해요.
+              {got === null ? '받은 사진을 불러오지 못했어요. 다시 확인하기를 눌러 주세요.' : shown > 0 ? '그동안 받은 사진은 여기서 볼 수 있어요.' : '그때 사진을 볼 수 있어요.'} 3일 안에 확인하지 않으면 다시 받아야 해요.
             </p>
           </section>
         )}
-        {got.length > 0 && (
+        {got && shown > 0 && (
           <section class="sp-f__got" aria-labelledby="got-h">
             <h2 class="sp-f__got-title" id="got-h">
-              받은 사진 <span class="sp-f__got-count">{got.length}장</span>
+              받은 사진 <span class="sp-f__got-count">{shown}장</span>
             </h2>
             <ul class="sp-f__got-list">
               {got.map((m, i) => (
                 <li class="sp-f__got-item">
                   {m.kind === 'video' ? (
-                    <video class="sp-f__got-media" src={m.src} poster={m.poster} width={m.width ?? undefined} height={m.height ?? undefined} controls playsinline preload="none" aria-label={m.label} />
+                    <video class:list={['sp-f__got-media', !(m.width && m.height) && 'sp-f__got-media--any']} src={m.src} poster={m.poster} width={m.width ?? undefined} height={m.height ?? undefined} controls playsinline preload="none" aria-label={m.label} />
                   ) : (
-                    <img class="sp-f__got-media" src={m.src} width={m.width ?? undefined} height={m.height ?? undefined} alt={m.label} loading={i < 2 ? 'eager' : 'lazy'} decoding="async" />
+                    <img class:list={['sp-f__got-media', !(m.width && m.height) && 'sp-f__got-media--any']} src={m.src} width={m.width ?? undefined} height={m.height ?? undefined} alt={m.label} loading={i < 2 ? 'eager' : 'lazy'} decoding="async" />
                   )}
                 </li>
               ))}
             </ul>
           </section>
         )}
-        <div class:list={['sp-f__bottom', got.length > 0 && 'sp-f__bottom--fixed']}>
+        <div class:list={['sp-f__bottom', shown > 0 && 'sp-f__bottom--fixed']}>
           <a class="sp-f__btn sp-f__btn--fill" href="/wait">
             다시 확인하기
           </a>

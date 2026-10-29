@@ -303,6 +303,11 @@
   border-radius: var(--radius-lg);
   background: var(--ph-1);
 }
+/* 크기를 모르는 사진·영상도 자리를 잡아 둠(아는 것은 width·height 속성 비율) */
+.sp-f__got-media--any {
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+}
 
 /* 안내 화면(주소 지남, 닫힘 등): 가운데 콩이 + 제목 + 설명 */
 .sp-f__notice {
