@@ -85,6 +85,9 @@ const chosen = cards.filter((c) => picked.has(c.id));
 </Family>
 
 <script>
+  import { wireSave } from '../../lib/savephoto';
+  // 한 장씩 '저장' 버튼도 휴대폰은 공유 창으로 사진 앱 앨범에
+  wireSave('.sp-s__row-btn[download]');
   // 고른 수를 보여 주고, 누르면 파일을 받아 공유 창(휴대폰 '이미지 저장') 또는 한 장씩 내려받기
   const form = document.querySelector<HTMLFormElement>('[data-save]');
   if (form) {
