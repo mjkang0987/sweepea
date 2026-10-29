@@ -42,6 +42,7 @@ with sync_playwright() as p:
         with a.expect_download(timeout=10000) as d2:
             a.get_by_role('link',name='저장').first.tap()
         check(a.evaluate("window.__shared") is None and d2.value.suggested_filename.endswith('.jpg'),'안드로이드: 공유 창 대신 내려받기')
+        check("'Download' 앨범" in a.locator('.sp-toast').last.inner_text(),'안드로이드: 갤러리 Download 앨범 안내')
         an.close()
     # PC: 내려받기 그대로
     cookies=phone.cookies(); pc=br.new_context(viewport={'width':1280,'height':900},accept_downloads=True); pc.add_cookies(cookies); pc.add_init_script(STUB)

@@ -34,7 +34,15 @@ const download = (a: HTMLAnchorElement) => {
 /** selector: download 속성이 있는 저장 링크. data-kind="photo"면 화면을 열 때 미리 받는다(영상은 커서 누르기 시작할 때) */
 export function wireSave(selector: string) {
   // 공유 창은 아이폰·아이패드만('이미지 저장'이 있음). 안드로이드 공유 창엔 갤러리 저장이 없고 내려받으면 갤러리 'Download'에 바로 보여서 내려받기(사용자 2026-10-29 "애플은 저장 뜬다, 안드로이드는 공유하기 뜨는데"). PC도 내려받기
-  if (!sharesToPhotos()) return;
+  if (!sharesToPhotos()) {
+    // 안드로이드는 내려받기 그대로 두고, 어디서 찾는지 알려 준다(사용자 2026-10-29 조부모님 "갤러리에 안 보인다" → 'Download' 앨범에 있음)
+    if (/Android/i.test(navigator.userAgent))
+      document.addEventListener('click', (e) => {
+        const a = (e.target as Element).closest<HTMLAnchorElement>(selector);
+        if (a && !e.defaultPrevented) toast("저장했어요. 갤러리의 'Download' 앨범에서 볼 수 있어요.", a);
+      });
+    return;
+  }
   const warm = (a: HTMLAnchorElement) => void load(a.href, a.download || 'sweepea').catch(() => {});
   for (const a of document.querySelectorAll<HTMLAnchorElement>(selector)) if (a.dataset.kind === 'photo') warm(a);
   document.addEventListener('pointerdown', (e) => {
