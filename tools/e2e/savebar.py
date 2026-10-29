@@ -1,4 +1,4 @@
-# 저장 버튼 아래 고정 + 접종 바로 저장(78): 막대는 탭바 바로 위, 끝까지 내리면 내용이 막대에 안 가림, 토스트는 막대 위 12px.
+# 저장 버튼 아래 고정 + 접종 바로 저장(78): 막대는 떠 있는 탭바 위 0.5rem(0.6.0~), 끝까지 내리면 내용이 막대에 안 가림, 토스트는 막대 위 12px.
 # 접종은 체크하면 그 자리에서 저장되고 완료로 옮겨감 (mock)
 import os
 from playwright.sync_api import sync_playwright
@@ -9,7 +9,7 @@ def check(c,msg):
     if not c: FAILS.append(msg)
 def bar_ok(pg,name):
     bar=pg.locator('.sp-p__savebar').bounding_box(); tabs=pg.locator('.sp-p__tabs').bounding_box()
-    check(abs((bar['y']+bar['height'])-tabs['y'])<=1,name+': 막대는 탭바 바로 위')
+    gap=pg.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)/2"); check(abs(tabs['y']-(bar['y']+bar['height'])-gap)<=1,name+f': 막대는 탭바 위 {gap:g}px(0.5rem)')
     pg.evaluate('window.scrollTo(0,document.documentElement.scrollHeight)'); pg.wait_for_timeout(200)
     last=pg.evaluate("(()=>{const els=[...document.querySelectorAll('.sp-p > *:not(.sp-vh):not(dialog):not(.sp-toast)')].filter(e=>!e.closest('.sp-p__savebar')&&e.getBoundingClientRect().height>0);return Math.max(...els.map(e=>e.getBoundingClientRect().bottom))})()")
     check(last<=pg.locator('.sp-p__savebar').bounding_box()['y']+1,name+': 끝까지 내리면 내용이 막대에 안 가림 (%d)'%last)
@@ -36,7 +36,7 @@ with sync_playwright() as p:
     check(abs(bb['y']-(t['y']+t['height'])-12)<=1,'사진 저장 토스트는 막대 위 12px')
     pg.screenshot(path=O+'photo.png')
     # 접종: 체크하면 바로 저장
-    pg.goto(B+'/home'); href=pg.locator('a[href^="/health/"]').first.get_attribute('href'); pg.goto(B+href); pg.evaluate('window.__same=1')
+    pg.goto(B+'/settings/children'); href=pg.locator('a[href^="/health/"]').first.get_attribute('href'); pg.goto(B+href); pg.evaluate('window.__same=1')
     check(pg.get_by_role('button',name='저장').count()==0,'접종: 저장 버튼 숨김(바로 저장)')
     past=pg.locator('details#past')
     if past.count(): past.locator('summary').click()

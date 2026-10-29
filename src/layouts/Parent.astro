@@ -28,6 +28,7 @@ const { title, tab, wide, savebar, alerts = 0, waiting = 0, description, canonic
   {
     tab && (
       <nav class="sp-p__tabs" aria-label="메뉴">
+        <div class="sp-p__tabs-pill">
         <a class="sp-p__tab" href="/home" aria-current={tab === 'home' ? 'page' : undefined}>
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M4 17l5-4 4 3 3-2 4 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
           앨범
@@ -41,6 +42,11 @@ const { title, tab, wide, savebar, alerts = 0, waiting = 0, description, canonic
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
           설정
           {waiting > 0 && <span class="sp-p__tab-badge" aria-hidden="true">{waiting > 99 ? '99+' : waiting}</span>}
+        </a>
+        </div>
+        {/* 떠 있는 유리 탭바 옆 둥근 사진 추가(디자인 ParentHomeGlass) */}
+        <a class="sp-p__tab-add" href="/upload" aria-label="사진 추가">
+          <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
         </a>
       </nav>
     )

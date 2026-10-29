@@ -34,9 +34,19 @@ export async function handleFamilyPost(request: Request, cookies: AstroCookies):
   const form = await request.formData().catch(() => null);
   const action = String(form?.get('do') ?? '');
   const [kind, id, status] = action.split(':');
-  if (!ID.test(id ?? '')) return '/settings/family';
   const b = getBackend();
-  const irreversible = (kind === 'member' && status === 'rejected') || (kind === 'device' && status === 'revoked') || kind === 'reset';
+  // 엄빠 함께 관리 초대 링크 만들기(링크는 화면이 sp_family_parents로 다시 읽어 보여 준다)
+  if (action === 'pinvite') {
+    try {
+      await b.createParentInvite(pass);
+      return '/settings/family?done=pinvite#parents';
+    } catch (e) {
+      if (!(e instanceof BackendError) || e.status >= 500) throw e;
+      return `/settings/family?done=${e.code === '23505' ? 'parents-full' : 'error'}`;
+    }
+  }
+  if (!ID.test(id ?? '')) return '/settings/family';
+  const irreversible = (kind === 'member' && status === 'rejected') || (kind === 'device' && status === 'revoked') || kind === 'reset' || (kind === 'parent' && status === 'removed');
   if (irreversible && form?.get('confirm') !== '1') return `/settings/family?confirm=${encodeURIComponent(action)}#confirm`;
   try {
     // 켜기·끄기: 올리기 허용(구성원 상세), 가족도 사진 저장하기(설정)
@@ -50,6 +60,8 @@ export async function handleFamilyPost(request: Request, cookies: AstroCookies):
     }
     if (kind === 'member' && (status === 'active' || status === 'rejected')) await b.setMemberStatus(pass, id, status);
     else if (kind === 'device' && (status === 'active' || status === 'revoked')) await b.setDeviceStatus(pass, id, status);
+    // 함께 관리하는 상대 엄빠 내보내기
+    else if (kind === 'parent' && status === 'removed') await b.removeCoparent(pass, id);
     else if (kind === 'share' || kind === 'reset') {
       // 주소 다시 만들기: 예전 링크를 막고 새 링크를 바로 만든다
       if (kind === 'reset') await b.resetGroupLinks(pass, id);
@@ -68,6 +80,9 @@ export async function handleFamilyPost(request: Request, cookies: AstroCookies):
 
 /** 공유 주소는 정해 둔 공개 주소로(미리보기·workers.dev 주소로 열어도 문자엔 진짜 주소). 없으면 지금 주소 */
 export const shareUrl = (origin: string, code: string) => `${(SITE_ORIGIN || origin).replace(/\/$/, '')}/i/${code}`;
+
+/** 엄빠 함께 관리 초대 주소 */
+export const joinUrl = (origin: string, code: string) => `${(SITE_ORIGIN || origin).replace(/\/$/, '')}/join/${code}`;
 
 /** 문자 앱을 미리 쓴 내용으로 연다(iOS·안드로이드 둘 다 열리는 형태) */
 export const smsHref = (body: string) => `sms:?&body=${encodeURIComponent(body)}`;

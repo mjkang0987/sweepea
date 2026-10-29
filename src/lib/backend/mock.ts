@@ -1,7 +1,7 @@
 // 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
 // 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
-import type { ActivityItem, Backend, EnterResult, EntryInfo, EntryMe, MediaItem, MediaQuery, Me, MeFamily, ParentHome, Pass, ReactionCount, ReactionKind, TextSizeMode } from './types';
+import type { ActivityItem, Backend, EnterResult, EntryInfo, EntryMe, MediaItem, MediaQuery, Me, MeFamily, ParentHome, ParentInviteInfo, Pass, ReactionCount, ReactionKind, TextSizeMode } from './types';
 import { BackendError } from './supabase';
 import { SWEEPEA_MOCK_USED_BYTES } from 'astro:env/server';
 
@@ -9,8 +9,8 @@ import { SWEEPEA_MOCK_USED_BYTES } from 'astro:env/server';
 const MOCK_USED = SWEEPEA_MOCK_USED_BYTES ?? 0;
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string; exclude?: boolean }
-interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean; helpAt?: number }
-interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean; revoked?: boolean }
+interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean; helpAt?: number; entryShare?: string }
+interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean; revoked?: boolean; mediaIds?: string[] }
 interface Device { id: string; familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]>; canUpload?: boolean }
 
 const HOUR = 3600_000;
@@ -58,7 +58,7 @@ const shares: Share[] = [
 ];
 // 기기(출입증) × 가족방마다 하나
 const devices = new Map<string, Device>();
-// 그룹별 공개는 목록(listMedia)만 흉내 낸다(승인 대기·공유 묶음 규칙은 DB 검사 rls.sql이 맡는다)
+// 그룹별 공개·승인 대기의 공유 묶음은 목록(listMedia)만 흉내 낸다(나머지 규칙은 DB 검사 rls.sql이 맡는다)
 const media: (MediaItem & { status: 'uploading' | 'ready'; uploader: string; groupIds: string[]; childIds: string[]; bytes: number })[] = [];
 const deviceOf = (pass: Pass, familyId: string) => devices.get(key(pass, familyId));
 const canUpload = (d: Device | undefined) => !!d && d.status === 'active' && !!d.canUpload;
@@ -69,7 +69,10 @@ const reactedAt = new Map<string, number>();
 // 부모 → 최근 반응을 마지막으로 연 때
 const seenAt = new Map<string, number>();
 // 부모: 세션(access) → 가족방·역할
-const parents = new Map<string, { familyId: string; role: 'mom' | 'dad' }>();
+const parents = new Map<string, { familyId: string; role: 'mom' | 'dad'; since?: number; id?: string }>();
+// 엄빠 초대 링크(공동 관리자): 코드 → 가족방·만든 사람·만든 때·쓴 때
+const parentInvites: { code: string; familyId: string; by: string; at: number; usedAt?: number }[] = [];
+const familyParentsOf = (fam: string) => [...parents].filter(([, p]) => p.familyId === fam);
 // 가족도 사진 저장하기(가족방별)
 const downloads: Record<string, boolean> = {};
 const used: Record<string, number> = {};
@@ -146,8 +149,11 @@ function visibleMedia(pass: Pass, opts: MediaQuery) {
       if (isClosing(x.family_id)) return false;
       const d = deviceOf(pass, x.family_id);
       const mem = members.find((m) => m.id === d?.memberId);
-      // 올리기 권한 가족은 모든 그룹 사진을 본다(DB sp_can_view_media와 같게)
-      return d?.status === 'active' && mem?.status === 'active' && (canUpload(d) || x.groupIds.includes(mem.groupId));
+      if (d?.status !== 'active') return false;
+      // 승인 대기는 들어온 링크의 사진 묶음만(DB sp_can_view_media와 같게)
+      if (mem?.status === 'pending') return !!shares.find((s) => s.code === mem.entryShare)?.mediaIds?.includes(x.id);
+      // 올리기 권한 가족은 모든 그룹 사진을 본다
+      return mem?.status === 'active' && (canUpload(d) || x.groupIds.includes(mem.groupId));
     })
     .sort(newerFirst);
 }
@@ -237,7 +243,7 @@ export function createMockBackend(): Backend {
       if (!member) {
         const name = (i.newName ?? '').trim();
         if (members.some((m) => m.groupId === groupId && m.name === name)) return { result: 'name_taken' };
-        member = { id: crypto.randomUUID(), groupId, name, status: 'pending' };
+        member = { id: crypto.randomUUID(), groupId, name, status: 'pending', entryShare: s.code };
         members.push(member);
       }
       dev.memberId = member.id;
@@ -462,8 +468,59 @@ export function createMockBackend(): Backend {
     async requestDelete(pass) {
       const fam = parents.get(pass.access)?.familyId;
       if (!fam) throw new BackendError('parent_only', 403, '42501');
+      // 함께 관리하는 엄빠가 있으면 나만 빠진다(DB sp_request_delete와 같게)
+      if (familyParentsOf(fam).length > 1) {
+        parents.delete(pass.access);
+        return null;
+      }
       closingAt[fam] ??= Date.now() + 72 * HOUR;
       return new Date(closingAt[fam]).toISOString();
+    },
+    async familyParents(pass) {
+      const fam = parents.get(pass.access)?.familyId;
+      if (!fam) return { parents: [], invite: null };
+      const list = familyParentsOf(fam)
+        .map(([access, p]) => ({ user_id: (p.id ??= crypto.randomUUID()), role: p.role, display_name: p.role === 'mom' ? '엄마' : '아빠', since: new Date(p.since ?? 0).toISOString(), me: access === pass.access }))
+        .sort((a, b) => Number(b.me) - Number(a.me) || a.since.localeCompare(b.since));
+      const inv = parentInvites.filter((i) => i.familyId === fam && !i.usedAt && i.at + 72 * HOUR > Date.now()).at(-1);
+      return { parents: list, invite: inv ? { code: inv.code, expires_at: new Date(inv.at + 72 * HOUR).toISOString() } : null };
+    },
+    async createParentInvite(pass) {
+      const fam = parents.get(pass.access)?.familyId;
+      if (!fam || isClosing(fam)) throw new BackendError('not_allowed', 403, '42501');
+      if (familyParentsOf(fam).length >= 2) throw new BackendError('parents_full', 409, '23505');
+      for (let i = parentInvites.length - 1; i >= 0; i--) if (parentInvites[i].familyId === fam && !parentInvites[i].usedAt) parentInvites.splice(i, 1);
+      const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+      const code = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => abc[b % abc.length]).join('');
+      parentInvites.push({ code, familyId: fam, by: pass.access, at: Date.now() });
+      return code;
+    },
+    async parentInviteInfo(_pass, code): Promise<ParentInviteInfo> {
+      const i = parentInvites.find((x) => x.code === code);
+      if (!i) return { result: 'not_found' };
+      const result = isClosing(i.familyId) ? 'closed' : i.usedAt || i.at + 72 * HOUR <= Date.now() ? 'expired' : familyParentsOf(i.familyId).length >= 2 ? 'full' : 'ok';
+      const mine = !!_pass && parents.get(_pass.access)?.familyId === i.familyId;
+      if (result !== 'ok') return { result, mine };
+      return { result, mine, child_name: kids.find((k) => k.familyId === i.familyId)?.name, inviter_role: parents.get(i.by)?.role, taken_roles: familyParentsOf(i.familyId).map(([, p]) => p.role) };
+    },
+    async acceptParentInvite(pass, code, role) {
+      if (!pass.access.startsWith('parent-')) throw new BackendError('parent_login_required', 403, '42501');
+      const i = parentInvites.find((x) => x.code === code);
+      if (!i) throw new BackendError('not_found', 404, 'P0002');
+      if (i.usedAt || i.at + 72 * HOUR <= Date.now() || isClosing(i.familyId)) throw new BackendError('expired', 400, '22023');
+      if (parents.has(pass.access)) throw new BackendError('family_exists', 409, '23505');
+      if (familyParentsOf(i.familyId).length >= 2) throw new BackendError('parents_full', 409, '23505');
+      if (familyParentsOf(i.familyId).some(([, p]) => p.role === role)) throw new BackendError('role_taken', 400, '22023');
+      parents.set(pass.access, { familyId: i.familyId, role, since: Date.now() });
+      i.usedAt = Date.now();
+      return i.familyId;
+    },
+    async removeCoparent(pass, userId) {
+      const fam = parents.get(pass.access)?.familyId;
+      // 화면에 내보낸 id(user_id)는 mock에선 출입증과 따로 붙인 uuid
+      const target = familyParentsOf(fam ?? '').find(([access, p]) => p.id === userId && access !== pass.access);
+      if (!fam || !target) throw new BackendError('not_allowed', 403, '42501');
+      parents.delete(target[0]);
     },
     async restoreFamily(pass) {
       const fam = parents.get(pass.access)?.familyId;
@@ -484,14 +541,14 @@ export function createMockBackend(): Backend {
       if (!k) throw new BackendError('not_found', 404);
       Object.assign(k, { name, birth_date: birthDate });
     },
-    async createShare(pass, groupIds, target) {
+    async createShare(pass, groupIds, target, mediaIds = []) {
       const fam = parents.get(pass.access)?.familyId;
-      if (!fam || isClosing(fam) || !groupIds.length || groupIds.some((id) => groups.find((g) => g.id === id)?.familyId !== fam)) {
+      if (!fam || isClosing(fam) || !groupIds.length || groupIds.some((id) => groups.find((g) => g.id === id)?.familyId !== fam) || mediaIds.some((id) => media.find((x) => x.id === id)?.family_id !== fam)) {
         throw new BackendError('bad_request', 400, '22023');
       }
       const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
       const code = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => abc[b % abc.length]).join('');
-      shares.push({ code, groupIds, createdAt: Date.now(), targetMemberId: target });
+      shares.push({ code, groupIds, createdAt: Date.now(), targetMemberId: target, mediaIds });
       return code;
     },
     async parentHome(pass): Promise<ParentHome> {
@@ -513,7 +570,7 @@ export function createMockBackend(): Backend {
       const id = crypto.randomUUID();
       kids.push({ id: crypto.randomUUID(), familyId: id, name: f.childName, birth_date: f.birthDate, show_health: true });
       groups.push({ id: crypto.randomUUID(), familyId: id, name: '가족', hint: f.hint ?? '', password: f.password });
-      parents.set(pass.access, { familyId: id, role: f.role });
+      parents.set(pass.access, { familyId: id, role: f.role, since: Date.now() });
       return id;
     },
     async listMedia(pass, opts = {}) {

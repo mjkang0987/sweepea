@@ -104,3 +104,16 @@ export function splitSchedule(birth: string, today: string, done: Map<string, st
   const isPast = (x: (typeof rows)[number]) => x.state.kind === 'late' || (x.state.kind === 'now' && !x.item.until && !x.item.after && x.start < stale);
   return { upcoming: rows.filter((x) => !isPast(x)), past: rows.filter(isPast) };
 }
+
+/** 다음 접종·검진 하나: 이름, 시작일(이미 가능하면 null), 오늘부터 남은 날(이미 가능하면 0). 6개월 안에 없으면 이름 null */
+export function nextOf(birth: string, today: string, done: Map<string, string>): { what: string | null; from: string | null; inDays: number } {
+  const next = splitSchedule(birth, today, done).upcoming[0];
+  const from = next?.state.kind === 'soon' ? next.start : null;
+  return { what: next?.item.name ?? null, from, inDays: from ? Math.round((Date.parse(from) - Date.parse(today)) / 86_400_000) : 0 };
+}
+
+/** '12월 17일' */
+export const monthDay = (iso: string) => {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${m}월 ${d}일`;
+};

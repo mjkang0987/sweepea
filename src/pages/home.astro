@@ -4,7 +4,6 @@ import Parent from '../layouts/Parent.astro';
 import { getBackend } from '../lib/backend';
 import { sizeLabel, summarize } from '../lib/familyAdmin';
 import { callName, hasBatchim } from '../lib/ko';
-import { splitSchedule } from '../lib/health';
 import { agoLabel, milestone, monthsOld } from '../lib/age';
 import { loadParent, seoulToday } from '../lib/parent';
 import { signedMediaUrl } from '../lib/signed';
@@ -37,27 +36,12 @@ const picked = kids.length > 1 ? kids.find((k) => k.id === Astro.url.searchParam
 const b = getBackend();
 // 60장씩: ?before=<찍은 날~id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
 const cont = Astro.url.searchParams.has('before');
-// 접종·검진: 일정 보기를 켠 아이마다 다음 일정 하나. 옆 기능이라 실패하면 줄만 빼고 앨범은 보인다
 const today = seoulToday();
 // 승인 대기·설치 부탁 띠도 옆 기능이라 실패하면 띠만 뺀다
-// 이어지는 쪽은 사진만 쓰므로 띠·접종 줄은 건너뛴다
-const [page, admin, healthRows] = await Promise.all([
+// 이어지는 쪽은 사진만 쓰므로 띠는 건너뛴다
+const [page, admin] = await Promise.all([
   loadPage(a.pass, { childId: picked?.id }, Astro.url),
   cont ? null : b.familyAdmin(a.pass).catch(() => null),
-  Promise.all(
-  kids
-    .filter((k) => !cont && k.show_health && (!picked || k.id === picked.id))
-    .map(async (k) => {
-      const rows = await b.healthDone(a.pass, k.id).catch(() => null);
-      if (!rows) return null;
-      const done = new Map(rows.map((d) => [d.item_key, d.done_on]));
-      const next = splitSchedule(k.birth_date, today, done).upcoming[0];
-      const [, m, d] = next?.start.split('-').map(Number) ?? [];
-      // 태어난 지 며칠(서울 날짜 기준, 태어난 날이 1일째)
-      const days = Math.round((Date.parse(today) - Date.parse(k.birth_date)) / 86_400_000) + 1;
-      return { id: k.id, name: k.name, months: monthsOld(k.birth_date, today), days, next: next ? `${next.item.name} · ${next.state.kind === 'soon' ? `${m}월 ${d}일부터` : '지금 가능'}` : '6개월 안에는 없어요' };
-    }),
-  ).then((r) => r.filter((x) => x !== null)),
 ]);
 const { items } = page;
 const kq = picked ? `k=${encodeURIComponent(picked.id)}&` : '';
@@ -147,7 +131,13 @@ for (const mo of months) {
 ---
 
 <Parent title="앨범 · 스위피" tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0} wide>
-  <h1 class="sp-p__title sp-p__title--large">앨범</h1>
+  {/* 위에 붙는 머리(디자인 ParentHomeBleed, 아이폰 사진 앱처럼 사진이 밑으로 흐리게 지나감). 아이를 고르면 수는 가족 전체라 숨김 */}
+  <header class="sp-p__albumhead">
+    <h1 class="sp-p__title sp-p__title--large">앨범</h1>
+    {!picked && (a.home.photo_count ?? 0) + (a.home.video_count ?? 0) > 0 && (
+      <p class="sp-p__albumhead-sub">{[['사진', a.home.photo_count ?? 0], ['영상', a.home.video_count ?? 0]].filter(([, n]) => +n > 0).map(([w, n]) => `${w} ${n.toLocaleString('ko-KR')}`).join(' · ')}</p>
+    )}
+  </header>
   {
     join && (
       <div class="sp-layer">
@@ -200,6 +190,7 @@ for (const mo of months) {
     )
   }
   {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !birthday && !storage}>지웠어요.</p>}
+  {Astro.url.searchParams.get('joined') === '1' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !birthday && !storage}>이제 {callName(a.home.children?.[0]?.name ?? '아이')} 앨범을 함께 관리해요.</p>}
   {
     s && s.waiting > 0 && (
       <a class="sp-p__alert" href="/settings/family">
@@ -216,16 +207,6 @@ for (const mo of months) {
       </a>
     )
   }
-  {healthRows.map((h) => (
-    <a class="sp-p__kid" href={`/health/${h.id}`}>
-      <img class="sp-p__kid-kongi" src="/kongi.svg" width="64" height="64" alt="" />
-      <span class="sp-p__kid-text">
-        <span class="sp-vh">접종·검진 일정, </span><span class="sp-p__kid-line"><strong class="sp-p__kid-name">{h.name}</strong><span class="sp-p__hint">생후 {h.months}개월 · 태어난 지 {h.days}일</span></span>
-        <span class="sp-p__kid-next">{h.next}</span>
-      </span>
-      <svg class="sp-p__icon-chev" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
-    </a>
-  ))}
   {
     kids.length > 1 && (
       <nav class="sp-p__seg" aria-label="아이 고르기">
@@ -295,10 +276,6 @@ for (const mo of months) {
       </p>
     )
   )}
-  <a class="sp-p__fab" href="/upload">
-    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
-    사진 추가하기
-  </a>
 </Parent>
 
 <script>

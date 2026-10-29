@@ -3,15 +3,21 @@
 import Parent from '../../../layouts/Parent.astro';
 import Toast from '../../../components/Toast.astro';
 import { getBackend } from '../../../lib/backend';
-import { handleFamilyPost, LINK_COOKIE, shareUrl, smsHref, summarize } from '../../../lib/familyAdmin';
+import { handleFamilyPost, joinUrl, LINK_COOKIE, shareUrl, smsHref, summarize } from '../../../lib/familyAdmin';
 import { callName } from '../../../lib/ko';
-import { loadParent } from '../../../lib/parent';
+import { loadParent, PROVIDER_NAMES } from '../../../lib/parent';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
 if (Astro.request.method === 'POST') return Astro.redirect(await handleFamilyPost(Astro.request, Astro.cookies), 303);
 const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
-const admin = await getBackend().familyAdmin(a.pass);
+const [admin, fp] = await Promise.all([getBackend().familyAdmin(a.pass), getBackend().familyParents(a.pass).catch(() => null)]);
+// 엄마아빠 함께 관리(100, 디자인 FamilyCoParent): 나 먼저. 둘이 아니면 초대(살아 있는 링크가 있으면 카드)
+const parents = fp?.parents ?? [];
+const coparent = parents.find((p) => !p.me) ?? null;
+const inviteRole = a.home.role === 'dad' ? '엄마' : '아빠';
+const inviteUrl = fp?.invite ? joinUrl(Astro.url.origin, fp.invite.code) : null;
+const since = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 const s = summarize(admin);
 const kid = callName(a.home.children?.[0]?.name ?? '아이');
 const q = Astro.url.searchParams;
@@ -29,12 +35,15 @@ const askReject = (name: string) => ({ title: `${name} 거절할까요?`, text: 
 const askRevoke = (name: string) => ({ title: `${name} 휴대폰을 내 가족 아님으로 할까요?`, text: GONE_TEXT, ok: '내 가족 아님' });
 const askData = (a: { title: string; text: string; ok: string }) => ({ 'data-ask-title': a.title, 'data-ask-text': a.text, 'data-ask-ok': a.ok, 'aria-haspopup': 'dialog' as const });
 const cName =
+  cKind === 'parent' ? (coparent?.user_id === cId ? coparent.display_name : undefined) :
   cKind === 'member' ? admin.members.find((m) => m.id === cId && m.status !== 'rejected')?.display_name :
   cKind === 'reset' ? admin.groups.find((g) => g.id === cId)?.name :
   cKind === 'device' ? (() => { const d = s.pendingDevices.find((x) => x.id === cId); return d && deviceName(d); })() : undefined;
 const cActive = cKind === 'member' && admin.members.some((m) => m.id === cId && m.status === 'active');
-const confirmAsk = cName && ((cKind === 'member' && cStatus === 'rejected') || (cKind === 'device' && cStatus === 'revoked') || cKind === 'reset');
+const confirmAsk = cName && ((cKind === 'member' && cStatus === 'rejected') || (cKind === 'device' && cStatus === 'revoked') || cKind === 'reset' || (cKind === 'parent' && cStatus === 'removed'));
+const askParent = (name: string) => ({ title: `${name}를 함께 관리에서 내보낼까요?`, text: `${name} 계정으로는 이 앨범을 더 볼 수 없어요. ${name}가 올린 사진과 남긴 한마디는 그대로 있어요. 다시 함께하려면 새로 초대해 주세요.`, ok: '내보내기' });
 const ask = !confirmAsk ? null :
+  cKind === 'parent' ? askParent(cName) :
   cKind === 'reset' ? { title: `${cName} 주소를 다시 만들까요?`, text: '예전 주소는 바로 막히고 새 주소를 만들어요. 이미 들어온 휴대폰은 그대로 봐요. 이 그룹이 같이 들어간 다른 링크도 막혀요.', ok: '다시 만들기' } :
   cKind === 'device' ? askRevoke(cName) :
   cActive ? { title: `${cName} 내보낼까요?`, text: '이 사람의 휴대폰은 더 이상 들어올 수 없고, 남긴 반응과 한마디는 가족 화면에서 빠져요. 반응·한마디 기록이 남아 있으면 같은 이름은 다시 쓸 수 없어요. 그룹 비밀번호를 아는 사람이면 다른 이름으로 다시 요청할 수 있지만 승인해야 들어와요.', ok: '내보내기' } :
@@ -47,6 +56,9 @@ const doneText: Record<string, string> = {
   'member-rejected': '처리했어요. 그 사람의 휴대폰은 이제 들어올 수 없어요.',
   'device-active': '승인했어요.',
   'device-revoked': '내 가족이 아니라고 표시했어요. 그 휴대폰은 들어올 수 없어요.',
+  pinvite: '초대 링크를 만들었어요. 카톡이나 문자로 보내 주세요.',
+  'parent-removed': '함께 관리에서 내보냈어요.',
+  'parents-full': '엄마아빠는 둘까지 함께 관리할 수 있어요.',
   gone: '이미 처리됐거나 기간이 지난 요청이에요.',
   conflict: '같은 이름이 승인을 기다리고 있거나 그 이름이 없어졌어요. 먼저 그 이름을 정리해 주세요.',
   error: '처리하지 못했어요. 다시 눌러 주세요.',
@@ -60,7 +72,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
     <a class="sp-p__back" href="/settings">설정</a>
     <h1 class="sp-p__nav-title">가족</h1>
   </div>
-  {shownDone && doneText[shownDone] && <Toast text={doneText[shownDone]} tone={['error', 'gone', 'conflict'].includes(shownDone) ? 'error' : 'ok'} focus />}
+  {shownDone && doneText[shownDone] && <Toast text={doneText[shownDone]} tone={['error', 'gone', 'conflict', 'parents-full'].includes(shownDone) ? 'error' : 'ok'} focus />}
   {/* 스크립트로 바꾼 결과를 읽어 주는 늘 있는 알림 칸 */}
   <p class="sp-vh" id="fam-live" role="status"></p>
   <p class="sp-vh" id="fam-urgent" role="alert"></p>
@@ -92,6 +104,48 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
     </form>
   </dialog>
 
+  <section class="sp-p__section" aria-labelledby="sec-parents" id="parents">
+    <h2 class="sp-p__section-title" id="sec-parents">엄마아빠 · 함께 관리</h2>
+    <ul class="sp-p__list">
+      {
+        parents.map((p) => (
+          <li class="sp-p__row sp-p__row--tall sp-p__parent">
+            <span class="sp-p__avatar" aria-hidden="true">{p.display_name.slice(0, 1)}</span>
+            <span class="sp-p__row-label sp-p__radio-text">
+              <span class="sp-p__who-name">{p.display_name}{p.me && ' (나)'}</span>
+              <span class="sp-p__hint">{p.me ? (PROVIDER_NAMES[a.home.provider ?? ''] ? `${PROVIDER_NAMES[a.home.provider ?? '']}로 로그인` : '로그인됨') : `${since.format(new Date(p.since))}부터 함께`}</span>
+            </span>
+            {!p.me && (
+              <form method="post" action="/settings/family">
+                <button class="sp-p__btn sp-p__btn--danger sp-p__parent-out" type="submit" name="do" value={`parent:${p.user_id}:removed`} {...askData(askParent(p.display_name))}>내보내기<span class="sp-vh"> ({p.display_name})</span></button>
+              </form>
+            )}
+          </li>
+        ))
+      }
+      {
+        !coparent &&
+          (inviteUrl ? (
+            <li class="sp-p__invite" id="link-parent">
+              <h3 class="sp-p__card-title" id="pinvite-title" tabindex="-1">{inviteRole}에게 보낼 링크를 만들었어요</h3>
+              <label class="sp-p__label" for="pinvite-url">주소</label>
+              <input class="sp-p__input" id="pinvite-url" type="url" readonly value={inviteUrl} />
+              <a class="sp-p__btn" href={smsHref(`${kid} 앨범을 같이 관리해요. 누르고 로그인하면 바로 함께할 수 있어요.\n${inviteUrl}`)}>카톡·문자로 보내기</a>
+              <button class="sp-p__btn sp-p__btn--quiet" type="button" data-copy="pinvite-url" hidden>주소 복사</button>
+              <p class="sp-p__hint">한 번만 쓸 수 있고 3일 뒤에 사라져요. 받은 사람이 로그인하면 바로 함께 관리해요.</p>
+            </li>
+          ) : (
+            <li class="sp-p__invite">
+              <p class="sp-p__hint">{inviteRole}도 자기 계정으로 사진 올리기·가족 승인·설정을 같이 할 수 있어요.</p>
+              <form method="post" action="/settings/family">
+                <button class="sp-p__btn" type="submit" name="do" value="pinvite">{inviteRole} 초대하기</button>
+              </form>
+            </li>
+          ))
+      }
+    </ul>
+  </section>
+
   <a class="sp-p__cta" href="/settings/family/sms">
     <span class="sp-p__cta-title">문자로 공유하기</span>
     <span class="sp-p__cta-sub">조부모 폰 홈 화면에 스위피 두기 · 처음 한 번만</span>
@@ -102,9 +156,10 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
     link && (
       <section class="sp-p__card" id="link" aria-labelledby="link-title">
         <h2 class="sp-p__card-title" id="link-title" tabindex="-1">{linkGroup} 링크를 만들었어요</h2>
-        <label class="sp-p__label" for="link-url">주소(길게 눌러 복사)</label>
+        <label class="sp-p__label" for="link-url">주소</label>
         <input class="sp-p__input" id="link-url" type="url" readonly value={link} />
         <a class="sp-p__btn" href={smsHref(`${kid} 사진 보시라고 주소 보내요. 누르면 바로 볼 수 있어요.\n${link}`)}>문자로 보내기</a>
+        <button class="sp-p__btn sp-p__btn--quiet" type="button" data-copy="link-url" hidden>주소 복사</button>
         <p class="sp-p__hint">3일 안에는 새 이름으로도 들어올 수 있어요. 이미 등록된 이름은 언제든 들어와요.</p>
       </section>
     )
@@ -195,6 +250,18 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
 </Parent>
 
 <script>
+  import { wireCopy } from '../../../lib/copy';
+  // 같은 글을 다시 넣어도 읽히게 비운 뒤 넣는다(아래 say와 같게)
+  wireCopy((t) => {
+    const live = document.getElementById('fam-live');
+    if (!live) return;
+    live.textContent = '';
+    setTimeout(() => (live.textContent = t), 50);
+  });
+</script>
+
+<script>
+  import { revealCopy } from '../../../lib/copy';
   // 그 자리에서: 이 화면 폼은 fetch로 보내고 돌아온 화면의 내용·탭 배지만 갈아 끼운다(하얀 깜빡임·스크롤 처음으로 없이).
   // 거절·내 가족 아님은 먼저 확인 레이어. 스크립트가 없거나 옛 브라우저면 지금처럼 폼 → 페이지 이동
   const root = document.querySelector<HTMLElement>('.sp-p');
@@ -267,6 +334,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
       const keep = new Set(['fam-live', 'fam-urgent', 'fam-ask']);
       area.replaceChildren(...[...from.childNodes].filter((n) => !(n instanceof Element && keep.has(n.id))).map((n) => document.importNode(n, true)), live, urgent, ask);
       area.removeAttribute('aria-busy');
+      revealCopy(area);
       // ?confirm=·?done=을 떼어 새로 고침해도 확인·안내가 다시 뜨지 않게
       if (location.search) history.replaceState(history.state, '', location.pathname);
       const tabs = doc.querySelector('.sp-p__tabs');
