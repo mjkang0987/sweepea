@@ -2,15 +2,16 @@
 # ParentHomeGlass에서: 맨 위 '앨범' 큰 제목 + 작은 줄(사진·영상 수)을 사진 위에 떠 있는 머리로(화면색 → 투명 그라데이션 + 흐림),
 # (2026-10-29 "fixed 영역에 흰 배경 뭐야?" → 화면색 75% 막 + 흐림 20px, 작은 줄도 진한 글자)
 # (같은 날 "지금도 배경 너무 짙어" → 위 55%→30%→투명 + 흐림 24px, 작은 줄은 굵게 + 화면색 번짐)
+# (사용자 값 지정: 35% → 13% → 투명, 흐림 2px, 작은 줄 번짐 없음)
 # 사진 묶음은 좌우 여백 0·간격 2px·모서리 0. 달 제목·안내 카드·아이 고르기는 여백 그대로
 import os,re,json
 os.chdir(os.path.join(os.path.dirname(__file__),'..','canvas','project'))
 HEAD=('<header style="position: absolute; z-index: 5; top: 0; left: 0; right: 0; padding: 54px 20px 22px; '
-      'background: linear-gradient(color-mix(in srgb, var(--bg) 55%, transparent), color-mix(in srgb, var(--bg) 30%, transparent) 70%, transparent);">'
-      '<div aria-hidden="true" style="position: absolute; inset: 0; z-index: -1; -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); '
+      'background: linear-gradient(color-mix(in srgb, var(--bg) 35%, transparent), color-mix(in srgb, var(--bg) 13%, transparent) 52%, transparent);">'
+      '<div aria-hidden="true" style="position: absolute; inset: 0; z-index: -1; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); '
       '-webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent);"></div>'
       '<h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: -0.4px;">앨범</h1>'
-      '<p style="margin: 2px 0 0; font-size: 15px; line-height: 20px; color: var(--label); font-weight: 600; text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 6px var(--bg), 0 0 6px var(--bg), 0 0 12px var(--bg);">사진 1,284 · 영상 37</p></header>')
+      '<p style="margin: 2px 0 0; font-size: 15px; line-height: 20px; color: var(--label); font-weight: 600;">사진 1,284 · 영상 37</p></header>')
 def bleed(t):
     s=open(f'ParentHomeGlass{t}.dc.html').read()
     s=re.sub(r'<title>.*?</title>','<title>앨범 고정 머리</title>',s,count=1)
