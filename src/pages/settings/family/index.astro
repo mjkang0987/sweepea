@@ -197,9 +197,12 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
 
 <script>
   import { wireCopy } from '../../../lib/copy';
+  // 같은 글을 다시 넣어도 읽히게 비운 뒤 넣는다(아래 say와 같게)
   wireCopy((t) => {
     const live = document.getElementById('fam-live');
-    if (live) live.textContent = t;
+    if (!live) return;
+    live.textContent = '';
+    setTimeout(() => (live.textContent = t), 50);
   });
 </script>
 

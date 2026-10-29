@@ -155,7 +155,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
       region.textContent = '';
       setTimeout(() => (region.textContent = text), 50);
     };
-    wireCopy((t) => say(t));
+    wireCopy(say);
     const toast = (src: Element | null, text: string) => {
       area.querySelector('.sp-toast')?.remove();
       const p = src ? (document.importNode(src, true) as HTMLElement) : document.createElement('p');

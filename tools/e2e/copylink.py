@@ -29,6 +29,8 @@ with sync_playwright() as p:
     btn.click(); pg.wait_for_function("document.getElementById('as-live')?.textContent.includes('골라 두었어요')")
     sel=pg.evaluate("(()=>{const i=document.getElementById('link-url');return [i.readOnly,document.activeElement===i,i.selectionEnd-i.selectionStart,i.value.length]})()")
     check(sel[0] is False and sel[1] and sel[2]==sel[3],f'못 하면 칸 전체를 골라 둠 {sel}')
+    pg.locator('label[for=link-url]').click(); pg.keyboard.press('Tab')
+    check(pg.evaluate("document.getElementById('link-url').readOnly"),'칸을 벗어나면 다시 읽기 전용')
     # 스크립트 없이 보낸 경우처럼 설정 › 가족 화면에 바로 뜨는 카드도 버튼이 보임
     gid=pg.url.split('/groups/')[1].split('?')[0]
     pg.goto(B+'/settings/family'); pg.evaluate("(g)=>{const f=document.createElement('form');f.method='post';f.action='/settings/family';const i=document.createElement('input');i.name='do';i.value='share:'+g;f.append(i);document.body.append(f);HTMLFormElement.prototype.submit.call(f)}",gid)

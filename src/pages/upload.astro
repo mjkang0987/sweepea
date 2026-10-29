@@ -102,6 +102,7 @@ const kid = callName(kids[0]?.name ?? '아이');
 
 <script>
   import { fitSize, mp4CreatedAt, photoTakenAt, plausible, stripJpeg } from '../lib/exif';
+  import { copyText } from '../lib/copy';
 
   type Item = {
     kind: 'photo' | 'video';
@@ -628,15 +629,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       $('up-done-title').focus();
       const text = `${form.dataset.kid} 새 사진 ${ids.length}장이에요. 누르면 바로 볼 수 있어요.`;
       const tell = (t: string) => ($('up-done-status').textContent = t);
-      // 못 하면 주소 칸을 골라 두어 휴대폰 복사 메뉴로(아이폰 사파리는 읽기 전용 칸을 길게 눌러도 복사 메뉴가 안 뜬다)
-      const pick = () => {
-        const input = $<HTMLInputElement>('up-link');
-        input.removeAttribute('readonly');
-        input.focus();
-        input.select();
-        tell('주소를 골라 두었어요. 복사를 눌러 주세요.');
-      };
-      const copy = (what: string, ok: string) => (navigator.clipboard ? navigator.clipboard.writeText(what).then(() => tell(ok), pick) : pick());
+      const copy = (what: string, ok: string) => copyText($<HTMLInputElement>('up-link'), what, tell, ok);
       $('up-share').addEventListener('click', () => {
         // 휴대폰 공유 창(카톡 포함). 카카오 카드 공유는 앱 키를 받은 뒤
         if (navigator.share) navigator.share({ text, url }).catch(() => undefined);
