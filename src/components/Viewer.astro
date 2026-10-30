@@ -1,0 +1,630 @@
+---
+// 크게 보기(가족·엄빠 공통): 사진·영상이 화면 가득, 위 메뉴·아래 판이 반투명으로 겹친다. 이 부품만 작은 스크립트(영상 재생 막대·옆으로 밀기).
+// 스크립트가 없어도 ‹ › 링크로 넘기고 영상은 브라우저 기본 재생 막대로 본다
+import ReactRow from './ReactRow.astro';
+import SayForm from './SayForm.astro';
+import Toast from './Toast.astro';
+import { sayNote } from '../lib/say';
+import type { Reacts, SlideWindow } from '../lib/album';
+import { dayLabel } from '../lib/album';
+import type { MediaComment, MediaItem } from '../lib/backend';
+import { agoLabel } from '../lib/age';
+import { hasBatchim } from '../lib/ko';
+
+interface Props {
+  m: MediaItem;
+  /** 화면 읽기용 제목(영상 이름도 이걸로) */
+  label: string;
+  src: string;
+  poster?: string;
+  pos: number;
+  total: number;
+  closeHref: string;
+  /** 저장 링크(가족은 엄마아빠가 허용했을 때만) */
+  save?: { href: string; name: string; label: string };
+  prev?: { href: string; video: boolean };
+  next?: { href: string; video: boolean };
+  reacts: Reacts;
+  /** 반응·한마디 폼 보낼 곳과 돌아올 곳 */
+  action: string;
+  here: string;
+  child: string;
+  say: string | null;
+  sentText?: string;
+  /** 완료 안내(몇 초 뒤 사라짐), 예: 사진 정보 저장 뒤 */
+  toast?: string;
+  /** 앞뒤 사진(사진일 때 손가락으로 넘기는 스와이퍼). 영상이면 넘길 때마다 페이지를 연다 */
+  slides?: SlideWindow;
+  /** 한마디(최근 것부터): 맨 위 하나는 늘 보이고 나머지는 '모두 보기'로 */
+  comments?: MediaComment[];
+  /** 엄빠 크게 보기: 이 사진을 본 가족 이름(보신 기록, 95). 횟수·시간은 안 보임 */
+  viewers?: string[];
+  /** 가족 크게 보기: 옆으로 넘긴 사진은 1.5초 머물면 본 것으로 남긴다(보신 기록, 95) */
+  noteViews?: boolean;
+}
+const { m, label, toast, slides, comments = [], viewers = [], noteViews, src, poster, pos, total, closeHref, save, prev, next, reacts, action, here, child, say, sentText } = Astro.props;
+const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+const now = Date.now();
+const first = comments[0];
+// 한마디를 지우고 돌아옴: 남은 게 있으면 다시 연 시트 안에, 다 지웠으면 화면 안내로
+const deleted = say === 'deleted';
+const delNote = deleted ? '한마디를 지웠어요.' : say === 'delerror' ? '지우지 못했어요. 다시 해 주세요.' : null;
+// 지운 뒤: 남은 한마디가 있으면 시트를 연 채로(안내는 시트 안), 다 지웠으면 화면 안내
+const sheetOpen = !!delNote && !!first;
+// 화면 아래 토스트: 사진 정보 저장 > 다 지움 안내 > 한마디 보낸 결과
+// 지운 안내가 먼저(시트 설명으로 연결되므로)
+const note = delNote ? { text: delNote, tone: say === 'delerror' ? ('error' as const) : ('ok' as const) } : toast ? { text: toast, tone: 'ok' as const } : sayNote(say, sentText);
+// 셋까지 이름, 넘으면 '외 N명'. 조사는 끝 글자 받침으로
+const seenWho = viewers.slice(0, 3).join('·');
+const seenTail = viewers.length > 3 ? ` 외 ${viewers.length - 3}명이 봤어요` : `${hasBatchim(seenWho) ? '이' : '가'} 봤어요`;
+const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
+---
+
+{/* 시안엔 제목 줄이 없어 화면에선 숨기고 화면 읽기에만 */}
+<h1 class="sp-vh" id="v-title">{label}</h1>
+<div class="sp-v" data-v data-slides={m.kind === 'photo' && slides && slides.slides.length > 1 ? JSON.stringify(slides) : undefined} data-id={m.id} data-views={noteViews ? '' : undefined}>
+  {note && <Toast text={note.text} tone={note.tone} id={sheetOpen ? 'talk-note' : undefined} />}
+  <figure class="sp-v__stage">
+    {
+      m.kind === 'video' ? (
+        <video class="sp-v__media" src={src} poster={poster} controls playsinline preload="metadata" aria-labelledby="v-title" />
+      ) : (
+        <img class="sp-v__media" src={src} alt="" draggable="false" width={m.width ?? undefined} height={m.height ?? undefined} decoding="async" />
+      )
+    }
+  </figure>
+  {m.kind === 'video' && <button class="sp-v__tap" type="button" hidden aria-label="일시정지하고 메뉴 보기"></button>}
+  <nav class="sp-v__bar sp-v__hide" aria-label="사진 이동">
+    <a class="sp-v__link" href={closeHref}>닫기</a>
+    <p class="sp-v__pos">{pos} / {total}</p>
+    {save ? <a class="sp-v__link" href={save.href} download={save.name} data-kind={m.kind}>저장<span class="sp-vh"> ({save.label})</span></a> : <span class="sp-v__spacer"></span>}
+  </nav>
+  {(prev || next) && (
+    <a class="sp-v__arrow sp-v__arrow--prev sp-v__hide" href={prev?.href ?? here} rel="prev" hidden={!prev} aria-label={`이전 ${prev?.video ? '영상' : '사진'}`}>
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__line" d="M15 5l-7 7 7 7" /></svg>
+    </a>
+  )}
+  {(prev || next) && (
+    <a class="sp-v__arrow sp-v__arrow--next sp-v__hide" href={next?.href ?? here} rel="next" hidden={!next} aria-label={`다음 ${next?.video ? '영상' : '사진'}`}>
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__line" d="M9 5l7 7-7 7" /></svg>
+    </a>
+  )}
+  {
+    m.kind === 'video' && (
+      <button class="sp-v__play sp-v__hide" type="button" hidden aria-label="재생">
+        <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__fill-white" d="M8 5l12 7-12 7z" /></svg>
+      </button>
+    )
+  }
+  {/* 아래 판과 그 위에 뜨는 버튼(엄빠 사진 정보 수정)을 한 묶음으로: 판 높이가 바뀌어도 버튼이 판 바로 위에 */}
+  <div class="sp-v__dock">
+    <slot />
+    <div class="sp-v__panel">
+      {
+        m.kind === 'video' && (
+          <div class="sp-v__ctrl" hidden>
+            <label class="sp-v__seek-wrap">
+              <span class="sp-vh">재생 위치</span>
+              <input class="sp-v__seek" type="range" min="0" max={m.duration_sec ?? 0} step="0.1" value="0" />
+              <span class="sp-v__time" aria-hidden="true"><span class="sp-v__cur">0:00</span><span class="sp-v__total">{length}</span></span>
+            </label>
+            <button class="sp-v__mute" type="button" aria-pressed="false" aria-label="소리 끄기">
+              <svg class="sp-v__icon-on" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__fill" d="M4 9h4l5-4v14l-5-4H4z" /><path class="sp-v__wave" d="M16.5 8.5a5 5 0 0 1 0 7" /></svg>
+              <svg class="sp-v__icon-off" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="sp-v__fill" d="M4 9h4l5-4v14l-5-4H4z" /><path class="sp-v__wave" d="M17 9l4 6M21 9l-4 6" /></svg>
+            </button>
+          </div>
+        )
+      }
+      <div class="sp-v__more sp-v__hide">
+        <p class="sp-f__caption sp-v__meta">{dayLabel(m.taken_at)}</p>
+        {
+          viewers.length > 0 && (
+            <p class="sp-v__seen">
+              <svg class="sp-v__seen-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+              <span><strong class="sp-v__seen-who">{seenWho}</strong>{seenTail}</span>
+            </p>
+          )
+        }
+        <ReactRow mediaId={m.id} back={here} action={action} reacts={reacts} hideTitle />
+        {
+          first && (
+            <a class="sp-v__talk" href="#talk" aria-haspopup="dialog" data-talk-open>
+              <span class="sp-v__talk-text">
+                <strong class="sp-v__talk-who">{first.name}</strong> {first.body}
+              </span>
+              <span class="sp-v__talk-count">
+                <svg class="sp-v__talk-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9l-5 4z" /></svg>
+                <span aria-hidden="true">{comments.length}</span>
+                <span class="sp-vh">, 한마디 {comments.length}개 모두 보기</span>
+                <svg class="sp-v__talk-icon sp-v__talk-icon--small" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
+              </span>
+            </a>
+          )
+        }
+        {/* 아래에서 올라오는 시트. 스크립트가 있으면 showModal, 없으면 #talk(:target)로 판 안에 펼쳐진다 */}
+        {
+          first && (
+            <dialog class:list={['sp-v__sheet', sheetOpen && 'sp-v__sheet--inline']} id="talk" aria-labelledby="talk-title" aria-describedby={sheetOpen ? 'talk-note' : undefined} open={sheetOpen}>
+              <span class="sp-v__sheet-grab" aria-hidden="true"></span>
+              <div class="sp-v__sheet-head">
+                <h2 class="sp-v__sheet-title" id="talk-title" tabindex="-1" autofocus>한마디 {comments.length}개</h2>
+                <a class="sp-v__sheet-close" href="#" data-talk-close>닫기</a>
+              </div>
+              <ul class="sp-v__sheet-list">
+                {comments.map((c) => (
+                  <li class="sp-v__sheet-item">
+                    <p class="sp-v__sheet-who">
+                      <strong class="sp-v__sheet-name">{c.name}</strong> <span class="sp-v__sheet-when">· {agoLabel(c.created_at, now)}</span>
+                    </p>
+                    <p class="sp-v__sheet-body">{c.body}</p>
+                    {/* 내 한마디만 지우기: 누르면 한 번 더 묻고(네이티브 details) 폼으로 보냄. '지우기'는 이름 줄 오른쪽에 */}
+                    {c.mine && (
+                      <details class="sp-v__sheet-del">
+                        <summary class="sp-v__sheet-del-toggle">
+                          <svg class="sp-v__sheet-del-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 12.5h9l1-12.5M10 11v5.5M14 11v5.5" /></svg>
+                          <span class="sp-vh">한마디 지우기: {c.body}</span>
+                        </summary>
+                        <form class="sp-v__sheet-confirm" method="post" action={action}>
+                          <input type="hidden" name="back" value={here} />
+                          <span class="sp-v__sheet-confirm-text">이 한마디를 지울까요?</span>
+                          <button class="sp-v__sheet-confirm-btn" type="submit" name="del" value={c.id}>지우기</button>
+                        </form>
+                      </details>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <div class="sp-v__sheet-form">
+                <SayForm mediaId={m.id} back={here} action={action} child={child} idSuffix="-talk" />
+              </div>
+            </dialog>
+          )
+        }
+        {
+          sheetOpen && (
+            <script is:inline set:html="(function(){var d=document.getElementById('talk');if(d&&typeof d.showModal==='function'){d.close();d.classList.remove('sp-v__sheet--inline');d.showModal();var t=document.querySelector('.sp-v > .sp-toast');if(t)d.insertBefore(t,d.firstChild);}})();" />
+          )
+        }
+        <SayForm mediaId={m.id} back={here} action={action} child={child} />
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 크게 보기 전용(가족 화면 중 유일한 스크립트). 영상 재생 막대·소리, 옆으로 밀어 넘기기
+  import { wireSave } from '../lib/savephoto';
+  // 저장: 휴대폰은 공유 창으로 사진 앱 앨범에(사용자 "다운로드로 가는데 앨범으로")
+  wireSave('.sp-v__link[download]');
+  const v = document.querySelector<HTMLElement>('[data-v]');
+  const video = v?.querySelector('video');
+  if (v) v.dataset.js = '';
+  // 아래 판이 커지면(큰 글씨·작은 화면) ‹ › 화살표를 판 위 남은 칸 가운데로: 판·버튼에 가리지 않게
+  const dock = v?.querySelector<HTMLElement>('.sp-v__dock');
+  if (v && dock && 'ResizeObserver' in window) {
+    new ResizeObserver(() => v.style.setProperty('--dock-h', `${dock.offsetHeight}px`)).observe(dock);
+  }
+  if (v && video) {
+    const $ = <T extends Element>(s: string) => v.querySelector<T>(s)!;
+    const play = $<HTMLButtonElement>('.sp-v__play');
+    const tap = $<HTMLButtonElement>('.sp-v__tap');
+    const ctrl = $<HTMLElement>('.sp-v__ctrl');
+    const seek = $<HTMLInputElement>('.sp-v__seek');
+    const cur = $<HTMLElement>('.sp-v__cur');
+    const total = $<HTMLElement>('.sp-v__total');
+    const mute = $<HTMLButtonElement>('.sp-v__mute');
+    const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+    let dragging = false;
+    const sync = () => {
+      // 스트리밍처럼 길이를 모르면 Infinity: 서버가 준 길이로
+      const d = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Number(seek.max) || 0;
+      seek.max = String(d);
+      if (!dragging) seek.value = String(video.currentTime);
+      v.style.setProperty('--p', `${d ? (video.currentTime / d) * 100 : 0}%`);
+      cur.textContent = fmt(video.currentTime);
+      total.textContent = fmt(d);
+      seek.setAttribute('aria-valuetext', `${fmt(video.currentTime)} / ${fmt(d)}`);
+    };
+    video.controls = false;
+    play.hidden = false;
+    ctrl.hidden = false;
+    sync();
+    video.addEventListener('loadedmetadata', sync);
+    video.addEventListener('timeupdate', sync);
+    play.addEventListener('click', () => void video.play());
+    tap.addEventListener('click', () => video.pause());
+    video.addEventListener('play', () => {
+      v.dataset.playing = '';
+      tap.hidden = false;
+      tap.focus({ preventScroll: true });
+    });
+    const stop = () => {
+      const fromTap = document.activeElement === tap;
+      delete v.dataset.playing;
+      tap.hidden = true;
+      // 사진만 보는 중이면 재생 버튼이 숨어 있으니 메뉴 버튼으로
+      if (fromTap) ('bare' in v.dataset ? v.querySelector<HTMLElement>('.sp-v__ui') : play)?.focus({ preventScroll: true });
+    };
+    video.addEventListener('pause', stop);
+    video.addEventListener('ended', stop);
+    seek.addEventListener('pointerdown', () => (dragging = true));
+    addEventListener('pointerup', () => (dragging = false));
+    seek.addEventListener('input', () => {
+      video.currentTime = Number(seek.value);
+      sync();
+    });
+    // 이름은 '소리 끄기'로 두고 눌림 상태만 바꾼다(이름과 눌림이 엇갈려 읽히지 않게)
+    mute.addEventListener('click', () => (video.muted = !video.muted));
+    video.addEventListener('volumechange', () => mute.setAttribute('aria-pressed', String(video.muted)));
+  }
+  // 스와이퍼(사진일 때): 손가락을 따라 옆 사진이 움직이고(CSS 스크롤 스냅) 한 장씩 멈춘다. 멈추면 주소만 바꾸고
+  // 그 사진 화면을 받아 위 메뉴·아래 판(반응·한마디)만 갈아 끼운다. 영상에 멈추면 그 화면을 새로 연다(재생 막대 때문)
+  type Slide = { id: string; href: string; src: string; poster?: string; video: boolean; label: string };
+  const win: { slides: Slide[]; before?: string; after?: string } | null = v?.dataset.slides ? JSON.parse(v.dataset.slides) : null;
+  const slides = win?.slides ?? null;
+  const stage = v?.querySelector<HTMLElement>('.sp-v__stage');
+  if (v && stage && win && slides) {
+    let at = slides.findIndex((x) => x.id === v.dataset.id);
+    const prev = v.querySelector<HTMLAnchorElement>('a[rel="prev"]');
+    const next = v.querySelector<HTMLAnchorElement>('a[rel="next"]');
+    const track = document.createElement('ul');
+    track.className = 'sp-v__track';
+    track.setAttribute('aria-label', '사진 넘겨보기');
+    slides.forEach((x, i) => {
+      const li = document.createElement('li');
+      li.className = 'sp-v__slide';
+      const img = document.createElement('img');
+      img.className = 'sp-v__media';
+      // 영상은 대표 사진으로 보여 주고, 멈추면 영상 화면을 연다
+      img.src = x.video ? (x.poster ?? '') : x.src;
+      img.alt = x.label;
+      img.draggable = false;
+      img.decoding = 'async';
+      img.loading = Math.abs(i - at) <= 1 ? 'eager' : 'lazy';
+      li.appendChild(img);
+      track.appendChild(li);
+    });
+    stage.replaceChildren(track);
+    track.scrollLeft = at * track.clientWidth;
+    v.dataset.swiper = '';
+    const bar = v.querySelector<HTMLElement>('.sp-v__bar');
+    const dock = v.querySelector<HTMLElement>('.sp-v__dock');
+    const title = document.getElementById('v-title');
+    // 바뀐 사진을 화면 읽기에 알린다(제목 글자만 바뀜)
+    title?.setAttribute('aria-live', 'polite');
+    const arrows = (i: number) => {
+      // 창(앞뒤 20장) 끝에서는 창 바로 밖 사진 페이지로
+      const p = slides[i - 1] ?? (i === 0 && win.before ? { href: win.before, video: false } : undefined);
+      const n = slides[i + 1] ?? (i === slides.length - 1 && win.after ? { href: win.after, video: false } : undefined);
+      for (const [a, x, word] of [[prev, p, '이전'], [next, n, '다음']] as const) {
+        if (!a) continue;
+        // 숨길 화살표에 포커스가 있으면 반대쪽으로(포커스가 사라지지 않게)
+        if (!x && document.activeElement === a) (a === prev ? next : prev)?.focus();
+        a.hidden = !x;
+        if (x) {
+          a.href = x.href;
+          a.setAttribute('aria-label', `${word} ${x.video ? '영상' : '사진'}`);
+        }
+      }
+    };
+    let load = 0;
+    // 옆 사진 화면을 미리 받아 둔다(사용자 2026-10-29 "누가 본 게 너무 늦게 떠"): 넘기면 아래 판('봤어요'·반응)을 바로 갈아 끼우게.
+    // 30초 넘은 것은 다시 받는다(그사이 반응이 바뀌었을 수 있음). 받는 페이지는 x-sp-slide라 보신 기록을 남기지 않는다
+    const pages = new Map<string, { at: number; p: Promise<string> }>();
+    const page = (href: string) => {
+      const c = pages.get(href);
+      if (c && Date.now() - c.at < 30_000) return c.p;
+      const p = fetch(href, { credentials: 'same-origin', headers: { 'x-sp-slide': '1' } }).then((r) => {
+        if (!r.ok || r.redirected) throw new Error(String(r.status));
+        return r.text();
+      });
+      p.catch(() => pages.delete(href));
+      pages.set(href, { at: Date.now(), p });
+      return p;
+    };
+    const warm = (i: number) => {
+      for (const j of [i + 1, i - 1]) if (slides[j] && !slides[j].video) void page(slides[j].href).catch(() => {});
+    };
+    // 화살표를 빠르게 여러 번 누르면 가는 중인 칸 기준으로
+    let to: number | undefined;
+    let dwell: ReturnType<typeof setTimeout> | undefined;
+    const settle = async () => {
+      const i = Math.round(track.scrollLeft / track.clientWidth);
+      // 손가락을 댄 채 멈춘 중간 위치에선 아무것도 안 한다(칸에 딱 맞았을 때만)
+      if (Math.abs(track.scrollLeft - i * track.clientWidth) > 2) return;
+      to = undefined;
+      if (i === at || !slides[i]) return;
+      at = i;
+      const x = slides[i];
+      if (x.video) return void location.replace(x.href);
+      history.replaceState(null, '', x.href);
+      // 보신 기록: 휙 넘긴 사진은 안 남기고, 1.5초 머문 사진만(받아 오는 페이지는 x-sp-slide로 기록을 건너뜀)
+      clearTimeout(dwell);
+      if ('views' in v.dataset) {
+        dwell = setTimeout(() => {
+          if (at !== i) return;
+          fetch('/api/views', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [x.id] }), keepalive: true, credentials: 'same-origin' }).catch(() => {});
+        }, 1500);
+      }
+      v.dataset.id = x.id;
+      v.querySelector('.sp-toast')?.remove();
+      // 새 내용이 올 때까지 위 메뉴·아래 판은 못 누르게(지난 사진에 반응하지 않게)
+      // 넘기는 중에 연 시트는 닫는다(판이 바뀌면 열린 채로 사라짐)
+      v.querySelector<HTMLDialogElement>('#talk')?.close();
+      for (const el of [bar, dock]) if (el) el.inert = true;
+      // 늦게 온 응답은 버린다. 받지 못하면 그 화면을 새로 연다
+      const mine = ++load;
+      try {
+        const doc = new DOMParser().parseFromString(await page(x.href), 'text/html');
+        if (mine !== load) return;
+        for (const [sel, el] of [['.sp-v__bar', bar], ['.sp-v__dock', dock]] as const) {
+          const from = doc.querySelector(sel);
+          if (from && el) el.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
+        }
+        const t = doc.getElementById('v-title')?.textContent;
+        if (t && title) title.textContent = t;
+        document.title = doc.title;
+        for (const el of [bar, dock]) if (el) el.inert = false;
+        warm(i);
+      } catch {
+        if (mine === load) location.replace(x.href);
+      }
+    };
+    let t: ReturnType<typeof setTimeout> | undefined;
+    track.addEventListener('scroll', () => {
+      // 넘기기 시작하면 머문 시간은 다시 센다(넘겨 보기 앨범과 같게)
+      clearTimeout(dwell);
+      arrows(Math.round(track.scrollLeft / track.clientWidth));
+      // 멈춤 알림(scrollend)이 없는 브라우저만 시간으로
+      if ('onscrollend' in window) return;
+      clearTimeout(t);
+      t = setTimeout(settle, 120);
+    });
+    track.addEventListener('scrollend', () => void settle());
+    // 처음 연 사진의 옆도 미리, 반응·한마디를 보내면 미리 받은 화면은 버린다(돌아왔을 때 지난 반응이 보이지 않게)
+    warm(at);
+    document.addEventListener('submit', () => pages.clear());
+    const go = (d: number) => (e: Event) => {
+      const i = (to ?? at) + d;
+      if (!slides[i]) return; // 창 끝: 링크대로 페이지를 연다
+      e.preventDefault();
+      to = i;
+      track.scrollTo({ left: i * track.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    };
+    prev?.addEventListener('click', go(-1));
+    next?.addEventListener('click', go(1));
+    addEventListener('resize', () => (track.scrollLeft = at * track.clientWidth));
+  }
+  // 사진만 보기: 사진을 한 번 누르면 위 메뉴·아래 판·화살표·영상 막대를 숨기고(검은 바탕), 다시 누르면 돌아온다.
+  // 사진 칸을 덮는 버튼은 손가락 넘기기를 막아서 쓰지 않고, 키보드·화면 읽기용 버튼은 포커스하면 보인다. Esc로도 돌아온다
+  if (v && stage) {
+    const ui = document.createElement('button');
+    ui.type = 'button';
+    ui.className = 'sp-vh sp-v__ui';
+    const bare = (on: boolean) => {
+      // 토스트는 지운다(숨겼다 다시 보이면 사라짐 움직임이 처음부터 돌아 지난 안내가 또 뜬다)
+      if (on) v.querySelector('.sp-v > .sp-toast')?.remove();
+      if (on) v.dataset.bare = '';
+      else delete v.dataset.bare;
+      ui.textContent = on ? '메뉴 보이기' : '메뉴 숨기기';
+    };
+    bare(false);
+    v.insertBefore(ui, v.firstChild);
+    ui.addEventListener('click', () => bare(!('bare' in v.dataset)));
+    // 재생 중 누르기는 일시정지 버튼(.sp-v__tap)이 받는다('일시정지하고 메뉴 보기'라 메뉴도 돌려준다)
+    v.querySelector('.sp-v__tap')?.addEventListener('click', () => bare(false));
+    // PC에서 마우스로 끌다 놓은 것은 누름이 아니다. 빠르게 두 번 누르면(확대하려는 손짓) 깜빡이지 않게 두 번째는 버린다
+    let down = { x: 0, y: 0 };
+    // 이벤트 시각은 페이지를 연 때부터 세므로, 열자마자 누른 첫 누름이 버려지지 않게
+    let last = -Infinity;
+    stage.addEventListener('pointerdown', (e) => e.isPrimary && (down = { x: e.clientX, y: e.clientY }));
+    stage.addEventListener('click', (e) => {
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10 || e.timeStamp - last < 300) return;
+      last = e.timeStamp;
+      bare(!('bare' in v.dataset));
+    });
+    addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && 'bare' in v.dataset) bare(false);
+    });
+  }
+  // 한마디 결과 안내(say=…·sm)는 한 번만: 새로 고침해도 토스트가 다시 안 뜨게 주소에서 뗀다
+  {
+    const u = new URL(location.href);
+    if (u.searchParams.has('say') || u.searchParams.has('sm')) {
+      u.searchParams.delete('say');
+      u.searchParams.delete('sm');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    }
+  }
+  // 한마디 시트: 한 줄을 누르면 아래에서 올라오고, 닫기·바깥(어두운 곳)·Esc로 닫는다. 판이 넘길 때마다 바뀌므로 위임으로 받는다
+  v?.addEventListener('click', (e) => {
+    const t = e.target as Element;
+    const sheet = v.querySelector<HTMLDialogElement>('#talk');
+    if (!sheet || typeof sheet.showModal !== 'function') return;
+    if (t.closest('[data-talk-open]')) {
+      // 스크립트가 늦게 돌아 이미 #talk로 판 안에 펼쳐졌으면 그대로 둔다(모달로 열고 닫아도 #talk라 다시 펼쳐짐)
+      if (location.hash === '#talk') return;
+      e.preventDefault();
+      sheet.showModal();
+    } else if (t.closest('[data-talk-close]')) {
+      // #talk로 판 안에 펼쳐진 경우(스크립트가 늦게 돈 때)는 링크대로 # 로 가서 닫힌다
+      if (!sheet.open) return;
+      e.preventDefault();
+      sheet.close();
+    } else if (t === sheet) {
+      const r = sheet.getBoundingClientRect();
+      const out = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      if (out) sheet.close();
+    }
+  });
+  // 누르기·보내기·지우기: 페이지를 새로 열지 않고, 받아 온 화면에서 아래 판(.sp-v__more)과 토스트만 갈아 끼운다.
+  // 반응은 누르는 순간 눌림·수를 먼저 바꾼다. 요청은 차례로 보내고 마지막 응답만 그린다(앞선 응답이 뒤 누름을 되돌리지 않게)
+  let queue = Promise.resolve();
+  let pending = 0;
+  const live = document.createElement('p');
+  live.className = 'sp-vh';
+  live.setAttribute('role', 'status');
+  const urgent = document.createElement('p');
+  urgent.className = 'sp-vh';
+  urgent.setAttribute('role', 'alert');
+  v?.appendChild(live);
+  v?.appendChild(urgent);
+  let held: { id?: string; toast: Element; refill?: readonly [string, string] } | null = null;
+  // 결과 안내 띄우기. 글자를 가진 채 끼운 안내는 화면 읽기가 놓치므로, 늘 있는 빈 알림 칸에 글자만 넣어 읽게 한다(오류는 바로 읽는 칸).
+  // 모달 시트가 열려 있으면 그 밖은 가려지고 화면 읽기도 못 읽으므로 시트 안에 띄운다
+  const show = (toast: Element) => {
+    if (!v) return;
+    v.querySelector('.sp-toast')?.remove();
+    const t = document.importNode(toast, true);
+    t.removeAttribute('role');
+    const sheet = v.querySelector<HTMLElement>('#talk[open]');
+    const host = sheet ?? v;
+    // 사진만 보는 중엔 화면 토스트는 넣지 않고 읽기만(숨겨 둔 토스트는 메뉴를 다시 켤 때 뒤늦게 뜬다)
+    if (sheet || !('bare' in v.dataset)) host.insertBefore(t, host.firstChild);
+    const region = t.classList.contains('sp-toast--error') ? urgent : live;
+    host.appendChild(region);
+    region.textContent = '';
+    setTimeout(() => (region.textContent = (t.querySelector('.sp-toast__text') ?? t).textContent?.trim() ?? ''), 50);
+  };
+  const failNote = () => {
+    const p = document.createElement('p');
+    p.className = 'sp-toast sp-toast--error';
+    p.innerHTML = '<span class="sp-toast__text">보내지 못했어요. 다시 해 주세요.</span>';
+    return p;
+  };
+  v?.addEventListener('submit', (e) => {
+    const form = e.target as HTMLFormElement;
+    const more = v.querySelector<HTMLElement>('.sp-v__more');
+    if (!more?.contains(form) || form.method !== 'post') return;
+    const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+    // 누른 버튼을 모르는 옛 브라우저는 원래대로 폼을 보낸다(버튼 값이 곧 할 일)
+    if (!btn && form.querySelector('button[name]')) return;
+    e.preventDefault();
+    const body = new FormData(form);
+    if (btn?.name) body.append(btn.name, btn.value);
+    // 보낸 글은 바로 비운다(응답 전에 다른 걸 눌러도 보낸 글이 되살아나 두 번 보내지 않게)
+    const box = form.querySelector<HTMLInputElement>('.sp-f__input');
+    if (box) box.value = '';
+    const id = v.dataset.id;
+    const fromSheet = !!form.closest('#talk');
+    let focusSel = fromSheet ? '#say-body-talk' : form.id ? `#${form.id} .sp-f__input` : '';
+    if (btn?.classList.contains('sp-r__btn')) {
+      const [k, want] = btn.value.split(':');
+      const n = Math.max(0, Number(btn.querySelector('.sp-r__n')?.textContent ?? 0) + (want === 'on' ? 1 : -1));
+      btn.setAttribute('aria-pressed', String(want === 'on'));
+      btn.value = `${k}:${want === 'on' ? 'off' : 'on'}`;
+      btn.setAttribute('aria-label', (btn.getAttribute('aria-label') ?? '').replace(/\d+개$/, `${n}개`));
+      let num = btn.querySelector('.sp-r__n');
+      if (n && !num) {
+        num = btn.appendChild(document.createElement('span'));
+        num.className = 'sp-r__n';
+        num.setAttribute('aria-hidden', 'true');
+      }
+      if (num) n ? (num.textContent = String(n)) : num.remove();
+      focusSel = `.sp-r__btn[value^="${k}:"]`;
+    } else if (btn) {
+      btn.disabled = true; // 보내는 중 두 번 누르지 않게(응답이 새 판으로 바꾼다)
+      if (btn.name === 'del') focusSel = ''; // 지운 뒤엔 다시 연 시트 제목으로(알림을 읽게)
+    }
+    pending++;
+    more.setAttribute('aria-busy', 'true');
+    const sentText = box ? String(body.get(box.name) ?? '') : '';
+    const boxId = box?.id;
+    queue = queue.then(async () => {
+      let html = '';
+      let failed = false;
+      try {
+        const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin' });
+        if (!r.ok) throw new Error(String(r.status));
+        html = await r.text();
+      } catch {
+        // 반응은 먼저 바꿔 둔 표시가 틀리므로 새로 연다. 글·지우기는 그대로 두고 안내(쓴 글은 돌려줌)
+        if (btn?.classList.contains('sp-r__btn')) return location.reload();
+        failed = true;
+      } finally {
+        pending--;
+      }
+      if (failed) {
+        if (btn) btn.disabled = false;
+        if (v.dataset.id === id) {
+          const el = boxId ? v.querySelector<HTMLInputElement>(`#${boxId}`) : null;
+          if (el && !el.value) el.value = sentText;
+          show(failNote());
+        }
+        if (!pending) for (const el of [more, v.querySelector('.sp-v__more')]) el?.removeAttribute('aria-busy');
+        return;
+      }
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      // 결과 안내는 그리기를 건너뛰어도 기억해 두고 마지막에 띄운다. 실패면 보낸 글을 입력칸에 돌려준다
+      const note = doc.querySelector('.sp-v > .sp-toast');
+      if (note) held = { id, toast: note, refill: (note.classList.contains('sp-toast--error') && boxId && sentText ? [boxId, sentText] : undefined) ?? held?.refill };
+      // 뒤에 누른 게 있으면 그리지 않는다(마지막 응답이 그림)
+      if (pending) return;
+      more.removeAttribute('aria-busy');
+      // 넘기는 동안 판이 새로 갈렸을 수 있어 지금 판을 다시 찾는다. 다른 사진이면 버림
+      const cur = v.querySelector<HTMLElement>('.sp-v__more');
+      // 다른 사진에서 온 안내·글은 쓰지 않는다
+      const keep = held?.id === v.dataset.id ? held : null;
+      held = null;
+      if (v.dataset.id !== id || !cur) return;
+      cur.removeAttribute('aria-busy');
+      const from = doc.querySelector('.sp-v__more');
+      // 출입증이 끝나 로그인 화면이 온 경우 등
+      if (!from) return location.reload();
+      const old = cur.querySelector<HTMLDialogElement>('#talk');
+      const wasOpen = !!old?.open;
+      // 판 밖(화살표·위 메뉴)으로 옮긴 포커스는 건드리지 않는다
+      const act = document.activeElement;
+      const hadFocus = !act || act === document.body || cur.contains(act);
+      // 기다리는 동안 입력칸에 쓰고 있었으면 그 칸·커서로 돌려준다(누른 버튼 대신)
+      const typing = act instanceof HTMLInputElement && cur.contains(act) ? { id: act.id, at: act.selectionStart, to: act.selectionEnd } : null;
+      // 기다리는 동안 새로 쓰던 글은 남긴다
+      const typed = [...cur.querySelectorAll<HTMLInputElement>('.sp-f__input')].map((i) => [i.id, i.value] as const);
+      if (keep?.refill) typed.push(keep.refill);
+      old?.close();
+      cur.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
+      for (const [iid, val] of typed) {
+        const el = val ? cur.querySelector<HTMLInputElement>(`#${iid}`) : null;
+        if (el && !el.value) el.value = val;
+      }
+      v.querySelector('.sp-toast')?.remove();
+      // 시트가 열려 있었거나(시트에서 보냄) 지운 뒤라 서버가 열어 그렸으면 모달로 다시 연다(받아 온 인라인 스크립트는 돌지 않음)
+      const sheet = cur.querySelector<HTMLDialogElement>('#talk');
+      if (sheet && typeof sheet.showModal === 'function' && (wasOpen || sheet.open)) {
+        sheet.close();
+        sheet.classList.remove('sp-v__sheet--inline');
+        sheet.showModal();
+        // 다시 연 시트 밖을 가리킬 땐 시트 제목(autofocus)에 둔다
+        if (!sheet.contains(cur.querySelector(focusSel || ':not(*)'))) focusSel = '';
+      } else if (wasOpen && !focusSel) focusSel = '#say-body'; // 마지막 한마디를 지워 시트가 없어지면 입력칸으로
+      if (keep) show(keep.toast);
+      if (typing) {
+        const el = cur.querySelector<HTMLInputElement>(`#${typing.id}`);
+        el?.focus({ preventScroll: true });
+        el?.setSelectionRange(typing.at, typing.to);
+      } else if (hadFocus && focusSel) cur.querySelector<HTMLElement>(focusSel)?.focus({ preventScroll: true });
+    });
+    queue = queue.catch(() => location.reload());
+  });
+  // 옆으로 밀기(스와이퍼가 없을 때, 영상 화면): 가로로 60px 넘게(세로보다 크게) 밀면 ‹ › 링크로. 막대·버튼·입력칸·아래 판에서 시작한 건 제외
+  if (v && !slides) {
+    let x0: number | null = null;
+    let y0 = 0;
+    v.addEventListener('pointerdown', (e) => {
+      if (!e.isPrimary) return void (x0 = null);
+      const t = e.target as Element;
+      x0 = t.closest('input, textarea, a, .sp-v__panel, button:not(.sp-v__tap)') ? null : e.clientX;
+      y0 = e.clientY;
+    });
+    v.addEventListener('pointerup', (e) => {
+      if (x0 === null) return;
+      const dx = e.clientX - x0;
+      const dy = e.clientY - y0;
+      x0 = null;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      const a = v.querySelector<HTMLAnchorElement>(dx < 0 ? 'a[rel="next"]' : 'a[rel="prev"]');
+      if (a) location.href = a.href;
+    });
+    v.addEventListener('pointercancel', () => (x0 = null));
+  }
+</script>

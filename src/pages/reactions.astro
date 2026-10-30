@@ -1,0 +1,79 @@
+---
+// 부모 최근 반응: 승인된 가족이 남긴 반응·한마디만(새 것 먼저). 승인 대기·설치 부탁은 앨범 위 띠. 열면 '새 반응'을 읽음으로
+import Parent from '../layouts/Parent.astro';
+import { agoLabel } from '../lib/age';
+import { getBackend } from '../lib/backend';
+import { EMOJI } from '../lib/emoji';
+import { hasBatchim } from '../lib/ko';
+import { loadParent, seoulToday } from '../lib/parent';
+import { monthDay, nextHealth } from '../lib/kidHealth';
+import { signedMediaUrl } from '../lib/signed';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const b = getBackend();
+const today = seoulToday();
+// 다가오는 일정: 접종·검진 보기를 켠 아이의 다음 일정이 2주 안(이미 가능한 것 포함)일 때만. 홈 맨 위 카드를 여기로 옮김(사용자 2026-10-29)
+const [act, next] = await Promise.all([b.parentActivity(a.pass), nextHealth(b, a.pass, (a.home.children ?? []).filter((k) => k.show_health), today)]);
+const soon = next.filter((k) => k.what && k.inDays <= 14);
+const now = Date.now();
+const rows = await Promise.all(
+  (act?.items ?? []).map(async (x) => ({
+    ...x,
+    isNew: act ? Date.parse(x.at) > Date.parse(act.seen_at) : false,
+    thumb: x.thumb_key ? await signedMediaUrl(x.thumb_key) : null,
+    text: x.type === 'comment' ? `"${x.body}"` : (() => { const l = x.kind ? EMOJI[x.kind].label : '반응'; return `${l}${hasBatchim(l) ? '을' : '를'} 보냈어요`; })(),
+  })),
+);
+// 다 그린 뒤에 읽음 표시(읽은 시각까지만)
+if (act) await b.markActivitySeen(a.pass, act.read_at);
+const fresh = rows.filter((r) => r.isNew);
+const old = rows.filter((r) => !r.isNew);
+---
+
+<Parent title="알림 · 스위피" tab="alerts" alerts={0} waiting={a.home.waiting ?? 0}>
+  <h1 class="sp-p__title sp-p__title--large">알림</h1>
+  {rows.length > 0 && <p class="sp-p__lead">가족이 남긴 하트와 말이에요. 앱이 나오면 알림으로도 알려 드릴게요.</p>}
+  {
+    soon.length > 0 && (
+      <section class="sp-p__section" aria-labelledby="sec-soon">
+        <h2 class="sp-p__section-title" id="sec-soon">다가오는 일정</h2>
+        {soon.map((k) => (
+          <a class="sp-p__cta sp-p__soon" href={`/health/${k.id}?from=alerts`}>
+            <svg class="sp-p__soon-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4l6 6M17 7l-9 9-3 1 1-3 9-9M11 7l6 6M8 13l1.5 1.5M10 11l1.5 1.5M4 20l2-2" /></svg>
+            <span class="sp-p__cta-title">{k.name} · {k.what}</span>
+            <span class="sp-p__cta-sub">{k.from ? `${monthDay(k.from)}부터 · ${k.inDays}일 남았어요` : '지금 할 수 있어요'}</span>
+            <span class="sp-p__chev" aria-hidden="true">›</span>
+          </a>
+        ))}
+      </section>
+    )
+  }
+  {
+    [
+      { id: 'sec-new', title: `새 반응 · ${fresh.length}`, list: fresh },
+      { id: 'sec-old', title: '지난 반응', list: old },
+    ]
+      .filter((g) => g.list.length > 0)
+      .map((g) => (
+        <section class="sp-p__section" aria-labelledby={g.id}>
+          <h2 class="sp-p__section-title" id={g.id}>{g.title}</h2>
+          <ul class="sp-p__list">
+            {g.list.map((r) => (
+              <li>
+                <a class="sp-p__row sp-p__row--tall" href={`/view/${r.media_id}`}>
+                  {r.thumb ? <img class="sp-p__thumb" src={r.thumb} alt="" width="48" height="48" loading="lazy" /> : <span class="sp-p__thumb" aria-hidden="true"></span>}
+                  <span class="sp-p__row-label sp-p__radio-text">
+                    <span><strong>{r.who}</strong> {r.text}</span>
+                    <span class="sp-p__hint">{agoLabel(r.at, now)}</span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+  }
+  {rows.length === 0 && <p class="sp-p__note">아직 반응이 없어요. 사진을 올리고 카톡으로 보내 보세요.</p>}
+</Parent>

@@ -1,0 +1,261 @@
+---
+// 사진 정보 수정(크게 보기의 '사진 정보 수정' 버튼으로 들어옴): 작은 미리보기·최근 한마디, 찍은 날·아이·보여줄 그룹 고치기, 지우기(한 번 더 확인).
+// 저장: 스크립트가 있으면 이 화면 그대로 '저장했어요' 토스트, 없으면 크게 보기의 그 사진으로 돌아간다
+import Parent from '../../layouts/Parent.astro';
+import Toast from '../../components/Toast.astro';
+import { BackendError, getBackend } from '../../lib/backend';
+import { loadParent, seoulToday } from '../../lib/parent';
+import { signedMediaUrl } from '../../lib/signed';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const b = getBackend();
+const id = Astro.params.id ?? '';
+const ok = /^[0-9a-f-]{36}$/.test(id);
+const [info, comments] = ok ? await Promise.all([b.mediaInfo(a.pass, id), b.mediaComments(a.pass, id)]) : [null, []];
+if (!info) return Astro.redirect('/home');
+// 최근 한마디(크게 보기 목록과 같은 기준: 승인된 가족·엄빠 것)
+const latest = comments[0];
+const groups = (await b.familyAdmin(a.pass)).groups;
+const kids = a.home.children ?? [];
+// 크게 보기로 돌아갈 때 고른 아이(?k=)를 이어 준다
+const k = kids.length > 1 ? kids.find((x) => x.id === Astro.url.searchParams.get('k'))?.id : undefined;
+const kq = k ? `?k=${encodeURIComponent(k)}` : '';
+const seoul = (iso: string) => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}:${p.second}` };
+};
+const taken = seoul(info.item.taken_at);
+let date = taken.date;
+let groupIds = info.group_ids;
+let childIds = info.child_ids;
+let error: { field: 'date' | 'group' | 'save'; text: string } | null = null;
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (form.get('do') === 'delete') {
+    try {
+      await b.deleteMedia(a.pass, id);
+      return Astro.redirect(`/home${kq ? `${kq}&` : '?'}done=deleted`, 303);
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+      return Astro.redirect(`/photo/${id}${kq ? `${kq}&` : '?'}done=error`, 303);
+    }
+  }
+  date = String(form.get('date') ?? '');
+  groupIds = form.getAll('group').map(String).filter((g) => groups.some((x) => x.id === g));
+  childIds = form.getAll('child').map(String).filter((c) => kids.some((k) => k.id === c));
+  const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= '2000-01-01' && date <= seoulToday();
+  if (!validDate) error = { field: 'date', text: '찍은 날을 골라 주세요.' };
+  else if (groupIds.length === 0) error = { field: 'group', text: '보여줄 그룹을 하나 이상 골라 주세요.' };
+  else {
+    try {
+      // 날짜만 바꾸고 시각(서울)은 그대로. 오늘로 바꿔 미래 시각이 되면 지금으로
+      const at = new Date(Math.min(Date.parse(`${date}T${taken.time}+09:00`), Date.now())).toISOString();
+      await b.updateMedia(a.pass, id, { takenAt: at, childIds, groupIds });
+      // 그 자리에서 저장(스크립트)은 결과만 알려 준다(크게 보기를 그리면 그 화면 사정으로 /home에 가거나 실패할 수 있어서)
+      if (Astro.request.headers.get('x-sp-inplace') === '1') return new Response(null, { status: 204 });
+      return Astro.redirect(`/view/${id}${kq ? `${kq}&` : '?'}done=saved`, 303);
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+      error = { field: 'save', text: '저장하지 못했어요. 다시 눌러 주세요.' };
+    }
+  }
+}
+const isVideo = info.item.kind === 'video';
+const src = await signedMediaUrl(info.item.view_key);
+const poster = info.item.poster_key ? await signedMediaUrl(info.item.poster_key) : undefined;
+const label = `${new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(info.item.taken_at))} ${isVideo ? '영상' : '사진'}`;
+const q = Astro.url.searchParams;
+const confirmDelete = q.get('confirm') === 'delete';
+const what = isVideo ? '영상' : '사진';
+const delText = '가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요.';
+const done = q.get('done');
+const doneText: Record<string, string> = { saved: '저장했어요.', error: '처리하지 못했어요. 다시 눌러 주세요.' };
+---
+
+<Parent title={error ? '다시 확인해 주세요 · 사진 정보 수정' : '사진 정보 수정 · 스위피'} tab="home" savebar alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+  {/* 디자인(ParentPhoto): 위 줄 왼쪽 닫기, 가운데 작은 제목 */}
+  <div class="sp-p__nav">
+    <a class="sp-p__back sp-p__back--cancel" href={`/view/${id}${kq}`}>닫기</a>
+    <h1 class="sp-p__nav-title">사진 정보 수정</h1>
+  </div>
+  {done && doneText[done] && <Toast text={doneText[done]} tone={done === 'error' ? 'error' : 'ok'} focus />}
+  {/* 스크립트로 저장한 결과를 읽어 주는 늘 있는 알림 칸 */}
+  <p class="sp-vh" id="ph-live" role="status"></p>
+  <p class="sp-vh" id="ph-urgent" role="alert"></p>
+  <div class="sp-p__thumbbox">
+    {/* 세로·가로 사진 다 잘리지 않게(디자인 127): 칸은 그대로, 사진 전체 + 남는 곳은 같은 사진을 흐리게 */}
+    {(isVideo ? poster : src) && <img class="sp-p__thumbbox-blur" src={isVideo ? poster : src} alt="" aria-hidden="true" />}
+    {isVideo ? <video class="sp-p__thumbbox-media sp-p__thumbbox-media--video" src={src} poster={poster} controls playsinline preload="metadata" aria-label={label} /> : <img class="sp-p__thumbbox-media" src={src} alt={label} />}
+    {
+      latest && (
+        <p class="sp-p__thumbbox-say">
+          <strong class="sp-p__thumbbox-who"><span class="sp-vh">최근 한마디, </span>{latest.name}</strong>
+          {latest.body}
+        </p>
+      )
+    }
+  </div>
+  <form class="sp-p__form sp-p__form--fit" method="post">
+    {error && <p class="sp-p__error" role="alert" id="p-err">{error.text}</p>}
+    {/* 디자인: 한 묶음 목록(찍은 날 줄 · 아이 · 보여줄 그룹) */}
+    <ul class="sp-p__rows" role="list">
+    <li class="sp-p__rows-item">
+      <label class="sp-p__rows-label" for="date">찍은 날</label>
+      <input class="sp-p__inline-date" id="date" name="date" type="date" required min="2000-01-01" max={seoulToday()} value={date} aria-invalid={error?.field === 'date' ? 'true' : undefined} aria-describedby={error?.field === 'date' ? 'p-err' : undefined} />
+    </li>
+    {
+      kids.length > 0 && (
+        <li class="sp-p__rows-item sp-p__rows-item--stack">
+        <fieldset class="sp-p__fieldset sp-p__field">
+          <legend class="sp-p__rows-label sp-p__rows-legend">아이</legend>
+          <div class="sp-p__checks">
+            {kids.map((k) => (
+              <label class="sp-p__check">
+                <input class="sp-p__checkbox" type="checkbox" name="child" value={k.id} checked={childIds.includes(k.id)} />
+                {k.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        </li>
+      )
+    }
+    <li class="sp-p__rows-item sp-p__rows-item--stack">
+    <fieldset class="sp-p__fieldset sp-p__field" aria-describedby={error?.field === 'group' ? 'group-note p-err' : 'group-note'}>
+      <legend class="sp-p__rows-label sp-p__rows-legend">보여줄 그룹</legend>
+      <div class="sp-p__checks">
+        {groups.map((g) => (
+          <label class="sp-p__check">
+            <input class="sp-p__checkbox" type="checkbox" name="group" value={g.id} checked={groupIds.includes(g.id)} />
+            {g.name}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+    </li>
+    </ul>
+    <p class="sp-p__hint" id="group-note">그룹을 빼면 그 가족 화면에서 바로 사라져요.</p>
+    <div class="sp-p__savebar"><button class="sp-p__btn" type="submit" name="do" value="save">저장</button></div>
+  </form>
+  {/* 스크립트가 있으면 이 화면 위 레이어(showModal), 없으면 주소로 같은 레이어를 연 채 다시 그린다 */}
+  <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" href={`/photo/${id}${kq ? `${kq}&` : '?'}confirm=delete`} aria-haspopup="dialog" data-del-open>{isVideo ? '영상' : '사진'} 지우기</a>
+  {/* 디자인 PhotoDeleteLayer: 가운데 레이어, 지우기(빨강)·취소 */}
+  {
+    confirmDelete ? (
+      <div class="sp-layer">
+        <div class="sp-layer__scrim" aria-hidden="true"></div>
+        <dialog class="sp-layer__box" open aria-labelledby="del-t" aria-describedby="del-d">
+          <h2 class="sp-layer__title" id="del-t">이 {what}을 지울까요?</h2>
+          <p class="sp-layer__text" id="del-d">{delText}</p>
+          <form class="sp-layer__actions" method="post">
+            <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value="delete">지우기</button>
+            <a class="sp-p__btn sp-p__btn--quiet" href={`/photo/${id}${kq}`} autofocus>취소</a>
+          </form>
+        </dialog>
+      </div>
+    ) : (
+      <dialog class="sp-layer__box sp-layer__modal" id="del" aria-labelledby="del-t" aria-describedby="del-d">
+        <h2 class="sp-layer__title" id="del-t">이 {what}을 지울까요?</h2>
+        <p class="sp-layer__text" id="del-d">{delText}</p>
+        <form class="sp-layer__actions" method="post">
+          <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value="delete">지우기</button>
+          {/* 닫기는 브라우저 기본(method=dialog) */}
+          <button class="sp-p__btn sp-p__btn--quiet" type="submit" formmethod="dialog" value="cancel" autofocus>취소</button>
+        </form>
+      </dialog>
+    )
+  }
+</Parent>
+
+<script>
+  // 사진 지우기: 링크 대신 이 화면 위 레이어로(스크립트 없으면 링크대로 ?confirm=delete)
+  const del = document.getElementById('del') as HTMLDialogElement | null;
+  if (del && typeof del.showModal === 'function') {
+    document.querySelector('[data-del-open]')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      del.showModal();
+    });
+    // 어두운 바깥을 누르면 닫기
+    del.addEventListener('click', (e) => {
+      if (e.target !== del) return;
+      const r = del.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) del.close();
+    });
+  }
+  // 저장은 그 자리에서(디자인 PhotoSavedToast): 표시 헤더를 붙여 fetch로 보내 성공하면(서버는 204) 이 화면 그대로 토스트,
+  // 고칠 게 있으면(서버가 이 화면을 다시 그림) 폼만 갈아 끼운다. 스크립트 없으면 지금처럼 크게 보기로
+  const live = document.getElementById('ph-live');
+  const urgent = document.getElementById('ph-urgent');
+  const toast = (text: string, error = false) => {
+    document.querySelector('.sp-toast')?.remove();
+    const p = document.createElement('p');
+    p.className = error ? 'sp-toast sp-toast--error' : 'sp-toast';
+    p.innerHTML = '<span class="sp-toast__text"></span>';
+    p.firstElementChild!.textContent = text;
+    const main = document.querySelector('.sp-p');
+    main?.insertBefore(p, main.firstChild); // prepend는 Worker 타입(HTMLRewriter)과 겹쳐 타입 검사가 막음
+    say(text, error);
+  };
+  const say = (text: string, error = false) => {
+    const region = error ? urgent : live;
+    if (!region) return;
+    region.textContent = '';
+    setTimeout(() => (region.textContent = text), 50);
+  };
+  // 결과 안내가 붙은 주소(?done=)는 떼어 새로 고침해도 다시 뜨지 않게(고른 아이 ?k=는 남김)
+  const u = new URL(location.href);
+  if (u.searchParams.has('done')) {
+    u.searchParams.delete('done');
+    history.replaceState(history.state, '', u.pathname + u.search);
+  }
+  let busy = false;
+  document.addEventListener('submit', async (e) => {
+    const form = e.target as HTMLFormElement;
+    const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+    if (!form.classList.contains('sp-p__form') || btn?.value !== 'save' || !live || !urgent) return;
+    e.preventDefault();
+    if (busy) return; // 보내는 중 두 번 저장하지 않게
+    busy = true;
+    btn.disabled = true;
+    live.textContent = '';
+    urgent.textContent = '';
+    const body = new FormData(form);
+    body.append(btn.name, btn.value);
+    try {
+      const r = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin', headers: { 'x-sp-inplace': '1' } });
+      if (!r.ok) throw new Error(String(r.status));
+      const to = new URL(r.url);
+      if (r.status === 204) {
+        // 저장됨: 남아 있던 고칠 곳 안내를 지운다
+        form.querySelector('#p-err')?.remove();
+        form.querySelectorAll('[aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid'));
+        form.querySelectorAll('[aria-describedby]').forEach((x) => {
+          const ids = (x.getAttribute('aria-describedby') ?? '').split(' ').filter((i) => i && i !== 'p-err');
+          ids.length ? x.setAttribute('aria-describedby', ids.join(' ')) : x.removeAttribute('aria-describedby');
+        });
+        document.title = '사진 정보 수정 · 스위피';
+        toast('저장했어요.');
+      } else if (to.pathname === location.pathname) {
+        const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+        const next = doc.querySelector('.sp-p__form');
+        if (!next) return location.assign(to.href);
+        form.replaceWith(document.importNode(next, true));
+        document.title = doc.title;
+        const err = document.getElementById('p-err');
+        err?.removeAttribute('role');
+        say(err?.textContent?.trim() ?? '', true);
+        // 고칠 칸으로(그룹이면 첫 칸)
+        (document.querySelector<HTMLElement>('.sp-p__form [aria-invalid="true"], .sp-p__form fieldset[aria-describedby~="p-err"] input') ?? document.querySelector<HTMLElement>('.sp-p__form button[value="save"]'))?.focus();
+      } else location.assign(to.href); // 로그인이 끝난 경우 등
+    } catch {
+      toast('저장하지 못했어요. 다시 눌러 주세요.', true);
+    } finally {
+      busy = false;
+      btn.disabled = false;
+      // 누르는 동안 버튼이 꺼져 초점이 빠졌으면 저장 버튼으로 돌려준다
+      if (btn.isConnected && document.activeElement === document.body) btn.focus({ preventScroll: true });
+    }
+  });
+</script>

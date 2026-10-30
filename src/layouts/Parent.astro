@@ -1,0 +1,54 @@
+---
+import Base from './Base.astro';
+import '../styles/parent.css';
+
+interface Props {
+  title: string;
+  /** 아래 탭(앨범·알림·설정)을 보일 화면이면 지금 탭 */
+  tab?: 'home' | 'alerts' | 'settings';
+  /** 알림 탭 배지: 최근 반응을 연 뒤 새로 온 반응·한마디 수 */
+  alerts?: number;
+  /** 설정 탭 배지: 승인 기다리는 들어오기 신청·휴대폰 수 */
+  waiting?: number;
+  /** 넓은 화면에서 넓게 쓸 화면(앨범·올리기) */
+  wide?: boolean;
+  /** 저장 버튼을 아래 막대(.sp-p__savebar)에 고정한 화면: 아래 여백·토스트 자리. 2면 버튼 둘 막대 */
+  savebar?: boolean | 2;
+  /** 검색·미리보기 설명과 대표 주소(첫 화면) */
+  description?: string;
+  canonical?: string;
+}
+const { title, tab, wide, savebar, alerts = 0, waiting = 0, description, canonical } = Astro.props;
+---
+
+<Base title={title} description={description} canonical={canonical}>
+  <main class:list={['sp-p', tab && 'sp-p--tabbed', wide && 'sp-p--wide', savebar && 'sp-p--savebar', savebar === 2 && 'sp-p--savebar2']}>
+    <slot />
+  </main>
+  {
+    tab && (
+      <nav class="sp-p__tabs" aria-label="메뉴">
+        <div class="sp-p__tabs-pill">
+        <a class="sp-p__tab" href="/home" aria-current={tab === 'home' ? 'page' : undefined}>
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M4 17l5-4 4 3 3-2 4 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
+          앨범
+        </a>
+        <a class="sp-p__tab" href="/reactions" aria-current={tab === 'alerts' ? 'page' : undefined} aria-label={alerts > 0 ? `알림, 새 반응 ${alerts}개` : undefined}>
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+          알림
+          {alerts > 0 && <span class="sp-p__tab-badge" aria-hidden="true">{alerts > 99 ? '99+' : alerts}</span>}
+        </a>
+        <a class="sp-p__tab" href="/settings" aria-current={tab === 'settings' ? 'page' : undefined} aria-label={waiting > 0 ? `설정, 승인 기다리는 사람 ${waiting}명` : undefined}>
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+          설정
+          {waiting > 0 && <span class="sp-p__tab-badge" aria-hidden="true">{waiting > 99 ? '99+' : waiting}</span>}
+        </a>
+        </div>
+        {/* 떠 있는 유리 탭바 옆 둥근 사진 추가(디자인 ParentHomeGlass) */}
+        <a class="sp-p__tab-add" href="/upload" aria-label="사진 추가">
+          <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+        </a>
+      </nav>
+    )
+  }
+</Base>

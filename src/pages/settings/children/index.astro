@@ -1,0 +1,81 @@
+---
+// 아이 목록: 이름·생일·생후 개월, 고치기, 아이 추가
+import Parent from '../../../layouts/Parent.astro';
+import AutoSave from '../../../components/AutoSave.astro';
+import Toast from '../../../components/Toast.astro';
+import { birthLabel, monthsOld } from '../../../lib/age';
+import { BackendError, getBackend } from '../../../lib/backend';
+import { loadParent, seoulToday } from '../../../lib/parent';
+import { monthDay, nextHealth } from '../../../lib/kidHealth';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const kids = a.home.children ?? [];
+if (Astro.request.method === 'POST') {
+  const on = (await Astro.request.formData()).get('health') === '1';
+  try {
+    await getBackend().setShowHealth(a.pass, kids.map((k) => k.id), on);
+    return Astro.redirect('/settings/children?done=health', 303);
+  } catch (e) {
+    if (!(e instanceof BackendError)) throw e;
+    return Astro.redirect('/settings/children?done=error', 303);
+  }
+}
+const showHealth = kids.some((k) => k.show_health);
+const today = seoulToday();
+// 아이마다 다음 접종·검진(홈 카드를 알림 탭·여기로 옮김, 사용자 2026-10-29). 보기를 끈 아이는 줄만
+const next = new Map((await nextHealth(getBackend(), a.pass, kids.filter((k) => k.show_health), today)).map((n) => [n.id, n]));
+const done = Astro.url.searchParams.get('done');
+const doneText: Record<string, string> = { added: '아이를 추가했어요.', saved: '변경했어요.', health: '저장했어요.', error: '저장하지 못했어요. 다시 눌러 주세요.' };
+---
+
+<Parent title="아이 · 설정" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+  <div class="sp-p__nav">
+    <a class="sp-p__back" href="/settings">설정</a>
+    <h1 class="sp-p__nav-title">아이</h1>
+  </div>
+  {done && doneText[done] && <Toast text={doneText[done]} tone={done === 'error' ? 'error' : 'ok'} focus />}
+  <ul class="sp-p__list">
+    {
+      kids.map((k) => (
+        <li>
+          <a class="sp-p__row sp-p__row--tall" href={`/settings/children/${k.id}`}>
+            <span class="sp-p__kid-box" aria-hidden="true"><img class="sp-p__kid-box-img" src="/kongi.svg" width="32" height="32" alt="" /></span>
+            <span class="sp-p__row-label sp-p__radio-text">
+              <span class="sp-p__who-name">{k.name}</span>
+              <span class="sp-p__hint">{birthLabel(k.birth_date)} · 생후 {monthsOld(k.birth_date, today)}개월</span>
+            </span>
+            <span class="sp-p__row-action">변경<span class="sp-vh"> ({k.name})</span></span>
+          </a>
+          <a class="sp-p__row sp-p__kid-health" href={`/health/${k.id}?from=settings`}>
+            <span class="sp-p__row-label">
+              접종·검진 일정<span class="sp-vh"> ({k.name})</span>
+              {next.get(k.id)?.what && <span class="sp-p__hint"> · {next.get(k.id)!.what} {next.get(k.id)!.from ? `${monthDay(next.get(k.id)!.from!)}부터` : '지금 가능'}</span>}
+            </span>
+            <svg class="sp-p__icon-chev" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+  <a class="sp-p__btn sp-p__btn--quiet sp-p__btn--add sp-p__add" href="/settings/children/new"><span aria-hidden="true">+</span>아이 추가</a>
+  <section class="sp-p__section" aria-labelledby="sec-health">
+    <h2 class="sp-p__section-title" id="sec-health">접종·검진</h2>
+    <form class="sp-p__form sp-p__form--fit" method="post" data-autosave>
+      <ul class="sp-p__rows" role="list">
+        <li>
+          <label class="sp-p__rows-item sp-p__rows-item--check">
+            <span class="sp-p__radio-text">
+              <span class="sp-p__who-name">알림 탭에 다가오는 일정 보기</span>
+              <span class="sp-p__hint" id="health-note">다음 일정이 2주 안이면 알림 탭 맨 위에 보여요. 가족 화면에는 보이지 않아요</span>
+            </span>
+            <input class="sp-p__checkbox" type="checkbox" name="health" value="1" checked={showHealth} aria-describedby="health-note" />
+          </label>
+        </li>
+      </ul>
+      <button class="sp-p__btn sp-p__btn--quiet" type="submit" data-autosave-hide>저장</button>
+    </form>
+  </section>
+  <AutoSave />
+</Parent>

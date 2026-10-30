@@ -1,0 +1,32 @@
+---
+// 부모 로그인: 켠 제공자만 보인다(구현 안 된 제공자는 숨김)
+import Parent from '../../layouts/Parent.astro';
+import { enabledProviders, PROVIDERS, type Provider } from '../../lib/parent';
+import { currentParent } from '../../lib/pass';
+
+if (await currentParent(Astro.cookies)) return Astro.redirect('/home');
+const list = enabledProviders();
+const failed = Astro.url.searchParams.get('e') === '1';
+---
+
+<Parent title={failed ? '다시 시도해 주세요 · 스위피 시작하기' : '스위피 시작하기'}>
+  <section class="sp-p__brand" aria-labelledby="brand">
+    <img class="sp-p__brand-kongi" src="/kongi.svg" width="128" height="128" alt="" />
+    <h1 class="sp-p__brand-name" id="brand">스위피</h1>
+    <p class="sp-p__brand-text">카톡으로 보내고, 설치 없이 보고,<br />사라지지 않는 가족 앨범</p>
+  </section>
+  <div class="sp-p__bottom">
+    {failed && <p class="sp-p__error" role="alert">로그인하지 못했어요. 다시 시도해 주세요.</p>}
+    {list.length === 0 && <p class="sp-p__note">지금은 로그인할 수 있는 방법이 준비되지 않았어요.</p>}
+    {
+      list.map((p) =>
+        p === 'dev' ? (
+          <a class="sp-p__login sp-p__login--dev" href="/login/dev">개발용으로 계속하기</a>
+        ) : (
+          <a class:list={['sp-p__login', PROVIDERS[p as Provider].cls]} href={`/login/${p}`}>{PROVIDERS[p as Provider].label}</a>
+        ),
+      )
+    }
+    <p class="sp-p__fine">시작하면 이용약관과 개인정보 처리방침에 동의하게 돼요</p>
+  </div>
+</Parent>

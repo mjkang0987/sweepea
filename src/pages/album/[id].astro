@@ -1,0 +1,68 @@
+---
+// 크게 보기: 사진·영상이 화면 가득, 위 메뉴·아래 판이 반투명으로 겹친다. 작은 스크립트(영상 재생 막대·옆으로 밀기).
+// 스크립트가 없어도 ‹ › 링크로 넘기고 영상은 브라우저 기본 재생 막대로 본다
+import { seoulDate } from '../../lib/parent';
+import Family from '../../layouts/Family.astro';
+import Viewer from '../../components/Viewer.astro';
+import { albumHref, dayLabel, handleReactPost, loadAlbum, loadReacts, loadWindow, slideWindow } from '../../lib/album';
+import { getBackend } from '../../lib/backend';
+import { UUID } from '../../lib/media';
+import { signedMediaUrl } from '../../lib/signed';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const id = Astro.params.id ?? '';
+if (!UUID.test(id)) return Astro.redirect('/album');
+// 반응·한마디 폼: 처리하고 원래 화면으로(PRG)
+if (Astro.request.method === 'POST') {
+  return Astro.redirect(await handleReactPost(Astro.request, id, Astro.cookies, `/album/${id}${Astro.url.search}`), 303);
+}
+const a = await loadAlbum(Astro.cookies, Astro.url);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const { pass, open, kids, q } = a;
+// 그 사진 앞뒤 21장과 자리·전체(몇 번째 사진이든). 볼 수 없는 사진은 앨범으로
+const win = await loadWindow(pass, a.base, id);
+if (!win) return Astro.redirect(albumHref(q));
+const { items, i } = win;
+const m = items[i];
+const prev = items[i - 1];
+const next = items[i + 1];
+const what = m.kind === 'video' ? '영상' : '사진';
+const kid = open.length > 1 && !q.f ? `${kids.get(m.family_id)} ` : '';
+const src = await signedMediaUrl(m.view_key);
+const poster = m.poster_key ? await signedMediaUrl(m.poster_key) : undefined;
+const label = `${dayLabel(m.taken_at)} ${kid}${what}`;
+// 보신 기록(95): 눌러서 연 크게 보기는 바로 남긴다. 옆으로 넘겨 받아 온 페이지(x-sp-slide)는 화면 스크립트가 1.5초 머문 뒤 남김. 실패해도 화면은 연다
+const slid = Astro.request.headers.get('x-sp-slide') === '1';
+const [reacts, comments] = await Promise.all([loadReacts(pass, [m.id]), getBackend().mediaComments(pass, m.id), slid ? undefined : getBackend().noteViews(pass, [m.id]).catch(() => {})]);
+const slides = await slideWindow(items, i, (x) => albumHref(q, `/album/${x.id}`), (x) => `${dayLabel(x.taken_at)} ${open.length > 1 && !q.f ? `${kids.get(x.family_id)} ` : ''}${x.kind === 'video' ? '영상' : '사진'}`);
+const here = albumHref(q, `/album/${m.id}`);
+const child = kids.get(m.family_id) ?? '아이';
+const say = Astro.url.searchParams.get('say');
+// 부모가 '가족도 사진 저장하기'를 켠 가족방이면 저장 링크(같은 주소라 download 속성이 먹는다)
+const canSave = open.find((f) => f.family_id === m.family_id)?.download_allowed ?? false;
+const sayHere = Astro.url.searchParams.get('sm') === m.id || !Astro.url.searchParams.get('sm') ? say : null;
+const saveName = `sweepea-${seoulDate(m.taken_at)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`;
+---
+
+<Family title={`${label} · ${win.pos} / ${win.total}`} wide>
+  <Viewer
+    m={m}
+    label={label}
+    src={src}
+    poster={poster}
+    pos={win.pos}
+    total={win.total}
+    closeHref={`${albumHref(q)}${albumHref(q).includes('?') ? '&' : '?'}to=${m.id}#${q.v === 'swipe' ? 'p' : 'c'}-${m.id}`}
+    save={canSave ? { href: src, name: saveName, label } : undefined}
+    prev={prev && { href: albumHref(q, `/album/${prev.id}`), video: prev.kind === 'video' }}
+    next={next && { href: albumHref(q, `/album/${next.id}`), video: next.kind === 'video' }}
+    reacts={reacts}
+    action={`/album/${m.id}`}
+    here={here}
+    child={child}
+    say={sayHere}
+    slides={slides}
+    comments={comments}
+    noteViews
+  />
+</Family>

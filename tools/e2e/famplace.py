@@ -1,0 +1,99 @@
+# 설정 > 가족 그 자리에서(71): 승인·거절·내 가족 아님·링크 만들기가 페이지 이동 없이, 확인은 레이어, 결과는 토스트. 스크립트 없으면 폼 그대로 (mock)
+import os
+from playwright.sync_api import sync_playwright
+B='http://localhost:4321'; O=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','shots','fp-')
+FAILS=[]
+def check(c,msg):
+    print('ok' if c else 'FAIL',msg)
+    if not c: FAILS.append(msg)
+def enter(b,code,name,new=True):
+    c=b.new_context(viewport={'width':390,'height':844}); g=c.new_page(); g.goto(B+'/i/'+code)
+    if new: g.fill('#who-name',name); g.get_by_role('button',name='들어가기').click()
+    else: g.get_by_role('button',name=name,exact=True).click()
+    g.wait_for_url('**/password**'); g.fill('#pw','0917'); g.get_by_role('button',name='들어가기').click(); g.wait_for_load_state()
+    return c,g
+def live(pg): return pg.evaluate("(document.getElementById('fam-live')?.textContent||'')+(document.getElementById('fam-urgent')?.textContent||'')")
+with sync_playwright() as p:
+    b=p.chromium.launch()
+    c=b.new_context(viewport={'width':390,'height':844}); pg=c.new_page()
+    pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
+    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#pw','0917'); pg.fill('#hint','생일'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
+    pg.goto(B+'/settings/family'); pg.evaluate('window.__same=1')
+    # 링크 만들기: 그 자리에서 링크 카드
+    pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
+    check(pg.evaluate('window.__same')==1,'링크 만들기는 페이지 이동 없이')
+    check(pg.evaluate("document.activeElement.id")=='link-title','링크 카드 제목으로 초점')
+    code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
+    g1,_=enter(b,code,'외할머니'); g2,_=enter(b,code,'모르는사람'); g3,_=enter(b,code,'옆집')
+    pg.goto(B+'/settings/family'); pg.evaluate('window.__same=1'); y0=600
+    pg.mouse.wheel(0,200); pg.wait_for_timeout(200); sy=pg.evaluate('scrollY')
+    check(pg.locator('.sp-p__tab-badge').last.inner_text()=='3','설정 탭 배지 3')
+    # 승인
+    pg.get_by_role('button',name='승인 외할머니').click()
+    pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
+    check(pg.evaluate('window.__same')==1 and pg.url.endswith('/settings/family'),'승인은 페이지 이동 없이, 주소 그대로')
+    check(pg.get_by_role('button',name='승인 외할머니').count()==0,'승인한 카드가 빠짐')
+    check(pg.locator('.sp-toast').count()==1 and pg.locator('.sp-toast').get_attribute('role') is None,'토스트(읽기는 알림 칸으로)')
+    check(pg.locator('.sp-p__tab-badge').last.inner_text()=='2','탭 배지도 2로')
+    check(pg.evaluate('scrollY')==min(sy,pg.evaluate('document.documentElement.scrollHeight-innerHeight')),'스크롤이 맨 위로 안 감')
+    pg.wait_for_timeout(500); tb=pg.locator('.sp-toast').bounding_box(); nb=pg.locator('.sp-p__tabs').bounding_box()
+    check(abs(nb['y']-(tb['y']+tb['height'])-12)<=1,'토스트는 탭바 위 12px (%d)'%(nb['y']-(tb['y']+tb['height'])))
+    pg.screenshot(path=O+'approved.png')
+    # 거절: 레이어 → 취소(Esc·취소 버튼·바깥)
+    pg.get_by_role('button',name='거절 모르는사람').click(); pg.wait_for_selector('#fam-ask[open]')
+    check(pg.locator('#ask-t').inner_text()=='모르는사람 거절할까요?' and pg.evaluate("document.activeElement.textContent")=='취소','거절 확인 레이어, 초점은 취소')
+    pg.wait_for_timeout(600); pg.screenshot(path=O+'reject.png')
+    pg.keyboard.press('Escape'); check(pg.locator('#fam-ask[open]').count()==0,'Esc로 닫힘')
+    check(pg.evaluate("document.activeElement.value||''").endswith(':rejected'),'닫으면 누른 버튼으로 초점')
+    pg.get_by_role('button',name='거절 모르는사람').click(); pg.locator('#fam-ask').get_by_role('button',name='취소').click()
+    check(pg.locator('#fam-ask[open]').count()==0 and pg.get_by_role('button',name='거절 모르는사람').count()==1,'취소는 그대로')
+    pg.get_by_role('button',name='거절 모르는사람').click(); pg.mouse.click(10,10)
+    check(pg.locator('#fam-ask[open]').count()==0,'바깥 누르면 닫힘')
+    pg.get_by_role('button',name='거절 모르는사람').click(); pg.locator('#fam-ask').get_by_role('button',name='거절').click()
+    pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('처리했어요')")
+    check(pg.evaluate('window.__same')==1 and pg.get_by_role('button',name='거절 모르는사람').count()==0,'거절 그 자리에서')
+    check(pg.evaluate("document.activeElement.id")=='sec-wait','초점은 승인 기다리는 사람 제목')
+    # 새로 고침해도 안내 다시 안 뜸
+    pg.reload(); check(pg.locator('.sp-toast').count()==0,'새로 고침하면 토스트 없음')
+    # 실패: 오류 토스트, 카드 그대로
+    pg.route('**/settings/family',lambda r: r.abort() if r.request.method=='POST' else r.continue_())
+    pg.get_by_role('button',name='승인 옆집').click(); pg.wait_for_selector('.sp-toast--error'); pg.wait_for_timeout(200)
+    check('처리하지 못했어요' in live(pg) and pg.get_by_role('button',name='승인 옆집').is_enabled(),'실패하면 오류 토스트·다시 누를 수 있음')
+    pg.unroute('**/settings/family')
+    # 새 휴대폰(승인 기다림): mock은 비밀번호 10번 틀리면 승인 대기 기기(3번마다 30초 쉼)
+    g4=b.new_context(); w=g4.new_page(); w.goto(B+'/i/'+code); w.fill('#who-name','삼촌'); w.get_by_role('button',name='들어가기').click(); w.wait_for_url('**/password**')
+    pw_url=w.url
+    for i in range(10):
+        if i and i%3==0: w.wait_for_timeout(31000)
+        w.goto(pw_url); w.fill('#pw','0000'); w.get_by_role('button',name='들어가기').click(); w.wait_for_load_state()
+    pg.goto(B+'/settings/family'); pg.evaluate('window.__same=1')
+    dev=pg.locator('#sec-dev')
+    check(dev.count()==1,'새로 들어온 기기 있음')
+    pg.get_by_role('button',name='내 가족 아님 삼촌').click(); pg.wait_for_selector('#fam-ask[open]')
+    check(pg.locator('#ask-t').inner_text()=='삼촌 휴대폰을 내 가족 아님으로 할까요?','내 가족 아님 확인 레이어')
+    pg.locator('#fam-ask').get_by_role('button',name='내 가족 아님').click()
+    pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('내 가족이 아니라고')")
+    check(pg.evaluate('window.__same')==1 and pg.locator('#sec-dev').count()==0,'내 가족 아님 그 자리에서, 기기 칸 없어짐')
+    # 다른 화면에서 온 확인(?confirm=)도 같은 모달, Esc·취소면 원래 화면으로
+    pg.goto(B+'/settings/family'); pg.get_by_role('link',name='외할머니').click(); pg.wait_for_url('**/member/**')
+    mid=pg.url.rstrip('/').rsplit('/',1)[1]
+    pg.goto(B+'/settings/family?confirm=member:'+mid+':rejected'); pg.wait_for_selector('#fam-ask[open]')
+    check(pg.locator('#confirm').count()==0 and pg.locator('#ask-t').inner_text()=='외할머니 내보낼까요?','내보내기 확인도 모달')
+    pg.keyboard.press('Escape'); pg.wait_for_url('**/member/**')
+    check('/member/' in pg.url,'Esc로 닫으면 구성원 화면으로')
+    # 빠르게 두 번: 차례로 보내고 마지막 응답이 그림
+    enter(b,code,'고모'); enter(b,code,'삼촌2')
+    pg.goto(B+'/settings/family')
+    pg.get_by_role('button',name='승인 고모').click(); pg.get_by_role('button',name='승인 삼촌2').click()
+    pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요') && !document.querySelector('.sp-p[aria-busy]')")
+    check(pg.get_by_role('button',name='승인 고모').count()==0 and pg.get_by_role('button',name='승인 삼촌2').count()==0 and pg.locator('.sp-toast--error').count()==0,'연달아 승인해도 둘 다 처리')
+    # 스크립트 없이: 예전처럼 폼 → 확인 레이어(서버) → 처리
+    n=b.new_context(viewport={'width':390,'height':844},java_script_enabled=False,storage_state=c.storage_state()); q=n.new_page()
+    q.goto(B+'/settings/family'); q.get_by_role('button',name='거절 옆집').click(); q.wait_for_url('**confirm=**')
+    check(q.locator('#confirm .sp-layer__title').inner_text()=='옆집 거절할까요?','스크립트 없으면 확인 레이어를 서버가 그림')
+    q.wait_for_timeout(600); q.screenshot(path=O+'nojs-reject.png')
+    q.locator('#confirm').get_by_role('button',name='거절').click(); q.wait_for_url('**done=member-rejected**')
+    check(q.locator('.sp-toast').count()==1 and '처리했어요' in q.locator('.sp-toast').inner_text(),'스크립트 없어도 결과 토스트')
+    b.close()
+print('FAILS',FAILS)

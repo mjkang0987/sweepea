@@ -1,0 +1,51 @@
+---
+import { SITE_ORIGIN } from 'astro:env/server';
+import '../styles/tokens.css';
+import '../styles/base.css';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** 가족 화면 글자 크기. 주면 루트 글자 크기를 바꾼다(부모 화면은 안 줌) */
+  size?: 'base' | 'large' | 'xlarge';
+  /** 검색에 대표로 보일 주소(첫 화면만). 같은 내용이 workers.dev 주소로도 열리므로 */
+  canonical?: string;
+}
+
+const { title, description = '카톡으로 보내고, 설치 없이 보고, 사라지지 않는 가족 앨범', size, canonical } = Astro.props;
+// 카톡·검색 미리보기 그림은 절대 주소여야 한다
+const origin = (SITE_ORIGIN || Astro.url.origin).replace(/\/$/, '');
+---
+
+<!doctype html>
+<html lang="ko" class:list={["sp-html", size && `sp-size-${size}`]}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content={description} />
+    {/* 네이버 서치어드바이저 사이트 소유 확인(사용자 2026-10-29). 구글은 DNS TXT로 확인 */}
+    <meta name="naver-site-verification" content="4d57f3a77a32f390daa4248bcad1804ade6f03b8" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="스위피" />
+    <title>{title}</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="스위피" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={`${origin}/icons/icon-512.png`} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    <script is:inline>
+      // 페이지 전환 중에 화면이 가려지면 크롬이 전환만 취소하고 'InvalidStateError'를 처리 안 된 오류로 찍는다(이동은 정상). 두 쪽 다 받아 둔다
+      for (const t of ['pageswap', 'pagereveal']) addEventListener(t, (e) => { const v = e.viewTransition; if (v) for (const p of [v.ready, v.finished, v.updateCallbackDone]) p?.catch(() => {}); });
+      // 화면이 가려진 채 열리면 크롬이 페이지에 건네지 않은 전환에서도 같은 오류를 낸다. 그 오류만 조용히(다른 오류는 그대로)
+      addEventListener('unhandledrejection', (e) => { const r = e.reason; if (r instanceof DOMException && /^Transition /.test(r.message)) e.preventDefault(); });
+    </script>
+  </head>
+  <body class="sp-body">
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,27 @@
+---
+// 저장 용량: 사용량 / 5GB, 사진·영상 수. 넘으면 새 올리기만 멈춘다(기획서). 상한 적용은 용량 이슈에서
+import Parent from '../../layouts/Parent.astro';
+import { sizeLabel } from '../../lib/familyAdmin';
+import { loadParent } from '../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const h = a.home;
+const LIMIT = 5 * 1024 ** 3;
+const usedBytes = h.storage_used_bytes ?? 0;
+const pct = Math.min(100, Math.round((usedBytes / LIMIT) * 100));
+const used = sizeLabel(usedBytes);
+---
+
+<Parent title="저장 용량 · 설정" tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+  <div class="sp-p__nav">
+    <a class="sp-p__back" href="/settings">설정</a>
+    <h1 class="sp-p__nav-title">저장 용량</h1>
+  </div>
+  <section class="sp-p__card" aria-labelledby="st-title">
+    <h2 class="sp-p__card-title" id="st-title"><span class="sp-p__big">{used}</span> / 5GB 사용</h2>
+    <meter class="sp-p__meter" min="0" max="100" low="80" high="95" optimum="0" value={pct} aria-label={`5GB 중 ${pct}% 사용`}>{pct}%</meter>
+    <p class="sp-p__lead">사진 {(h.photo_count ?? 0).toLocaleString('ko-KR')}장 · 영상 {(h.video_count ?? 0).toLocaleString('ko-KR')}개. 5GB가 차면 새로 올리기만 멈추고, 가족은 계속 볼 수 있어요.</p>
+  </section>
+</Parent>

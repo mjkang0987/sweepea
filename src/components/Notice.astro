@@ -1,0 +1,15 @@
+---
+// 가족 화면 안내(주소 지남, 앨범 닫힘 등). 가운데 콩이 + 제목 + 설명, 아래 버튼은 slot
+interface Props {
+  title: string;
+  text: string;
+}
+const { title, text } = Astro.props;
+---
+
+<div class="sp-f__notice">
+  <img class="sp-f__kongi" src="/kongi.svg" width="112" height="112" alt="" />
+  <h1 class="sp-f__title">{title}</h1>
+  <p class="sp-f__text">{text}</p>
+</div>
+<slot />

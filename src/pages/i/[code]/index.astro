@@ -1,0 +1,136 @@
+---
+// 누구세요?: 공유 링크로 들어온 가족이 이름을 고른다. JS 없이 GET 폼으로 비밀번호 화면에 넘긴다
+import Family from '../../../layouts/Family.astro';
+import Notice from '../../../components/Notice.astro';
+import { getBackend } from '../../../lib/backend';
+import { chosenTextSize, currentPass } from '../../../lib/pass';
+import { callName } from '../../../lib/ko';
+import { NOTICES, type NoticeKey } from '../../../lib/notices';
+import { isOpen, isWaiting } from '../../../lib/families';
+
+const code = Astro.params.code ?? '';
+let notice: NoticeKey | null = /^[A-Za-z0-9]{8}$/.test(code) ? null : 'not_found';
+const backend = getBackend();
+// 출입증은 여기서 만들지 않는다(비밀번호를 낼 때 만든다)
+const pass = notice ? null : await currentPass(Astro.cookies);
+
+let info = null;
+if (!notice) {
+  const r = await backend.entryInfo(pass, code);
+  // 이 링크의 가족방에서 이미 들어온 기기면 상태대로 보낸다. 승인 대기 3일이 지난(expired) 기기는 폼을 다시 보여 준다
+  const me = r.result === 'not_found' ? null : r.me;
+  if (r.result === 'closed') notice = 'closed';
+  else if (me?.device === 'revoked') notice = 'revoked';
+  else if (me && isWaiting(me)) return Astro.redirect('/wait');
+  else if (me && isOpen(me)) return Astro.redirect('/album');
+  else if (r.result === 'ok') info = r;
+  else notice = r.result;
+}
+
+const groups = info
+  ? info.groups
+      .map((g) => ({ ...g, members: info.target_member_id ? g.members.filter((m) => m.id === info.target_member_id) : g.members }))
+      .filter((g) => g.members.length > 0 || info.new_entry_open)
+  : [];
+const canWrite = !!info?.new_entry_open && !info.target_member_id;
+if (info && groups.every((g) => g.members.length === 0) && !canWrite) notice = 'expired';
+const child = callName(info?.child_name ?? '아이');
+const showGroups = groups.length > 1;
+// 고른 적 없으면 가족방 설정(관계에 맞춰면 이름을 고른 뒤에 정한다)
+const size = chosenTextSize(Astro.cookies) ?? (info && info.text_size_mode !== 'relation' ? info.text_size_mode : undefined);
+const nameError = Astro.url.searchParams.get('e') === 'name' ? '이름을 1~12자로 써 주세요.' : null;
+---
+
+<Family title={notice ? NOTICES[notice].title : nameError ? '다시 써 주세요 · 누구세요?' : '누구세요?'} size={size}>
+  {
+    notice ? (
+      <Notice {...NOTICES[notice]} />
+    ) : (
+      <>
+        <div class="sp-f__head">
+          <h1 class="sp-f__title">누구세요?</h1>
+          <p class="sp-f__lead">이름을 누르면 {child} 사진이 열려요</p>
+          {/* 보신 기록(95): 엄마아빠 크게 보기에 본 사람 이름이 보이는 걸 처음에 알린다 */}
+          <p class="sp-f__caption">엄마아빠에게 누가 봤는지 보여요</p>
+        </div>
+        <form class="sp-f__form" method="get" action={`/i/${code}/password`}>
+          {/* 이름 칸에서 엔터를 누르면 이름 버튼이 아니라 '들어가기'가 눌리게, 맨 앞에 숨은 기본 버튼 */}
+          {canWrite ? (
+            <button class="sp-vh" type="submit" name="new" value="1" tabindex="-1" aria-hidden="true">
+              들어가기
+            </button>
+          ) : (
+            <button class="sp-vh" type="submit" formaction={`/i/${code}`} tabindex="-1" aria-hidden="true">
+              새로 보기
+            </button>
+          )}
+          <fieldset class="sp-f__group">
+            <legend class="sp-f__legend">글자 크기</legend>
+            <div class="sp-f__seg">
+              <label class="sp-f__seg-item">
+                <input class="sp-f__seg-input" type="radio" name="size" value="base" checked={size === 'base'} />
+                <span class="sp-f__seg-text sp-f__size-base">기본</span>
+              </label>
+              <label class="sp-f__seg-item">
+                <input class="sp-f__seg-input" type="radio" name="size" value="large" checked={size === 'large'} />
+                <span class="sp-f__seg-text">크게</span>
+              </label>
+              <label class="sp-f__seg-item">
+                <input class="sp-f__seg-input" type="radio" name="size" value="xlarge" checked={size === 'xlarge'} />
+                <span class="sp-f__seg-text sp-f__size-xlarge">아주 크게</span>
+              </label>
+            </div>
+          </fieldset>
+          {groups.map((g) =>
+            g.members.length > 0 ? (
+              <section class="sp-f__group" aria-label={showGroups ? g.name : '이름'}>
+                {showGroups && <h2 class="sp-f__legend">{g.name}</h2>}
+                <ul class="sp-f__list">
+                  {g.members.map((m) => (
+                    <li>
+                      <button class="sp-f__name" type="submit" name="m" value={m.id}>
+                        {m.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null,
+          )}
+          {canWrite && (
+            <div class="sp-f__group">
+              <label class="sp-f__label" for="who-name">
+                이름이 없으면 직접 써 주세요
+              </label>
+              {showGroups && (
+                <fieldset class="sp-f__group">
+                  <legend class="sp-vh">어느 쪽 가족인가요</legend>
+                  <div class="sp-f__seg">
+                    {groups.map((g, i) => (
+                      <label class="sp-f__seg-item">
+                        <input class="sp-f__seg-input" type="radio" name="g" value={g.id} checked={i === 0} />
+                        <span class="sp-f__seg-text">{g.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+              {!showGroups && <input type="hidden" name="g" value={groups[0]?.id} />}
+              <div class="sp-f__row">
+                <input class="sp-f__input" id="who-name" name="name" type="text" autocomplete="off" maxlength="12" placeholder="예: 큰이모" aria-invalid={nameError ? 'true' : undefined} aria-describedby={nameError ? 'who-name-error' : undefined} />
+                <button class="sp-f__btn" type="submit" name="new" value="1">
+                  들어가기
+                </button>
+              </div>
+              {nameError && (
+                <p class="sp-f__box sp-f__box--danger" id="who-name-error" role="alert">
+                  {nameError}
+                </p>
+              )}
+            </div>
+          )}
+        </form>
+      </>
+    )
+  }
+</Family>

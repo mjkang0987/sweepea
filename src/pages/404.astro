@@ -1,0 +1,15 @@
+---
+// 없는 주소. 앱 공통 바탕(Base)을 써서 페이지 전환·전환 오류 처리도 다른 화면과 같게
+import Base from '../layouts/Base.astro';
+import Notice from '../components/Notice.astro';
+import '../styles/family.css';
+---
+
+<Base title="찾는 화면이 없어요">
+  <main class="sp-f">
+    <Notice title="찾는 화면이 없어요" text="주소가 바뀌었거나 지워졌어요. 처음 화면에서 다시 들어가 주세요." />
+    <div class="sp-f__bottom">
+      <a class="sp-f__btn sp-f__btn--fill" href="/">처음으로</a>
+    </div>
+  </main>
+</Base>

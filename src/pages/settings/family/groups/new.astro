@@ -1,0 +1,67 @@
+---
+// 그룹 추가: 이름·비밀번호 4자리·힌트·새 사진에 기본으로 포함
+import Parent from '../../../../layouts/Parent.astro';
+import { BackendError, getBackend } from '../../../../lib/backend';
+import { loadParent, pinError } from '../../../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+let name = '';
+let hint = '';
+let include = true;
+let error: { field: 'name' | 'pw'; text: string } | null = null;
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  name = String(form.get('name') ?? '').trim();
+  hint = String(form.get('hint') ?? '').trim().slice(0, 30);
+  include = form.get('include') === '1';
+  const password = String(form.get('password') ?? '').trim();
+  const pin = pinError(password, hint);
+  if (name.length < 1 || name.length > 12) error = { field: 'name', text: '그룹 이름을 1~12자로 써 주세요.' };
+  else if (pin) error = { field: 'pw', text: pin };
+  else {
+    try {
+      await getBackend().addGroup(a.pass, { name, password, hint: hint || null, includeByDefault: include });
+      return Astro.redirect('/settings/family/groups?done=added', 303);
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+      error =
+        e.code === '23505' ? { field: 'name', text: '같은 이름의 그룹이 있어요. 다른 이름을 써 주세요.' } :
+        e.status === 409 ? { field: 'name', text: '그룹은 10개까지 만들 수 있어요.' } :
+        { field: 'name', text: '만들지 못했어요. 다시 눌러 주세요.' };
+    }
+  }
+}
+---
+
+<Parent title={error ? '다시 확인해 주세요 · 그룹 추가' : '그룹 추가 · 가족'} tab="settings" savebar alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+  <div class="sp-p__nav">
+    <a class="sp-p__back" href="/settings/family/groups">그룹</a>
+    <h1 class="sp-p__nav-title">그룹 추가</h1>
+  </div>
+  <form class="sp-p__form" method="post">
+    {error && <p class="sp-p__error" role="alert" id="g-err">{error.text}</p>}
+    <div class="sp-p__field">
+      <label class="sp-p__label" for="name">그룹 이름</label>
+      <input class="sp-p__input" id="name" name="name" type="text" required maxlength="12" autocomplete="off" placeholder="예: 친가" value={name} aria-invalid={error?.field === 'name' ? 'true' : undefined} aria-describedby={error?.field === 'name' ? 'g-err' : undefined} />
+    </div>
+    <div class="sp-p__field">
+      <label class="sp-p__label" for="pw">비밀번호 (숫자 4자리)</label>
+      <input class="sp-p__input sp-p__input--pin" id="pw" name="password" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off" aria-invalid={error?.field === 'pw' ? 'true' : undefined} aria-describedby={error?.field === 'pw' ? 'g-err' : undefined} />
+    </div>
+    <div class="sp-p__field">
+      <label class="sp-p__label" for="hint">힌트</label>
+      <input class="sp-p__input" id="hint" name="hint" type="text" maxlength="30" autocomplete="off" value={hint} aria-describedby="hint-note" />
+      <p class="sp-p__hint" id="hint-note">비밀번호를 물을 때 같이 보여요. 비밀번호 자체는 쓰지 마세요.</p>
+    </div>
+    <label class="sp-p__check sp-p__check--plain">
+      <input class="sp-p__checkbox" type="checkbox" name="include" value="1" checked={include} aria-describedby="include-note" />
+      새 사진에 기본으로 포함
+    </label>
+    <p class="sp-p__hint" id="include-note">사진 올릴 때 이 그룹이 미리 체크돼요.</p>
+    <div class="sp-p__bottom sp-p__savebar">
+      <button class="sp-p__btn" type="submit">추가</button>
+    </div>
+  </form>
+</Parent>

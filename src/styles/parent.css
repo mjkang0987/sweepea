@@ -1,0 +1,2626 @@
+/* 부모 화면(.sp-p). 높이 기준: 입력·버튼·라디오 52, 칩 40, 목록 줄 56, 탭바 44 */
+.sp-p {
+  box-sizing: border-box;
+  min-height: 100vh;
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  word-break: keep-all;
+}
+@supports (min-height: 100dvh) {
+  .sp-p {
+    min-height: 100dvh;
+  }
+}
+/* 떠 있는 유리 탭바(디자인 ParentHomeGlass): 캡슐 높이 4rem, 화면 아래(safe-area 위) 0.5rem. --tabbar-top = 화면 아래에서 탭바 윗변까지 */
+.sp-html {
+  --tabbar-top: calc(4.5rem + env(safe-area-inset-bottom));
+  /* 포커스된 칸이 탭바 밑에 숨지 않게 */
+  scroll-padding-bottom: calc(var(--tabbar-top) + var(--space-6));
+}
+.sp-p--tabbed {
+  /* 탭바가 마지막 줄을 가리지 않게 */
+  padding-bottom: calc(var(--tabbar-top) + var(--space-6));
+}
+
+.sp-p__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-p__step {
+  margin: 0;
+  font-size: var(--footnote-size);
+  font-weight: 700;
+  color: var(--pea-ink);
+}
+.sp-p__title {
+  margin: 0;
+  /* 시안 30px */
+  font-size: 1.875rem;
+  line-height: 2.375rem;
+  font-weight: var(--title-2-weight);
+  letter-spacing: var(--title-2-tracking);
+}
+.sp-p__title--large {
+  font-size: var(--large-title-size);
+  line-height: var(--large-title-line);
+}
+.sp-p__lead,
+.sp-p__hint,
+.sp-p__note,
+.sp-p__fine {
+  margin: 0;
+  color: var(--label-2);
+}
+.sp-p__lead,
+.sp-p__note {
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-p__hint,
+.sp-p__fine {
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+}
+.sp-p__fine {
+  text-align: center;
+}
+.sp-p__error {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.sp-p__form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.sp-p__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-p__fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.sp-p__label {
+  padding: 0;
+  font-size: var(--subhead-size);
+  font-weight: 700;
+}
+.sp-p__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 3.25rem;
+  padding: 0 var(--space-4);
+  border: 1.5px solid var(--label-2);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--label);
+  font-family: inherit;
+  font-size: var(--body-size);
+}
+.sp-p__input--pin {
+  text-align: center;
+  letter-spacing: 0.5em;
+  font-size: var(--title-2-size);
+}
+.sp-p__choices {
+  display: flex;
+  gap: var(--space-2);
+}
+.sp-p__radio {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--pea);
+}
+.sp-p__choice {
+  flex: 1;
+  min-height: 3.25rem;
+  padding: 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sp-p__bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+/* 저장 같은 주요 버튼은 탭바 바로 위 막대에 고정(디자인 151, 사용자 2026-10-27). 넓은 화면은 탭이 위라 맨 아래 */
+.sp-p__savebar {
+  position: fixed;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-top) + var(--space-2));
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--space-3) max(var(--space-5), calc((100% - 32rem) / 2 + var(--space-5)));
+  /* 위 선 없이 흐린 막대만(사용자 2026-10-29 "savebar border-top도 삭제") */
+  background: var(--bar);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+/* 고대비 모드는 흐림이 사라져 막대와 내용 경계가 안 보이니 선을 둠 */
+@media (forced-colors: active) {
+  .sp-p__savebar {
+    border-top: 1px solid CanvasText;
+  }
+}
+/* 막대가 있는 화면(Parent savebar): 막대 높이(버튼 3.25rem + 위아래 여백)만큼 아래 여백, 토스트는 막대 위 12px. 글자 크기를 키우면 rem이 같이 커진다 */
+.sp-p--savebar {
+  --savebar-h: calc(3.25rem + 2 * var(--space-3));
+  padding-bottom: calc(var(--tabbar-top) + var(--space-2) + var(--savebar-h) + var(--space-6));
+}
+.sp-p.sp-p--savebar .sp-toast {
+  bottom: calc(var(--tabbar-top) + var(--space-2) + var(--savebar-h) + 12px);
+}
+@media (min-width: 64rem) {
+  .sp-p__savebar {
+    bottom: 0;
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  }
+  .sp-p--savebar {
+    padding-bottom: calc(var(--savebar-h) + var(--space-6) + env(safe-area-inset-bottom));
+  }
+  .sp-p.sp-p--savebar .sp-toast {
+    bottom: calc(var(--savebar-h) + 12px + env(safe-area-inset-bottom));
+  }
+}
+/* 탭 없는 화면(처음 설정·소개): 막대를 화면 맨 아래에. 사파리 아래 바·홈 막대 자리(safe-area)만큼 버튼을 올린다(viewport-fit=cover) */
+.sp-p:not(.sp-p--tabbed) .sp-p__savebar {
+  bottom: 0;
+  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+}
+.sp-p--savebar:not(.sp-p--tabbed) {
+  padding-bottom: calc(var(--savebar-h) + var(--space-6) + env(safe-area-inset-bottom));
+}
+.sp-p.sp-p--savebar:not(.sp-p--tabbed) .sp-toast {
+  bottom: calc(var(--savebar-h) + 12px + env(safe-area-inset-bottom));
+}
+/* 버튼이 둘인 막대(올리기: 카톡으로 보내기 + 올리기만) */
+.sp-p--savebar2 {
+  --savebar-h: calc(2 * 3.25rem + var(--space-2) + 2 * var(--space-3));
+}
+/* 포커스된 칸이 막대 밑에 숨지 않게(탭바 + 버튼 둘 막대까지, :has 모르는 브라우저는 탭바 기준 기본값) */
+.sp-html:has(.sp-p--savebar) {
+  scroll-padding-bottom: calc(var(--tabbar-top) + var(--space-2) + 2 * 3.25rem + var(--space-2) + 2 * var(--space-3) + var(--space-4));
+}
+/* 넓은 화면 올리기: 버튼은 오른쪽 칸 안 제자리(높이가 넉넉함) */
+@media (min-width: 64rem) {
+  .sp-p.sp-p--wide .sp-p__savebar {
+    position: static;
+    padding: 0;
+    border-top: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .sp-p.sp-p--wide.sp-p--savebar {
+    padding-bottom: var(--space-6);
+  }
+}
+/* 낮은 화면(가로로 든 폰·크게 확대): 막대가 화면 절반을 가리지 않게 고정을 푼다 */
+@media (max-height: 30rem) {
+  .sp-p__savebar,
+  .sp-p:not(.sp-p--tabbed) .sp-p__savebar {
+    position: static;
+    padding: 0;
+    border-top: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .sp-p--savebar.sp-p--tabbed {
+    padding-bottom: calc(var(--tabbar-top) + var(--space-6));
+  }
+  .sp-p--savebar:not(.sp-p--tabbed) {
+    padding-bottom: var(--space-6);
+  }
+  .sp-html:has(.sp-p--savebar) {
+    scroll-padding-bottom: calc(var(--tabbar-top) + var(--space-6));
+  }
+  /* 토스트도 막대 없이 탭바 위·화면 아래에 */
+  .sp-p.sp-p--savebar .sp-toast {
+    bottom: calc(var(--tabbar-top) + 12px);
+  }
+  .sp-p.sp-p--savebar:not(.sp-p--tabbed) .sp-toast {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}
+.sp-p__btn,
+.sp-p__login {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--pea);
+  color: var(--on-pea);
+  font-family: inherit;
+  font-size: var(--headline-size);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sp-p__btn--quiet {
+  background: var(--fill);
+  color: var(--label);
+}
+.sp-p__login--kakao {
+  background: var(--kakao);
+  color: var(--kakao-ink);
+}
+.sp-p__login--naver {
+  /* 네이버 로그인 가이드 초록. 흰 글자 대비 4.5 이상이 되게 진하게 */
+  background: #03a94d;
+  color: #ffffff;
+}
+.sp-p__login--google {
+  background: #ffffff;
+  color: #1f1f1f;
+  box-shadow: inset 0 0 0 1px #747775;
+}
+.sp-p__login--apple {
+  background: #000000;
+  color: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  .sp-p__login--apple {
+    background: #ffffff;
+    color: #000000;
+  }
+}
+.sp-p__login--dev {
+  background: var(--fill);
+  color: var(--label);
+}
+
+/* 소개 */
+.sp-p__skip-row {
+  min-height: var(--target-min);
+  display: flex;
+  justify-content: flex-end;
+}
+.sp-p__skip {
+  min-height: var(--target-min);
+  display: flex;
+  align-items: center;
+  color: var(--label-2);
+  text-decoration: none;
+}
+.sp-p__intro {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+.sp-p__intro-art {
+  /* 글자 200%에서도 화면 폭을 넘지 않게(그림 카드 폭이 rem이라 커진다) */
+  max-width: 100%;
+  margin-bottom: var(--space-4);
+}
+.sp-p__intro-title {
+  margin: 0;
+  font-size: 1.875rem;
+  line-height: 2.375rem;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+}
+.sp-p__intro-text {
+  margin: 0;
+  color: var(--label-2);
+}
+.sp-p__mock {
+  max-width: 100%;
+  box-sizing: border-box;
+  width: 17.5rem;
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-p__mock-photo {
+  height: 9.375rem;
+  border-radius: var(--radius-md);
+  background: var(--ph-1);
+}
+.sp-p__mock-title,
+.sp-p__mock-sub,
+.sp-p__mock-line,
+.sp-p__mock-chips,
+.sp-p__mock-row {
+  margin: 0;
+}
+.sp-p__mock-title {
+  font-weight: 700;
+}
+.sp-p__mock-sub {
+  font-size: var(--footnote-size);
+  color: var(--label-2);
+}
+.sp-p__mock-btn {
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--fill);
+  text-align: center;
+  font-size: var(--footnote-size);
+  font-weight: 700;
+}
+.sp-p__mock-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.sp-p__mock-chip {
+  white-space: nowrap;
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: var(--subhead-size);
+  font-weight: 600;
+}
+.sp-p__mock-chip--on {
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+}
+.sp-p__mock-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--separator);
+  font-size: var(--footnote-size);
+}
+.sp-p__mock-av {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--fill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.sp-p__mock-who {
+  flex: 1;
+  /* 좁은 화면·큰 글자에서 '승인'이 밖으로 밀리지 않게 이름 쪽이 줄어든다(낱말 단위로 줄바꿈) */
+  min-width: 0;
+  color: var(--label-2);
+}
+.sp-p__mock-ok {
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  background: var(--pea);
+  color: var(--on-pea);
+  font-weight: 700;
+}
+.sp-p__mock-kongi {
+  align-self: center;
+  image-rendering: pixelated;
+}
+.sp-p__mock-line {
+  font-size: var(--subhead-size);
+}
+.sp-p__dots {
+  margin: 0 0 var(--space-3);
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.sp-p__dots--end {
+  margin-top: auto;
+}
+.sp-p__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--fill);
+}
+.sp-p__dot--on {
+  width: 20px;
+  background: var(--pea);
+}
+
+/* 로그인 */
+.sp-p__brand {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+.sp-p__brand-kongi {
+  image-rendering: pixelated;
+}
+.sp-p__brand-name {
+  margin: 0;
+  font-size: var(--large-title-size);
+  line-height: var(--large-title-line);
+  font-weight: 800;
+}
+.sp-p__brand-text {
+  margin: 0;
+  color: var(--label-2);
+}
+
+/* 대표 첫 화면(디자인 Landing, 한 장): 가운데 소개 + 실제 서비스 화면 그림 + 아래 시작하기. 제목이 '내 얘기'를 건드리고 이름은 위 작은 줄 */
+.sp-p__landing {
+  gap: var(--space-3);
+}
+.sp-p__landing-name {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--pea-ink);
+  font-size: var(--headline-size);
+  line-height: var(--headline-line);
+  font-weight: 800;
+}
+.sp-p__landing-kongi {
+  width: 1.75rem;
+  height: 1.75rem;
+  image-rendering: pixelated;
+  /* 그림이 칸 아래쪽(32줄 중 13~32)에만 있어 글자 가운데에 맞게 올림 */
+  position: relative;
+  top: -0.35rem;
+}
+.sp-p__landing-title {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 2.25rem;
+  font-weight: 800;
+  letter-spacing: var(--large-title-tracking);
+}
+/* 휴대폰 그림: 몸체는 실제 휴대폰처럼 늘 검정(테마와 상관없음), 옆면 얇은 금속선, 뒤 빛(다크에선 민트로 배경에서 띄움) */
+.sp-p__phone {
+  --phone-glow: rgba(0, 0, 0, 0.16);
+  position: relative;
+  box-sizing: border-box;
+  width: 21.25rem;
+  max-width: calc(100% + 2 * var(--space-5));
+  margin: calc(-1 * var(--space-4)) 0 0;
+  padding: 1.625rem 1.875rem 0;
+  overflow: hidden;
+}
+@media (prefers-color-scheme: dark) {
+  .sp-p__phone {
+    --phone-glow: rgba(45, 212, 191, 0.3);
+  }
+}
+.sp-p__phone-body {
+  padding: 0.5625rem 0.5625rem 0;
+  border-radius: 2.625rem 2.625rem 0 0;
+  background: #1d1d1f;
+  box-shadow: 0 0 0 1.5px #3a3a3c, 0 0 0 2.5px #8e8e93, 0 -4px 26px var(--phone-glow);
+}
+.sp-p__phone-screen {
+  overflow: hidden;
+  border-radius: 2.125rem 2.125rem 0 0;
+  background: var(--bg);
+  padding: 1.25rem 0.75rem 1.375rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+}
+.sp-p__phone-title {
+  margin: 0;
+  font-size: var(--body-size);
+  line-height: 1.375rem;
+  font-weight: 800;
+}
+.sp-p__phone-sub,
+.sp-p__phone-pos {
+  margin: 0;
+  font-size: 0.6875rem;
+  line-height: 0.9375rem;
+  color: var(--label-2);
+}
+.sp-p__phone-title + .sp-p__phone-sub {
+  margin-top: -0.4375rem;
+}
+.sp-p__phone-pos {
+  text-align: center;
+}
+.sp-p__phone-now {
+  color: var(--label);
+  font-weight: 700;
+}
+/* 넘겨 보기: 가운데 카드 + 양옆 비스듬한 이전·다음 카드(앨범 화면과 같은 모양) */
+.sp-p__phone-deck {
+  position: relative;
+  height: 13.25rem;
+  margin: 0 -0.75rem;
+  /* 양옆 카드는 화면 밖으로 자르되 가운데 카드 그림자는 위아래로 보이게. clip을 모르는 옛 브라우저는 hidden(세로는 auto가 되지만 카드 높이와 같아 스크롤 없음, 그림자만 잘림) */
+  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
+}
+.sp-p__phone-card {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 11rem;
+  height: 13.25rem;
+  margin-left: -5.5rem;
+  border-radius: 0.875rem;
+  overflow: hidden;
+  background: var(--surface);
+}
+.sp-p__phone-card--prev,
+.sp-p__phone-card--next {
+  top: 0.75rem;
+  height: 11.75rem;
+  opacity: 0.5;
+  background: var(--fill);
+}
+.sp-p__phone-card--prev {
+  margin-left: -15.75rem;
+  transform: perspective(700px) rotateY(18deg) scale(0.86);
+  transform-origin: right center;
+}
+.sp-p__phone-card--next {
+  margin-left: 4.75rem;
+  transform: perspective(700px) rotateY(-18deg) scale(0.86);
+  transform-origin: left center;
+}
+.sp-p__phone-card--now {
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16), 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+.sp-p__phone-photo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, var(--pea-tint), var(--fill));
+}
+.sp-p__phone-kongi {
+  width: 5.25rem;
+  height: 6.875rem;
+  image-rendering: pixelated;
+}
+.sp-p__phone-cap {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0.3125rem 0.625rem;
+  font-size: 0.6875rem;
+  line-height: 0.9375rem;
+  font-weight: 500;
+  color: var(--label-2);
+}
+.sp-p__phone-reacts,
+.sp-p__phone-say {
+  margin: 0;
+  display: flex;
+  gap: var(--space-1);
+}
+.sp-p__phone-react {
+  flex: 1;
+  min-width: 0;
+  min-height: 1.875rem;
+  border-radius: 999px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  font-size: 0.8125rem;
+}
+.sp-p__phone-emoji {
+  font-family: var(--emoji-font);
+}
+.sp-p__phone-count {
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+.sp-p__phone-react--on {
+  background: var(--pea-tint);
+  box-shadow: inset 0 0 0 1.5px var(--pea);
+  color: var(--pea-deep);
+}
+.sp-p__phone-input,
+.sp-p__phone-send {
+  min-height: 2rem;
+  border-radius: 0.5625rem;
+  display: flex;
+  align-items: center;
+  font-size: 0.6875rem;
+}
+.sp-p__phone-input {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0 0.625rem;
+  box-shadow: inset 0 0 0 1px var(--separator);
+  color: var(--label-2);
+}
+.sp-p__phone-send {
+  flex: none;
+  padding: 0 0.75rem;
+  background: var(--pea);
+  color: var(--on-pea);
+  font-weight: 700;
+}
+.sp-p__phone-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1.375rem;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+}
+.sp-p__landing-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.375rem;
+}
+.sp-p__landing-chip {
+  padding: 0.375rem var(--space-3);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--label-2);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sp-p__landing-bottom {
+  align-items: center;
+  text-align: center;
+}
+
+/* 앨범 */
+.sp-p__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+.sp-p__empty-kongi {
+  image-rendering: pixelated;
+}
+.sp-p__empty-title {
+  margin: 0;
+  font-size: var(--title-2-size);
+  line-height: var(--title-2-line);
+  font-weight: 700;
+}
+/* 빈 상태 아래 버튼(디자인 SendSetupEmpty): 폭 가득 */
+.sp-p__empty-btn {
+  align-self: stretch;
+  margin-top: var(--space-2);
+}
+.sp-p__month {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* 칸 높이 단위를 이 폭(cqi) 기준으로 */
+  container-type: inline-size;
+}
+/* 엇갈린 배열(디자인): 서버가 정한 줄·칸 자리(--c·--r·--s, src/lib/masonry.ts). 높이 단위 --u = 줄 폭 / 40 */
+.sp-p__grid {
+  --cols: 2;
+  --gap: 4px;
+  --u: calc((100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols) / 40);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  grid-auto-rows: var(--u);
+  column-gap: var(--gap);
+}
+.sp-p__cell {
+  position: relative;
+  grid-column: var(--c2);
+  grid-row: var(--r2) / span var(--s2);
+  /* 칸이 차지한 줄 중 아래 1단위 자리에 가로 간격과 같은 4px만 비움(남는 몇 분의 1px은 사진이 가짐).
+     예전엔 1단위(화면 폭에 따라 4~7px)를 통째로 비워 세로 간격이 가로보다 넓었음 */
+  margin-bottom: var(--gap);
+  border-radius: 12px;
+  background: var(--fill);
+  overflow: hidden;
+}
+.sp-p__cell-meta,
+.sp-p__cell-length {
+  position: absolute;
+  bottom: 8px;
+  font-size: var(--footnote-size);
+  line-height: 1.125rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+.sp-p__cell-meta {
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--glass-clear);
+  color: var(--label);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator);
+}
+.sp-p__cell-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.sp-p__cell-heart {
+  color: var(--blossom);
+}
+.sp-p__cell-say {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.sp-p__cell-length {
+  right: 8px;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__cell-meta {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+.sp-p__cell-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sp-p__tabs {
+  position: fixed;
+  z-index: 3;
+  left: max(var(--space-5), env(safe-area-inset-left));
+  right: max(var(--space-5), env(safe-area-inset-right));
+  bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
+  /* 가로로 든 폰·태블릿에서 캡슐이 너무 넓어지지 않게 가운데 */
+  max-width: 30rem;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+/* 탭 셋을 담은 유리 캡슐 */
+.sp-p__tabs-pill {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: var(--space-1);
+  padding: 0.375rem;
+  border-radius: 999px;
+  background: var(--glass-nav);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator), 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+.sp-p__tab {
+  position: relative;
+  flex: 1;
+  min-height: 3.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border-radius: 999px;
+  /* 유리 위라 뒤 사진에 따라 바탕 밝기가 바뀜: 고르지 않은 탭도 진한 글자로(--label-2는 대비 부족) */
+  color: var(--label);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.sp-p__tab[aria-current='page'] {
+  color: var(--pea-ink);
+  background: var(--fill);
+}
+/* 고대비: 그림자·배경이 꺼져도 캡슐·둥근 버튼 경계가 보이게 */
+@media (forced-colors: active) {
+  .sp-p__tabs-pill,
+  .sp-p__tab-add {
+    border: 1px solid CanvasText;
+  }
+  .sp-p__tab[aria-current='page'] {
+    outline: 2px solid Highlight;
+  }
+}
+/* 캡슐 옆 둥근 사진 추가 */
+.sp-p__tab-add {
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--glass-tint);
+  color: var(--on-pea);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__tabs-pill {
+    background: var(--fill);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .sp-p__tab[aria-current='page'] {
+    background: var(--bg);
+  }
+  .sp-p__tab-add {
+    background: var(--pea);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+/* 알림 탭의 새 반응 수 */
+.sp-p__tab-badge {
+  position: absolute;
+  top: 0.25rem;
+  left: calc(50% + 0.375rem);
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.3125rem;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--blossom);
+  color: var(--on-pea);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* 설정 */
+.sp-p__bar {
+  min-height: var(--target-min);
+  display: flex;
+  align-items: center;
+}
+.sp-p__back {
+  min-height: var(--target-min);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--pea-ink);
+  /* 디자인: 뒤로·닫기 글자는 보통 굵기 */
+  font-weight: 400;
+  text-decoration: none;
+}
+/* 뒤로 가기는 ‹ + 글자(글자만 있으면 누르는 곳으로 안 보인다, 사용자 2026-10-27). 취소 링크는 빼고 */
+.sp-p__back:not(.sp-p__back--cancel)::before {
+  content: '';
+  flex: none;
+  width: 0.55em;
+  height: 0.55em;
+  margin: 0 0.1em 0 0.25em;
+  border-left: 2.4px solid currentColor;
+  border-bottom: 2.4px solid currentColor;
+  transform: rotate(45deg);
+}
+.sp-p__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-p__section-title {
+  margin: 0;
+  padding: 0 var(--space-4);
+  font-size: var(--footnote-size);
+  font-weight: 700;
+  color: var(--label-2);
+}
+/* 섹션 제목 자체가 이동 링크(디자인: '가족 그룹 ›') */
+.sp-p__section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 2.75rem;
+  color: inherit;
+  text-decoration: none;
+}
+.sp-p__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+/* 줄 사이 구분선(디자인 목록과 같이). 줄 요소는 li라 태그 대신 전체 선택자로 */
+.sp-p__list > * + * {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__row {
+  min-height: 3.5rem;
+  padding: 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--label);
+  text-decoration: none;
+}
+.sp-p__row-label {
+  flex: 1;
+}
+.sp-p__row-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--label-2);
+}
+/* 오른쪽 꺾쇠(선 아이콘). 글자 ›를 같은 모양의 아이콘으로 그린다 */
+.sp-p__chev {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0;
+  background-color: var(--label-2);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 5l7 7-7 7' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 5l7 7-7 7' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+@media (forced-colors: active) {
+  .sp-p__chev,
+  .sp-p__cta .sp-p__chev {
+    background-color: CanvasText;
+  }
+}
+.sp-p__icon-chev {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sp-p__badge {
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--blossom);
+  color: #ffffff;
+  font-size: var(--footnote-size);
+  font-weight: 700;
+}
+.sp-p__cta {
+  position: relative;
+  padding: var(--space-4);
+  padding-right: var(--space-8);
+  border-radius: var(--radius-lg);
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+}
+.sp-p__cta .sp-p__chev {
+  position: absolute;
+  right: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: var(--pea-deep);
+}
+.sp-p__cta-title {
+  font-weight: 700;
+}
+.sp-p__cta-sub {
+  font-size: var(--footnote-size);
+}
+.sp-p__card {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  scroll-margin-top: var(--space-5);
+}
+.sp-p__card-title {
+  margin: 0;
+  font-size: var(--headline-size);
+  font-weight: 700;
+}
+.sp-p__who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sp-p__who-name {
+  margin: 0;
+  font-size: var(--headline-size);
+  font-weight: 700;
+}
+.sp-p__avatar {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background: var(--fill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.sp-p__pair {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: var(--space-2);
+}
+.sp-p__btn--danger {
+  background: var(--fill);
+  color: var(--danger);
+}
+.sp-p__group {
+  min-height: 3.5rem;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sp-p__group + .sp-p__group {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__group-text {
+  flex: 1;
+  min-width: 0;
+}
+.sp-p__chip {
+  min-height: 2.5rem;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: var(--pea);
+  color: var(--on-pea);
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sp-p__toast {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-weight: 600;
+}
+.sp-p__toast--error {
+  background: var(--surface);
+  color: var(--danger);
+}
+.sp-p__bubble {
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.sp-p__radios {
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+.sp-p__radio-row {
+  min-height: 3.5rem;
+  padding: var(--space-2) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+.sp-p__radio-row + .sp-p__radio-row {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__radio-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.sp-p__empty-note {
+  padding: 0 var(--space-4);
+}
+
+.sp-p__btn--danger-strong {
+  background: var(--danger);
+  /* 라이트는 흰 글자, 다크(밝은 빨강)는 검은 글자라야 4.5:1 */
+  color: var(--bg);
+}
+
+/* 올리기 */
+.sp-p__bar--title {
+  justify-content: space-between;
+}
+.sp-p__bar-title {
+  margin: 0;
+  font-size: var(--headline-size);
+  font-weight: 700;
+}
+.sp-p__bar-space {
+  width: 2.5rem;
+}
+.sp-p__pick {
+  min-height: 3.25rem;
+  border: 1.5px dashed var(--label-2);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pea-ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+.sp-p__pick:focus-within {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+.sp-p__upgrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+.sp-p__upcell {
+  position: relative;
+  aspect-ratio: 1;
+}
+/* 칸 상태(올리는 중·올림·못 올림): 면 색 바탕이라 사진 위에서도 밝은/어두운 테마 모두 글자가 읽힌다 */
+.sp-p__uptag {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--label);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+  font-weight: 700;
+  /* 칸 밖으로 넘치지 않게. 좁은 화면·큰 글씨에선 자르지 않고 띄어쓰기에서 줄을 바꾼다(뜻이 잘리지 않게) */
+  max-width: calc(100% - 12px);
+  box-sizing: border-box;
+  word-break: keep-all;
+  pointer-events: none;
+}
+.sp-p__uptag--done {
+  color: var(--pea-ink);
+}
+.sp-p__uptag--fail {
+  color: var(--danger);
+}
+.sp-p__up-alert-head {
+  margin: 0;
+}
+.sp-p__up-alert-list {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+  font-weight: 400;
+}
+.sp-p__up-alert-item {
+  overflow-wrap: anywhere;
+}
+.sp-p__upbtn {
+  /* 줄 안 요소면 아래에 글자 여백이 붙어 위아래 간격만 벌어진다 */
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--fill);
+  cursor: pointer;
+}
+.sp-p__upbtn[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 3px var(--pea);
+}
+.sp-p__upimg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sp-p__upbtn[aria-pressed='true'] .sp-p__upimg {
+  /* 테두리가 사진에 가리지 않게 */
+  padding: 3px;
+  box-sizing: border-box;
+  border-radius: var(--radius-sm);
+}
+.sp-p__panel {
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.sp-p__panel-row {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+}
+.sp-p__panel-row + .sp-p__panel-row {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__panel-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sp-p__panel-label {
+  padding: 0;
+  font-weight: 500;
+}
+.sp-p__checks {
+  clear: both;
+  margin-top: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.sp-p__check {
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: 999px;
+  background: var(--fill);
+  font-weight: 600;
+  cursor: pointer;
+}
+.sp-p__check:has(.sp-p__checkbox:checked) {
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+}
+.sp-p__checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--pea);
+}
+.sp-p__btn--kakao {
+  background: var(--kakao);
+  color: var(--kakao-ink);
+}
+.sp-p__btn--text {
+  background: transparent;
+  color: var(--pea-ink);
+}
+.sp-p__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* 상태 칸: 비었을 때는 화면에서만 숨긴다(화면 읽기용 알림 영역은 늘 있게) */
+.sp-p__toast--live:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+/* display를 준 클래스는 hidden 속성을 이겨서 다시 숨긴다 */
+.sp-p__card[hidden],
+.sp-p__form[hidden],
+.sp-p__upgrid[hidden],
+.sp-p__toast[hidden],
+.sp-p__hint[hidden] {
+  display: none;
+}
+/* fieldset 테두리 위에 legend가 걸치지 않게 */
+.sp-p__panel-legend {
+  float: left;
+  width: 100%;
+}
+
+/* 앨범 위에 붙는 머리 + 사진 좌우 꽉(디자인 ParentHomeBleed, 아이폰 사진 앱 보관함처럼). 넓은 화면은 위 메뉴가 있어 예전 그대로 */
+.sp-p__albumhead-sub {
+  margin: 2px 0 0;
+  font-size: var(--subhead-size);
+  color: var(--label-2);
+}
+@media (max-width: 63.98rem) {
+  .sp-p__albumhead {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    /* .sp-p 위·옆 여백까지 덮어 사진이 머리 밑으로만 지나가게 */
+    margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-5)) calc(-1 * var(--space-3));
+    padding: calc(var(--space-6) + env(safe-area-inset-top)) var(--space-5) var(--space-5);
+    /* 아이폰 사진 앱 보관함처럼 사진이 비치는 막(사용자 2026-10-29 값 지정: 35% → 52% 지점 13% → 투명, 흐림 2px, 글자 번짐 없음).
+       사진에 따라 작은 줄 대비가 기준(4.5:1)보다 낮아질 수 있음 — 투명도 줄이기를 켜면 단색 */
+    background: var(--bg);
+  }
+  /* color-mix를 모르는 옛 브라우저는 var() 때문에 앞 줄로 못 돌아가고 투명해지므로 @supports로 나눔(리뷰 2026-10-29) */
+  @supports (background: color-mix(in srgb, red 50%, transparent)) {
+    .sp-p__albumhead {
+      background: linear-gradient(color-mix(in srgb, var(--bg) 35%, transparent), color-mix(in srgb, var(--bg) 13%, transparent) 52%, transparent);
+    }
+  }
+  /* 사진이 비쳐도 읽히게 작은 줄도 진한 글자, 둘레에 화면색 번짐 */
+  .sp-p__albumhead-sub {
+    color: var(--label);
+    font-weight: 600;
+  }
+  /* 아래 기본 회색 규칙보다 뒤에 오지 않아 두 단계로 */
+  .sp-p__albumhead .sp-p__albumhead-kid {
+    color: var(--label);
+  }
+  /* 글자 둘레 은은한 번짐: 밝은 테마는 흰색, 어두운 테마는 검은색 50%(사용자 2026-10-29 "0 0 10px rgb(255 255 255 / .5) 테마에 맞춰서") */
+  .sp-p__albumhead .sp-p__title--large,
+  .sp-p__albumhead-sub,
+  .sp-p__albumhead-kid {
+    text-shadow: 0 0 10px color-mix(in srgb, var(--bg) 50%, transparent);
+  }
+  .sp-p__albumhead::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    -webkit-mask-image: linear-gradient(#000 60%, transparent);
+    mask-image: linear-gradient(#000 60%, transparent);
+  }
+  /* 키보드로 올라갈 때 고른 칸이 머리 밑에 숨지 않게(포커스는 칸 안 링크가 받음) */
+  .sp-p__cell-link {
+    scroll-margin-top: 7rem;
+  }
+}
+/* 사진 좌우 꽉은 폰 폭(.sp-p 최대 32rem 안)만. 더 넓으면 가운데 띠가 잘려 보여 예전 모서리·간격 그대로 */
+@media (max-width: 32rem) {
+  .sp-p--wide .sp-p__month {
+    margin-inline: calc(-1 * var(--space-5));
+  }
+  .sp-p--wide .sp-p__grid {
+    --gap: 2px;
+  }
+  .sp-p--wide .sp-p__cell {
+    border-radius: 0;
+  }
+}
+@media (max-width: 63.98rem) and (prefers-reduced-transparency: reduce) {
+  .sp-p__albumhead {
+    background: var(--bg);
+  }
+  .sp-p__albumhead::before {
+    display: none;
+  }
+  .sp-p__albumhead-sub {
+    color: var(--label-2);
+    font-weight: 400;
+  }
+  .sp-p__albumhead .sp-p__albumhead-kid {
+    color: var(--label-2);
+  }
+}
+@media (max-width: 63.98rem) and (forced-colors: active) {
+  .sp-p__albumhead {
+    background: Canvas;
+  }
+}
+
+/* 아이 고르기: 한 줄 세그먼트 탭. 폰은 가로 꽉, 넘치면 옆으로 밀림(PC는 글자 폭만큼) */
+.sp-p__seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--fill);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sp-p__seg-item {
+  flex: 1 0 auto;
+  min-height: 2.5rem;
+  padding: 0 var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--label);
+  font-size: var(--subhead-size);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sp-p__seg-item[aria-current='page'] {
+  background: var(--seg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  font-weight: 600;
+}
+@media (forced-colors: active) {
+  .sp-p__seg-item[aria-current='page'] {
+    outline: 2px solid CanvasText;
+  }
+}
+
+/* 켜기·끄기 버튼(폼 POST라 JS 없이 바로 저장). role=switch + aria-checked */
+.sp-p__switch {
+  flex: none;
+  position: relative;
+  width: 3.25rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--label-2);
+  cursor: pointer;
+}
+.sp-p__switch::after {
+  content: '';
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.sp-p__switch[aria-checked='true'] {
+  background: var(--pea);
+  box-shadow: none;
+}
+.sp-p__switch[aria-checked='true']::after {
+  left: auto;
+  right: 0.1875rem;
+}
+.sp-p__switch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+@media (forced-colors: active) {
+  /* 고대비에선 box-shadow가 사라지니 안쪽 outline으로 테두리(크기 그대로) */
+  .sp-p__switch {
+    outline: 2px solid ButtonText;
+    outline-offset: -2px;
+  }
+  .sp-p__switch::after {
+    background: ButtonText;
+  }
+  .sp-p__switch[aria-checked='true'] {
+    background: Highlight;
+  }
+  .sp-p__switch[aria-checked='true']::after {
+    background: HighlightText;
+  }
+  .sp-p__switch:disabled {
+    outline-color: GrayText;
+  }
+  .sp-p__switch:disabled::after {
+    background: GrayText;
+  }
+}
+.sp-p__block {
+  display: block;
+}
+.sp-p__panel-line {
+  gap: var(--space-3);
+}
+.sp-p__group {
+  flex-direction: column;
+  align-items: stretch;
+}
+.sp-p__group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.sp-p__members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sp-p__member {
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--label);
+  text-decoration: none;
+}
+.sp-p__tag {
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-size: var(--footnote-size);
+  font-weight: 700;
+}
+.sp-p__avatar--large {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: var(--title-2-size);
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+}
+.sp-p__btn--danger-text {
+  color: var(--danger);
+}
+.sp-p__big {
+  font-size: var(--title-2-size);
+}
+.sp-p__meter {
+  width: 100%;
+  height: 0.5rem;
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  overflow: hidden;
+}
+/* 막대 색: 브라우저 기본(노랑·빨강) 대신 키컬러 하나(blossom은 하트에만) */
+.sp-p__meter::-webkit-meter-bar {
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+}
+.sp-p__meter::-webkit-meter-optimum-value,
+.sp-p__meter::-webkit-meter-suboptimum-value,
+.sp-p__meter::-webkit-meter-even-less-good-value {
+  border-radius: 999px;
+  background: var(--pea);
+}
+.sp-p__meter::-moz-meter-bar {
+  border-radius: 999px;
+  background: var(--pea);
+}
+@media (forced-colors: active) {
+  .sp-p__meter {
+    -webkit-appearance: auto;
+    appearance: auto;
+  }
+}
+
+/* 아이 목록: 두 줄 행, 오른쪽 '변경' */
+.sp-p__row--tall {
+  padding-block: var(--space-3);
+}
+.sp-p__add {
+  margin-top: var(--space-4);
+}
+
+/* 글자 크기 미리보기: 가족 화면 senior 토큰 × 고른 배율(base.css .sp-size-*와 같은 값) */
+.sp-p__sizes {
+  --preview-k: 1;
+}
+.sp-p__sizes:has(.sp-p__size-base:checked) {
+  --preview-k: 0.82;
+}
+.sp-p__sizes:has(.sp-p__size-xlarge:checked) {
+  --preview-k: 1.25;
+}
+.sp-p__preview-title {
+  margin: 0;
+  font-size: calc(var(--senior-title-size) * var(--preview-k));
+  line-height: 1.25;
+  font-weight: var(--senior-title-weight);
+}
+.sp-p__preview-body {
+  margin: var(--space-1) 0 0;
+  font-size: calc(var(--senior-body-size) * var(--preview-k));
+  line-height: 1.4;
+  color: var(--label-2);
+}
+.sp-p__account-out {
+  margin-top: var(--space-4);
+}
+.sp-p__provider {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-p__provider--kakao {
+  background: var(--kakao);
+  color: var(--kakao-ink);
+}
+.sp-p__rows-item--danger {
+  color: var(--danger);
+  text-decoration: none;
+}
+.sp-p__rows-item--danger:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: -2px;
+}
+.sp-p__list--gap {
+  margin-bottom: var(--space-2);
+}
+/* 확인 체크(알약 칩이 아닌 기본 체크박스 줄) */
+.sp-p__check--plain,
+.sp-p__check--plain:has(.sp-p__checkbox:checked) {
+  min-height: 2.75rem;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--label);
+  font-weight: 400;
+}
+/* 작별·되살리기: 가운데 안내 + 아래 버튼 */
+.sp-p__farewell {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+/* 탈퇴 신청 중: 남은 시간 */
+.sp-p__remaining {
+  margin: 0;
+  font-size: var(--title-2-size);
+  font-weight: 700;
+  color: var(--danger);
+}
+
+/* 부모 앨범 칸 → 사진 정보 */
+.sp-p__cell-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* 사진 정보 */
+.sp-p__photo {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: var(--radius-lg);
+  background: var(--fill);
+}
+.sp-p__say {
+  margin: 0;
+}
+.sp-p__say-who {
+  display: block;
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+}
+/* 최근 반응 썸네일 */
+.sp-p__thumb {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-sm);
+  background: var(--fill);
+  object-fit: cover;
+}
+/* 앨범 위 승인 요청·설치 부탁 띠 */
+.sp-p__alert {
+  min-height: 3.5rem;
+  padding: 0.625rem 0.875rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border-radius: 0.875rem;
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  text-decoration: none;
+}
+.sp-p__alert-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--subhead-size);
+}
+/* 접종·검진 줄(체크박스 + 이름 + 시기) */
+.sp-p__health {
+  min-height: 3.5rem;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.sp-p__health-when {
+  flex: none;
+  color: var(--pea-ink);
+  font-size: var(--footnote-size);
+  font-weight: 600;
+}
+.sp-p__health-when--late {
+  color: var(--label-2);
+}
+/* 기본 펼침 표시(▶)를 지키려고 display는 그대로 둔다 */
+.sp-p__past-title {
+  cursor: pointer;
+  padding-block: var(--space-3);
+}
+.sp-p__past-h {
+  display: inline;
+}
+
+/* 넓은 화면(PC): 앨범·올리기는 넓게, 메뉴는 위로 */
+@media (min-width: 64rem) {
+  .sp-p--wide {
+    max-width: 72rem;
+  }
+  .sp-p--wide .sp-p__grid {
+    --cols: 4;
+  }
+  .sp-p--wide .sp-p__cell {
+    grid-column: var(--c4);
+    grid-row: var(--r4) / span var(--s4);
+  }
+  .sp-p--tabbed {
+    padding-top: calc(var(--space-6) + 3.5rem);
+  }
+  /* 위 메뉴 밑으로 포커스된 칸이 숨지 않게 */
+  .sp-html {
+    scroll-padding-top: 4.5rem;
+  }
+  .sp-p__tabs {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    justify-content: center;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--separator);
+    background: var(--bar);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+  }
+  .sp-p__tabs-pill {
+    flex: none;
+    gap: var(--space-2);
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+  .sp-p__tabs {
+    max-width: none;
+  }
+  /* 위 메뉴: 지금 탭은 색만이 아니라 밑줄로도 */
+  .sp-p__tab[aria-current='page'] {
+    background: none;
+    border-radius: 0;
+    box-shadow: inset 0 -2px 0 var(--pea-ink);
+  }
+  .sp-p__tab-add {
+    width: 2.75rem;
+    height: 2.75rem;
+    box-shadow: none;
+  }
+  .sp-html {
+    --tabbar-top: env(safe-area-inset-bottom);
+  }
+  .sp-p__tab {
+    flex: none;
+    flex-direction: row;
+    min-height: 3.5rem;
+    padding: 0 var(--space-4);
+    gap: var(--space-2);
+    font-size: var(--subhead-size);
+  }
+  .sp-p__tab-badge {
+    position: static;
+  }
+  .sp-p__seg {
+    width: max-content;
+    max-width: 100%;
+  }
+  /* 올리기: 왼쪽 사진, 오른쪽 아이·그룹·보내기 */
+  .sp-p--wide .sp-p__form:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+  .sp-p--wide .sp-p__bar--title {
+    grid-column: 1 / -1;
+  }
+  .sp-p--wide .sp-p__upgrid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+/* 올리기 두 칸(좁은 화면에선 위아래로 그대로) */
+.sp-p__up-main,
+.sp-p__up-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+/* 원본·줄임 안내는 크기 칸 바로 아래에 붙여 읽히게 */
+.sp-p__up-note {
+  margin-top: calc(-1 * var(--space-2));
+}
+.sp-p__note-strong {
+  color: var(--label);
+  font-weight: 600;
+}
+/* 상태 칸 바로 아래(8px)에 막대·안내. 쉬는 동안은 숨겨 빈 간격이 생기지 않게 */
+.sp-p__up-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: calc(var(--space-2) - var(--space-5));
+}
+.sp-p__up-progress[hidden] {
+  display: none;
+}
+/* 올리기 상태 칸이 진행 막대(진행 중일 때만): 옅게 차오르는 바탕 + 아래 3px 진한 줄(글자 대비 4.5 유지, 막대는 진한 줄로 구분) */
+@property --p {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+.sp-p__toast--progress {
+  background:
+    linear-gradient(var(--pea), var(--pea)) left bottom / var(--p) 3px no-repeat,
+    linear-gradient(to right, color-mix(in srgb, var(--pea) 20%, var(--pea-tint)) var(--p), var(--pea-tint) var(--p));
+  transition: --p 0.3s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-p__toast--progress {
+    transition: none;
+  }
+}
+/* 끌어다 놓는 중(안쪽 글자에서 dragleave가 나지 않게) */
+.sp-p__pick-text {
+  pointer-events: none;
+}
+.sp-p__pick--over {
+  outline: 3px dashed var(--pea);
+  outline-offset: 2px;
+}
+/* 줄이거나 올리는 동안은 더 고를 수 없음을 흐리게 보여 준다(디자인 152) */
+.sp-p__pick:has(.sp-p__pick-input:disabled) {
+  opacity: 0.5;
+}
+
+.sp-p__toast:not(.sp-p__toast--error):not(.sp-p__toast--live) {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  /* 아래엔 탭바·막대가 있어서 위에 */
+  top: calc(var(--space-4) + env(safe-area-inset-top));
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--space-5));
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-5);
+  border-radius: 999px;
+  background: var(--glass-clear);
+  color: var(--label);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator), 0 10px 28px rgba(0, 0, 0, 0.16);
+  text-align: center;
+  pointer-events: none;
+  animation: sp-toast 4s ease-out forwards;
+}
+@media (min-width: 64rem) {
+  .sp-p__toast:not(.sp-p__toast--error):not(.sp-p__toast--live) {
+    top: 4.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-p__toast:not(.sp-p__toast--error):not(.sp-p__toast--live) {
+    animation-name: sp-toast-still;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__toast:not(.sp-p__toast--error):not(.sp-p__toast--live) {
+    background: var(--fill);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* 토스트(base.css)는 아래 탭바 위 12px에(디자인 FamilyApprovedToast). 넓은 화면은 탭이 위라 기본 자리 */
+.sp-p--tabbed .sp-toast {
+  bottom: calc(var(--tabbar-top) + 12px);
+}
+@media (min-width: 64rem) {
+  .sp-p--tabbed .sp-toast {
+    bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
+/* 설정 맨 아래 버전: 배포가 올라갔는지 눈으로 확인 */
+.sp-p__version {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  color: var(--label-2);
+}
+
+/* iOS 사파리 날짜 칸은 기본 모양일 때 width를 무시하고 넘친다(실기기 사진 정보 화면) */
+.sp-p__input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+}
+.sp-p__input[type='date'] {
+  /* 기본 모양을 끄면 아이폰은 글자를 칸 위쪽에 붙인다: 테두리 뺀 높이로 줄 높이를 맞춰 세로 가운데 */
+  line-height: calc(3.25rem - 3px);
+}
+.sp-p__input::-webkit-date-and-time-value {
+  margin: 0;
+  text-align: left;
+}
+
+/* 하위 화면 위 줄(디자인): 왼쪽 뒤로·닫기, 가운데 작은 제목 */
+.sp-p__nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: var(--target-min);
+}
+.sp-p__nav-title {
+  grid-column: 2;
+  margin: 0;
+  font-size: var(--body-size);
+  line-height: 1.375rem;
+  font-weight: 600;
+  text-align: center;
+}
+.sp-p__nav .sp-p__back {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+}
+/* 폼이 화면 끝까지 늘어나지 않게(아래 버튼이 멀리 떨어지지 않게) */
+.sp-p__form--fit {
+  flex: none;
+  gap: var(--space-4);
+}
+
+/* 사진 정보 수정: 미리보기 200px(디자인 127) — 사진은 잘리지 않게 전체, 남는 곳은 같은 사진을 흐리게 + 최근 한마디 말풍선 */
+.sp-p__thumbbox {
+  position: relative;
+  height: 12.5rem;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  /* 흐린 층이 둥근 모서리 밖으로 새지 않게(옛 사파리) */
+  isolation: isolate;
+  background: var(--fill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 흐림은 가장자리가 투명하게 번지므로 칸보다 40px씩 크게 깔아 가장자리까지 채움 */
+.sp-p__thumbbox-blur {
+  position: absolute;
+  inset: -40px;
+  width: calc(100% + 80px);
+  height: calc(100% + 80px);
+  object-fit: cover;
+  filter: blur(20px) brightness(0.82);
+}
+/* 사진 크기만큼만(그림자가 사진 둘레에 붙게): 세로 사진은 높이, 파노라마는 폭에 맞춤 */
+.sp-p__thumbbox-media {
+  position: relative;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.18);
+}
+.sp-p__thumbbox-media--video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  box-shadow: none;
+}
+.sp-p__thumbbox-say {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--glass-clear);
+  color: var(--label);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator);
+  font-size: var(--subhead-size);
+  line-height: 1.25rem;
+}
+.sp-p__thumbbox-who {
+  display: block;
+  font-size: var(--footnote-size);
+}
+
+/* 한 묶음 목록(디자인): 회색 판 안 줄들, 줄 사이 선 */
+.sp-p__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+.sp-p__rows-item {
+  min-height: 3.5rem;
+  padding: var(--space-2) var(--space-4);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sp-p__rows-item + .sp-p__rows-item {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__rows-item--stack {
+  display: block;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+.sp-p__rows-label {
+  flex: 1;
+  font-size: var(--body-size);
+}
+.sp-p__rows-legend {
+  padding: 0;
+}
+.sp-p__inline-date {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 2.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--pea-ink);
+  font-family: inherit;
+  font-size: var(--body-size);
+  text-align: right;
+}
+.sp-p__inline-date::-webkit-date-and-time-value {
+  margin: 0;
+  text-align: right;
+}
+.sp-p__inline-date:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.sp-p__inline-date[aria-invalid='true'] {
+  color: var(--danger);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__thumbbox-say {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+/* 묶음 안 고르기 칩(디자인): 15px, 고른 것만 굵게 */
+.sp-p__rows .sp-p__check {
+  font-size: var(--subhead-size);
+  font-weight: 500;
+}
+.sp-p__rows .sp-p__check:has(.sp-p__checkbox:checked) {
+  font-weight: 600;
+}
+/* 구성원 상세 이름(디자인 20px) */
+.sp-p__who-name--large {
+  font-size: 1.25rem;
+  line-height: 1.625rem;
+}
+
+/* 묶음 안 체크·링크 줄(디자인): 왼쪽 제목+부제, 오른쪽 체크·› */
+.sp-p__rows-item--check,
+.sp-p__rows-item--link {
+  justify-content: space-between;
+  color: var(--label);
+  text-decoration: none;
+  cursor: pointer;
+}
+.sp-p__rows-item--check .sp-p__radio-text,
+.sp-p__rows-item--link .sp-p__radio-text {
+  flex: 1;
+  min-width: 0;
+}
+.sp-p__rows > * + * {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__rows-button {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+}
+.sp-p__rows-item--link:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: -2px;
+}
+/* 이름 칸: 회색으로 채운 칸(디자인) */
+.sp-p__input--filled {
+  border-color: transparent;
+  background: var(--surface);
+}
+/* '+ 아이 추가'·'+ 그룹 추가': 초록 글자, + 뒤 한 칸 */
+.sp-p__btn--add {
+  gap: 0.25rem;
+  color: var(--pea-ink);
+}
+/* 아이 줄: 콩이 상자, 오른쪽 '변경' */
+.sp-p__kid-box {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: var(--pea-tint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-p__kid-box-img {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+}
+.sp-p__row-action {
+  flex: none;
+  color: var(--pea-ink);
+  font-weight: 600;
+}
+
+/* 글자 크기 줄: 글은 왼쪽, 라디오는 오른쪽(디자인) */
+.sp-p__radio-row .sp-p__radio-text {
+  flex: 1;
+  min-width: 0;
+}
+.sp-p__btn[hidden] {
+  display: none;
+}
+
+/* 칸 폭 단위(cqi)를 모르는 옛 브라우저(iOS 15 이하 등): 엇갈린 배열 대신 정사각 격자(줄 높이 계산이 깨져 겹치지 않게) */
+@supports not (container-type: inline-size) {
+  .sp-p__grid {
+    grid-auto-rows: auto;
+  }
+  .sp-p__cell,
+  .sp-p--wide .sp-p__cell {
+    grid-column: auto;
+    grid-row: auto;
+    aspect-ratio: 1;
+  }
+}
+
+/* 알림 탭 '다가오는 일정'(디자인 ReactionsHealth): 문자로 공유하기 카드 모양 + 왼쪽 주사기 */
+.sp-p__soon {
+  padding-left: calc(var(--space-4) + 1.5rem + var(--space-3));
+}
+.sp-p__soon-icon {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sp-p__soon + .sp-p__soon {
+  margin-top: var(--space-2);
+}
+/* 설정 › 아이: 아이 줄 아래 '접종·검진 일정' 줄(디자인 ChildSettings), 이름 글자에 맞춰 들여씀 */
+.sp-p__kid-health {
+  min-height: 2.75rem;
+  padding-left: calc(var(--space-4) + 2.5rem + var(--space-2));
+  border-top: 1px solid var(--separator);
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-p__kid-health .sp-p__hint {
+  display: inline;
+}
+
+/* 설정 › 가족 맨 위 '엄마아빠 · 함께 관리'(디자인 FamilyCoParent): 엄빠 줄, 상대 내보내기는 글자 버튼, 초대는 줄 아래 칸 */
+.sp-p__parent {
+  gap: var(--space-3);
+}
+.sp-p__parent .sp-p__avatar {
+  flex: none;
+}
+.sp-p__parent-out {
+  width: auto;
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  background: none;
+}
+.sp-p__invite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--separator);
+}
+
+/* 앨범 사진 크기 −/+ (98a·98e, 디자인 ParentHomeZoom): 오른쪽 아래 떠 있는 유리 알약(사용자 "우측 아래 플로팅"),
+   탭바 위에(넓은 화면은 탭이 위라 화면 아래). 1·2·3·5칸(2 = 엇갈린 배열) → 월별 → 연별 */
+.sp-p__zoom {
+  position: fixed;
+  z-index: 3;
+  right: max(var(--space-5), env(safe-area-inset-right));
+  bottom: calc(var(--tabbar-top) + var(--space-3));
+  display: flex;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--glass-nav);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator), 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+.sp-p__zoom-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--label);
+  font-size: 1.5rem;
+  line-height: 1;
+  text-decoration: none;
+}
+/* 떠 있는 −/+ 아래로 마지막 줄·포커스가 가리지 않게 */
+.sp-p--tabbed:has(.sp-p__zoom) {
+  padding-bottom: calc(var(--tabbar-top) + var(--space-3) + 3rem + var(--space-6));
+}
+.sp-html:has(.sp-p__zoom) {
+  scroll-padding-bottom: calc(var(--tabbar-top) + var(--space-3) + 3rem + var(--space-4));
+}
+@media (min-width: 64rem) {
+  .sp-p__zoom {
+    bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
+    right: max(var(--space-6), calc((100vw - 72rem) / 2 + var(--space-6)));
+  }
+  .sp-p--tabbed:has(.sp-p__zoom) {
+    padding-bottom: calc(3rem + var(--space-5) + var(--space-6));
+  }
+  .sp-html:has(.sp-p__zoom) {
+    scroll-padding-bottom: calc(3rem + var(--space-5) + var(--space-4));
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__zoom {
+    background: var(--bg);
+  }
+}
+@media (forced-colors: active) {
+  .sp-p__zoom {
+    border: 1px solid CanvasText;
+  }
+}
+/* 1칸: 휴대폰은 한 줄에 한 장 원래 모양(--ar, 아주 긴 사진은 0.6~1.6 비율로 잘림), 넓은 화면은 2줄 엇갈림(아래) */
+.sp-p .sp-p__grid--z1 {
+  --cols: 1;
+  grid-auto-rows: auto;
+}
+.sp-p .sp-p__grid--z1 .sp-p__cell {
+  grid-column: 1;
+  grid-row: auto;
+  aspect-ratio: var(--ar, 1);
+}
+/* 3칸: 정사각 격자 */
+.sp-p .sp-p__grid--z3 {
+  --cols: 3;
+  grid-auto-rows: auto;
+}
+.sp-p .sp-p__grid--z3 .sp-p__cell {
+  grid-column: auto;
+  grid-row: auto;
+  aspect-ratio: 1;
+}
+@media (min-width: 64rem) {
+  .sp-p.sp-p--wide .sp-p__grid--z1 {
+    --cols: 2;
+    grid-auto-rows: var(--u);
+  }
+  .sp-p.sp-p--wide .sp-p__grid--z1 .sp-p__cell {
+    grid-column: var(--c2);
+    grid-row: var(--r2) / span var(--s2);
+    aspect-ratio: auto;
+  }
+  .sp-p.sp-p--wide .sp-p__grid--z3 {
+    --cols: 6;
+  }
+}
+/* cqi를 모르는 옛 브라우저: 넓은 화면 1칸도 엇갈림 대신 한 줄 원래 모양(줄 높이 계산이 깨지지 않게, 리뷰 2026-10-29) */
+@supports not (container-type: inline-size) {
+  .sp-p.sp-p--wide .sp-p__grid--z1 {
+    grid-auto-rows: auto;
+  }
+  .sp-p.sp-p--wide .sp-p__grid--z1 .sp-p__cell {
+    grid-row: auto;
+    aspect-ratio: var(--ar, 1);
+  }
+}
+/* 끝 단계 버튼(href 없는 링크) */
+.sp-p__zoom-btn[aria-disabled='true'] {
+  opacity: 0.35;
+}
+@media (forced-colors: active) {
+  .sp-p__zoom-btn[aria-disabled='true'] {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}
+/* 월별·연별(98a·98c, 시안 GrandList): 월별 = 왼쪽 큰 1장(두 줄) + 오른쪽 2장, 연별 = 왼쪽 큰 1장(2×2) + 오른쪽 작은 4장.
+   날짜·장 수는 사진 위 왼쪽 아래(어두운 그라데이션 위 흰 글자). 누르면 그 달부터 3칸 */
+.sp-p__mcards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.sp-p__mcard {
+  position: relative;
+  display: block;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--fill);
+  color: #fff;
+  text-decoration: none;
+}
+.sp-p__mcard-pics {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  height: 11.25rem;
+}
+.sp-p__mcard-pics--m {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.sp-p__mcard-pics--y {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  height: 13.75rem;
+}
+.sp-p__mcard-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+}
+/* 첫 장(가장 반응 많은 사진)을 크게: 월별은 두 줄, 연별은 2×2. 나머지는 월별이면 두 칸 폭 */
+.sp-p__mcard-pics--m .sp-p__mcard-img:first-child {
+  grid-row: span 2;
+}
+.sp-p__mcard-pics--m .sp-p__mcard-img:not(:first-child) {
+  grid-column: span 2;
+}
+.sp-p__mcard-pics--y .sp-p__mcard-img:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+/* 연별 대표가 5장보다 적은 해(옛 해·한두 달): 4장이면 오른쪽 위 한 장을 넓게, 3장이면 월별 모양, 2장이면 반반 */
+.sp-p__mcard-pics--y.sp-p__mcard-pics--n4 .sp-p__mcard-img:nth-child(2) {
+  grid-column: span 2;
+}
+.sp-p__mcard-pics--y.sp-p__mcard-pics--n3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.sp-p__mcard-pics--y.sp-p__mcard-pics--n3 .sp-p__mcard-img:first-child {
+  grid-column: auto;
+}
+.sp-p__mcard-pics--y.sp-p__mcard-pics--n3 .sp-p__mcard-img:not(:first-child) {
+  grid-column: span 2;
+}
+.sp-p__mcard-pics--y.sp-p__mcard-pics--n2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.sp-p__mcard-pics--y.sp-p__mcard-pics--n2 .sp-p__mcard-img {
+  grid-column: auto;
+  grid-row: span 2;
+}
+/* 두 장뿐이면 오른쪽 한 장이 두 줄을 채움 */
+.sp-p__mcard-pics--m .sp-p__mcard-img:nth-child(2):last-child {
+  grid-row: span 2;
+}
+/* 사진이 한 장뿐이면 꽉(연별 큰 칸 규칙보다 강하게, 리뷰 2026-10-29) */
+.sp-p__mcard-pics .sp-p__mcard-img:only-child,
+.sp-p__mcard-pics--y.sp-p__mcard-pics--n1 .sp-p__mcard-img {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+}
+.sp-p__mcard-text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-8) var(--space-4) var(--space-3);
+  /* 사용자 지정 값(2026-10-29): 아래로 갈수록 진해짐. 아주 밝은 사진 위에선 흰 글자 대비가 기준보다 낮을 수 있음 */
+  background: linear-gradient(#0000, #000000a6 120%);
+}
+.sp-p__mcard-title {
+  font-size: var(--title-2-size);
+  line-height: var(--title-2-line);
+  font-weight: 700;
+}
+.sp-p__mcard-count {
+  font-size: var(--subhead-size);
+}
+@media (forced-colors: active) {
+  .sp-p__mcard {
+    border: 1px solid CanvasText;
+  }
+  .sp-p__mcard-text {
+    background: Canvas;
+    color: CanvasText;
+  }
+}
+@media (min-width: 64rem) {
+  .sp-p--wide .sp-p__mcards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+}
+/* 5칸(98c, 사용자 "5칸 레이아웃 추가"): 정사각 격자, 넓은 화면 8줄 */
+.sp-p .sp-p__grid--z5 {
+  --cols: 5;
+  grid-auto-rows: auto;
+}
+.sp-p .sp-p__grid--z5 .sp-p__cell {
+  grid-column: auto;
+  grid-row: auto;
+  aspect-ratio: 1;
+  border-radius: 6px;
+}
+@media (max-width: 32rem) {
+  .sp-p .sp-p__grid--z5 .sp-p__cell {
+    border-radius: 0;
+  }
+}
+@media (min-width: 64rem) {
+  .sp-p.sp-p--wide .sp-p__grid--z5 {
+    --cols: 8;
+  }
+}
+
+/* 사진 목록 묶음(98e, −/+가 그 자리에서 갈아 끼움): 배치에는 끼지 않음 */
+.sp-p__album {
+  display: contents;
+}
+.sp-p__albumhead-sub:empty {
+  display: none;
+}
+/* 달 묶음 사이 큰 틈 없앰(사용자 2026-10-29 "시기별 gap 삭제"): 달 제목 줄을 뺐으니 사진 간격만 남겨 한 판으로 이어 보이게 */
+.sp-p__month + .sp-p__month {
+  margin-top: calc(-1 * var(--space-5));
+}
+/* 머리 오른쪽 위 아이 오늘 나이(사용자 "아기 정보는 항상 노출", −/+가 아래로 빠진 자리) */
+.sp-p__albumhead {
+  display: grid;
+  /* 제목은 제 폭, 나이 줄이 남는 폭에서 줄바꿈(아이가 여럿·글자 200%여도 제목이 눌리거나 화면 밖으로 안 나가게, 리뷰 2026-10-29) */
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-3);
+  align-items: baseline;
+}
+.sp-p__albumhead > .sp-p__title {
+  grid-column: 1;
+}
+.sp-p__albumhead-sub {
+  grid-column: 1 / -1;
+}
+.sp-p__albumhead-kid {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  column-gap: var(--space-1);
+  font-size: var(--subhead-size);
+  color: var(--label-2);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.sp-p__albumhead-kid-age {
+  color: var(--label);
+  font-weight: 700;
+}
+/* 아이가 여럿이면 제목 아래 한 줄로(오른쪽 좁은 칸에 세로로 쌓이지 않게) */
+.sp-p__albumhead-kid--many {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-content: flex-start;
+  text-align: left;
+}
+.sp-p__albumhead-kid--many ~ .sp-p__albumhead-sub {
+  grid-row: 3;
+}
+/* 기념일 표시(100일·첫돌·생일…, 사용자 "이벤트로"): 칸 왼쪽 위 작은 알약. 사진 위라 틸 바탕 흰 글자(대비 5.4:1) */
+.sp-p__cell-mark {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--pea);
+  color: var(--on-pea);
+  font-size: var(--footnote-size);
+  font-weight: 700;
+  line-height: 1.125rem;
+  pointer-events: none;
+}
+@media (forced-colors: active) {
+  .sp-p__cell-mark {
+    border: 1px solid CanvasText;
+  }
+}
+/* 달·해 카드에서 #m-YYYY-MM으로 올 때 그 달이 위에 붙은 머리 밑에 숨지 않게(아이가 여럿이면 머리가 한 줄 더 높음) */
+.sp-p__month {
+  scroll-margin-top: 7rem;
+}
+.sp-p:has(.sp-p__albumhead-kid--many) .sp-p__month {
+  scroll-margin-top: 9rem;
+}
