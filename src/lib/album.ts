@@ -33,13 +33,21 @@ export function pickZoom(url: URL, cookies: AstroCookies, name: string): Zoom {
   return (saved === 'm' || saved === 'y') && url.searchParams.has('to') ? 3 : saved;
 }
 
+/** 보기(넘겨/모아): 주소 ?v=가 있으면 그것(목록 화면에서 고른 것만 기기 쿠키에 기억), 없으면 쿠키, 그것도 없으면 처음 값 */
+export function pickView(url: URL, cookies: AstroCookies, name: string, first: AlbumQuery['v']): AlbumQuery['v'] {
+  const vp = url.searchParams.get('v');
+  if (vp === 'list' || vp === 'swipe') {
+    if (chosen(url)) cookies.set(name, vp, KEEP);
+    return vp;
+  }
+  const saved = cookies.get(name)?.value;
+  return saved === 'list' || saved === 'swipe' ? saved : first;
+}
+
 /** 가족 앨범 주소 읽기. 보기(넘겨/모아)와 칸 단계는 주소에 없으면 그 기기에 기억한 것(sp_av·sp_az) */
 export function readQuery(url: URL, cookies: AstroCookies, familyIds: string[]): AlbumQuery {
   const f = url.searchParams.get('f') ?? undefined;
-  const vp = url.searchParams.get('v');
-  if ((vp === 'list' || vp === 'swipe') && chosen(url)) cookies.set('sp_av', vp, KEEP);
-  const v = vp === 'list' || vp === 'swipe' ? vp : cookies.get('sp_av')?.value === 'list' ? 'list' : 'swipe';
-  return { f: f && familyIds.includes(f) ? f : undefined, v, z: pickZoom(url, cookies, 'sp_az') };
+  return { f: f && familyIds.includes(f) ? f : undefined, v: pickView(url, cookies, 'sp_av', 'swipe'), z: pickZoom(url, cookies, 'sp_az') };
 }
 
 /** 보기·칸은 늘 주소에 적는다(기억한 값보다 링크가 먼저라, 빼면 기억한 값으로 바뀌어 버림) */
