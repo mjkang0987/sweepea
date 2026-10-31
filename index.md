@@ -17,6 +17,7 @@
 - 엄빠 둘이 함께 관리(0.7.0~): 가족방마다 엄빠 계정 둘까지, 설정 › 가족 맨 위 '함께 관리하는 엄빠'에서 초대 링크(한 번·3일) → `/join/[code]`에서 역할 고르고 로그인 → `/auth/callback`이 받음. 서로 내보낼 수 있고, 탈퇴는 둘이면 나만 나가기(기록 있으면 `parents.removed_at`만). DB `20261029000002`·`000003`
 - 사진 크기 −/+(0.8.0~, 98a): 엄빠 앨범(머리 오른쪽 유리 −/+)·가족 모아 보기 둘 다 1·2·3·5칸(사진 전부) → 월별(큰 1장 + 2장) → 연별(큰 1장 + 4장, `src/lib/months.ts` groupYears) 카드, 날짜는 사진 위(DB sp_media_months, 누르면 그 달부터 3칸). 엄빠 머리 작은 줄은 화면 맨 위 사진의 찍은 날(3·5칸은 기간, 0.9.0~), 가족 날짜 제목은 위에 붙음. 단계는 기기 쿠키(sp_pz·sp_az·가족 보기 sp_av)에 기억, `src/lib/album.ts` pickZoom·albumHref(v·z 늘 주소에)
 - 사진 크기 그 자리에서(0.10.0~, 98e): −/+는 페이지 이동 없이 `src/lib/zoomswap.ts`가 다음 단계를 받아 [data-album]만 갈아 끼우고 View Transitions로 칸이 커지고 작아짐. 엄빠 −/+는 오른쪽 아래 떠 있는 유리 알약(탭바 위), 달 제목 줄은 빼고, 아이 오늘 나이는 머리 오른쪽 위('하린 · 21개월 26일', `ageLabel`, 0.11.0~)
+- 엄빠 앨범 넘겨 보기·모아 보기(98d): 머리 아래 세그먼트, 넘겨 보기는 가족과 같은 카드(`src/styles/swipe.css` 공용, 옆으로 이어 붙이기 `swipeMore`), 카드를 누르면 크게 보기, 닫으면 그 카드가 가운데. −/+는 모아 보기만. 고른 보기는 기기 쿠키 sp_pv(처음엔 모아 보기, `pickView`는 가족 sp_av와 공용)
 - 가족 이름 바꾸기(0.14.0~): 설정 › 가족 › 그 사람 '부르는 이름'(renameMember, DB 변경 없음)
 - 함께 관리 시작 알림(0.13.0~): 상대 엄빠가 초대로 들어오면 먼저 있던 엄빠 앨범에 가운데 레이어 한 번(sp_coparent_seen)
 - 기념일(0.12.0~, 98g): `src/lib/age.ts` dayMark(50일, 100~1000일 백 단위, 그다음 첫돌·두 돌…). 엄빠 앨범 당일 레이어·칸 알약·머리 날짜 줄, 가족 앨범 맨 위 축하 안내·날짜 제목(가족 기기는 sp_me children으로 아이 생일, 승인된 가족만). 달·해 카드는 ?at=YYYY-MM으로 처음부터 그 달까지
@@ -63,6 +64,7 @@ src/styles/base.css     문서 기본 스타일 (.sp-html, .sp-body, 포커스 �
 src/layouts/Base.astro  공통 HTML 뼈대 (lang=ko, theme-color, 공유 미리보기 og, canonical, 페이지 전환 오류 처리)
 src/layouts/Family.astro 가족 화면 뼈대 (글자 크기 쿠키 적용)
 src/styles/family.css   가족 화면 공통 (.sp-f*)
+src/styles/swipe.css    넘겨 보기 카드(.sp-a__swipe·slide·card·pos, 기울이기), 가족 앨범·엄빠 앨범 공용
 src/lib/backend/        백엔드 계약(types.ts, listMedia 커서 before·after·id·찍은 날 범위, countMedia), supabase.ts(fetch로 Auth·RPC), mock.ts(개발용, 운영 금지)
 src/lib/pass.ts         출입증 쿠키(sp_pass, httpOnly)·글자 크기 쿠키(sp_size)
 src/lib/families.ts     가족방 상태 분류(들어감·승인 대기)
@@ -78,7 +80,7 @@ src/pages/i/[code]/     누구세요(index) → 비밀번호(password)
 src/pages/wait.astro    승인 기다림 / 500.astro
 src/pages/album/        앨범(index: 넘겨 보기·모아 보기, [id]: 크게 보기). 쿼리 f(집)·v(보기)·z(칸)
 src/lib/album.ts        앨범 쿼리 읽기·링크, 쪽 불러오기(PAGE 60·loadPage)·크게 보기 창(loadWindow), 반응 수(200장씩)·반응 폼 처리
-src/lib/more.ts         목록 화면 브라우저 공통: 다음 쪽 이어 붙이기(autoMore)·닫고 돌아온 자리(keepSpot)·엇갈린 배열 다시 계산(relayout)
+src/lib/more.ts         목록 화면 브라우저 공통: 다음 쪽 이어 붙이기(autoMore, 넘겨 보기는 swipeMore)·닫고 돌아온 자리(keepSpot)·엇갈린 배열 다시 계산(relayout)
 src/lib/masonry.ts      엇갈린 배열 자리 계산(ratioOf·masonry), 부모 홈·가족 모아 보기 2줄 공용
 src/components/        Viewer(크게 보기, 가족·엄빠 공통. 반응·한마디·지우기는 스크립트가 있으면 페이지 이동 없이 판만 갈아 끼움)·ReactRow(반응 알약·수)·SayForm(한마디)·Toast(안내)·Notice
 src/lib/parent.ts       부모 로그인 제공자·PKCE·부모 화면 진입(loadParent)

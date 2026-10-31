@@ -33,13 +33,21 @@ export function pickZoom(url: URL, cookies: AstroCookies, name: string): Zoom {
   return (saved === 'm' || saved === 'y') && url.searchParams.has('to') ? 3 : saved;
 }
 
+/** 보기(넘겨/모아): 주소 ?v=가 있으면 그것(목록 화면에서 고른 것만 기기 쿠키에 기억), 없으면 쿠키, 그것도 없으면 처음 값 */
+export function pickView(url: URL, cookies: AstroCookies, name: string, first: AlbumQuery['v']): AlbumQuery['v'] {
+  const vp = url.searchParams.get('v');
+  if (vp === 'list' || vp === 'swipe') {
+    if (chosen(url)) cookies.set(name, vp, KEEP);
+    return vp;
+  }
+  const saved = cookies.get(name)?.value;
+  return saved === 'list' || saved === 'swipe' ? saved : first;
+}
+
 /** 가족 앨범 주소 읽기. 보기(넘겨/모아)와 칸 단계는 주소에 없으면 그 기기에 기억한 것(sp_av·sp_az) */
 export function readQuery(url: URL, cookies: AstroCookies, familyIds: string[]): AlbumQuery {
   const f = url.searchParams.get('f') ?? undefined;
-  const vp = url.searchParams.get('v');
-  if ((vp === 'list' || vp === 'swipe') && chosen(url)) cookies.set('sp_av', vp, KEEP);
-  const v = vp === 'list' || vp === 'swipe' ? vp : cookies.get('sp_av')?.value === 'list' ? 'list' : 'swipe';
-  return { f: f && familyIds.includes(f) ? f : undefined, v, z: pickZoom(url, cookies, 'sp_az') };
+  return { f: f && familyIds.includes(f) ? f : undefined, v: pickView(url, cookies, 'sp_av', 'swipe'), z: pickZoom(url, cookies, 'sp_az') };
 }
 
 /** 보기·칸은 늘 주소에 적는다(기억한 값보다 링크가 먼저라, 빼면 기억한 값으로 바뀌어 버림) */
@@ -63,6 +71,8 @@ export interface MediaPage {
   more: boolean;
   /** 이 쪽 앞에 있는 사진 수(넘겨 보기 'n / 전체'의 n) */
   offset: number;
+  /** 전체 사진 수(이어지는 쪽 ?before=는 offset을 셀 때 이미 세어 둠, 다른 쪽은 없음) */
+  total?: number;
 }
 const cursorParam = (m: MediaItem) => `${m.taken_at}~${m.id}`;
 /** ?before= 값 → 커서. 기준 사진을 다시 찾지 않으므로 그사이 지워져도 그 자리부터 이어진다 */
@@ -89,7 +99,7 @@ export async function loadPage(pass: Pass, base: MediaQuery, url: URL): Promise<
       backend.countMedia(pass, base),
       backend.countMedia(pass, { ...base, before }),
     ]);
-    return page(rows, PAGE, true, total - older);
+    return { ...page(rows, PAGE, true, total - older), total };
   }
   // ?at=YYYY-MM(달·해 카드): 처음부터 그 달까지 그려 위로 올리면 최근 달도 보이게(사용자 "월별에서 들어가면 이전 달이 안 보여"). 너무 아래면 그 달부터(?before= 방식)
   const at = url.searchParams.get('at');

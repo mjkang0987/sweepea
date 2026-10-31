@@ -347,21 +347,13 @@ const monthCards = !monthRows
 </Family>
 
 <script>
-  import { autoMore, keepSpot, relayout } from '../../lib/more';
+  import { autoMore, keepSpot, relayout, swipeMore } from '../../lib/more';
   import { zoomInPlace } from '../../lib/zoomswap';
 
   const swipe = document.querySelector<HTMLElement>('.sp-a__swipe');
   if (swipe) {
     // 넘겨 보기: 옆으로 밀다 남은 카드가 다섯 장쯤이면 다음 60장 카드를 뒤에 붙인다(옆 스크롤이라 직접 부름)
-    const more = autoMore(
-      (doc) => [...doc.querySelectorAll<HTMLElement>('.sp-a__slide')].map((li) => swipe.appendChild(document.importNode(li, true))),
-      { observe: false },
-    );
-    const near = () => {
-      if (swipe.scrollLeft + swipe.clientWidth * 6 >= swipe.scrollWidth) more();
-    };
-    swipe.addEventListener('scroll', near, { passive: true });
-    near();
+    swipeMore(swipe);
     // 보신 기록(95): 가운데 카드에 1.5초 머물면 그 사진을 남긴다(사진마다 한 번). 실패는 버림(다음에 다시 보면 남음)
     const seen = new Set<string>();
     let dwell: ReturnType<typeof setTimeout> | undefined;

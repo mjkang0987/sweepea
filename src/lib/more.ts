@@ -82,6 +82,16 @@ export function autoMore(merge: (doc: Document) => HTMLElement[], { observe = tr
   };
 }
 
+/** 넘겨 보기(옆으로 넘기는 줄, 가족·엄빠 공용): 옆으로 밀다 남은 카드가 다섯 장쯤이면 다음 쪽 카드(.sp-a__slide)를 뒤에 붙인다 */
+export function swipeMore(swipe: HTMLElement) {
+  const more = autoMore((doc) => [...doc.querySelectorAll<HTMLElement>('.sp-a__slide')].map((li) => swipe.appendChild(document.importNode(li, true))), { observe: false });
+  const near = () => {
+    if (swipe.scrollLeft + swipe.clientWidth * 6 >= swipe.scrollWidth) more();
+  };
+  swipe.addEventListener('scroll', near, { passive: true });
+  near();
+}
+
 const SPOT = 'sp-spot';
 /** 칸 링크를 누를 때 그 칸의 화면 속 높이를 적어 두고, #c-<id>로 돌아오면 그 칸을 같은 높이에(모르면 가운데) 둔다 */
 export function keepSpot(cellLink: string) {

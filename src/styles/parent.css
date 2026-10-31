@@ -2624,3 +2624,40 @@
 .sp-p:has(.sp-p__albumhead-kid--many) .sp-p__month {
   scroll-margin-top: 9rem;
 }
+
+/* 넘겨 보기(98d, 디자인 ParentHomeSwipe): 카드는 가족과 같은 부품(swipe.css), 글자만 엄빠 크기 */
+.sp-p__swipe .sp-a__card-cap {
+  flex-wrap: nowrap;
+  min-height: var(--target-min);
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-p__swipe .sp-a__card-day {
+  min-width: 0;
+}
+.sp-p__swipe .sp-a__pos {
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+/* 받은 하트·한마디 수(칸 알약과 같은 표시, 카드 바탕 위라 글자색) */
+.sp-p__swipe-counts {
+  flex: none;
+  display: flex;
+  gap: 10px;
+  color: var(--label);
+  font-weight: 600;
+}
+.sp-p__swipe-count {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.sp-p__swipe-heart {
+  color: var(--blossom);
+}
+.sp-p__swipe-say {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
