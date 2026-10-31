@@ -48,13 +48,15 @@ const today = seoulToday();
 // 승인 대기·설치 부탁 띠도 옆 기능이라 실패하면 띠만 뺀다
 // 이어지는 쪽은 사진만 쓰므로 띠는 건너뛴다
 // 넘겨 보기 'n / 전체'의 전체(고른 아이 기준)
-const [page, admin, fp, swipeTotal] = await Promise.all([
+const [page, admin, fp, swipeTotal0] = await Promise.all([
   loadPage(a.pass, { childId: picked?.id }, Astro.url),
   cont ? null : b.familyAdmin(a.pass).catch(() => null),
   cont ? null : b.familyParents(a.pass).catch(() => null),
   // 'n / 전체'의 전체만 빠지는 옆 기능이라 실패하면 그 글자만 뺀다
-  swipe ? b.countMedia(a.pass, { childId: picked?.id }).catch(() => null) : null,
+  // 이어지는 쪽은 loadPage가 이미 셌으니 다시 세지 않는다
+  swipe && !cont ? b.countMedia(a.pass, { childId: picked?.id }).catch(() => null) : null,
 ]);
+const swipeTotal = page.total ?? swipeTotal0;
 // 함께 관리 시작 알림(사용자 2026-10-29 "아빠 접속했다고 알람은 안 뜨네?"): 나보다 나중에 들어온 엄빠가 있고 이 기기에서 아직 안 봤으면 한 번.
 // 옆 기능이라 실패하면 레이어만 뺀다. 30일 지난 일은 띄우지 않음
 const meP = fp?.parents.find((p) => p.me);
@@ -130,7 +132,8 @@ const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric',
 const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
 // 칸마다 받은 하트·한마디 수(디자인: 칸 왼쪽 아래 알약). 옆 기능이라 실패하면 알약만 뺀다
 const reacts = cardView ? null : await loadReacts(a.pass, items.map((m) => m.id)).catch(() => null);
-const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
+// 반올림을 먼저 해서 59.6초가 '0:60'이 되지 않게(리뷰 2026-10-31)
+const clock = (sec: number) => ((s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`)(Math.round(sec));
 type Cell = { id: string; src: string; video: boolean; day: string; d: string; mark: string | null; ratio: number; hearts: number; says: number; length: string | null; at2?: string };
 const months: { ym: string; label: string; count: number; cells: Cell[] }[] = [];
 // 달 묶음 이름(화면 읽기용 제목): 올해면 '10월', 아니면 '2025년 10월'
@@ -183,6 +186,7 @@ const whenFirst = d0 && !cardView && !swipe ? `${d0.slice(0, 4) === today.slice(
 const kidAges = (picked ? [picked] : kids).map((k) => ({ name: k.name, age: ageLabel(k.birth_date, today) })).filter((k) => k.age);
 // 넘겨 보기 카드(98d, 가족 넘겨 보기와 같은 카드): 사진(영상은 포스터) 크게, 누르면 크게 보기. 칸 단계(z)는 안 붙인다(닫으면 기억한 넘겨 보기로)
 const viewQ = picked ? `?k=${encodeURIComponent(picked.id)}` : '';
+const toAt = items.findIndex((m) => m.id === Astro.url.searchParams.get('to'));
 const slides = !swipe
   ? []
   : await Promise.all(
@@ -200,6 +204,9 @@ const slides = !swipe
           hearts: r?.heart ?? 0,
           says: r?.comment ?? 0,
           n: page.offset + i + 1,
+          // 처음 보이는 카드와 양옆만 바로 받는다: 크게 보기에서 닫고 돌아오면(?to=) 그 카드, 아니면 앞 3장
+          eager: toAt >= 0 ? Math.abs(i - toAt) <= 1 : i < 3,
+          first: i === (toAt >= 0 ? toAt : 0),
           href: `/view/${m.id}${viewQ}`,
         };
       }),
@@ -361,7 +368,7 @@ for (const mo of months) {
         {slides.map((c) => (
           <li class="sp-a__slide" id={`c-${c.id}`}>
             <a class="sp-a__card" href={c.href} aria-label={`${c.label}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''} 크게 보기`}>
-              <img class="sp-a__card-img" src={c.src} alt="" loading={c.n > 3 ? 'lazy' : 'eager'} fetchpriority={c.n === 1 ? 'high' : undefined} decoding="async" />
+              <img class="sp-a__card-img" src={c.src} alt="" loading={c.eager ? 'eager' : 'lazy'} fetchpriority={c.first ? 'high' : undefined} decoding="async" />
               <span class="sp-a__card-cap">
                 <span class="sp-a__card-day">{c.cap}</span>
                 {(c.hearts > 0 || c.says > 0) && (

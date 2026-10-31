@@ -71,6 +71,8 @@ export interface MediaPage {
   more: boolean;
   /** 이 쪽 앞에 있는 사진 수(넘겨 보기 'n / 전체'의 n) */
   offset: number;
+  /** 전체 사진 수(이어지는 쪽 ?before=는 offset을 셀 때 이미 세어 둠, 다른 쪽은 없음) */
+  total?: number;
 }
 const cursorParam = (m: MediaItem) => `${m.taken_at}~${m.id}`;
 /** ?before= 값 → 커서. 기준 사진을 다시 찾지 않으므로 그사이 지워져도 그 자리부터 이어진다 */
@@ -97,7 +99,7 @@ export async function loadPage(pass: Pass, base: MediaQuery, url: URL): Promise<
       backend.countMedia(pass, base),
       backend.countMedia(pass, { ...base, before }),
     ]);
-    return page(rows, PAGE, true, total - older);
+    return { ...page(rows, PAGE, true, total - older), total };
   }
   // ?at=YYYY-MM(달·해 카드): 처음부터 그 달까지 그려 위로 올리면 최근 달도 보이게(사용자 "월별에서 들어가면 이전 달이 안 보여"). 너무 아래면 그 달부터(?before= 방식)
   const at = url.searchParams.get('at');
