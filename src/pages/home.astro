@@ -7,7 +7,8 @@ import { callName, hasBatchim } from '../lib/ko';
 import { ageLabel, agoLabel, dayMark, milestone } from '../lib/age';
 import { loadParent, seoulToday } from '../lib/parent';
 import { signedMediaUrl } from '../lib/signed';
-import { loadPage, loadReacts, pickZoom, ZOOMS, type Zoom } from '../lib/album';
+import { dayLabel, loadPage, loadReacts, pickView, pickZoom, ZOOMS, type Zoom } from '../lib/album';
+import '../styles/swipe.css';
 import { groupYears } from '../lib/months';
 import { masonry, ratioOf } from '../lib/masonry';
 import { EMOJI } from '../lib/emoji';
@@ -39,15 +40,19 @@ const picked = kids.length > 1 ? kids.find((k) => k.id === Astro.url.searchParam
 const b = getBackend();
 // 사진 크기(−/+, 98a): 1·2·3칸 = 사진 전부, 월별 = 달마다 대표 3장. 기기 쿠키에 기억
 const z = pickZoom(Astro.url, Astro.cookies, 'sp_pz');
+// 넘겨 보기·모아 보기(98d): 기기 쿠키 sp_pv에 기억, 처음엔 모아 보기(지금까지와 같게)
+const swipe = pickView(Astro.url, Astro.cookies, 'sp_pv', 'list') === 'swipe';
 // 60장씩: ?before=<찍은 날~id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
 const cont = Astro.url.searchParams.has('before');
 const today = seoulToday();
 // 승인 대기·설치 부탁 띠도 옆 기능이라 실패하면 띠만 뺀다
 // 이어지는 쪽은 사진만 쓰므로 띠는 건너뛴다
-const [page, admin, fp] = await Promise.all([
+// 넘겨 보기 'n / 전체'의 전체(고른 아이 기준)
+const [page, admin, fp, swipeTotal] = await Promise.all([
   loadPage(a.pass, { childId: picked?.id }, Astro.url),
   cont ? null : b.familyAdmin(a.pass).catch(() => null),
   cont ? null : b.familyParents(a.pass).catch(() => null),
+  swipe ? b.countMedia(a.pass, { childId: picked?.id }) : 0,
 ]);
 // 함께 관리 시작 알림(사용자 2026-10-29 "아빠 접속했다고 알람은 안 뜨네?"): 나보다 나중에 들어온 엄빠가 있고 이 기기에서 아직 안 봤으면 한 번.
 // 옆 기능이라 실패하면 레이어만 뺀다. 30일 지난 일은 띄우지 않음
@@ -55,12 +60,13 @@ const meP = fp?.parents.find((p) => p.me);
 const newP = fp?.parents.find((p) => !p.me && meP && Date.parse(p.since) > Date.parse(meP.since) && Date.now() - Date.parse(p.since) < 30 * 86_400_000);
 const coparent = newP && Date.parse(newP.since) > (seenAt(Astro.cookies, COPARENT_SEEN) ?? 0) ? { who: newP.role === 'dad' ? '아빠' : '엄마', since: newP.since } : null;
 // 월별·연별 카드(옆 기능이 아니라 이 단계의 본문이라 실패하면 안내 글)
-const cardView = z === 'm' || z === 'y';
+const cardView = !swipe && (z === 'm' || z === 'y');
 const monthCards = cardView && page.items.length ? await b.mediaMonths(a.pass, { childId: picked?.id, reps: 3 }).catch(() => null) : null;
 const { items } = page;
 const kq = picked ? `k=${encodeURIComponent(picked.id)}&` : '';
 // 월별·연별은 카드라 다음 쪽이 없다
-const nextHref = page.next && z !== 'm' && z !== 'y' ? `/home?${kq}z=${z}&before=${encodeURIComponent(page.next)}` : null;
+// 보기도 주소에 적는다(받은 쪽이 같은 보기로 그려지게)
+const nextHref = page.next && !cardView ? `/home?${kq}v=${swipe ? 'swipe' : 'list'}&z=${z}&before=${encodeURIComponent(page.next)}` : null;
 const zoomHref = (to: Zoom) => `/home?${kq}z=${to}`;
 const zi = ZOOMS.indexOf(z);
 const smaller = zi < ZOOMS.length - 1 ? zoomHref(ZOOMS[zi + 1]) : null;
@@ -136,7 +142,7 @@ const markOf = (d: string) => {
 };
 const seoulDay = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(iso));
 const seoulYM = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
-for (const m of cardView ? [] : items) {
+for (const m of cardView || swipe ? [] : items) {
   const ym = seoulYM(m.taken_at);
   const label = ym.slice(0, 4) === today.slice(0, 4) ? `${Number(ym.slice(5, 7))}월` : monthFmt.format(new Date(m.taken_at));
   if (months.at(-1)?.label !== label) {
@@ -170,9 +176,32 @@ await Promise.all(
 // 머리 작은 줄 첫 값(스크립트 없어도): 맨 위 사진의 찍은 날, 올해가 아니면 연도도
 const d0 = items[0] ? seoulDay(items[0].taken_at) : '';
 const mark0 = d0 && (z === 1 || z === 2) ? markOf(d0) : null;
-const whenFirst = d0 && !cardView ? `${d0.slice(0, 4) === today.slice(0, 4) ? '' : `${d0.slice(0, 4)}년 `}${dayFmt.format(new Date(items[0].taken_at))}${mark0 ? ` · ${mark0}` : ''}` : null;
+const whenFirst = d0 && !cardView && !swipe ? `${d0.slice(0, 4) === today.slice(0, 4) ? '' : `${d0.slice(0, 4)}년 `}${dayFmt.format(new Date(items[0].taken_at))}${mark0 ? ` · ${mark0}` : ''}` : null;
 // 머리 오른쪽 위 아이 오늘 나이(사용자 2026-10-29 "아기 정보는 항상 노출, N개월 NN일", 디자인 ParentHomeZoom): 고른 아이, 전체면 아이마다
 const kidAges = (picked ? [picked] : kids).map((k) => ({ name: k.name, age: ageLabel(k.birth_date, today) })).filter((k) => k.age);
+// 넘겨 보기 카드(98d, 가족 넘겨 보기와 같은 카드): 사진(영상은 포스터) 크게, 누르면 크게 보기. 칸 단계(z)는 안 붙인다(닫으면 기억한 넘겨 보기로)
+const viewQ = picked ? `?k=${encodeURIComponent(picked.id)}` : '';
+const slides = !swipe
+  ? []
+  : await Promise.all(
+      items.map(async (m, i) => {
+        const r = reacts?.get(m.id)?.counts;
+        const video = m.kind === 'video';
+        const mark = markOf(seoulDay(m.taken_at));
+        const length = video && m.duration_sec ? clock(Number(m.duration_sec)) : null;
+        return {
+          id: m.id,
+          src: await signedMediaUrl(video ? (m.poster_key ?? m.thumb_key) : m.view_key),
+          cap: [dayLabel(m.taken_at), mark, video && `영상${length ? ` ${length}` : ''}`].filter(Boolean).join(' · '),
+          // 화면 읽기: 날짜 · 기념일 · 영상 길이, 사진이면 '사진'
+          label: [dayLabel(m.taken_at), mark, video ? `영상${length ? ` ${length}` : ''}` : '사진'].filter(Boolean).join(' '),
+          hearts: r?.heart ?? 0,
+          says: r?.comment ?? 0,
+          n: page.offset + i + 1,
+          href: `/view/${m.id}${viewQ}`,
+        };
+      }),
+    );
 // 엇갈린 배열 자리: 휴대폰 2줄, 넓은 화면 4줄(CSS가 화면 폭에 맞는 쪽을 씀). 1칸은 휴대폰 한 줄(원래 모양 --ar), 넓은 화면 2줄. 3·5칸은 정사각이라 자리 없음
 for (const mo of months) {
   if (z === 3 || z === 5) continue;
@@ -184,7 +213,7 @@ for (const mo of months) {
 }
 ---
 
-<Parent title="앨범 · 스위피" tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0} wide>
+<Parent title="앨범 · 스위피" tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0} wide={!swipe}>
   {/* 위에 붙는 머리(디자인 ParentHomeBleed, 아이폰 사진 앱처럼 사진이 밑으로 흐리게 지나감). 아이를 고르면 수는 가족 전체라 숨김 */}
   <header class="sp-p__albumhead">
     <h1 class="sp-p__title sp-p__title--large">앨범</h1>
@@ -294,6 +323,15 @@ for (const mo of months) {
       </a>
     )
   }
+  {/* 넘겨 보기·모아 보기(98d, 디자인 ParentHomeSwipe). 사진이 하나도 없으면 첫 사진 안내만 */}
+  {
+    (a.home.photo_count ?? 0) + (a.home.video_count ?? 0) > 0 && (
+      <nav class="sp-p__seg" aria-label="보기 방식">
+        <a class="sp-p__seg-item" href={`/home?${kq}v=swipe`} aria-current={swipe ? 'page' : undefined}>넘겨 보기</a>
+        <a class="sp-p__seg-item" href={`/home?${kq}v=list`} aria-current={swipe ? undefined : 'page'}>모아 보기</a>
+      </nav>
+    )
+  }
   {
     kids.length > 1 && (
       <nav class="sp-p__seg" aria-label="아이 고르기">
@@ -315,6 +353,34 @@ for (const mo of months) {
         <h2 class="sp-p__empty-title" id="empty-title">{kid} 첫 사진을 올려 주세요</h2>
         <p class="sp-p__lead">올리고 카톡으로 보내면 조부모님이<br />설치 없이 바로 보실 수 있어요</p>
       </section>
+    ) : swipe ? (
+      /* 가족 넘겨 보기와 같은 카드(swipe.css): 가운데 카드 + 양옆 비스듬히, 손가락으로 밀면 넘어감(scroll-snap). 카드 전체가 크게 보기 링크 */
+      <ul class="sp-a__swipe sp-p__swipe" aria-label={`사진 ${swipeTotal.toLocaleString('ko-KR')}장, 옆으로 밀어서 넘겨 보기`}>
+        {slides.map((c) => (
+          <li class="sp-a__slide" id={`c-${c.id}`}>
+            <a class="sp-a__card" href={c.href} aria-label={`${c.label}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''} 크게 보기`}>
+              <img class="sp-a__card-img" src={c.src} alt="" loading={c.n > 3 ? 'lazy' : 'eager'} fetchpriority={c.n === 1 ? 'high' : undefined} decoding="async" />
+              <span class="sp-a__card-cap">
+                <span class="sp-a__card-day">{c.cap}</span>
+                {(c.hearts > 0 || c.says > 0) && (
+                  <span class="sp-p__swipe-counts" aria-hidden="true">
+                    {c.hearts > 0 && <span class="sp-p__swipe-count"><span class="sp-p__swipe-heart">♥</span>{c.hearts}</span>}
+                    {c.says > 0 && (
+                      <span class="sp-p__swipe-count">
+                        <svg class="sp-p__swipe-say" width="14" height="14" viewBox="0 0 24 24" focusable="false"><path d="M4 5h16v11H9l-5 4z" /></svg>
+                        {c.says}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </span>
+            </a>
+            <p class="sp-a__pos">
+              <strong class="sp-a__pos-n">{c.n.toLocaleString('ko-KR')}</strong> / {swipeTotal.toLocaleString('ko-KR')}<span aria-hidden="true"> · 옆으로 밀거나 옆 사진을 누르세요</span>
+            </p>
+          </li>
+        ))}
+      </ul>
     ) : cards ? (
       <ul class="sp-p__mcards">
         {cards.map((c) => (
@@ -385,7 +451,7 @@ for (const mo of months) {
   )}
   </div>
   {/* 사진 크기(디자인 ParentHomeZoom): 오른쪽 아래 떠 있는 유리 −/+. 키보드 순서도 사진 목록 뒤(화면 자리와 맞게) */}
-  {items.length > 0 && (
+  {items.length > 0 && !swipe && (
     <nav class="sp-p__zoom" aria-label="사진 크기">
       {/* 끝 단계는 꺼진 링크(화면 읽기에도 '사용 불가'로 들리게) */}
       <a class="sp-p__zoom-btn" href={smaller ?? undefined} role="link" aria-disabled={smaller ? undefined : 'true'} aria-label={z === 5 ? '작게(달마다 대표 사진)' : z === 'm' ? '작게(해마다 대표 사진)' : z === 'y' ? '작게' : '작게(한 줄에 더 많이)'}>−</a>
@@ -395,11 +461,14 @@ for (const mo of months) {
 </Parent>
 
 <script>
-  import { autoMore, keepSpot, relayout } from '../lib/more';
+  import { autoMore, keepSpot, relayout, swipeMore } from '../lib/more';
   import { zoomInPlace } from '../lib/zoomswap';
 
+  // 넘겨 보기(98d): 옆으로 밀다 남은 카드가 다섯 장쯤이면 다음 60장 카드를 뒤에 붙인다. 돌아온 카드(#c-<id>)는 브라우저가 가운데로
+  const swipe = document.querySelector<HTMLElement>('.sp-a__swipe');
+  if (swipe) swipeMore(swipe);
   // 다음 60장: 같은 달이면 그 달에 칸을 합치고, 아니면 달 묶음을 뒤에 붙인다(달 사진 수는 서버가 그 달 전체로 셈)
-  autoMore((doc) => {
+  else autoMore((doc) => {
     const added: HTMLElement[] = [];
     for (const sec of doc.querySelectorAll<HTMLElement>('.sp-p__month')) {
       const last = [...document.querySelectorAll<HTMLElement>('.sp-p__month')].at(-1);
@@ -416,7 +485,7 @@ for (const mo of months) {
     }
     return added;
   });
-  keepSpot('.sp-p__cell-link');
+  if (!swipe) keepSpot('.sp-p__cell-link');
 
   // 머리 작은 줄(98c): 스크롤 따라 화면 맨 위 사진의 찍은 날, 3·5칸은 보이는 사진들의 기간('10월 1일 ~ 21일'). 한 프레임에 한 번만
   // 줄은 크기를 그 자리에서 바꿀 때 갈아 끼워지므로 그때그때 찾는다
