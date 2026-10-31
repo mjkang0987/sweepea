@@ -39,7 +39,9 @@ def swipe(t):
               f'<span style="flex: 1;">10월 21일 · 하린 100일</span>{heart}</span></a>'
               '</div>'
               '<p style="margin: 0; text-align: center; font-size: 15px; line-height: 20px; font-weight: 500; color: var(--label-2);"><strong style="color: var(--label); font-weight: 700;">1</strong> / 1,321 · 옆으로 밀거나 옆 사진을 누르세요</p>'
-              '</section>')
+              '</section>'
+              # 목록 끝(디자인 LoadMore, 가족 넘겨 보기와 같게): 끝에 가까우면 저절로 이어 붙이고, 스크립트가 없으면 이 링크로 다음 60장
+              '<div style="padding: 24px 20px 0;"><a href="LoadMore'+t+'.dc.html" style="min-height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--fill); color: var(--pea-deep); font-size: 17px; line-height: 22px; font-weight: 700; text-decoration: none;">사진 더 보기</a></div>')
     s=s[:i]+carousel+s[j:]
     open(f'ParentHomeSwipe{t}.dc.html','w').write(s)
 d=json.load(open('canvas.json')); B=d['boards']
