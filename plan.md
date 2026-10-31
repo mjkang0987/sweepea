@@ -1288,7 +1288,7 @@
 - 결과(0.9.0): 검토 3회(연별 기억 중 돌아오면 자리 잃음 → ?to=면 칸, 연별 더 보기 링크 없앰, 카드 글자 대비 → 글자 자리부터 진한 막(6.5:1 이상), 연별 대표 1~4장 배치, 가족 붙는 날짜 제목 노치·초점 가림, 기간 연도 표기). 단위 검사 months.test.ts. 남은 것: 98e 그 자리에서 크기 바꾸기, 98d 엄빠 넘겨 보기, 98b 나이별
 - 영향 파일: src/lib/album.ts(ZOOMS에 'y', 연 묶기), src/pages/home.astro, src/pages/album/index.astro, src/styles/{parent,family}.css, tools/design/parentzoom.py, e2e parentzoom·familyzoom
 
-#### 98d. feature/parent-swipe — 엄빠 앨범에도 넘겨 보기·모아 보기 (진행 중, 2026-10-31)
+#### 98d. feature/parent-swipe — 엄빠 앨범에도 넘겨 보기·모아 보기 (완료, 0.15.0)
 - 요구(사용자 2026-10-29 "모아보기 넘겨보기도 없고"): 가족 앨범처럼 엄빠 앨범에도 '넘겨 보기 · 모아 보기' 세그먼트. 모아 보기 = 지금 앨범(−/+ 단계), 넘겨 보기 = 큰 카드 옆으로 넘기기(가족 넘겨 보기와 같은 부품). 고른 보기는 기기에 기억
 - 순서: 보드 → 계획 자세히 → 개발 (사용자 2026-10-31 "98d 엄빠 넘겨 보기", 브랜치는 평소대로 feature → dev)
 - 디자인(보드 ParentHomeSwipe, 다크·라이트, 스크립트 tools/design/parentswipe.py): ParentHomeZoom3에서
@@ -1304,6 +1304,9 @@
 - 영향받는 파일: `src/lib/album.ts`, `src/pages/home.astro`, `src/styles/swipe.css`(새), `src/styles/family.css`, `src/styles/parent.css`, `src/layouts/Family.astro`, `tools/design/parentswipe.py`(새), `tools/e2e/parentswipe.py`(새), `index.md`, `plan.md`
 - 예상 결과: 엄빠 앨범에서 넘겨 보기·모아 보기를 오가고, 고른 보기가 다시 열어도 그대로. 넘겨 보기에서 카드를 눌러 크게 보기 → 닫으면 그 카드가 가운데. 가족 넘겨 보기는 그대로(familyzoom·vswipe e2e 통과). 타입 검사·단위 검사·빌드 통과
 - 범위 밖: 엄빠 넘겨 보기에서 바로 반응 보내기, 보신 기록(엄빠는 남기지 않음)
+- 결과(0.15.0, 디자인 캔버스 v202): 검토 3회(따로 리뷰어). 1회차: −/+·달 카드 링크에 v=list(다른 창에서 넘겨 보기를 고르면 −/+가 카드를 그려 깨짐), 넘겨 보기 전체 수 실패 시 '/ 전체'만 빼기, 칸 전용 스크립트(머리 날짜·zoomInPlace·keepSpot)는 모아 보기만. 2회차: 이어지는 쪽 전체 수 두 번 세기 → `MediaPage.total`, 돌아올 때(?to=) 그 카드 둘레만 큰 사진 바로 받기, 영상 길이 반올림('0:60' → '1:00'). 3회차: 이어 붙는 쪽은 미리 받기 없음. PC(64rem~)는 가족처럼 넘겨 보기일 때 넓은 화면 끔(카드가 겹쳐 깨짐)
+- 검증: e2e parentswipe.py 24개(기억·첫 쪽 밖 카드 닫고 돌아오기·스크립트 없이 다음 쪽), vswipe·familyzoom·parentzoom·loadmore 통과, 타입·단위 44·빌드. 디자인 대조 라이트·다크·PC
+- 발견(남음): 검사 사진 `tools/e2e/u2.jpg`에 찍은 날(EXIF)이 없어 파일 시각을 씀 → 날짜가 바뀌면(서울 11월) parentzoom·familyzoom이 달 수를 틀리게 셈. 이번엔 파일 시각을 10월로 돌려 돌림. 고치려면 u2.jpg에 EXIF 날짜를 넣거나 검사가 날짜를 직접 정하게. 예전 e2e 여러 개가 `/home/claude/sweepea` 경로 고정(새 환경에선 링크 필요). 가족 앨범도 넘겨 보기 전체 수(countMedia)가 실패하면 화면 전체가 500
 
 #### 98e. 사진 크기 바꿀 때 페이지 전환 없이 그 자리에서 (완료, 0.10.0)
 - 요구(사용자 2026-10-29): "키우고 작아지는 거 페이지 전환이라 너무 구린데 방법 없어?"
