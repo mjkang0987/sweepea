@@ -204,9 +204,9 @@ const slides = !swipe
           hearts: r?.heart ?? 0,
           says: r?.comment ?? 0,
           n: page.offset + i + 1,
-          // 처음 보이는 카드와 양옆만 바로 받는다: 크게 보기에서 닫고 돌아오면(?to=) 그 카드, 아니면 앞 3장
-          eager: toAt >= 0 ? Math.abs(i - toAt) <= 1 : i < 3,
-          first: i === (toAt >= 0 ? toAt : 0),
+          // 처음 보이는 카드와 양옆만 바로 받는다: 크게 보기에서 닫고 돌아오면(?to=) 그 카드, 아니면 앞 3장. 뒤에 이어 붙는 쪽(?before=)은 모두 나중에
+          eager: !cont && (toAt >= 0 ? Math.abs(i - toAt) <= 1 : i < 3),
+          first: !cont && i === (toAt >= 0 ? toAt : 0),
           href: `/view/${m.id}${viewQ}`,
         };
       }),
