@@ -68,6 +68,11 @@ with sync_playwright() as p:
     # 5) 모아 보기로 돌아가면 칸·−/+, 기억도 모아 보기
     pg.get_by_role('navigation',name='보기 방식').get_by_role('link',name='모아 보기').click(); pg.wait_for_url('**v=list**'); pg.wait_for_selector('.sp-p__cell-img')
     check(pg.locator('.sp-p__zoom').count()==1 and pg.locator('.sp-a__swipe').count()==0,'모아 보기: 칸·−/+')
+    # 다른 창에서 넘겨 보기를 골라 쿠키가 바뀌어도 −/+는 칸 단계로(리뷰 2026-10-31)
+    other=pg.context.new_page(); other.goto(B+'/home?v=swipe'); other.wait_for_selector('.sp-a__swipe'); other.close()
+    pg.get_by_role('link',name='작게(한 줄에 더 많이)').click(); pg.wait_for_url('**z=3**'); pg.wait_for_selector('.sp-p__grid--z3 .sp-p__cell-img')
+    check(pg.locator('.sp-a__swipe').count()==0 and pg.locator('.sp-p__zoom').count()==1,'다른 창에서 넘겨 보기를 골라도 −/+는 칸으로')
+    pg.get_by_role('navigation',name='보기 방식').get_by_role('link',name='모아 보기').click(); pg.wait_for_url('**v=list**')
     pg.goto(B+'/home'); pg.wait_for_selector('.sp-p__cell-img'); check(pg.locator('.sp-a__swipe').count()==0,'다시 열어도 모아 보기')
     # 6) 스크립트 없이도 넘겨 보기·다음 쪽 링크
     nj=br.new_context(viewport={'width':390,'height':844},java_script_enabled=False,storage_state=pg.context.storage_state()).new_page()
