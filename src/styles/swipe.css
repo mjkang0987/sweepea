@@ -39,14 +39,12 @@
   /* 반응 줄이 카드보다 넓어 옆 카드 칸과 겹친다. 빈 칸은 누름을 통과시키고 카드·줄만 받는다 */
   pointer-events: none;
 }
-.sp-a__card {
-  pointer-events: auto;
-}
 .sp-a__slide + .sp-a__slide {
   /* 양옆 카드가 가운데 카드 뒤로 겹쳐 들어가게 */
   margin-inline-start: -4.5rem;
 }
 .sp-a__card {
+  pointer-events: auto;
   position: relative;
   height: 22.5rem;
   display: flex;
@@ -113,7 +111,6 @@
     .sp-a__pos {
       animation-name: sp-a-fade;
     }
-
   }
 }
 /* 0%: 오른쪽(다음) 카드, 100%: 왼쪽(이전) 카드. 안쪽 모서리를 축으로 기울여 가운데 카드에 붙게 */
