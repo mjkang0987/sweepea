@@ -639,12 +639,14 @@
   font-size: var(--senior-body-size);
 }
 .sp-a__play {
-  /* 영상(117x·117y, 사용자 "어른들 생각해서 티 나게"): 사진 가운데 어두운 ▶ 동그라미 56px */
+  /* 영상(117x·117y·117z, 사용자 "어른들 생각해서 티 나게", "재생 아이콘 더 크게"): 사진 가운데 어두운 ▶ 동그라미, 칸 폭의 60%(최대 80px) */
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 60%;
+  max-width: 5rem;
+  height: auto;
+  aspect-ratio: 1;
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
@@ -656,11 +658,13 @@
   pointer-events: none;
 }
 .sp-a__grid--5 .sp-a__play {
-  /* 5칸: 작은 칸은 칸의 70%를 채워 영상인 게 바로 보이게 */
-  width: 70%;
-  height: auto;
-  aspect-ratio: 1;
-  font-size: 1.125rem;
+  /* 5칸: 작은 칸은 칸의 75%를 채워 영상인 게 바로 보이게 */
+  width: 75%;
+}
+.sp-a__play-icon {
+  width: 50%;
+  height: 50%;
+  fill: currentColor;
 }
 .sp-a__zoom {
   /* 화면 아래에 떠 있지만 DOM에선 사진들 앞(키보드로 바로 닿게) */

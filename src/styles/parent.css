@@ -654,11 +654,14 @@
 }
 /* 영상 표시(117v·117x, 사용자 "영상인 경우 티 나게"): 사진 가운데 어두운 ▶ 동그라미(5칸은 작게) + 오른쪽 아래 길이 */
 .sp-p__cell-play {
+  /* 칸 폭의 60%(최대 80px), 사용자 "재생 아이콘 더 크게"(117z) */
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 60%;
+  max-width: 5rem;
+  height: auto;
+  aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.6);
@@ -669,6 +672,8 @@
   pointer-events: none;
 }
 .sp-p__cell-play-icon {
+  width: 50%;
+  height: 50%;
   fill: currentColor;
 }
 .sp-p__cell-length {
@@ -683,12 +688,7 @@
   color: #ffffff;
 }
 .sp-p__grid--z5 .sp-p__cell-play {
-  width: 1.5rem;
-  height: 1.5rem;
-}
-.sp-p__grid--z5 .sp-p__cell-play-icon {
-  width: 12px;
-  height: 12px;
+  width: 75%;
 }
 .sp-p__grid--z5 .sp-p__cell-length {
   display: none;

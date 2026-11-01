@@ -367,7 +367,7 @@ const monthCards = !monthRows
                       decoding="async"
                     />
                     {showTag && (q.z === 1 || q.z === 2) && <span class="sp-a__tag sp-a__tag--on" aria-hidden="true">{c.kid}</span>}
-                    {c.kind === 'video' && <span class="sp-a__play" aria-hidden="true">▶</span>}
+                    {c.kind === 'video' && <span class="sp-a__play" aria-hidden="true"><svg class="sp-a__play-icon" width="24" height="24" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
                     {c.fresh && !c.top && <span class="sp-a__new" aria-hidden="true">새 사진</span>}
                     {(reacts.get(c.id)?.counts.heart || reacts.get(c.id)?.counts.comment) && q.z !== 5 && (
                       <span class="sp-a__badge">
