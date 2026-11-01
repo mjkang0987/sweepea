@@ -10,4 +10,5 @@ export function parseAvatar(v: unknown): number | null | undefined {
 }
 
 /** 고르지 않았을 때 동그라미 글자: 이름 마지막 낱말 첫 글자('하린 아빠' → 아) */
-export const initialOf = (name: string) => (name.split(' ').at(-1) || name).slice(0, 1);
+// 글자 단위로(이모지를 반쪽으로 자르지 않게)
+export const initialOf = (name: string) => [...(name.split(' ').at(-1) || name)][0] ?? '';

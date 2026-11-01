@@ -7,7 +7,7 @@ import { chosenTextSize, currentPass } from '../../../lib/pass';
 import { callName } from '../../../lib/ko';
 import { NOTICES, type NoticeKey } from '../../../lib/notices';
 import { isOpen, isWaiting } from '../../../lib/families';
-import { avatarSrc } from '../../../lib/avatar';
+import { avatarSrc, initialOf } from '../../../lib/avatar';
 
 const code = Astro.params.code ?? '';
 let notice: NoticeKey | null = /^[A-Za-z0-9]{8}$/.test(code) ? null : 'not_found';
@@ -91,7 +91,7 @@ const nameError = Astro.url.searchParams.get('e') === 'name' ? '이름을 1~12�
                     <li>
                       {/* 묶음에 캐릭터가 하나라도 있으면 모두 왼쪽 정렬, 안 고른 사람은 이름 첫 글자 동그라미(섞여 보이지 않게, 리뷰 2회차) */}
                       <button class:list={['sp-f__name', g.members.some((x) => x.avatar) && 'sp-f__name--av']} type="submit" name="m" value={m.id}>
-                        {m.avatar ? <img class="sp-avatar" src={avatarSrc(m.avatar)} width="40" height="40" alt="" /> : g.members.some((x) => x.avatar) && <span class="sp-avatar sp-avatar--initial" aria-hidden="true">{m.name.slice(0, 1)}</span>}
+                        {m.avatar ? <img class="sp-avatar" src={avatarSrc(m.avatar)} width="40" height="40" alt="" /> : g.members.some((x) => x.avatar) && <span class="sp-avatar sp-avatar--initial" aria-hidden="true">{initialOf(m.name)}</span>}
                         {m.name}
                       </button>
                     </li>
