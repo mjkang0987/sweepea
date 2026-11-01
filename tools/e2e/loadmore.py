@@ -107,6 +107,7 @@ with sync_playwright() as p:
     gp.evaluate("(()=>{const s=document.querySelector('.sp-a__swipe');s.scrollLeft=s.scrollWidth})()")
     gp.wait_for_function("document.querySelectorAll('.sp-a__slide').length===120",timeout=20000)
     check(gp.locator('.sp-a__slide').nth(60).locator('.sp-a__pos-n').inner_text()=='61','붙은 카드 번호가 이어짐(61)')
+    check('/ 130' in gp.locator('.sp-a__slide').nth(60).locator('.sp-a__pos').inner_text(),'붙은 카드도 / 130(이어지는 쪽 전체 수)')
     # 붙은 카드(70번째)에서 하트를 보내도 그 카드로 돌아옴(스크립트 없는 폼 → to=)
     s70=gp.locator('.sp-a__slide').nth(69); sid70=s70.get_attribute('id')
     s70.evaluate("e=>e.scrollIntoView({inline:'center',block:'nearest'})"); gp.wait_for_timeout(400)
