@@ -9,7 +9,7 @@ import { SWEEPEA_MOCK_USED_BYTES } from 'astro:env/server';
 const MOCK_USED = SWEEPEA_MOCK_USED_BYTES ?? 0;
 
 interface Group { id: string; familyId: string; name: string; hint: string; password: string; exclude?: boolean }
-interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean; helpAt?: number; entryShare?: string }
+interface Member { id: string; groupId: string; name: string; status: 'active' | 'pending' | 'rejected'; uploader?: boolean; helpAt?: number; entryShare?: string; avatar?: number | null }
 interface Share { code: string; groupIds: string[]; createdAt: number; targetMemberId?: string; usedAt?: number; closed?: boolean; revoked?: boolean; mediaIds?: string[] }
 interface Device { id: string; familyId: string; status: 'active' | 'pending' | 'revoked'; memberId?: string; requestedName?: string; failures: Map<string, number[]>; canUpload?: boolean }
 
@@ -69,7 +69,7 @@ const reactedAt = new Map<string, number>();
 // 부모 → 최근 반응을 마지막으로 연 때
 const seenAt = new Map<string, number>();
 // 부모: 세션(access) → 가족방·역할
-const parents = new Map<string, { familyId: string; role: 'mom' | 'dad'; since?: number; id?: string }>();
+const parents = new Map<string, { familyId: string; role: 'mom' | 'dad'; since?: number; id?: string; avatar?: number | null }>();
 // 엄빠 초대 링크(공동 관리자): 코드 → 가족방·만든 사람·만든 때·쓴 때
 const parentInvites: { code: string; familyId: string; by: string; at: number; usedAt?: number }[] = [];
 const familyParentsOf = (fam: string) => [...parents].filter(([, p]) => p.familyId === fam);
@@ -124,6 +124,11 @@ function authorName(id: string): string | null {
   if (id.startsWith('p:')) return parents.get(id.slice(2))?.role === 'dad' ? '아빠' : '엄마';
   return members.find((m) => m.id === id && m.status === 'active')?.name ?? null;
 }
+const authorAvatar = (id: string) => (id.startsWith('p:') ? parents.get(id.slice(2))?.avatar : members.find((m) => m.id === id)?.avatar) ?? null;
+// 캐릭터 번호 검사(DB check 1~45 흉내)
+const checkAvatar = (n: number | null) => {
+  if (n !== null && !(Number.isInteger(n) && n >= 1 && n <= 45)) throw new BackendError('avatar_check', 400, '23514');
+};
 // 내가 쓴 한마디로 칠 작성자(DB sp_device_members처럼 활성 기기·승인된 구성원, 그리고 내 부모 계정)
 function myAuthors(pass: Pass): Set<string> {
   const out = new Set<string>([parentKey(pass)]);
@@ -192,7 +197,7 @@ export function createMockBackend(): Backend {
             id: g.id,
             name: g.name,
             hint: g.hint,
-            members: members.filter((m) => m.groupId === g.id && m.status === 'active').map((m) => ({ id: m.id, name: m.name })),
+            members: members.filter((m) => m.groupId === g.id && m.status === 'active').map((m) => ({ id: m.id, name: m.name, avatar: m.avatar ?? null })),
           })),
       };
     },
@@ -259,7 +264,7 @@ export function createMockBackend(): Backend {
       const families: MeFamily[] = [];
       for (const [k, d] of devices) {
         if (k.startsWith(`${pass.access}|`)) {
-          families.push({ ...meOf(d)!, family_id: d.familyId, closed: isClosing(d.familyId), child_name: firstChild(d.familyId), download_allowed: !!downloads[d.familyId], children: d.status === 'active' && meOf(d)?.member === 'active' ? kids.filter((k) => k.familyId === d.familyId).map((k) => ({ name: k.name, birth_date: k.birth_date })) : null });
+          families.push({ ...meOf(d)!, family_id: d.familyId, closed: isClosing(d.familyId), child_name: firstChild(d.familyId), download_allowed: !!downloads[d.familyId], avatar: members.find((m) => m.id === d.memberId)?.avatar ?? null, children: d.status === 'active' && meOf(d)?.member === 'active' ? kids.filter((k) => k.familyId === d.familyId).map((k) => ({ name: k.name, birth_date: k.birth_date })) : null });
         }
       }
       return { families };
@@ -403,7 +408,7 @@ export function createMockBackend(): Backend {
       const mine = myAuthors(pass);
       return comments
         .filter((c) => !c.deleted && c.mediaId === id && authorName(c.memberId))
-        .map((c) => ({ id: c.id, name: authorName(c.memberId)!, body: c.body, created_at: new Date(c.at).toISOString(), mine: mine.has(c.memberId) }))
+        .map((c) => ({ id: c.id, name: authorName(c.memberId)!, body: c.body, created_at: new Date(c.at).toISOString(), mine: mine.has(c.memberId), avatar: authorAvatar(c.memberId) }))
         .reverse()
         .slice(0, 100);
     },
@@ -424,7 +429,7 @@ export function createMockBackend(): Backend {
         groups: gs.map((g) => ({ id: g.id, name: g.name, include_by_default: !g.exclude, password_hint: g.hint || null })),
         members: members
           .filter((m) => gs.some((g) => g.id === m.groupId))
-          .map((m) => ({ id: m.id, group_id: m.groupId, display_name: m.name, status: m.status, pending_until: m.status === 'pending' ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, install_help_at: m.helpAt ? new Date(m.helpAt).toISOString() : null, created_at: bornAt(m) })),
+          .map((m) => ({ id: m.id, group_id: m.groupId, display_name: m.name, status: m.status, pending_until: m.status === 'pending' ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, install_help_at: m.helpAt ? new Date(m.helpAt).toISOString() : null, avatar: m.avatar ?? null, created_at: bornAt(m) })),
         devices: [...devices.values()]
           .filter((d) => d.familyId === fam)
           .map((d) => ({ id: d.id, member_id: d.memberId ?? null, status: d.status, requested_name: d.requestedName ?? null, requested_group_id: null, requested_member_id: null, can_upload: !!d.canUpload, last_seen_at: now, created_at: bornAt(d) })),
@@ -583,7 +588,7 @@ export function createMockBackend(): Backend {
       if (!p) return { family_id: null };
       const ready = media.filter((x) => x.family_id === p.familyId && x.status === 'ready');
       return {
-        family_id: p.familyId, role: p.role, closing: isClosing(p.familyId), new_activity: activityOf(p.familyId).filter((x) => Date.parse(x.at) > (seenAt.get(pass.access) ?? 0)).length,
+        family_id: p.familyId, role: p.role, avatar: p.avatar ?? null, closing: isClosing(p.familyId), new_activity: activityOf(p.familyId).filter((x) => Date.parse(x.at) > (seenAt.get(pass.access) ?? 0)).length,
         waiting: members.filter((m) => m.status === 'pending' && groups.find((g) => g.id === m.groupId)?.familyId === p.familyId).length + [...devices.values()].filter((d) => d.familyId === p.familyId && d.status === 'pending').length, delete_after: isClosing(p.familyId) ? new Date(closingAt[p.familyId]).toISOString() : null, download_allowed: !!downloads[p.familyId],
         storage_used_bytes: (used[p.familyId] ?? 0) + MOCK_USED, photo_count: ready.filter((x) => x.kind === 'photo').length, video_count: ready.filter((x) => x.kind === 'video').length,
         provider: null, text_size_mode: sizeModes[p.familyId] ?? 'relation',
@@ -614,6 +619,19 @@ export function createMockBackend(): Backend {
     cleanupStaleUploads: async () => 0,
     r2CleanupTake: async () => [],
     r2CleanupDone: async () => {},
+    async setMemberAvatar(pass, familyId, avatar) {
+      const d = deviceOf(pass, familyId);
+      const m = members.find((x) => x.id === d?.memberId && x.status === 'active');
+      if (!d || d.status !== 'active' || !m || isClosing(familyId)) throw new BackendError('not_allowed', 403, '42501');
+      checkAvatar(avatar);
+      m.avatar = avatar;
+    },
+    async setParentAvatar(pass, avatar) {
+      const p = parents.get(pass.access);
+      if (!p) throw new BackendError('parent_only', 403, '42501');
+      checkAvatar(avatar);
+      p.avatar = avatar;
+    },
     async requestInstallHelp(pass, familyId) {
       const d = deviceOf(pass, familyId);
       const m = members.find((x) => x.id === d?.memberId && x.status === 'active');

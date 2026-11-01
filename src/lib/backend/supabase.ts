@@ -206,7 +206,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       // 부모 RLS로 자기 가족방 것만. devices는 열 권한이라 열을 적는다
       const [groups, members, devices] = await Promise.all([
         get<AdminGroup[]>('/rest/v1/groups?select=id,name,include_by_default,password_hint&order=sort_order,created_at'),
-        get<AdminMember[]>('/rest/v1/members?select=id,group_id,display_name,status,pending_until,install_help_at,created_at&order=created_at'),
+        get<AdminMember[]>('/rest/v1/members?select=id,group_id,display_name,status,pending_until,install_help_at,avatar,created_at&order=created_at'),
         get<AdminDevice[]>('/rest/v1/devices?select=id,member_id,status,requested_name,requested_group_id,requested_member_id,can_upload,last_seen_at,created_at&order=created_at.desc'),
       ]);
       return { groups, members, devices };
@@ -261,6 +261,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     resetGroupLinks: async (pass, groupId) => {
       await rpc<number>(pass, 'sp_reset_group_links', { p_group_id: groupId });
     },
+    setMemberAvatar: (pass, familyId, avatar) => rpc<void>(pass, 'sp_set_member_avatar', { p_family_id: familyId, p_avatar: avatar }),
+    setParentAvatar: (pass, avatar) => rpc<void>(pass, 'sp_set_parent_avatar', { p_avatar: avatar }),
     requestInstallHelp: (pass, familyId) => rpc<void>(pass, 'sp_request_install_help', { p_family_id: familyId }),
     healthDone: (pass, childId) =>
       call<{ item_key: string; done_on: string }[]>(`/rest/v1/health_done?${new URLSearchParams({ child_id: `eq.${childId}`, select: 'item_key,done_on' })}`, { method: 'GET', token: pass.access }),
@@ -326,7 +328,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
         p_password: f.password,
         p_hint: f.hint ?? null,
       }),
-    mediaComments: (pass, id) => rpc<MediaComment[]>(pass, 'sp_comment_list', { p_media_id: id }),
+    mediaComments: (pass, id) => rpc<MediaComment[]>(pass, 'sp_comment_list2', { p_media_id: id }),
     noteViews: (pass, ids) => (ids.length ? rpc<void>(pass, 'sp_note_views', { p_media_ids: ids }) : Promise.resolve()),
     mediaViewers: async (pass, id) => (await rpc<{ name: string }[]>(pass, 'sp_parent_media_viewers', { p_media_id: id })).map((x) => x.name),
     deleteComment: (pass, id) => rpc<void>(pass, 'sp_delete_comment', { p_comment_id: id }),
