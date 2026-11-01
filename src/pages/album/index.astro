@@ -366,13 +366,19 @@ const monthCards = !monthRows
                       src={c.src}
                       width={c.width ?? undefined}
                       height={c.height ?? undefined}
-                      alt={`${c.day} ${c.what}${showTag ? `, ${c.kid}` : ''}${c.fresh && !c.top ? ', 새 사진' : ''} 크게 보기`}
+                      alt={`${c.day} ${c.what}${showTag ? `, ${c.kid}` : ''}${c.fresh && !c.top ? ', 새 사진' : ''}${c.mark ? `, ${c.mark}` : ''} 크게 보기`}
                       loading="lazy"
                       decoding="async"
                     />
                     {showTag && (q.z === 1 || q.z === 2) && <span class="sp-a__tag sp-a__tag--on" aria-hidden="true">{c.kid}</span>}
                     {c.kind === 'video' && <span class="sp-a__play" aria-hidden="true"><svg class="sp-a__play-icon" width="24" height="24" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
-                    {c.fresh && !c.top && <span class="sp-a__new" aria-hidden="true">새 사진</span>}
+                    {/* 왼쪽 위 배지(119): 새 사진(틸)·기념일(분홍, 같은 알약), 둘 다면 위아래로 */}
+                    {((c.fresh && !c.top) || c.mark) && (
+                      <span class="sp-a__pills" aria-hidden="true">
+                        {c.fresh && !c.top && <span class="sp-a__new">새 사진</span>}
+                        {c.mark && <span class="sp-a__new sp-a__new--event">{c.mark}</span>}
+                      </span>
+                    )}
                     {(reacts.get(c.id)?.counts.heart || reacts.get(c.id)?.counts.comment) && q.z !== 5 && (
                       <span class="sp-a__badge">
                         {reacts.get(c.id)?.counts.heart ? <span><svg class="sp-a__badge-heart" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.2 5 6.7 5c2.1 0 3.6 1.2 4.3 2.4h2C13.7 6.2 15.2 5 17.3 5c3.5 0 5.5 3.6 4.2 6.8C19.5 16.4 12 21 12 21z"></path></svg><span class="sp-vh">하트 </span>{reacts.get(c.id)?.counts.heart}</span> : null}
