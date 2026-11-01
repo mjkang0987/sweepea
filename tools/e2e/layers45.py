@@ -17,7 +17,7 @@ with sync_playwright() as p:
     pg=start(b,D100)
     d=pg.get_by_role('dialog')
     check(d.count()==1 and '태어난 지 100일이에요' in d.inner_text() and '오늘은 하린이' in d.inner_text(),'백일 레이어')
-    check(pg.evaluate("document.activeElement.matches('dialog[open].sp-layer__box')"),'처음 초점은 레이어')
+    check(pg.evaluate("document.activeElement.matches('dialog[open] .sp-layer__title')"),'처음 초점은 레이어 제목')
     pg.screenshot(path=D+'ly4-100.png')
     d.get_by_role('button',name='닫기').click(); pg.wait_for_url('**/home')
     d=pg.get_by_role('dialog')
