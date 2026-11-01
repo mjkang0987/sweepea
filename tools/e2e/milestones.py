@@ -48,8 +48,9 @@ with sync_playwright() as p:
         if g.get_by_role('button',name=btn,exact=True).count(): g.get_by_role('button',name=btn,exact=True).first.click(); g.wait_for_load_state()
     ev=g.locator('.sp-a__event')
     check(ev.count()==1 and '태어난 지 100일이에요' in ev.inner_text(),f'가족 앨범 맨 위 축하 안내 ({ev.all_inner_texts()})')
-    dm=g.locator('.sp-a__day-mark').all_inner_texts()
-    check(any('하린 100일' in t for t in dm),f'가족 날짜 제목에 기념일 ({dm})')
+    # 117b: 날 제목 줄 대신 칸에 기념일(data-mark), 맨 위 사진이 그날이면 기간 줄에도
+    dm=g.eval_on_selector_all('.sp-a__cell[data-mark]','e=>e.map(x=>x.dataset.mark)')
+    check(any('하린 100일' in t for t in dm),f'가족 칸에 기념일 ({dm})')
     g.screenshot(path=W+'/ms-family.png')
     br.close()
 print('FAILS',fails)
