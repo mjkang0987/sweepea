@@ -12,8 +12,9 @@
 
 ## 보드를 앱에 맞춤(2026-11-01, 디자인 캔버스 v206)
 - [x] 50쌍(파일 100개) 보드를 지금 앱(dev 0.16.1)처럼 고침. 가족: GrandExpired·GrandNoLink·GrandPassword·GrandPending·GrandHome·GrandInstall·GrandList·GrandMulti·GrandListSelect·GrandListPC·Who·LayerNewPhotos·LayerApproved(GrandClosed는 이미 같음). 크게 보기·엄빠: PhotoView·VideoView·PhotoViewPC·ParentView·ParentHomeBleed·ParentHomeGlass·ParentHomePC·ParentEmpty·ParentUpload·ParentUploadPC·ParentReactions·ReactionsHealth·LayerJoin·ParentIntro1~3·ParentLogin·ParentOnboard·ParentOnboard2. 설정: Health·Settings·SettingsGlass·Family·SendSetup('링크 만든 뒤' 상태)·GroupSettings·GroupDetail·MemberDetail·PasswordChange·ChildAdd·ChildSettings·Storage·Account·AccountDelete·AccountDeleteSub·AccountDeleted·AccountRestore. 하단 버튼 막대 위 선은 WaitPhotos 등에서도 지움
-- 그대로 둔 것: 보드 위 상태 표시줄 여백, 옛 보드의 옛 탭바, 결제(Plan*·LayerPlan·가족 플랜·'구독 관리'), 앱에 없는 화면 InstallGuide(엄빠 홈 화면 안내), 한마디 시트 입력 막대 위 선(앱에도 있음)
-- 보드 맞추다 찾은 앱 버그: PC 가족 모아 보기 −/+가 32rem 칸 기준 오른쪽에 떠서 넓은 화면에선 사진 영역 가운데쯤(1440px에서 x≈900). 보드는 앱대로 그렸고 앱 고칠지 사용자 확인 대기
+- 그대로 둔 것: 보드 위 상태 표시줄 여백, 옛 보드의 옛 탭바, 결제(Plan*·LayerPlan·가족 플랜·'구독 관리'), 앱에 없는 화면 InstallGuide(엄빠 홈 화면 안내)
+- [x] 보드 맞추다 찾은 앱 버그: PC 가족 모아 보기 −/+가 32rem 칸 기준이라 넓은 화면에선 사진 영역 가운데쯤(1440px에서 x≈900) → 사진 영역 오른쪽 아래로(사용자 선택, 0.16.2, 보드 GrandListPC도 v207)
+- [x] 한마디 창 아래 입력 줄 위 선도 지움(사용자 "이것도 지움", 0.16.2, 보드 CommentSheet·CommentSheetDeleted·CommentSheetToast·VoiceSay v207)
 - 아래 1~4절의 STILL 항목은 이 보드 맞춤으로 대부분 해소(보드가 앱과 같아짐). 기록으로 남겨 둠
 
 - [x] A 묶음(0.16.0, feature/audit-a): 크게 보기 '생후 N개월 · 날짜'(아이 하나 집·고른 아이만), 상태 화면 콩이(주소 없음·기간 지남·닫힘 128, 비밀번호·승인 대기 제목 옆 64, 탈퇴 끝·되살리기 112, 접종 머리 48, 아이 목록 상자 없이 48), 정보 레이어 처음 초점은 제목(첫 버튼 테두리 없음), 가족 레이어 여백 16px

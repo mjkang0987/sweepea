@@ -9,10 +9,10 @@ BIG='min-height: 56px; box-sizing: border-box; border: 0; border-radius: 10px; f
 QUIET=BIG+' padding: 0 16px; background: var(--fill); color: var(--label); display: flex; align-items: center; justify-content: center; gap: 6px;'
 FIELD='flex: 1; min-width: 0; min-height: 56px; height: 56px; box-sizing: border-box; padding: 0 16px; border: 1.5px solid var(--field-border); border-radius: 10px; background: var(--bg); color: var(--label); font-family: inherit; font-size: 19px; line-height: 26px;'
 SEND=f'<button type="submit" style="flex: none; {BIG} padding: 0 18px; background: var(--pea); color: var(--on-pea);">보내기</button>'
-FOOT='display: flex; flex-direction: column; gap: 10px; padding: 12px 20px 34px; border-top: 0.5px solid var(--separator);'
+FOOT='display: flex; flex-direction: column; gap: 10px; padding: 12px 20px 34px;'
 def foot():
     # 1) 말하기 전: 입력 줄 왼쪽에 마이크(유료 가족방만)
-    idle=(f'<sc-if value="{{{{sIdle}}}}" hint-placeholder-val="{{{{true}}}}"><form style="display: flex; gap: 8px; padding: 12px 20px 34px; border-top: 0.5px solid var(--separator);">'
+    idle=(f'<sc-if value="{{{{sIdle}}}}" hint-placeholder-val="{{{{true}}}}"><form style="display: flex; gap: 8px; padding: 12px 20px 34px;">'
           f'<button type="button" aria-label="말로 한마디(10초)" style="flex: none; width: 56px; height: 56px; padding: 0; border: 0; border-radius: 50%; background: var(--pea-tint); color: var(--pea-ink); display: flex; align-items: center; justify-content: center;">{MIC}</button>'
           '<label for="cs-msg" style="position: absolute; width: 1px; height: 1px; overflow: hidden;">하린이에게 한마디</label>'
           f'<input id="cs-msg" type="text" autocomplete="off" placeholder="글로 쓰기" style="{FIELD}">{SEND}</form></sc-if>')

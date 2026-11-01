@@ -822,6 +822,10 @@
   .sp-f--wide {
     max-width: 72rem;
   }
+  /* 칸 크기 −/+: 넓은 사진 영역의 오른쪽 아래(휴대폰 폭 32rem 기준이면 사진 가운데쯤 떠서, 엄빠 앨범과 같은 자리) */
+  .sp-f--wide .sp-a__zoom {
+    right: max(var(--space-5), calc((100vw - 72rem) / 2 + var(--space-5)));
+  }
   .sp-f--wide .sp-a__grid--2 {
     --cols: 4;
   }
@@ -1206,7 +1210,12 @@
 }
 .sp-v__sheet-form {
   padding: 12px 20px max(34px, env(safe-area-inset-bottom));
-  border-top: 0.5px solid var(--separator);
+  /* 위 선 없이(사용자 2026-11-01 하단 입력·버튼 영역 위 선 삭제) */
+}
+@media (forced-colors: active) {
+  .sp-v__sheet-form {
+    border-top: 1px solid CanvasText;
+  }
 }
 .sp-v__meta {
   margin: 0;
