@@ -23,7 +23,8 @@ const here = `/me/avatar?f=${fam.family_id}`;
 if (Astro.request.method === 'POST') {
   const avatar = parseAvatar(form?.get('avatar'));
   let done = 'error';
-  if (avatar !== undefined) {
+  // 보낸 가족방을 이제 쓸 수 없으면(그사이 막힘·닫힘) 다른 가족방에 저장하지 않는다(리뷰 2026-11-01)
+  if (avatar !== undefined && fam.family_id === f) {
     try {
       await getBackend().setMemberAvatar(pass, fam.family_id, avatar);
       done = 'saved';
