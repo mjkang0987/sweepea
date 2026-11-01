@@ -17,6 +17,8 @@ const today = seoulToday();
       <h1 class="sp-p__title">아이를 알려 주세요</h1>
       <p class="sp-p__lead">생일로 월령과 접종·검진 시기를 계산해요. 아이가 여럿이면 나중에 더 추가할 수 있어요.</p>
     </header>
+    {/* 엄마아빠가 각자 시작하면 앨범이 둘 생기고 초대 링크로도 못 합친다(115) */}
+    <p class="sp-p__tip"><strong class="sp-p__tip-strong">앨범은 엄마·아빠 중 한 분만 만들어요.</strong> 이미 만들었다면 그분께 초대 링크를 받아 주세요.</p>
     {e && <p class="sp-p__error" role="alert" id="setup-err">{e === 'name' ? '이름을 1~12자로 써 주세요.' : '생일을 골라 주세요.'}</p>}
     <div class="sp-p__field">
       <label class="sp-p__label" for="child">이름</label>
