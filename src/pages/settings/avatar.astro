@@ -1,0 +1,45 @@
+---
+// 엄빠 내 캐릭터 고르기(110, 디자인 AvatarPickParent): 설정 맨 위 내 이름 줄에서 온다. 폼 POST → 같은 화면으로(PRG) + 토스트
+import Parent from '../../layouts/Parent.astro';
+import Toast from '../../components/Toast.astro';
+import AvatarPick from '../../components/AvatarPick.astro';
+import { BackendError, getBackend } from '../../lib/backend';
+import { loadParent } from '../../lib/parent';
+import { initialOf, parseAvatar } from '../../lib/avatar';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+if (Astro.request.method === 'POST') {
+  const avatar = parseAvatar((await Astro.request.formData().catch(() => null))?.get('avatar'));
+  let done = 'error';
+  if (avatar !== undefined) {
+    try {
+      await getBackend().setParentAvatar(a.pass, avatar);
+      done = 'saved';
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+    }
+  }
+  return Astro.redirect(`/settings/avatar?done=${done}`, 303);
+}
+const h = a.home;
+const myName = `${h.children?.[0]?.name ?? ''} ${h.role === 'dad' ? '아빠' : '엄마'}`.trim();
+const done = Astro.url.searchParams.get('done');
+const toast = done === 'saved' ? '캐릭터를 저장했어요.' : done === 'error' ? '저장하지 못했어요. 다시 눌러 주세요.' : null;
+---
+
+<Parent title={done === 'error' ? '다시 눌러 주세요 · 내 캐릭터' : '내 캐릭터 · 설정'} tab="settings" savebar alerts={h.new_activity ?? 0} waiting={h.waiting ?? 0}>
+  <div class="sp-p__nav">
+    <a class="sp-p__back" href="/settings">설정</a>
+    <h1 class="sp-p__nav-title">내 캐릭터</h1>
+  </div>
+  {toast && <Toast text={toast} tone={done === 'error' ? 'error' : 'ok'} focus />}
+  <form class="sp-p__form" method="post">
+    <p class="sp-p__hint">가족 화면에 '{myName}' 이름과 함께 보여요</p>
+    <AvatarPick initial={initialOf(myName)} current={h.avatar ?? null} small />
+    <div class="sp-p__bottom sp-p__savebar">
+      <button class="sp-p__btn" type="submit">저장</button>
+    </div>
+  </form>
+</Parent>
