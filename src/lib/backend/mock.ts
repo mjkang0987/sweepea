@@ -512,7 +512,7 @@ export function createMockBackend(): Backend {
       const fam = parents.get(pass.access)?.familyId;
       if (!fam) return { parents: [], invite: null };
       const list = familyParentsOf(fam)
-        .map(([access, p]) => ({ user_id: (p.id ??= crypto.randomUUID()), role: p.role, display_name: p.role === 'mom' ? '엄마' : '아빠', since: new Date(p.since ?? 0).toISOString(), me: access === pass.access }))
+        .map(([access, p]) => ({ user_id: (p.id ??= crypto.randomUUID()), role: p.role, display_name: p.role === 'mom' ? '엄마' : '아빠', since: new Date(p.since ?? 0).toISOString(), me: access === pass.access, avatar: p.avatar ?? null }))
         .sort((a, b) => Number(b.me) - Number(a.me) || a.since.localeCompare(b.since));
       const inv = parentInvites.filter((i) => i.familyId === fam && !i.usedAt && i.at + 72 * HOUR > Date.now()).at(-1);
       return { parents: list, invite: inv ? { code: inv.code, expires_at: new Date(inv.at + 72 * HOUR).toISOString() } : null };

@@ -143,6 +143,21 @@ as $$
 $$;
 
 -- 한마디 목록 + 쓴 사람 캐릭터(가족은 members, 엄빠는 parents)
+-- 함께 관리하는 엄빠 목록에도 캐릭터(설정 › 가족, 리뷰 2026-11-01: 상대 엄빠 캐릭터가 안 보이던 것). 20261029000003 그대로에 avatar만
+create or replace function public.sp_family_parents() returns jsonb
+language sql stable security definer set search_path = ''
+as $$
+  select jsonb_build_object(
+    'parents', coalesce((
+      select jsonb_agg(jsonb_build_object('user_id', p.user_id, 'role', p.role, 'display_name', p.display_name, 'since', p.created_at, 'me', p.user_id = auth.uid(), 'avatar', p.avatar)
+                       order by p.user_id <> auth.uid(), p.created_at)
+      from public.parents p where p.family_id = public.sp_parent_family() and p.removed_at is null), '[]'::jsonb),
+    'invite', (select jsonb_build_object('code', i.code, 'expires_at', i.expires_at) from public.parent_invites i
+               where i.family_id = public.sp_parent_family() and i.used_at is null and i.expires_at > now()
+               order by i.created_at desc limit 1))
+  where public.sp_parent_family() is not null
+$$;
+
 create function public.sp_comment_list2(p_media_id uuid)
 returns table (id uuid, name text, body text, created_at timestamptz, mine boolean, avatar smallint)
 language sql stable security definer set search_path = ''

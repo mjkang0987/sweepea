@@ -376,7 +376,7 @@ export interface MediaComment {
 
 /** 함께 관리하는 엄빠(설정 › 가족 맨 위) */
 export interface FamilyParents {
-  parents: { user_id: string; role: 'mom' | 'dad'; display_name: string; since: string; me: boolean }[];
+  parents: { user_id: string; role: 'mom' | 'dad'; display_name: string; since: string; me: boolean; avatar?: number | null }[];
   invite: { code: string; expires_at: string } | null;
 }
 /** 엄빠 초대 받은 화면(/join) */
