@@ -5,6 +5,13 @@ export function monthsOld(birth: string, today: string): number {
   return Math.max(0, (ty - by) * 12 + (tm - bm) - (td < bd ? 1 : 0));
 }
 
+/** 사진 찍은 날의 나이(크게 보기 날짜 줄 '생후 13개월 · 10월 21일', 디자인 PhotoView). 한 달 전이면 '생후 N일'(백일처럼 난 날이 1일), 태어나기 전이면 null */
+export function photoAge(birth: string, day: string): string | null {
+  if (day < birth) return null;
+  const months = monthsOld(birth, day);
+  return months > 0 ? `생후 ${months}개월` : `생후 ${Math.round((Date.parse(day) - Date.parse(birth)) / 86_400_000) + 1}일`;
+}
+
 /** "2025년 9월 17일" */
 export function birthLabel(birth: string): string {
   const [y, m, d] = birth.split('-').map(Number);

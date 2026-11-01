@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ageLabel, agoLabel, birthLabel, dayMark, milestone, monthsOld, remainingLabel, seenLabel } from '../src/lib/age.ts';
+import { ageLabel, agoLabel, birthLabel, dayMark, milestone, monthsOld, photoAge, remainingLabel, seenLabel } from '../src/lib/age.ts';
+
+test('photoAge: 찍은 날의 생후 나이', () => {
+  assert.equal(photoAge('2025-09-17', '2026-10-21'), '생후 13개월');
+  assert.equal(photoAge('2026-10-01', '2026-10-01'), '생후 1일');
+  assert.equal(photoAge('2026-10-01', '2026-10-30'), '생후 30일');
+  assert.equal(photoAge('2026-10-01', '2026-11-01'), '생후 1개월');
+  assert.equal(photoAge('2026-10-01', '2026-09-30'), null);
+});
 
 test('생후 개월은 생일 날짜가 지나야 한 달 늘어난다', () => {
   assert.equal(monthsOld('2025-09-17', '2026-10-16'), 12);
