@@ -142,7 +142,6 @@ as $$
   ), jsonb_build_object('family_id', null))
 $$;
 
--- 한마디 목록 + 쓴 사람 캐릭터(가족은 members, 엄빠는 parents)
 -- 함께 관리하는 엄빠 목록에도 캐릭터(설정 › 가족, 리뷰 2026-11-01: 상대 엄빠 캐릭터가 안 보이던 것). 20261029000003 그대로에 avatar만
 create or replace function public.sp_family_parents() returns jsonb
 language sql stable security definer set search_path = ''
@@ -158,6 +157,7 @@ as $$
   where public.sp_parent_family() is not null
 $$;
 
+-- 한마디 목록 + 쓴 사람 캐릭터(가족은 members, 엄빠는 parents)
 create function public.sp_comment_list2(p_media_id uuid)
 returns table (id uuid, name text, body text, created_at timestamptz, mine boolean, avatar smallint)
 language sql stable security definer set search_path = ''
