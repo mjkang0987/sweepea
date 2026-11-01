@@ -8,6 +8,7 @@ import { sayNote } from '../lib/say';
 import type { Reacts, SlideWindow } from '../lib/album';
 import { dayLabel } from '../lib/album';
 import type { MediaComment, MediaItem } from '../lib/backend';
+import { avatarSrc } from '../lib/avatar';
 import { agoLabel } from '../lib/age';
 import { hasBatchim } from '../lib/ko';
 
@@ -154,9 +155,10 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
               </div>
               <ul class="sp-v__sheet-list">
                 {comments.map((c) => (
-                  <li class="sp-v__sheet-item">
+                  <li class:list={['sp-v__sheet-item', c.avatar && 'sp-v__sheet-item--av']}>
                     <p class="sp-v__sheet-who">
-                      <strong class="sp-v__sheet-name">{c.name}</strong> <span class="sp-v__sheet-when">· {agoLabel(c.created_at, now)}</span>
+                      {c.avatar && <img class="sp-avatar sp-avatar--small" src={avatarSrc(c.avatar)} width="32" height="32" alt="" />}
+                      <span><strong class="sp-v__sheet-name">{c.name}</strong> <span class="sp-v__sheet-when">· {agoLabel(c.created_at, now)}</span></span>
                     </p>
                     <p class="sp-v__sheet-body">{c.body}</p>
                     {/* 내 한마디만 지우기: 누르면 한 번 더 묻고(네이티브 details) 폼으로 보냄. '지우기'는 이름 줄 오른쪽에 */}

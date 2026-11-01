@@ -6,6 +6,7 @@ import { getBackend } from '../../../lib/backend';
 import { handleFamilyPost, joinUrl, LINK_COOKIE, shareUrl, smsHref, summarize } from '../../../lib/familyAdmin';
 import { callName } from '../../../lib/ko';
 import { loadParent, PROVIDER_NAMES } from '../../../lib/parent';
+import { avatarSrc } from '../../../lib/avatar';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
 if (Astro.request.method === 'POST') return Astro.redirect(await handleFamilyPost(Astro.request, Astro.cookies), 303);
@@ -110,7 +111,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
       {
         parents.map((p) => (
           <li class="sp-p__row sp-p__row--tall sp-p__parent">
-            <span class="sp-p__avatar" aria-hidden="true">{p.display_name.slice(0, 1)}</span>
+            {p.me && a.home.avatar ? <img class="sp-avatar" src={avatarSrc(a.home.avatar)} width="40" height="40" alt="" /> : <span class="sp-p__avatar" aria-hidden="true">{p.display_name.slice(0, 1)}</span>}
             <span class="sp-p__row-label sp-p__radio-text">
               <span class="sp-p__who-name">{p.display_name}{p.me && ' (나)'}</span>
               <span class="sp-p__hint">{p.me ? (PROVIDER_NAMES[a.home.provider ?? ''] ? `${PROVIDER_NAMES[a.home.provider ?? '']}로 로그인` : '로그인됨') : `${since.format(new Date(p.since))}부터 함께`}</span>
@@ -233,6 +234,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
                   return (
                     <li>
                       <a class="sp-p__member" href={`/settings/family/member/${m.id}`}>
+                        {m.avatar && <img class="sp-avatar sp-avatar--small" src={avatarSrc(m.avatar)} width="32" height="32" alt="" />}
                         <span class="sp-p__row-label">{m.display_name}</span>
                         {up && <span class="sp-p__tag">올리기</span>}
                         <span class="sp-p__chev" aria-hidden="true">›</span>

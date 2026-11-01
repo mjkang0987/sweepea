@@ -7,6 +7,7 @@ import { chosenTextSize, currentPass } from '../../../lib/pass';
 import { callName } from '../../../lib/ko';
 import { NOTICES, type NoticeKey } from '../../../lib/notices';
 import { isOpen, isWaiting } from '../../../lib/families';
+import { avatarSrc } from '../../../lib/avatar';
 
 const code = Astro.params.code ?? '';
 let notice: NoticeKey | null = /^[A-Za-z0-9]{8}$/.test(code) ? null : 'not_found';
@@ -88,7 +89,8 @@ const nameError = Astro.url.searchParams.get('e') === 'name' ? '이름을 1~12�
                 <ul class="sp-f__list">
                   {g.members.map((m) => (
                     <li>
-                      <button class="sp-f__name" type="submit" name="m" value={m.id}>
+                      <button class:list={['sp-f__name', m.avatar && 'sp-f__name--av']} type="submit" name="m" value={m.id}>
+                        {m.avatar && <img class="sp-avatar" src={avatarSrc(m.avatar)} width="40" height="40" alt="" />}
                         {m.name}
                       </button>
                     </li>
