@@ -36,7 +36,10 @@ const origin = (SITE_ORIGIN || Astro.url.origin).replace(/\/$/, '');
     <meta property="og:site_name" content="스위피" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={`${origin}/icons/icon-512.png`} />
+    <meta property="og:image" content={`${origin}/og.png`} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="스위피 콩이와 '아기 사진, 단톡방 말고 가족 앨범에'" />
     {canonical && <link rel="canonical" href={canonical} />}
     <script is:inline>
       // 페이지 전환 중에 화면이 가려지면 크롬이 전환만 취소하고 'InvalidStateError'를 처리 안 된 오류로 찍는다(이동은 정상). 두 쪽 다 받아 둔다
