@@ -1799,12 +1799,13 @@
   .sp-p--wide {
     max-width: 72rem;
   }
+  /* 2칸 단계는 넓은 화면에서 5줄(디자인 ParentHomePC, 사용자 2026-11-01 "앱을 보드에 맞춤") */
   .sp-p--wide .sp-p__grid {
-    --cols: 4;
+    --cols: 5;
   }
   .sp-p--wide .sp-p__cell {
-    grid-column: var(--c4);
-    grid-row: var(--r4) / span var(--s4);
+    grid-column: var(--c5);
+    grid-row: var(--r5) / span var(--s5);
   }
   .sp-p--tabbed {
     padding-top: calc(var(--space-6) + 3.5rem);
