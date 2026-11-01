@@ -1,5 +1,5 @@
 # 사용자가 보낸 캐릭터 그림(avatar-sheet.png, 2026-11-01)을 칸마다 원으로 잘라 앱 그림으로.
-# 맨 아래 줄 아기 9단계 → public/kid/1~9.png(109, 자라는 아기). 가족 캐릭터(위 다섯 줄 45명 + 맨 아래 강아지) → public/avatar/1~46.png(110)
+# 맨 아래 줄 아기 9단계 → public/kid/1~9.png(109, 자라는 아기). 가족 캐릭터(위 다섯 줄 45명) → public/avatar/1~45.webp(110). 맨 아래 강아지는 안 씀(사용자 "빼기")
 # usage: python3 tools/design/avatars.py   (저장소 맨 위에서)
 import os
 from PIL import Image, ImageDraw
@@ -12,7 +12,6 @@ R = 72
 # 위 다섯 줄: 9칸씩, 칸 가운데 x·y(그림 칸 간격이 고르다), 반지름 78
 COLS = [108, 272, 437, 602, 767, 932, 1097, 1262, 1427]
 ROWS = [110, 275, 440, 605, 768]
-DOG = (1440, 935)
 
 
 def circle(img, cx, cy, r):
@@ -29,8 +28,8 @@ if __name__ == '__main__':
     for i, (cx, cy) in enumerate(KIDS, 1):
         circle(src, cx, cy, R).save(f'public/kid/{i}.png', optimize=True)
     os.makedirs('public/avatar', exist_ok=True)
-    people = [(x, y, 78) for y in ROWS for x in COLS] + [(*DOG, R)]
+    people = [(x, y, 78) for y in ROWS for x in COLS]
     for i, (cx, cy, r) in enumerate(people, 1):
-        # 가족 캐릭터는 고르기 화면에 46개가 한꺼번에 떠서 작게(96px WebP, 화면 40~48px의 2배)
+        # 가족 캐릭터는 고르기 화면에 45개가 한꺼번에 떠서 작게(96px WebP, 화면 40~48px의 2배)
         circle(src, cx, cy, r).resize((96, 96), Image.LANCZOS).save(f'public/avatar/{i}.webp', quality=88, method=6)
     print('ok', len(KIDS), len(people))
