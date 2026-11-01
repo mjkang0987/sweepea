@@ -211,7 +211,7 @@ const slides = !swipe
         };
       }),
     );
-// 엇갈린 배열 자리: 휴대폰 2줄, 넓은 화면 4줄(CSS가 화면 폭에 맞는 쪽을 씀). 1칸은 휴대폰 한 줄(원래 모양 --ar), 넓은 화면 2줄. 3·5칸은 정사각이라 자리 없음
+// 엇갈린 배열 자리: 휴대폰 2줄, 넓은 화면 5줄(CSS가 화면 폭에 맞는 쪽을 씀). 1칸은 휴대폰 한 줄(원래 모양 --ar), 넓은 화면 2줄. 3·5칸은 정사각이라 자리 없음
 for (const mo of months) {
   if (z === 3 || z === 5) continue;
   const two = masonry(mo.cells.map((c) => c.ratio), 2);
