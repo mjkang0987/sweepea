@@ -217,6 +217,8 @@ const slides = !swipe
           first: !cont && i === (toAt >= 0 ? toAt : 0),
           href: `/view/${m.id}${viewQ}`,
           fresh: unseenIds.has(m.id),
+          video,
+          length,
         };
       }),
     );
@@ -387,8 +389,14 @@ if (z !== 3 && z !== 5)
         {slides.map((c) => (
           <li class="sp-a__slide" id={`c-${c.id}`}>
             <a class="sp-a__card" href={c.href} aria-label={`${c.fresh ? '새 사진, ' : ''}${c.label}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''} 크게 보기`}>
-              <img class="sp-a__card-img" src={c.src} alt="" loading={c.eager ? 'eager' : 'lazy'} fetchpriority={c.first ? 'high' : undefined} decoding="async" />
-              {c.fresh && <span class="sp-p__new sp-p__new--card" aria-hidden="true">새 사진</span>}
+              {/* 사진과 그 위 표시를 한 상자로: ▶·길이·새 사진이 아래 글자 줄 말고 사진 기준으로 자리 잡게 */}
+              <span class="sp-p__card-media">
+                <img class="sp-a__card-img" src={c.src} alt="" loading={c.eager ? 'eager' : 'lazy'} fetchpriority={c.first ? 'high' : undefined} decoding="async" />
+                {c.fresh && <span class="sp-p__new sp-p__new--card" aria-hidden="true">새 사진</span>}
+                {/* 영상이면 사진 가운데 큰 ▶ + 길이(118, 사용자 "넘겨 보기에서 영상인지 잘 안 보여서", 가족 카드와 같은 모양) */}
+                {c.video && <span class="sp-a__card-play" aria-hidden="true"><svg class="sp-a__card-play-icon" width="32" height="32" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
+                {c.video && c.length && <span class="sp-a__card-length" aria-hidden="true">{c.length}</span>}
+              </span>
               <span class="sp-a__card-cap">
                 <span class="sp-a__card-day">{c.cap}</span>
                 {(c.hearts > 0 || c.says > 0) && (

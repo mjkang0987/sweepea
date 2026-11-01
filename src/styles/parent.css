@@ -652,6 +652,13 @@
   stroke-width: 2;
   stroke-linejoin: round;
 }
+/* 엄빠 넘겨 보기 카드의 사진 자리(118): 사진 위 표시(▶·길이·새 사진)의 기준 */
+.sp-p__card-media {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
 /* 새 사진(117e): 상대 엄빠·가족이 올리고 내가 아직 안 본 사진. 맨 위 묶음 제목은 틸 띠, 3시간 지난 것은 칸 왼쪽 위 알약(5칸은 '새' 동그라미) */
 .sp-p__new-title {
   margin: 0 var(--space-5) var(--space-2);
