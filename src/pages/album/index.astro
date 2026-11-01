@@ -75,7 +75,7 @@ const reacts = monthView ? new Map() : await loadReacts(pass, shown.map((m) => m
 const here = albumHref(q);
 const many = open.length > 1;
 const kidTitle = q.f ? kids.get(q.f)! : [...kids.values()].join('·');
-const title = `${kidTitle} 사진`;
+const title = `${kidTitle} ${q.t === 'video' ? '영상' : '사진'}`;
 // 가장 최근 사진 날짜(이어지는 쪽·아래부터 그린 쪽은 첫 사진이 최근 것이 아니라 뺀다)
 const latest = items[0] && page.offset === 0 ? dayLabel(items[0].taken_at) : null;
 const showTag = many && !q.f;
@@ -253,10 +253,18 @@ const monthCards = !monthRows
     <a class="sp-a__tab" href={albumHref({ ...q, v: 'swipe' })} aria-current={q.v === 'swipe' ? 'page' : undefined}>넘겨 보기</a>
     <a class="sp-a__tab" href={albumHref({ ...q, v: 'list' })} aria-current={q.v === 'list' ? 'page' : undefined}>모아 보기</a>
   </nav>
+  {/* 사진·영상 거르기(117c): 달·해 카드 단계에선 숨김 */}
+  {!monthView && (
+    <nav class="sp-a__tabs" aria-label="사진 종류">
+      <a class="sp-a__tab" href={albumHref({ ...q, t: undefined })} aria-current={!q.t ? 'page' : undefined}>전체</a>
+      <a class="sp-a__tab" href={albumHref({ ...q, t: 'photo' })} aria-current={q.t === 'photo' ? 'page' : undefined}>사진</a>
+      <a class="sp-a__tab" href={albumHref({ ...q, t: 'video' })} aria-current={q.t === 'video' ? 'page' : undefined}>영상</a>
+    </nav>
+  )}
 
   {
     items.length === 0 && cont ? null : items.length === 0 ? (
-      <p class="sp-f__box">아직 올라온 사진이 없어요. 엄마아빠가 올리면 여기에 보여요.</p>
+      <p class="sp-f__box">{q.t ? `${q.t === 'video' ? '영상은' : '사진은'} 아직 없어요. 전체를 누르면 모두 보여요.` : '아직 올라온 사진이 없어요. 엄마아빠가 올리면 여기에 보여요.'}</p>
     ) : q.v === 'swipe' ? (
       <>
         {/* 시안(GrandHome): 가운데 카드 + 양옆 사진이 비스듬히 보임. 손가락으로 밀면 넘어감(scroll-snap), 기울기는 CSS 스크롤 애니메이션 */}

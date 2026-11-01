@@ -16,6 +16,8 @@ const KEEP = { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: impo
 
 export interface AlbumQuery {
   f?: string;
+  /** 사진·영상 거르기(117c): 없으면 전체 */
+  t?: 'photo' | 'video';
   v: 'swipe' | 'list';
   z: Zoom;
 }
@@ -47,13 +49,15 @@ export function pickView(url: URL, cookies: AstroCookies, name: string, first: A
 /** 가족 앨범 주소 읽기. 보기(넘겨/모아)와 칸 단계는 주소에 없으면 그 기기에 기억한 것(sp_av·sp_az) */
 export function readQuery(url: URL, cookies: AstroCookies, familyIds: string[]): AlbumQuery {
   const f = url.searchParams.get('f') ?? undefined;
-  return { f: f && familyIds.includes(f) ? f : undefined, v: pickView(url, cookies, 'sp_av', 'swipe'), z: pickZoom(url, cookies, 'sp_az') };
+  const t = url.searchParams.get('t');
+  return { f: f && familyIds.includes(f) ? f : undefined, t: t === 'photo' || t === 'video' ? t : undefined, v: pickView(url, cookies, 'sp_av', 'swipe'), z: pickZoom(url, cookies, 'sp_az') };
 }
 
 /** 보기·칸은 늘 주소에 적는다(기억한 값보다 링크가 먼저라, 빼면 기억한 값으로 바뀌어 버림) */
 export function albumHref(q: AlbumQuery, path = '/album'): string {
   const p = new URLSearchParams();
   if (q.f) p.set('f', q.f);
+  if (q.t) p.set('t', q.t);
   p.set('v', q.v);
   p.set('z', String(q.z));
   return `${path}?${p}`;
@@ -161,7 +165,7 @@ export async function loadAlbum(cookies: AstroCookies, url: URL): Promise<AlbumL
   if (open.length === 0) return { redirect: families.length ? '/wait' : '/' };
   const q = readQuery(url, cookies, open.map((f) => f.family_id));
   const kids = new Map(open.map((f) => [f.family_id, callName(f.child_name ?? '아이')]));
-  return { pass, open, kids, q, base: { familyId: q.f }, name: (open.find((f) => f.family_id === q.f) ?? open[0]).name };
+  return { pass, open, kids, q, base: { familyId: q.f, kind: q.t }, name: (open.find((f) => f.family_id === q.f) ?? open[0]).name };
 }
 
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });

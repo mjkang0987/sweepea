@@ -37,6 +37,10 @@ const kid = callName(a.home.children?.[0]?.name ?? '아이');
 // 아이 고르기(아이가 둘 이상일 때): ?k=아이id, 모르는 값이면 전체
 const kids = a.home.children ?? [];
 const picked = kids.length > 1 ? kids.find((k) => k.id === Astro.url.searchParams.get('k')) : undefined;
+// 사진·영상 거르기(117c): ?t=photo|video, 없으면 전체
+const t0 = Astro.url.searchParams.get('t');
+const kind = t0 === 'photo' || t0 === 'video' ? t0 : undefined;
+const tq = kind ? `t=${kind}&` : '';
 const b = getBackend();
 // 사진 크기(−/+, 98a): 1·2·3칸 = 사진 전부, 월별 = 달마다 대표 3장. 기기 쿠키에 기억
 const z = pickZoom(Astro.url, Astro.cookies, 'sp_pz');
@@ -49,12 +53,12 @@ const today = seoulToday();
 // 이어지는 쪽은 사진만 쓰므로 띠는 건너뛴다
 // 넘겨 보기 'n / 전체'의 전체(고른 아이 기준)
 const [page, admin, fp, swipeTotal0] = await Promise.all([
-  loadPage(a.pass, { childId: picked?.id }, Astro.url),
+  loadPage(a.pass, { childId: picked?.id, kind }, Astro.url),
   cont ? null : b.familyAdmin(a.pass).catch(() => null),
   cont ? null : b.familyParents(a.pass).catch(() => null),
   // 'n / 전체'의 전체만 빠지는 옆 기능이라 실패하면 그 글자만 뺀다
   // 이어지는 쪽은 loadPage가 이미 셌으니 다시 세지 않는다
-  swipe && !cont ? b.countMedia(a.pass, { childId: picked?.id }).catch(() => null) : null,
+  swipe && !cont ? b.countMedia(a.pass, { childId: picked?.id, kind }).catch(() => null) : null,
 ]);
 const swipeTotal = page.total ?? swipeTotal0;
 // 함께 관리 시작 알림(사용자 2026-10-29 "아빠 접속했다고 알람은 안 뜨네?"): 나보다 나중에 들어온 엄빠가 있고 이 기기에서 아직 안 봤으면 한 번.
@@ -66,7 +70,7 @@ const coparent = newP && Date.parse(newP.since) > (seenAt(Astro.cookies, COPAREN
 const cardView = !swipe && (z === 'm' || z === 'y');
 const monthCards = cardView && page.items.length ? await b.mediaMonths(a.pass, { childId: picked?.id, reps: 3 }).catch(() => null) : null;
 const { items } = page;
-const kq = picked ? `k=${encodeURIComponent(picked.id)}&` : '';
+const kq = `${picked ? `k=${encodeURIComponent(picked.id)}&` : ''}${tq}`;
 // 월별·연별은 카드라 다음 쪽이 없다
 // 보기도 주소에 적는다(받은 쪽이 같은 보기로 그려지게)
 const nextHref = page.next && !cardView ? `/home?${kq}${swipe ? 'v=swipe' : `v=list&z=${z}`}&before=${encodeURIComponent(page.next)}` : null;
@@ -333,9 +337,19 @@ if (z !== 3 && z !== 5) {
   {
     kids.length > 1 && (
       <nav class="sp-p__seg" aria-label="아이 고르기">
-        <a class="sp-p__seg-item" href="/home" aria-current={!picked ? 'page' : undefined}>전체</a>
+        <a class="sp-p__seg-item" href={`/home?${tq}`} aria-current={!picked ? 'page' : undefined}>전체</a>
         {kids.map((k) => (
-          <a class="sp-p__seg-item" href={`/home?k=${encodeURIComponent(k.id)}`} aria-current={picked?.id === k.id ? 'page' : undefined}>{k.name}</a>
+          <a class="sp-p__seg-item" href={`/home?k=${encodeURIComponent(k.id)}&${tq}`} aria-current={picked?.id === k.id ? 'page' : undefined}>{k.name}</a>
+        ))}
+      </nav>
+    )
+  }
+  {
+    // 사진·영상 거르기(117c): 사진이 있고 달·해 카드가 아닐 때
+    (a.home.photo_count ?? 0) + (a.home.video_count ?? 0) > 0 && !cardView && (
+      <nav class="sp-p__seg" aria-label="사진 종류">
+        {([[undefined, '전체'], ['photo', '사진'], ['video', '영상']] as const).map(([t, name]) => (
+          <a class="sp-p__seg-item" href={`/home?${picked ? `k=${encodeURIComponent(picked.id)}&` : ''}${t ? `t=${t}&` : ''}${swipe ? 'v=swipe' : `v=list&z=${z}`}`} aria-current={kind === t ? 'page' : undefined}>{name}</a>
         ))}
       </nav>
     )
@@ -343,8 +357,8 @@ if (z !== 3 && z !== 5) {
   {/* 사진 목록: −/+가 그 자리에서 이 묶음만 갈아 끼운다(98e, 배치에는 끼지 않는 묶음) */}
   <div class="sp-p__album" data-album>
   {
-    items.length === 0 && cont ? null : items.length === 0 && picked ? (
-      <p class="sp-p__lead">{callName(picked.name)} 사진은 아직 없어요.</p>
+    items.length === 0 && cont ? null : items.length === 0 && (picked || kind) ? (
+      <p class="sp-p__lead">{picked ? `${callName(picked.name)} ` : ''}{kind === 'video' ? '영상은' : '사진은'} 아직 없어요.</p>
     ) : items.length === 0 ? (
       <section class="sp-p__empty" aria-labelledby="empty-title">
         <img class="sp-p__empty-kongi" src="/kongi.svg" width="128" height="128" alt="" />
