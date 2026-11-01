@@ -9,7 +9,7 @@ import { currentParent } from '../../lib/pass';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
 const code = Astro.params.code ?? '';
-if (!/^[A-Za-z0-9]{8}$/.test(code)) return Astro.redirect('/start');
+if (!/^[A-Za-z0-9]{8}$/.test(code)) return Astro.redirect('/');
 const b = getBackend();
 const pass = await currentParent(Astro.cookies);
 const home = pass ? await b.parentHome(pass).catch(() => null) : null;
@@ -112,5 +112,5 @@ const list = enabledProviders();
     )
   }
   {state === 'other' && <div class="sp-p__bottom"><a class="sp-p__btn sp-p__btn--quiet" href="/home">내 앨범으로</a></div>}
-  {(state === 'expired' || state === 'device' || state === 'full') && <div class="sp-p__bottom"><a class="sp-p__btn sp-p__btn--quiet" href="/start">처음으로</a></div>}
+  {(state === 'expired' || state === 'device' || state === 'full') && <div class="sp-p__bottom"><a class="sp-p__btn sp-p__btn--quiet" href="/">처음으로</a></div>}
 </Parent>
