@@ -6,6 +6,7 @@ import Family from '../../layouts/Family.astro';
 import { albumHref, dayLabel, loadAlbum } from '../../lib/album';
 import { getBackend } from '../../lib/backend';
 import { signedMediaUrl } from '../../lib/signed';
+import { masonry, ratioOf } from '../../lib/masonry';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
 const a = await loadAlbum(Astro.cookies, Astro.url);
@@ -30,6 +31,10 @@ const cards = await Promise.all(
     height: m.height,
   })),
 );
+// 엇갈린 배열 자리(모아 보기 2줄과 같은 계산): 칸마다 --c2·--r2·--s2(넓은 화면 4줄 --c4…)가 없으면 칸이 한자리에 겹친다
+const two = masonry(cards.map((c) => ratioOf(c.width, c.height)), 2);
+const four = masonry(cards.map((c) => ratioOf(c.width, c.height)), 4);
+const at = (i: number) => `--c2:${two[i].col};--r2:${two[i].row};--s2:${two[i].span};--c4:${four[i].col};--r4:${four[i].row};--s4:${four[i].span}`;
 // 스크립트 없이 고른 뒤: 고른 사진마다 저장 링크
 const chosen = cards.filter((c) => picked.has(c.id));
 ---
@@ -62,8 +67,8 @@ const chosen = cards.filter((c) => picked.has(c.id));
         <fieldset class="sp-s__pickset">
           <legend class="sp-vh">저장할 사진</legend>
           <ul class="sp-a__grid sp-a__grid--2">
-            {cards.map((c) => (
-              <li class="sp-a__cell">
+            {cards.map((c, i) => (
+              <li class="sp-a__cell" style={at(i)}>
                 <label class="sp-s__pick">
                   <input class="sp-s__check" type="checkbox" name="id" value={c.id} data-src={c.src} data-name={c.name} />
                   <img class="sp-a__cell-img" src={c.thumb} width={c.width ?? undefined} height={c.height ?? undefined} alt={c.label} loading="lazy" decoding="async" />
