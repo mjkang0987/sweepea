@@ -268,12 +268,12 @@ const monthCards = !monthRows
           {cards.map((c) => (
             <li class="sp-a__slide" id={`p-${c.id}`}>
               <div class="sp-a__card">
-                <a class="sp-a__card-link" href={c.href} aria-label={`${c.fresh ? '새 사진, ' : ''}${c.day} ${showTag ? `${c.kid} ` : ''}${c.what} 크게 보기`}>
+                <a class="sp-a__card-link" href={c.href} aria-label={`${c.fresh ? '신규, ' : ''}${c.day} ${showTag ? `${c.kid} ` : ''}${c.what} 크게 보기`}>
                   <img class="sp-a__card-img" src={c.src} alt="" loading={c.n > 3 ? 'lazy' : 'eager'} fetchpriority={c.n === 1 ? 'high' : undefined} decoding="async" />
                   {/* 영상이면 사진 가운데 큰 ▶ + 길이(117w, 모바일에서 아래 '· 영상' 글자만으론 잘 안 보임) */}
                   {c.kind === 'video' && <span class="sp-a__card-play" aria-hidden="true"><svg class="sp-a__card-play-icon" width="32" height="32" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
                   {c.length && <span class="sp-a__card-length" aria-hidden="true">{c.length}</span>}
-                  {c.fresh && <span class="sp-a__new sp-a__new--card" aria-hidden="true">새 사진</span>}
+                  {c.fresh && <span class="sp-a__new sp-a__new--card" aria-hidden="true">신규</span>}
                 </a>
                 <div class="sp-a__card-cap">
                   {showTag && <span class="sp-a__tag">{c.kid}</span>}
@@ -375,7 +375,7 @@ const monthCards = !monthRows
                     {/* 왼쪽 위 배지(119): 새 사진(틸)·기념일(분홍, 같은 알약), 둘 다면 위아래로 */}
                     {((c.fresh && !c.top) || c.mark) && (
                       <span class="sp-a__pills" aria-hidden="true">
-                        {c.fresh && !c.top && <span class="sp-a__new">새 사진</span>}
+                        {c.fresh && !c.top && <span class="sp-a__new">신규</span>}
                         {c.mark && <span class="sp-a__new sp-a__new--event">{c.mark}</span>}
                       </span>
                     )}
@@ -412,7 +412,8 @@ const monthCards = !monthRows
 </Family>
 
 <script>
-  import { autoMore, keepSpot, relayout, swipeMore } from '../../lib/more';
+  import { autoMore, closeReturn, keepSpot, relayout, swipeMore } from '../../lib/more';
+  closeReturn();
   import { zoomInPlace } from '../../lib/zoomswap';
 
   const swipe = document.querySelector<HTMLElement>('.sp-a__swipe');

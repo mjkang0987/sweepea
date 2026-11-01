@@ -719,16 +719,11 @@
   justify-content: flex-start;
 }
 .sp-p__grid--z5 .sp-p__new {
+  /* 5칸: 작은 '신규' 알약(사용자 2026-11-01 "새 사진 말고 신규로") */
   left: 3px;
   top: 3px;
-  width: 1.25rem;
-  min-height: 1.25rem;
-  height: 1.25rem;
-  padding: 0;
-  font-size: 0;
-}
-.sp-p__grid--z5 .sp-p__new::before {
-  content: '새';
+  min-height: 1.125rem;
+  padding: 0 0.3125rem;
   font-size: 0.6875rem;
   line-height: 1;
 }
@@ -2574,6 +2569,8 @@
   background: var(--blossom);
 }
 .sp-p__grid--z5 .sp-p__new.sp-p__cell-mark {
+  padding: 0;
+  font-size: 0;
   width: 0.75rem;
   min-height: 0.75rem;
   height: 0.75rem;
