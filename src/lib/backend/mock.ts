@@ -82,6 +82,13 @@ const comments: { id: string; mediaId: string; memberId: string; at: number; bod
 const views = new Set<string>();
 // 엄빠가 본 사진(DB parent_views 흉내): '사진|계정'. 가족 '본 사람' 목록과 섞이지 않게 따로
 const parentViews = new Set<string>();
+// 사진 변경 기록(123): 누가는 쓸 때 이름으로(목 전용 단순화), 그룹·아이는 id로 두고 읽을 때 지금 이름
+const changes: { mediaId: string; at: string; kind: 'create' | 'update'; who: string; groups: string[]; oldGroups: string[] | null; children: string[]; oldChildren: string[] | null; takenAt: string; oldTakenAt: string | null }[] = [];
+const whoOf = (pass: Pass, familyId: string) => {
+  const p = parents.get(pass.access);
+  if (p?.familyId === familyId) return p.role === 'dad' ? '아빠' : '엄마';
+  return members.find((m) => m.id === deviceOf(pass, familyId)?.memberId)?.name ?? '알 수 없음';
+};
 const familyOf = (s: Share) => groups.find((g) => g.id === s.groupIds[0])!.familyId;
 const key = (pass: Pass, familyId: string) => `${pass.access}|${familyId}`;
 function meOf(d: Device | undefined): EntryMe | null {
@@ -149,7 +156,7 @@ function visibleMedia(pass: Pass, opts: MediaQuery) {
   const parent = parents.get(pass.access);
   const c = opts.before ?? opts.after;
   return media
-    .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId) && (!opts.childId || x.childIds.includes(opts.childId)) && (!opts.id || x.id === opts.id) && (!opts.kind || x.kind === opts.kind) && (!opts.takenFrom || Date.parse(x.taken_at) >= Date.parse(opts.takenFrom)) && (!opts.takenBefore || Date.parse(x.taken_at) < Date.parse(opts.takenBefore)))
+    .filter((x) => x.status === 'ready' && (!opts.familyId || x.family_id === opts.familyId) && (!opts.childId || x.childIds.includes(opts.childId)) && (!opts.groupId || x.groupIds.includes(opts.groupId)) && (!opts.id || x.id === opts.id) && (!opts.kind || x.kind === opts.kind) && (!opts.takenFrom || Date.parse(x.taken_at) >= Date.parse(opts.takenFrom)) && (!opts.takenBefore || Date.parse(x.taken_at) < Date.parse(opts.takenBefore)))
     .filter((x) => !c || (opts.before ? newerFirst(x, { taken_at: c.takenAt, id: c.id }) > 0 : newerFirst(x, { taken_at: c.takenAt, id: c.id }) < 0))
     .filter((x) => {
       if (parent) return x.family_id === parent.familyId;
@@ -282,6 +289,8 @@ export function createMockBackend(): Backend {
         groupIds: m.groupIds?.length ? m.groupIds : groups.filter((g) => g.familyId === m.familyId && !g.exclude).map((g) => g.id),
         childIds: m.childIds ?? [], bytes: 0,
       });
+      const x = media[media.length - 1];
+      changes.push({ mediaId: id, at: x.created_at!, kind: 'create', who: whoOf(pass, m.familyId), groups: [...x.groupIds], oldGroups: null, children: [...x.childIds], oldChildren: null, takenAt: x.taken_at, oldTakenAt: null });
       return id;
     },
     async uploadTarget(pass, id) {
@@ -711,7 +720,24 @@ export function createMockBackend(): Backend {
       const okGroups = u.groupIds.length > 0 && u.groupIds.every((g) => groups.some((y) => y.id === g && y.familyId === fam));
       const okKids = u.childIds.every((c) => kids.some((k) => k.id === c && k.familyId === fam));
       if (!okGroups || !okKids) throw new BackendError('bad_request', 400, '22023');
+      const same = (a: string[], b: string[]) => [...new Set(a)].sort().join() === [...new Set(b)].sort().join();
+      if (Date.parse(x.taken_at) !== Date.parse(u.takenAt) || !same(x.groupIds, u.groupIds) || !same(x.childIds, u.childIds))
+        changes.push({ mediaId: id, at: new Date().toISOString(), kind: 'update', who: whoOf(pass, fam!), groups: [...new Set(u.groupIds)], oldGroups: [...x.groupIds], children: [...new Set(u.childIds)], oldChildren: [...x.childIds], takenAt: u.takenAt, oldTakenAt: x.taken_at });
       Object.assign(x, { taken_at: u.takenAt, groupIds: [...u.groupIds], childIds: [...u.childIds] });
+    },
+    async mediaChanges(pass, id) {
+      const fam = parents.get(pass.access)?.familyId;
+      if (!media.some((y) => y.id === id && y.family_id === fam)) return [];
+      const gName = (ids: string[]) => ids.map((g) => groups.find((y) => y.id === g)?.name ?? '지운 그룹');
+      const kName = (ids: string[]) => ids.map((k) => kids.find((y) => y.id === k)?.name ?? '지운 아이');
+      return changes
+        .filter((c) => c.mediaId === id)
+        .reverse()
+        .slice(0, 50)
+        .map((c) => ({
+          at: c.at, kind: c.kind, who: c.who, groups: gName(c.groups), old_groups: c.oldGroups && gName(c.oldGroups),
+          children: kName(c.children), old_children: c.oldChildren && kName(c.oldChildren), taken_at: c.takenAt, old_taken_at: c.oldTakenAt,
+        }));
     },
     async deleteMedia(pass, id) {
       const fam = parents.get(pass.access)?.familyId;

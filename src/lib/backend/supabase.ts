@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaComment, MediaItem, MediaMonth, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
+import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaChange, MediaComment, MediaItem, MediaMonth, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -49,6 +49,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     const q = new URLSearchParams({ status: 'eq.ready' });
     if (opts.familyId) q.set('family_id', `eq.${opts.familyId}`);
     if (opts.childId) q.set('media_children.child_id', `eq.${opts.childId}`);
+    if (opts.groupId) q.set('media_groups.group_id', `eq.${opts.groupId}`);
     if (opts.id) q.set('id', `eq.${opts.id}`);
     if (opts.kind) q.set('kind', `eq.${opts.kind}`);
     if (opts.takenFrom) q.append('taken_at', `gte.${opts.takenFrom}`);
@@ -142,7 +143,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     r2CleanupDone: (prefix) => serviceRpc<void>('sp_r2_cleanup_done', { p_prefix: prefix }),
     async listMedia(pass, opts = {}) {
       const q = mediaQuery(opts);
-      q.set('select', `${MEDIA_COLS}${opts.childId ? ',media_children!inner(child_id)' : ''}`);
+      q.set('select', `${MEDIA_COLS}${opts.childId ? ',media_children!inner(child_id)' : ''}${opts.groupId ? ',media_groups!inner(group_id)' : ''}`);
       // after는 가까운 것부터 골라야 해서 오름차순으로 받고 뒤집는다
       q.set('order', opts.after ? 'taken_at.asc,id.asc' : 'taken_at.desc,id.desc');
       q.set('limit', String(Math.min(opts.limit ?? 60, MEDIA_MAX)));
@@ -153,7 +154,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     },
     async countMedia(pass, opts = {}) {
       const q = mediaQuery(opts);
-      q.set('select', opts.childId ? 'id,media_children!inner(child_id)' : 'id');
+      q.set('select', `id${opts.childId ? ',media_children!inner(child_id)' : ''}${opts.groupId ? ',media_groups!inner(group_id)' : ''}`);
       q.set('limit', '1');
       const res = await fetch(`${base}/rest/v1/media?${q}`, {
         method: 'HEAD',
@@ -298,6 +299,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     },
     updateMedia: (pass, id, u) =>
       rpc<void>(pass, 'sp_update_media', { p_media_id: id, p_taken_at: u.takenAt, p_child_ids: u.childIds, p_group_ids: u.groupIds }),
+    mediaChanges: (pass, id) => rpc<MediaChange[]>(pass, 'sp_media_changes', { p_media_id: id }),
     deleteMedia: (pass, id) => rpc<void>(pass, 'sp_delete_media', { p_media_id: id }),
     requestDelete: (pass) => rpc<string | null>(pass, 'sp_request_delete', {}),
     familyParents: async (pass) => (await rpc<FamilyParents | null>(pass, 'sp_family_parents', {})) ?? { parents: [], invite: null },

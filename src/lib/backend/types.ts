@@ -121,6 +121,8 @@ export interface MediaQuery {
   takenBefore?: string;
   /** 사진·영상 거르기(117c) */
   kind?: MediaKind;
+  /** 그 그룹에 보이는 사진만(123, 엄빠 앨범 거르기) */
+  groupId?: string;
 }
 
 export interface MediaItem {
@@ -154,6 +156,19 @@ export interface ActivityItem {
   who: string;
   media_id: string;
   thumb_key: string | null;
+}
+
+/** 사진 변경 기록 한 줄(123): 이름은 지금 이름(지운 것은 '지운 그룹'·'지운 아이'), old_*는 고친 줄만 */
+export interface MediaChange {
+  at: string;
+  kind: 'create' | 'update';
+  who: string;
+  groups: string[];
+  old_groups: string[] | null;
+  children: string[];
+  old_children: string[] | null;
+  taken_at: string;
+  old_taken_at: string | null;
 }
 
 /** 부모 사진 정보 화면 */
@@ -339,6 +354,8 @@ export interface Backend {
   mediaInfo(pass: Pass, mediaId: string): Promise<MediaInfo | null>;
   /** 찍은 날·아이·보여줄 그룹(하나 이상)을 한 번에 */
   updateMedia(pass: Pass, mediaId: string, u: { takenAt: string; childIds: string[]; groupIds: string[] }): Promise<void>;
+  /** 사진 변경 기록(최근 것부터 50줄). 내 가족방 사진이 아니면 빈 목록 */
+  mediaChanges(pass: Pass, mediaId: string): Promise<MediaChange[]>;
   /** 사진 지우기(부모만): 용량에서 빼고 R2 정리 대기열에 */
   deleteMedia(pass: Pass, mediaId: string): Promise<void>;
   /** 탈퇴 신청: 가족 화면을 바로 닫고 3일 뒤 지울 시각(ISO). 함께 관리하는 엄빠가 있으면 나만 빠지고 null. 구독 중이면 BackendError 402 */
