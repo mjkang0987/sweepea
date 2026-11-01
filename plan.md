@@ -8,14 +8,14 @@
 
 ### 지금 상태
 
-- dev = 0.15.0, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
+- dev = 0.15.1, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다. 2026-10-31 확인: PR의 Lighthouse·'Workers Builds: sweepea' 모두 성공(예전 실패 기록은 지난 것)
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 모두 적용(저장소 파일 22개, 마지막 `20261029000005_me_children.sql`은 98g에서 사용자 "넣고 배포"로 적용. 예전 기록의 '23개'와 파일 수가 안 맞음 — 필요하면 `list_migrations`로 확인. 19번째 `20261029000002_coparent_unique.sql`은 사용자가 SQL 편집기에서, 20번째 `20261029000003_coparent.sql`은 2026-10-29 사용자 지시로 적용 도구). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (기록상 최근 v183). 화면 바꾸기 전에 반드시 여기부터 고친다. 보드 콩이 그림은 data URI로 넣는다(`/_blob`은 새 보드에서 깨짐)
 - iOS 앱: 별도 저장소 `~/Desktop/git/sweepea-ios`(비공개 GitHub mjkang0987/sweepea-ios, 93). 1단계(디자인 토큰·버튼·토스트·레이어·칩, 부품 모아 보기)까지. 알려진 문제: 레이어가 탭바를 덮지 않음. 다음은 2단계(첫 화면·로그인·가족 입장)
 - 2026-10-29에 끝낸 것: 95 보신 기록(0.5.0) · 96 아래 고정·올리기 진행(0.5.1) · 94 요금제 정함 · 97(0.5.2) · 99~107(0.5.5~0.7.6: 승인 대기 사진, 공동 관리자, 유리 탭바, 앨범 고정 머리 등) · 98a 사진 크기 −/+(0.8.0) · 98c 월별·연별 카드(0.9.0) · 98e 그 자리에서 크기 바꾸기(0.10.x) · 98f 머리에 아이 오늘 나이(0.11.0) · 98g 기념일(0.12.0, 98b 나이별 카드는 하지 않기로) · 103a 초대 로그인(0.12.1) · 103b 함께 관리 알림(0.13.0) · 103c 가족 이름 바꾸기(0.14.0) · 103d 사진 저장 기기별(0.14.1~0.14.4) · 103e 봤어요 바로(0.14.5) · 2026-10-31: 98d 엄빠 넘겨 보기(0.15.0)
 - 작업 폴더에 커밋 안 된 검사 스크린샷 7장(`tools/e2e/*.png`) 남아 있음 — 지워도 되는 임시 파일로 보임(`tools/shots/`로 옮기거나 삭제)
-- 클라우드 세션에서 검사 돌리기(2026-10-31): Python Playwright는 설치된 브라우저와 같은 판(`pip install playwright==1.63.0`, `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`), 예전 e2e의 `/home/claude/sweepea` 고정 경로는 링크로(`ln -sfn <저장소> /home/claude/sweepea`). `tools/e2e/u2.jpg`는 찍은 날이 없어 날짜가 바뀌면 parentzoom·familyzoom이 틀림(98d 발견)
+- 클라우드 세션에서 검사 돌리기(2026-10-31): Python Playwright는 설치된 브라우저와 같은 판(`pip install playwright==1.63.0`, `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`), 예전 e2e의 `/home/claude/sweepea` 고정 경로는 링크로(`ln -sfn <저장소> /home/claude/sweepea`). `tools/e2e/u2.jpg`는 찍은 날이 없음(takenat.py용) — 날짜에 기대는 검사는 파일 시각을 직접 고정(parentzoom·familyzoom처럼)
 
 ### 다음 할 일 (순서대로)
 
@@ -1307,7 +1307,7 @@
 - 범위 밖: 엄빠 넘겨 보기에서 바로 반응 보내기, 보신 기록(엄빠는 남기지 않음)
 - 결과(0.15.0, 디자인 캔버스 v202): 검토 3회(따로 리뷰어). 1회차: −/+·달 카드 링크에 v=list(다른 창에서 넘겨 보기를 고르면 −/+가 카드를 그려 깨짐), 넘겨 보기 전체 수 실패 시 '/ 전체'만 빼기, 칸 전용 스크립트(머리 날짜·zoomInPlace·keepSpot)는 모아 보기만. 2회차: 이어지는 쪽 전체 수 두 번 세기 → `MediaPage.total`, 돌아올 때(?to=) 그 카드 둘레만 큰 사진 바로 받기, 영상 길이 반올림('0:60' → '1:00'). 3회차: 이어 붙는 쪽은 미리 받기 없음. PC(64rem~)는 가족처럼 넘겨 보기일 때 넓은 화면 끔(카드가 겹쳐 깨짐)
 - 검증: e2e parentswipe.py 24개(기억·첫 쪽 밖 카드 닫고 돌아오기·스크립트 없이 다음 쪽), vswipe·familyzoom·parentzoom·loadmore 통과, 타입·단위 44·빌드. 디자인 대조 라이트·다크·PC
-- 발견(남음): 검사 사진 `tools/e2e/u2.jpg`에 찍은 날(EXIF)이 없어 파일 시각을 씀 → 날짜가 바뀌면(서울 11월) parentzoom·familyzoom이 달 수를 틀리게 셈. 이번엔 파일 시각을 10월로 돌려 돌림. 고치려면 u2.jpg에 EXIF 날짜를 넣거나 검사가 날짜를 직접 정하게. 예전 e2e 여러 개가 `/home/claude/sweepea` 경로 고정(새 환경에선 링크 필요). 가족 앨범도 넘겨 보기 전체 수(countMedia)가 실패하면 화면 전체가 500
+- 발견 → 고침(2026-11-01): 검사 사진 `tools/e2e/u2.jpg`에 찍은 날(EXIF)이 없어(takenat.py가 '파일 시각'을 보려고 일부러) 날짜가 바뀌면 parentzoom·familyzoom이 달 수를 틀리게 셈 → 두 검사가 시작할 때 u2.jpg 파일 시각을 2026-10-29로 고정(fix/test-photo-date). 가족 앨범 전체 수(countMedia) 실패 시 화면 전체 500 → 제목 '○장'·'/ 전체'만 빼고 열림, 이어지는 쪽은 loadPage가 센 수(0.15.1, fix/album-count). 남음: 예전 e2e 여러 개가 `/home/claude/sweepea` 경로 고정(새 환경에선 링크 필요)
 
 #### 98e. 사진 크기 바꿀 때 페이지 전환 없이 그 자리에서 (완료, 0.10.0)
 - 요구(사용자 2026-10-29): "키우고 작아지는 거 페이지 전환이라 너무 구린데 방법 없어?"
