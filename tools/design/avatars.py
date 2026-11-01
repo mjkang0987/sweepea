@@ -12,6 +12,8 @@ R = 72
 # 위 다섯 줄: 9칸씩, 칸 가운데 x·y(그림 칸 간격이 고르다), 반지름 78
 COLS = [108, 272, 437, 602, 767, 932, 1097, 1262, 1427]
 ROWS = [110, 275, 440, 605, 768]
+# 캐릭터가 원본 칸 가운데에서 옆으로 치우친 것(사용자 2026-11-01 "캐릭터 중앙 안 맞는 경우"): 두 눈 가운데를 원 가운데로. 눈 사이 30~40px로 찾은 값, 21·30·31은 눈으로 본 값
+SHIFT = {8: 3, 17: 3, 18: 3, 20: -4, 22: -14, 23: -4, 28: -4, 34: 4, 35: 5, 36: 4, 39: -4, 42: 3, 43: 4, 44: 6, 45: 6, 21: -8, 31: -10, 30: -9}
 
 
 def circle(img, cx, cy, r):
@@ -28,7 +30,7 @@ if __name__ == '__main__':
     for i, (cx, cy) in enumerate(KIDS, 1):
         circle(src, cx, cy, R).save(f'public/kid/{i}.png', optimize=True)
     os.makedirs('public/avatar', exist_ok=True)
-    people = [(x, y, 78) for y in ROWS for x in COLS]
+    people = [(x + SHIFT.get(i, 0), y, 78) for i, (x, y) in enumerate(((x, y) for y in ROWS for x in COLS), 1)]
     for i, (cx, cy, r) in enumerate(people, 1):
         # 가족 캐릭터는 고르기 화면에 45개가 한꺼번에 떠서 작게(96px WebP, 화면 40~48px의 2배)
         circle(src, cx, cy, r).resize((96, 96), Image.LANCZOS).save(f'public/avatar/{i}.webp', quality=88, method=6)
