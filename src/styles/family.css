@@ -630,19 +630,9 @@
   /* 칸보다 길면 오른쪽 끝만 잘리게 */
   justify-content: flex-start;
 }
-/* 기념일(119, 사용자 "이벤트 있는 경우 배지랑 컬러만 다르게"): 같은 알약, 분홍. 5칸은 분홍 점 */
+/* 기념일(119, 사용자 "이벤트 있는 경우 배지랑 컬러만 다르게"): 같은 알약, 분홍. 5칸도 '두 돌' 글자 그대로(사용자 2026-11-01 "두 돌 잘 나오던 걸 왜", 점이면 뜻을 모름) */
 .sp-a__new.sp-a__new--event {
   background: var(--blossom);
-}
-.sp-a__grid--5 .sp-a__new.sp-a__new--event {
-  padding: 0;
-  font-size: 0;
-  width: 0.875rem;
-  min-height: 0.875rem;
-  height: 0.875rem;
-}
-.sp-a__grid--5 .sp-a__new.sp-a__new--event::before {
-  content: none;
 }
 .sp-a__new {
   /* 새 사진(117a·117y): 어르신도 보이게 크게 + 흰 테(사진 위 대비) */
