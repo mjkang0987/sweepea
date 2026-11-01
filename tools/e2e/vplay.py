@@ -62,7 +62,9 @@ with sync_playwright() as p:
     pg.locator('a[rel="prev"]').click(); pg.wait_for_url('**/album/'+v1+'**'); check(True,'‹ 누르면 이전')
     # 한마디
     pg.fill('#say-body','잘 봤다'); pg.get_by_role('button',name='보내기').click(); pg.wait_for_load_state()
-    check('보냈어요' in pg.locator('.sp-toast').inner_text() and pg.locator('.sp-toast').get_attribute('role')=='status','한마디 보냄 토스트')
+    # 토스트는 보이기만, 화면 읽기는 늘 있는 빈 알림 칸(role=status)에 글자를 넣어 읽는다(Viewer show)
+    pg.get_by_role('status').filter(has_text='보냈어요').first.wait_for(state='attached',timeout=3000)
+    check('보냈어요' in pg.locator('.sp-toast').inner_text(),'한마디 보냄 토스트(알림 칸이 읽음)')
     # 넘겨 보기 한마디 칸
     pg.goto(B+'/album'); pg.wait_for_load_state()
     check(pg.get_by_text('직접 쓰기').count()==0 and pg.locator('.sp-a__slide .sp-say').count()>=3,'넘겨 보기 카드마다 한마디 칸')
