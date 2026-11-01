@@ -652,6 +652,61 @@
   stroke-width: 2;
   stroke-linejoin: round;
 }
+/* 새 사진(117e): 상대 엄빠·가족이 올리고 내가 아직 안 본 사진. 맨 위 묶음 제목은 틸 띠, 3시간 지난 것은 칸 왼쪽 위 알약(5칸은 '새' 동그라미) */
+.sp-p__new-title {
+  margin: 0 var(--space-5) var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: 12px;
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-size: var(--body-size);
+  line-height: var(--body-line);
+  font-weight: 800;
+}
+.sp-p__new-count {
+  font-weight: 600;
+}
+.sp-p__new {
+  position: absolute;
+  z-index: 1;
+  left: 6px;
+  top: 6px;
+  min-height: 1.5rem;
+  padding: 0 0.5625rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--pea);
+  color: var(--on-pea);
+  box-shadow: 0 0 0 2px var(--bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--footnote-size);
+  line-height: 1.125rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+.sp-p__grid--z5 .sp-p__new {
+  left: 3px;
+  top: 3px;
+  width: 1.25rem;
+  min-height: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  font-size: 0;
+}
+.sp-p__grid--z5 .sp-p__new::before {
+  content: '새';
+  font-size: 0.6875rem;
+  line-height: 1;
+}
+.sp-p__new--card {
+  left: 0.75rem;
+  top: 0.75rem;
+  min-height: 1.75rem;
+  padding: 0 0.75rem;
+  font-size: var(--subhead-size);
+}
 /* 영상 표시(117v·117x, 사용자 "영상인 경우 티 나게"): 사진 가운데 어두운 ▶ 동그라미(5칸은 작게) + 오른쪽 아래 길이 */
 .sp-p__cell-play {
   /* 칸 폭의 60%(최대 80px), 사용자 "재생 아이콘 더 크게"(117z) */

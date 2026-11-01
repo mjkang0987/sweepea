@@ -68,6 +68,16 @@ update public.members set text_size = 'large' where id = :'m_gm';
 select public.sp_note_views(array[:'m1', :'m2', :'m4', :'m1']::uuid[]);
 select public.sp_note_views(array[:'m1']::uuid[]);
 reset role;
+-- 안 본 사진(20261101000002): 들어온 뒤 올라온 것만, 본 사진·못 보는 사진은 빠짐. m3를 외할머니가 들어온 뒤 올라온 것으로
+update public.media set created_at = now() + interval '1 minute' where id = :'m3';
+set role authenticated;
+select pg_temp.ok(array(select public.sp_unseen_media(array[:'m1', :'m2', :'m3', :'m4']::uuid[])) = array[:'m3']::uuid[], '안 본 사진은 들어온 뒤 올라온 m3만(본 m1·친가 m2·올리는 중 m4 빠짐)');
+select public.sp_note_views(array[:'m3']::uuid[]);
+select pg_temp.ok(not exists (select 1 from public.sp_unseen_media(array[:'m3']::uuid[])), '보고 나면 안 본 사진에서 빠짐');
+select public.sp_note_parent_views(array[:'m1']::uuid[]);
+reset role;
+select pg_temp.ok((select count(*) = 0 from public.parent_views), '가족 기기는 엄빠 본 기록을 못 남김');
+delete from public.views where media_id = :'m3';
 
 -- 권한 밖 동작은 에러가 나야 한다
 \set ON_ERROR_STOP 0
@@ -109,6 +119,12 @@ select pg_temp.ok(array(select name from public.sp_parent_media_viewers(:'m1')) 
 select public.sp_note_views(array[:'m1']::uuid[]);
 reset role;
 select pg_temp.ok((select count(*) = 1 from public.views), '엄빠가 본 건 안 셈');
+-- 엄빠 안 본 사진(20261101000002): 내가 올린 사진은 빠짐, 본 기록은 엄빠 표에
+set role authenticated;
+select pg_temp.ok(not exists (select 1 from public.sp_unseen_media(array[:'m1', :'m3']::uuid[])), '엄빠가 올린 사진은 새 사진 아님');
+select public.sp_note_parent_views(array[:'m1', :'m1']::uuid[]);
+reset role;
+select pg_temp.ok((select count(*) = 1 from public.parent_views where media_id = :'m1' and user_id = :'P'), '엄빠 본 기록 한 줄');
 select set_config('request.jwt.claims', json_build_object('sub', :'AU', 'is_anonymous', true)::text, false);
 set role authenticated;
 select pg_temp.ok((select count(*) = 3 from public.media), '승인 뒤 외가 사진 전부');
@@ -195,6 +211,17 @@ select pg_temp.ok((select count(*) = 4 from public.media), '올리기 권한이�
 select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, array[:'gpa']::uuid[]) as m6 \gset
 reset role;
 select pg_temp.ok((select uploaded_by_member = :'m_sp' and uploaded_by_parent is null from public.media where id = :'m6'), '가족 기기가 올리면 올린 사람은 그 구성원');
+-- 엄빠 안 본 사진(20261101000002): 가족이 올린 사진은 엄빠에게 새 사진, 보고 나면 빠짐(잠깐 다 올라간 것으로)
+update public.media set status = 'ready' where id = :'m6';
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok(array(select public.sp_unseen_media(array[:'m6', :'m1']::uuid[])) = array[:'m6']::uuid[], '가족이 올린 사진은 엄빠에게 새 사진(엄빠가 올린 m1은 아님)');
+select public.sp_note_parent_views(array[:'m6']::uuid[]);
+select pg_temp.ok(not exists (select 1 from public.sp_unseen_media(array[:'m6']::uuid[])), '엄빠가 보고 나면 빠짐');
+reset role;
+delete from public.parent_views where media_id = :'m6';
+update public.media set status = 'uploading' where id = :'m6';
+select set_config('request.jwt.claims', json_build_object('sub', :'SP', 'is_anonymous', true)::text, false);
 set role authenticated;
 \set ON_ERROR_STOP 0
 \echo '아래 에러 1줄은 의도된 거부(가족이 부모 사용자 id 열 읽기)'

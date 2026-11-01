@@ -80,6 +80,8 @@ const used: Record<string, number> = {};
 const comments: { id: string; mediaId: string; memberId: string; at: number; body: string; deleted?: boolean }[] = [];
 // 보신 기록: `사진|구성원` (넣은 순서 = 처음 본 순)
 const views = new Set<string>();
+// 엄빠가 본 사진(DB parent_views 흉내): '사진|계정'. 가족 '본 사람' 목록과 섞이지 않게 따로
+const parentViews = new Set<string>();
 const familyOf = (s: Share) => groups.find((g) => g.id === s.groupIds[0])!.familyId;
 const key = (pass: Pass, familyId: string) => `${pass.access}|${familyId}`;
 function meOf(d: Device | undefined): EntryMe | null {
@@ -388,6 +390,40 @@ export function createMockBackend(): Backend {
           // 볼 수 없는 사진은 건너뜀(DB처럼 조용히)
         }
       }
+    },
+    async noteParentViews(pass, ids) {
+      for (const id of ids.slice(0, 50)) {
+        try {
+          parentMedia(pass, id);
+          parentViews.add(`${id}|${pass.access}`);
+        } catch {
+          // 내 가족방 사진이 아니면 건너뜀
+        }
+      }
+    },
+    async unseenMedia(pass, ids) {
+      const out: string[] = [];
+      for (const id of ids.slice(0, 300)) {
+        const x = media.find((y) => y.id === id && y.status === 'ready');
+        if (!x || x.uploader === pass.access) continue;
+        let since: string;
+        let seen: boolean;
+        try {
+          const who = viewer(pass, id);
+          since = bornAt(members.find((m) => m.id === who)!);
+          seen = views.has(`${id}|${who}`);
+        } catch {
+          try {
+            parentMedia(pass, id);
+          } catch {
+            continue;
+          }
+          since = bornAt(parents.get(pass.access)!);
+          seen = parentViews.has(`${id}|${pass.access}`);
+        }
+        if (!seen && Date.parse(x.created_at ?? '') > Date.parse(since)) out.push(id);
+      }
+      return out;
     },
     async mediaViewers(pass, id) {
       // DB처럼 자기 가족방 사진이 아니면 빈 목록

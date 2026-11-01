@@ -331,6 +331,8 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       }),
     mediaComments: (pass, id) => rpc<MediaComment[]>(pass, 'sp_comment_list2', { p_media_id: id }),
     noteViews: (pass, ids) => (ids.length ? rpc<void>(pass, 'sp_note_views', { p_media_ids: ids }) : Promise.resolve()),
+    noteParentViews: (pass, ids) => (ids.length ? rpc<void>(pass, 'sp_note_parent_views', { p_media_ids: ids }) : Promise.resolve()),
+    unseenMedia: async (pass, ids) => (ids.length ? await rpc<string[]>(pass, 'sp_unseen_media', { p_media_ids: ids.slice(0, 300) }) : []),
     mediaViewers: async (pass, id) => (await rpc<{ name: string }[]>(pass, 'sp_parent_media_viewers', { p_media_id: id })).map((x) => x.name),
     deleteComment: (pass, id) => rpc<void>(pass, 'sp_delete_comment', { p_comment_id: id }),
     mediaMonths: (pass, opts = {}) => rpc<MediaMonth[]>(pass, 'sp_media_months', { p_family: opts.familyId ?? null, p_child: opts.childId ?? null, p_reps: opts.reps ?? 3 }),

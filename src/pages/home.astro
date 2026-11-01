@@ -70,6 +70,15 @@ const coparent = newP && Date.parse(newP.since) > (seenAt(Astro.cookies, COPAREN
 const cardView = !swipe && (z === 'm' || z === 'y');
 const monthCards = cardView && page.items.length ? await b.mediaMonths(a.pass, { childId: picked?.id, reps: 3 }).catch(() => null) : null;
 const { items } = page;
+// 새 사진(117e, 사용자 2026-11-01): 상대 엄빠·가족이 올렸고 내가 아직 안 본 사진(서버, 사람마다. 본 것 = 크게 보기). 들어오기 전·내가 올린 사진은 아님.
+// 올린 지 3시간 안이면 맨 위 '방금 올라왔어요' 묶음으로 옮기고 제자리(모든 쪽)에서 빼고, 3시간 지났으면 제자리에서 '새 사진' 알약. 못 받으면 표시 없음
+const recent200 = cont || cardView ? null : await b.listMedia(a.pass, { childId: picked?.id, kind, limit: 200 }).catch(() => null);
+const candidates = cardView ? [] : [...new Map([...(recent200 ?? []), ...items].map((m) => [m.id, m])).values()];
+const unseenIds = new Set(candidates.length ? await b.unseenMedia(a.pass, candidates.map((m) => m.id)).catch(() => []) : []);
+const nowMs = Date.now();
+const isTop = (m: { id: string; created_at?: string | null }) => unseenIds.has(m.id) && !!m.created_at && nowMs - Date.parse(m.created_at) < 3 * 3600 * 1000;
+const topItems = cont || cardView ? [] : (recent200 ?? items).filter(isTop);
+const shown = [...topItems, ...items.filter((m) => !isTop(m))];
 const kq = `${picked ? `k=${encodeURIComponent(picked.id)}&` : ''}${tq}`;
 // 월별·연별은 카드라 다음 쪽이 없다
 // 보기도 주소에 적는다(받은 쪽이 같은 보기로 그려지게)
@@ -134,12 +143,14 @@ const storageLater = !!(join || coparent || birthday);
 const helpers = admin?.members.filter((m) => m.status === 'active' && m.install_help_at && now - Date.parse(m.install_help_at) < 7 * 86_400_000) ?? [];
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 // 칸마다 받은 하트·한마디 수(디자인: 칸 왼쪽 아래 알약). 옆 기능이라 실패하면 알약만 뺀다
-const reacts = cardView ? null : await loadReacts(a.pass, items.map((m) => m.id)).catch(() => null);
+const reacts = cardView ? null : await loadReacts(a.pass, shown.map((m) => m.id)).catch(() => null);
 // 반올림을 먼저 해서 59.6초가 '0:60'이 되지 않게(리뷰 2026-10-31)
 const clock = (sec: number) => ((s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`)(Math.round(sec));
-type Cell = { id: string; src: string; video: boolean; day: string; d: string; mark: string | null; ratio: number; hearts: number; says: number; length: string | null; at2?: string; anchor?: string };
+type Cell = { id: string; src: string; video: boolean; day: string; d: string; mark: string | null; ratio: number; hearts: number; says: number; length: string | null; at2?: string; anchor?: string; top?: boolean; fresh?: boolean };
 // 빈칸 없는 앨범(117b): 달마다 끊지 않고 한 격자. 달로 바로 가기(#m-YYYY-MM)는 그 달 첫 칸 안 표식으로
 const cells: Cell[] = [];
+// 맨 위 '방금 올라왔어요' 묶음(117e)
+const topCells: Cell[] = [];
 let lastYM = '';
 // 달 묶음 이름(화면 읽기용 제목): 올해면 '10월', 아니면 '2025년 10월'
 // 기념일(100일·200일·첫돌·생일…) 표시: 고른 아이·아이 하나면 그 아이, 전체면 그날 기념일인 아이 이름과 함께(사용자 "이벤트로", 2026-10-29)
@@ -152,13 +163,16 @@ const markOf = (d: string) => {
 };
 const seoulDay = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(iso));
 const seoulYM = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
-for (const m of cardView || swipe ? [] : items) {
+for (const m of cardView || swipe ? [] : shown) {
+  const top = isTop(m);
   const ym = seoulYM(m.taken_at);
-  const anchor = ym !== lastYM ? ym : undefined;
-  lastYM = ym;
+  const anchor = !top && ym !== lastYM ? ym : undefined;
+  if (!top) lastYM = ym;
   const r = reacts?.get(m.id)?.counts;
-  cells.push({
+  (top ? topCells : cells).push({
     anchor,
+    top,
+    fresh: unseenIds.has(m.id),
     id: m.id,
     // 1칸은 한 줄에 한 장을 크게 보여서 작은 그림(480px) 대신 사진(영상은 포스터)
     src: await signedMediaUrl(z === 1 ? (m.kind === 'video' ? (m.poster_key ?? m.thumb_key) : m.view_key) : m.thumb_key),
@@ -180,11 +194,11 @@ const whenFirst = d0 && !cardView && !swipe ? `${d0.slice(0, 4) === today.slice(
 const kidAges = (picked ? [picked] : kids).map((k) => ({ name: k.name, age: ageLabel(k.birth_date, today) })).filter((k) => k.age);
 // 넘겨 보기 카드(98d, 가족 넘겨 보기와 같은 카드): 사진(영상은 포스터) 크게, 누르면 크게 보기. 칸 단계(z)는 안 붙인다(닫으면 기억한 넘겨 보기로)
 const viewQ = picked ? `?k=${encodeURIComponent(picked.id)}` : '';
-const toAt = items.findIndex((m) => m.id === Astro.url.searchParams.get('to'));
+const toAt = shown.findIndex((m) => m.id === Astro.url.searchParams.get('to'));
 const slides = !swipe
   ? []
   : await Promise.all(
-      items.map(async (m, i) => {
+      shown.map(async (m, i) => {
         const r = reacts?.get(m.id)?.counts;
         const video = m.kind === 'video';
         const mark = markOf(seoulDay(m.taken_at));
@@ -202,17 +216,19 @@ const slides = !swipe
           eager: !cont && (toAt >= 0 ? Math.abs(i - toAt) <= 1 : i < 3),
           first: !cont && i === (toAt >= 0 ? toAt : 0),
           href: `/view/${m.id}${viewQ}`,
+          fresh: unseenIds.has(m.id),
         };
       }),
     );
 // 엇갈린 배열 자리: 휴대폰 2줄, 넓은 화면 5줄(CSS가 화면 폭에 맞는 쪽을 씀). 1칸은 휴대폰 한 줄(원래 모양 --ar), 넓은 화면 2줄. 3·5칸은 정사각이라 자리 없음
-if (z !== 3 && z !== 5) {
-  const two = masonry(cells.map((c) => c.ratio), 2);
-  const five = masonry(cells.map((c) => c.ratio), 5);
-  cells.forEach((c, i) => {
-    c.at2 = `--c2:${two[i].col};--r2:${two[i].row};--s2:${two[i].span};--c5:${five[i].col};--r5:${five[i].row};--s5:${five[i].span};--ar:${1 / c.ratio}`;
-  });
-}
+if (z !== 3 && z !== 5)
+  for (const group of [topCells, cells]) {
+    const two = masonry(group.map((c) => c.ratio), 2);
+    const five = masonry(group.map((c) => c.ratio), 5);
+    group.forEach((c, i) => {
+      c.at2 = `--c2:${two[i].col};--r2:${two[i].row};--s2:${two[i].span};--c5:${five[i].col};--r5:${five[i].row};--s5:${five[i].span};--ar:${1 / c.ratio}`;
+    });
+  }
 ---
 
 <Parent title="앨범 · 스위피" tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0} wide={!swipe}>
@@ -370,8 +386,9 @@ if (z !== 3 && z !== 5) {
       <ul class="sp-a__swipe sp-p__swipe" aria-label={swipeTotal === null ? '사진, 옆으로 밀어서 넘겨 보기' : `사진 ${swipeTotal.toLocaleString('ko-KR')}장, 옆으로 밀어서 넘겨 보기`}>
         {slides.map((c) => (
           <li class="sp-a__slide" id={`c-${c.id}`}>
-            <a class="sp-a__card" href={c.href} aria-label={`${c.label}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''} 크게 보기`}>
+            <a class="sp-a__card" href={c.href} aria-label={`${c.fresh ? '새 사진, ' : ''}${c.label}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''} 크게 보기`}>
               <img class="sp-a__card-img" src={c.src} alt="" loading={c.eager ? 'eager' : 'lazy'} fetchpriority={c.first ? 'high' : undefined} decoding="async" />
+              {c.fresh && <span class="sp-p__new sp-p__new--card" aria-hidden="true">새 사진</span>}
               <span class="sp-a__card-cap">
                 <span class="sp-a__card-day">{c.cap}</span>
                 {(c.hearts > 0 || c.says > 0) && (
@@ -413,19 +430,22 @@ if (z !== 3 && z !== 5) {
     ) : cardView ? (
       <p class="sp-p__lead">{z === 'y' ? '해마다' : '달마다'} 모아 보기를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
     ) : (
-      cells.length > 0 && (
-        <section class="sp-p__month" data-ym="all" aria-labelledby="album-grid-t">
-          {/* 빈칸 없는 앨범(117b): 날짜는 위 기간 줄, 화면 읽기용 제목만 */}
-          <h2 class="sp-vh" id="album-grid-t">사진</h2>
+      [
+        { ym: 'new', list: topCells },
+        { ym: 'all', list: cells },
+      ].filter((g) => g.list.length > 0).map((g) => (
+        <section class="sp-p__month" data-ym={g.ym} aria-label={g.ym === 'new' ? `방금 올라온 사진 ${g.list.length}장` : '사진'}>
+          {/* 빈칸 없는 앨범(117b): 날짜는 위 기간 줄, 화면 읽기용 제목만. 맨 위 새 사진 묶음(117e)은 보이는 제목 */}
+          {g.ym === 'new' ? <h2 class="sp-p__new-title">방금 올라왔어요 <span class="sp-p__new-count">· {g.list.length}장</span></h2> : <h2 class="sp-vh">사진</h2>}
           <ul class={`sp-p__grid sp-p__grid--z${z}`}>
-            {cells.map((c) => (
+            {g.list.map((c) => (
               <li class="sp-p__cell" id={`c-${c.id}`} style={c.at2} data-ratio={c.ratio} data-d={c.d} data-mark={c.mark ?? undefined}>
                 {c.anchor && <span class="sp-p__anchor" id={`m-${c.anchor}`} aria-hidden="true" />}
                 <a class="sp-p__cell-link" href={`/view/${c.id}?${kq}z=${z}`}>
                   <img
                     class="sp-p__cell-img"
                     src={c.src}
-                    alt={`${c.day}${c.mark ? ` ${c.mark}` : ''} ${c.video ? `영상${c.length ? ` ${c.length}` : ''}` : '사진'}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''}`}
+                    alt={`${c.fresh && !c.top ? '새 사진, ' : ''}${c.day}${c.mark ? ` ${c.mark}` : ''} ${c.video ? `영상${c.length ? ` ${c.length}` : ''}` : '사진'}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''}`}
                     loading="lazy"
                     decoding="async"
                   />
@@ -443,12 +463,13 @@ if (z !== 3 && z !== 5) {
                   {c.video && <span class="sp-p__cell-play" aria-hidden="true"><svg class="sp-p__cell-play-icon" width="20" height="20" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
                   {c.video && c.length && <span class="sp-p__cell-length" aria-hidden="true">{c.length}</span>}
                   {z !== 5 && c.mark && <span class="sp-p__cell-mark" aria-hidden="true">{c.mark}</span>}
+                  {c.fresh && !c.top && <span class="sp-p__new" aria-hidden="true">새 사진</span>}
                 </a>
               </li>
             ))}
           </ul>
         </section>
-      )
+      ))
     )
   }
   {/* 목록 끝(디자인 LoadMore): 다음 쪽 링크(스크립트가 보이기 전에 받아 붙임) 또는 이어 본 뒤 끝 */}

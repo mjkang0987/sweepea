@@ -283,6 +283,10 @@ export interface Backend {
   mediaComments(pass: Pass, mediaId: string): Promise<MediaComment[]>;
   /** 가족 기기가 본 사진 남기기(볼 수 있는 사진만, 승인된 구성원만, 한 번에 50장). 엄빠 계정은 아무것도 안 남음 */
   noteViews(pass: Pass, mediaIds: string[]): Promise<void>;
+  /** 엄빠가 본 사진 남기기(117d, 크게 보기). 내 가족방 사진만, 50장 */
+  noteParentViews(pass: Pass, mediaIds: string[]): Promise<void>;
+  /** 받은 사진 중 이 사람(가족 구성원·엄빠)이 아직 안 본 것(들어온 뒤 올라왔고, 내가 안 올렸고, 본 기록 없음). 300장 */
+  unseenMedia(pass: Pass, mediaIds: string[]): Promise<string[]>;
   /** 엄빠 크게 보기: 그 사진을 본 가족 이름(처음 본 순). 횟수·시간은 내보내지 않는다 */
   mediaViewers(pass: Pass, mediaId: string): Promise<string[]>;
   /** 한마디 지우기(쓴 사람만) */
