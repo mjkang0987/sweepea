@@ -14,7 +14,7 @@ import { groupYears } from '../../lib/months';
 import { getBackend } from '../../lib/backend';
 import { signedMediaUrl } from '../../lib/signed';
 import { masonry, ratioOf } from '../../lib/masonry';
-import { NEW_FROM, PHOTOS_SEEN, WAITED, seenAt, setLayerCookie } from '../../lib/layers';
+import { PHOTOS_SEEN, WAITED, seenAt, setLayerCookie } from '../../lib/layers';
 import { dayMark, kidImage, milestone } from '../../lib/age';
 import { EMOJI } from '../../lib/emoji';
 import { seoulToday } from '../../lib/parent';
@@ -27,13 +27,7 @@ if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData().catch(() => null);
   const at = String(form?.get('at') ?? '');
   if (form?.get('do') === 'approved') Astro.cookies.delete(WAITED, { path: '/' });
-  if (Number.isFinite(Date.parse(at))) {
-    // 새 사진 '보기': 그 전 '본 때'를 1시간 남겨, 이번에 보는 동안은 맨 위 묶음·'새 사진' 표시가 그대로(117a)
-    const before = seenAt(Astro.cookies, PHOTOS_SEEN);
-    if (form?.get('do') === 'photos' && before !== null)
-      Astro.cookies.set(NEW_FROM, new Date(before).toISOString(), { path: '/', httpOnly: true, sameSite: 'lax', secure: import.meta.env.PROD, maxAge: 3600 });
-    setLayerCookie(Astro.cookies, PHOTOS_SEEN, new Date(at).toISOString());
-  }
+  if (Number.isFinite(Date.parse(at))) setLayerCookie(Astro.cookies, PHOTOS_SEEN, new Date(at).toISOString());
   const back = String(form?.get('back') ?? '/album');
   return Astro.redirect(back.startsWith('/album') ? back : '/album', 303);
 }
@@ -63,12 +57,14 @@ const sayFor = Astro.url.searchParams.get('sm');
 const sayToast = sayFor ? sayNote(say) : null;
 // 월별은 달 카드만 그려서 칸 반응 수·사진 주소가 필요 없다
 const monthView = q.v === 'list' && (q.z === 'm' || q.z === 'y');
-// 새 사진(117a, 사용자 2026-11-01): 이 기기에서 아직 안 본 사진(올린 때 > '본 때'). 올린 지 3시간 안이면 맨 위 묶음으로 옮기고
-// 제자리(모든 쪽)에서 빼고, 3시간 지났으면 제자리에서 '새 사진' 알약. 처음 온 기기('본 때' 없음)는 표시 없음
-const newFrom = seenAt(Astro.cookies, NEW_FROM) ?? seenAt(Astro.cookies, PHOTOS_SEEN);
+// 새 사진(117a·117d, 사용자 2026-11-01): 이 사람이 아직 안 본 사진(서버 보신 기록, 사람마다 — 폰·태블릿 어느 쪽에서 봐도 한 번).
+// 본 것 = 넘겨 보기 가운데 1.5초·크게 보기. 들어오기 전에 올라온 사진·내가 올린 사진은 새 사진 아님.
+// 올린 지 3시간 안이면 맨 위 묶음으로 옮기고 제자리(모든 쪽)에서 빼고, 3시간 지났으면 제자리에서 '새 사진' 알약. 못 받으면 표시 없음
+const candidates = monthView ? [] : [...new Map([...(recent200 ?? []), ...items].map((m) => [m.id, m])).values()];
+const unseenIds = new Set(candidates.length ? await getBackend().unseenMedia(pass, candidates.map((m) => m.id)).catch(() => []) : []);
 const nowMs = Date.now();
-const unseen = (m: { created_at?: string | null }) => newFrom !== null && !!m.created_at && Date.parse(m.created_at) > newFrom;
-const isTop = (m: { created_at?: string | null }) => unseen(m) && nowMs - Date.parse(m.created_at!) < 3 * 3600 * 1000;
+const unseen = (m: { id: string }) => unseenIds.has(m.id);
+const isTop = (m: { id: string; created_at?: string | null }) => unseen(m) && !!m.created_at && nowMs - Date.parse(m.created_at) < 3 * 3600 * 1000;
 const topItems = cont || monthView ? [] : (recent200 ?? items).filter(isTop);
 const shown = [...topItems, ...items.filter((m) => !isTop(m))];
 const reacts = monthView ? new Map() : await loadReacts(pass, shown.map((m) => m.id));
