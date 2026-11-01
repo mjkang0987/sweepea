@@ -388,11 +388,11 @@ if (z !== 3 && z !== 5)
       <ul class="sp-a__swipe sp-p__swipe" aria-label={swipeTotal === null ? '사진, 옆으로 밀어서 넘겨 보기' : `사진 ${swipeTotal.toLocaleString('ko-KR')}장, 옆으로 밀어서 넘겨 보기`}>
         {slides.map((c) => (
           <li class="sp-a__slide" id={`c-${c.id}`}>
-            <a class="sp-a__card" href={c.href} aria-label={`${c.fresh ? '새 사진, ' : ''}${c.label}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''} 크게 보기`}>
+            <a class="sp-a__card" href={c.href} aria-label={`${c.fresh ? '신규, ' : ''}${c.label}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''} 크게 보기`}>
               {/* 사진과 그 위 표시를 한 상자로: ▶·길이·새 사진이 아래 글자 줄 말고 사진 기준으로 자리 잡게 */}
               <span class="sp-p__card-media">
                 <img class="sp-a__card-img" src={c.src} alt="" loading={c.eager ? 'eager' : 'lazy'} fetchpriority={c.first ? 'high' : undefined} decoding="async" />
-                {c.fresh && <span class="sp-p__new sp-p__new--card" aria-hidden="true">새 사진</span>}
+                {c.fresh && <span class="sp-p__new sp-p__new--card" aria-hidden="true">신규</span>}
                 {/* 영상이면 사진 가운데 큰 ▶ + 길이(118, 사용자 "넘겨 보기에서 영상인지 잘 안 보여서", 가족 카드와 같은 모양) */}
                 {c.video && <span class="sp-a__card-play" aria-hidden="true"><svg class="sp-a__card-play-icon" width="32" height="32" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
                 {c.video && c.length && <span class="sp-a__card-length" aria-hidden="true">{c.length}</span>}
@@ -453,7 +453,7 @@ if (z !== 3 && z !== 5)
                   <img
                     class="sp-p__cell-img"
                     src={c.src}
-                    alt={`${c.fresh && !c.top ? '새 사진, ' : ''}${c.day}${c.mark ? ` ${c.mark}` : ''} ${c.video ? `영상${c.length ? ` ${c.length}` : ''}` : '사진'}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''}`}
+                    alt={`${c.fresh && !c.top ? '신규, ' : ''}${c.day}${c.mark ? ` ${c.mark}` : ''} ${c.video ? `영상${c.length ? ` ${c.length}` : ''}` : '사진'}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''}`}
                     loading="lazy"
                     decoding="async"
                   />
@@ -473,7 +473,7 @@ if (z !== 3 && z !== 5)
                   {/* 왼쪽 위 배지(119): 새 사진(틸)·기념일(분홍, 같은 알약), 둘 다면 위아래로 */}
                   {((c.fresh && !c.top) || c.mark) && (
                     <span class="sp-p__pills" aria-hidden="true">
-                      {c.fresh && !c.top && <span class="sp-p__new">새 사진</span>}
+                      {c.fresh && !c.top && <span class="sp-p__new">신규</span>}
                       {c.mark && <span class="sp-p__new sp-p__cell-mark">{c.mark}</span>}
                     </span>
                   )}
@@ -509,7 +509,8 @@ if (z !== 3 && z !== 5)
 </Parent>
 
 <script>
-  import { autoMore, keepSpot, relayout, swipeMore } from '../lib/more';
+  import { autoMore, closeReturn, keepSpot, relayout, swipeMore } from '../lib/more';
+  closeReturn();
   import { zoomInPlace } from '../lib/zoomswap';
 
   // 넘겨 보기(98d): 옆으로 밀다 남은 카드가 다섯 장쯤이면 다음 60장 카드를 뒤에 붙인다. 돌아온 카드(#c-<id>)는 브라우저가 가운데로
