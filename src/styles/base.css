@@ -468,6 +468,14 @@
   width: 2rem;
   height: 2rem;
 }
+/* 캐릭터를 안 고른 사람: 이름 첫 글자 동그라미(그림과 같은 자리) */
+.sp-avatar--initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--label-2);
+  font-weight: 700;
+}
 /* 구성원 상세 머리(56px). 엄빠 .sp-p__avatar--large와 순서에 기대지 않게 따로 */
 .sp-avatar--large {
   width: 3.5rem;
