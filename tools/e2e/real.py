@@ -27,9 +27,9 @@ with sync_playwright() as p:
     pg.locator('label',has_text='하린').locator('input[name=child]').check()
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=60000)
     check(pg.locator('.sp-p__cell').count()==1,'올린 사진 1장 보임')
-    seg=pg.get_by_role('navigation',name='아이 고르기')
+    seg=pg.get_by_role('navigation',name='거르기')
     seg.get_by_role('link',name='도윤').click(); pg.wait_for_url('**k=**'); check(pg.locator('.sp-p__cell').count()==0,'도윤 탭 0장(media_children 필터)')
-    pg.get_by_role('navigation',name='아이 고르기').get_by_role('link',name='하린').click(); pg.wait_for_url('**k=**'); check(pg.locator('.sp-p__cell').count()==1,'하린 탭 1장')
+    pg.get_by_role('navigation',name='거르기').get_by_role('link',name='하린').click(); pg.wait_for_url('**k=**'); check(pg.locator('.sp-p__cell').count()==1,'하린 탭 1장')
     pg.screenshot(path=S+'real-home.png')
     # 링크 → 가족 입장
     pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
