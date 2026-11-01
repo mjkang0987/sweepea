@@ -580,51 +580,71 @@
   font-size: var(--senior-caption-size);
 }
 /* 맨 위 '방금 올라왔어요' 묶음 제목(117a) */
-.sp-a__day-title--new {
-  color: var(--pea-ink);
+.sp-a__day-title.sp-a__day-title--new {
+  /* 맨 위 '방금 올라왔어요'(117y): 틸 띠 + 큰 글자(날짜 제목보다 크게) */
+  padding: var(--space-3) var(--space-4);
+  border-radius: 14px;
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-size: var(--senior-body-size);
+  line-height: var(--senior-body-line);
+  font-weight: 800;
+}
+.sp-a__day-title--new .sp-a__day-count {
+  color: var(--pea-deep);
+  font-weight: 600;
 }
 /* 새 사진 알약(117a): 아직 안 본 사진, 칸 왼쪽 위. 5칸은 점만 */
 .sp-a__new {
+  /* 새 사진(117a·117y): 어르신도 보이게 크게 + 흰 테(사진 위 대비) */
   position: absolute;
+  z-index: 1;
   left: var(--space-2);
   top: var(--space-2);
-  min-height: 1.5rem;
-  padding: 0 0.5625rem;
+  min-height: 2rem;
+  padding: 0 0.75rem;
   box-sizing: border-box;
   border-radius: 999px;
   background: var(--pea);
   color: var(--on-pea);
+  box-shadow: 0 0 0 2px var(--bg);
   display: inline-flex;
   align-items: center;
-  font-size: var(--footnote-size);
-  line-height: 1.125rem;
-  font-weight: 700;
+  justify-content: center;
+  font-size: var(--senior-caption-size);
+  line-height: var(--senior-caption-line);
+  font-weight: 800;
   pointer-events: none;
 }
 .sp-a__grid--5 .sp-a__new {
+  /* 5칸: '새' 한 글자 동그라미 */
   left: 4px;
   top: 4px;
-  width: 0.75rem;
-  min-height: 0.75rem;
-  height: 0.75rem;
+  width: 1.75rem;
+  min-height: 1.75rem;
+  height: 1.75rem;
   padding: 0;
   font-size: 0;
-  box-shadow: 0 0 0 2px var(--bg);
+}
+.sp-a__grid--5 .sp-a__new::before {
+  content: '새';
+  font-size: 0.9375rem;
+  line-height: 1;
 }
 .sp-a__new--card {
-  left: 0.625rem;
-  top: 0.625rem;
-  min-height: 1.75rem;
-  padding: 0 0.75rem;
-  font-size: var(--subhead-size);
+  left: 0.75rem;
+  top: 0.75rem;
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  font-size: var(--senior-body-size);
 }
 .sp-a__play {
-  /* 영상(117x, 사용자 "영상인 경우 티 나게"): 사진 가운데 어두운 ▶ 동그라미 */
+  /* 영상(117x·117y, 사용자 "어른들 생각해서 티 나게"): 사진 가운데 어두운 ▶ 동그라미 56px */
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 3.5rem;
+  height: 3.5rem;
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
@@ -632,14 +652,15 @@
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.6);
   color: #ffffff;
-  font-size: 1rem;
+  font-size: 1.375rem;
   pointer-events: none;
 }
 .sp-a__grid--5 .sp-a__play {
-  /* 5칸: 작게 */
-  width: 1.5rem;
-  height: 1.5rem;
-  font-size: 0.625rem;
+  /* 5칸: 작은 칸은 칸의 70%를 채워 영상인 게 바로 보이게 */
+  width: 70%;
+  height: auto;
+  aspect-ratio: 1;
+  font-size: 1.125rem;
 }
 .sp-a__zoom {
   /* 화면 아래에 떠 있지만 DOM에선 사진들 앞(키보드로 바로 닿게) */
