@@ -34,7 +34,8 @@ with sync_playwright() as p:
     check(pg.get_by_role('heading',level=1).inner_text()=='사진 정보 수정' and pg.get_by_role('link',name='닫기').get_attribute('href').startswith('/view/'),'수정 화면 제목·닫기')
     check(pg.get_by_label('친가').is_checked() and not pg.get_by_label('가족',exact=True).is_checked() and pg.get_by_label('도윤').is_checked() and pg.locator('#date').input_value()=='2026-01-02','저장한 값')
     gp.goto(B+'/album'); check(gp.locator('.sp-a__card-link').count()==0,'그룹을 빼면 그 가족 앨범에서 사라짐')
-    pg.goto(B+'/home'); check(pg.get_by_role('heading',name='1월',exact=True).count()==1,'찍은 날 바꾸면 앨범 달이 바뀜(올해는 "1월")')
+    # 117b: 달 제목 대신 그 달 첫 칸 표식(#m-YYYY-MM)
+    pg.goto(B+'/home?v=list'); check(pg.locator('#m-2026-01').count()==1,'찍은 날 바꾸면 앨범 달이 바뀜(1월 표식)')
     # 지우기
     pg.locator('.sp-p__cell-link').first.click(); pg.wait_for_url('**/view/**'); pg.get_by_role('link',name='사진 정보 수정').click(); pg.wait_for_url('**/photo/**')
     pg.get_by_role('link',name='사진 지우기').click(); pg.wait_for_selector('#del[open]'); shot('2')
