@@ -24,9 +24,9 @@ with sync_playwright() as p:
     pg.set_input_files('#up-files',files); pg.wait_for_function("document.getElementById('up-title').textContent.includes('3장')",timeout=30000)
     pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=30000)
     size=pg.locator('#up-size').text_content(); check('MB' in size,'줄인 크기 표시: '+size)
-    pg.get_by_role('button',name='2번째 사진 대표').click()
-    check(pg.get_by_role('button',name='2번째 사진 대표').get_attribute('aria-pressed')=='true','대표 사진 바꾸기')
-    check(pg.evaluate("document.activeElement.getAttribute('aria-label')")=='2번째 사진 대표','대표 고른 뒤에도 초점 유지')
+    # 카톡 대표 사진 고르기는 뺐다(112): 칸은 누르는 버튼이 아니라 그림, 이름은 'N번째 사진'
+    check(pg.locator('.sp-p__upgrid button').count()==0 and pg.get_by_role('img',name='2번째 사진').count()==1,'칸은 그림만(대표 고르기 없음)')
+    check(pg.locator('#up-cover-hint').count()==0,'대표 사진 안내 없음')
     pg.screenshot(path=D+'up-1.png')
     pg.get_by_role('button',name='올리고 카톡으로 보내기').click()
     pg.wait_for_selector('#up-done:not([hidden])',timeout=60000)

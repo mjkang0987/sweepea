@@ -29,7 +29,6 @@ const kid = callName(kids[0]?.name ?? '아이');
       <span class="sp-p__pick-text">사진·영상 고르기</span>
     </label>
     <ul class="sp-p__upgrid" id="up-grid" aria-label="고른 사진" hidden></ul>
-    <p class="sp-p__hint" id="up-cover-hint" hidden>테두리가 있는 사진이 카톡 카드 대표 사진(보낼 때 첫 장)이 돼요. 다른 사진을 눌러 바꿀 수 있어요.</p>
     </div>
 
     <div class="sp-p__up-side">
@@ -139,7 +138,6 @@ const kid = callName(kids[0]?.name ?? '아이');
   const status = $<HTMLParagraphElement>('up-status');
   const buttons = [...form.querySelectorAll<HTMLButtonElement>('#up-actions .sp-p__btn')];
   let items: Item[] = [];
-  let cover = 0;
   let busy = false;
   let shrinking = false;
   // 줄이기가 마지막으로 진행된 때(멈춤 감시)
@@ -345,11 +343,11 @@ const kid = callName(kids[0]?.name ?? '아이');
   /** 칸 상태(표시·버튼 이름)만 바꾼다. 올리는 동안은 칸을 새로 그리지 않고 이것만(아이폰에서 썸네일이 깜빡이지 않게) */
   function paint(i: number) {
     const li = grid.children[i];
-    const b = li?.querySelector('.sp-p__upbtn');
-    if (!li || !b) return;
+    const img = li?.querySelector('.sp-p__upimg');
+    if (!li || !img) return;
     const it = items[i];
     const tag = it.done ? 'done' : it.state;
-    b.setAttribute('aria-label', `${i + 1}번째 ${it.kind === 'video' ? '영상' : '사진'} 대표${tag ? `, ${TAG[tag]}` : ''}`);
+    img.setAttribute('alt', `${i + 1}번째 ${it.kind === 'video' ? '영상' : '사진'}${tag ? `, ${TAG[tag]}` : ''}`);
     li.querySelector('.sp-p__uptag')?.remove();
     if (!tag) return;
     const t = document.createElement('span');
@@ -359,35 +357,21 @@ const kid = callName(kids[0]?.name ?? '아이');
     li.appendChild(t);
   }
 
-  function render(focus?: number) {
+  function render() {
     grid.hidden = items.length === 0;
-    $('up-cover-hint').hidden = items.length < 2;
     $('up-title').textContent = items.length ? `${items.some((i) => i.kind === 'video') ? '사진·영상' : '사진'} ${items.length}장` : '사진 올리기';
     grid.replaceChildren(
       ...items.map((it, i) => {
         const li = document.createElement('li');
         li.className = 'sp-p__upcell';
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'sp-p__upbtn';
-        b.disabled = busy;
-        // 눌림 상태는 aria-pressed가 말해 주므로 이름엔 대표 여부를 넣지 않는다
-        b.setAttribute('aria-pressed', String(i === cover));
-        b.addEventListener('click', () => {
-          cover = i;
-          render(i);
-        });
         const img = document.createElement('img');
         img.className = 'sp-p__upimg';
         img.src = it.url;
-        img.alt = '';
-        b.appendChild(img);
-        li.appendChild(b);
+        li.appendChild(img);
         return li;
       }),
     );
     items.forEach((_, i) => paint(i));
-    if (focus !== undefined) grid.querySelectorAll<HTMLButtonElement>('.sp-p__upbtn')[focus]?.focus();
     const bytes = items.reduce((n, it) => n + it.view.size + it.thumb.size + (it.poster?.size ?? 0), 0);
     $('up-size').textContent = shrinking ? '줄이는 중' : items.length ? `보기 좋은 크기 · ${(bytes / MB).toFixed(1)}MB` : '고르면 보여요';
     buttons.forEach((b) => (b.disabled = busy || items.length === 0));
@@ -537,8 +521,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     busy = true;
     keepAwake();
     render();
-    // 대표 사진을 맨 앞에(공유 묶음 첫 장 = 카톡 카드 대표)
-    const order = [cover, ...items.keys()].filter((v, i, arr) => arr.indexOf(v) === i);
+    const order = [...items.keys()];
     // 남은 것의 크기로 퍼센트를 센다(다시 누르면 남은 것 기준으로 0%부터)
     const sizeOf = (it: Item) => it.view.size + it.thumb.size + (it.poster?.size ?? 0);
     const total = order.reduce((t, i) => t + (items[i].done ? 0 : sizeOf(items[i])), 0) || 1;
