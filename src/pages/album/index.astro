@@ -18,6 +18,7 @@ import { PHOTOS_SEEN, WAITED, seenAt, setLayerCookie } from '../../lib/layers';
 import { dayMark, kidImage, milestone } from '../../lib/age';
 import { EMOJI } from '../../lib/emoji';
 import { seoulToday } from '../../lib/parent';
+import { avatarSrc } from '../../lib/avatar';
 
 // 서명된 사진 주소가 들어 있는 사람별 페이지: 공유 캐시 금지
 Astro.response.headers.set('cache-control', 'private, no-store');
@@ -64,6 +65,8 @@ const title = `${kidTitle} 사진`;
 // 가장 최근 사진 날짜(이어지는 쪽·아래부터 그린 쪽은 첫 사진이 최근 것이 아니라 뺀다)
 const latest = items[0] && page.offset === 0 ? dayLabel(items[0].taken_at) : null;
 const showTag = many && !q.f;
+// 내 캐릭터(110)는 집마다 따로라, 여러 집을 섞어 보는 '모두'에선 숨김(어느 집 것인지 들어올 때마다 바뀔 수 있어서, 리뷰 2회차). 집을 고르면 그 집 것
+const meFam = q.f ? open.find((f) => f.family_id === q.f) : open.length === 1 ? open[0] : undefined;
 
 const cards = await Promise.all(
   (monthView ? [] : items).map(async (m, i) => ({
@@ -183,6 +186,11 @@ const monthCards = !monthRows
     <div class="sp-a__head-text">
       <h1 class="sp-f__title">{title}{total !== null && ` ${total}장`}</h1>
       {latest && <p class="sp-f__lead">{latest}에 올라왔어요</p>}
+      {meFam && (
+        <a class="sp-a__chip sp-a__me" href={`/me/avatar?f=${meFam.family_id}`}>
+          {meFam.avatar && <img class="sp-avatar sp-avatar--small" src={avatarSrc(meFam.avatar)} width="32" height="32" alt="" />}내 캐릭터
+        </a>
+      )}
     </div>
     <img class:list={["sp-a__kongi", headKid && "sp-kid"]} src={kidImage(headKid?.birth, todayIs)} width="64" height="64" alt="" />
   </header>

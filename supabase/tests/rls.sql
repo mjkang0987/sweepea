@@ -96,6 +96,10 @@ select public.sp_react(:'m1', 'heart', true);
 select public.sp_note_views(array[:'m1']::uuid[]);
 select pg_temp.ok((select count(*) = 1 from public.members), '승인 전엔 가족 명단 대신 자기 이름만');
 select pg_temp.ok(not exists (select 1 from public.media where id = :'m5'), '공유 안 한 외가 사진은 안 보임');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 1줄은 의도된 거부(승인 대기는 캐릭터 못 고름)'
+select public.sp_set_member_avatar(:'fam', 3::smallint);
+\set ON_ERROR_STOP 1
 reset role;
 
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
@@ -401,6 +405,61 @@ select pg_temp.ok(jsonb_array_length(public.sp_me() -> 'families') = 2, 'sp_me �
 select public.sp_react(:'mx', 'heart', true);
 reset role;
 select pg_temp.ok((select member_id = :'m_h2' from public.reactions where media_id = :'mx'), '다른 가족방 사진엔 그 가족방 이름(할머니)으로 반응');
+
+-- ── 캐릭터(110): 각자 자기 것만. 가족 기기는 가족방마다 그 가족방의 자기 구성원(승인된 사람), 엄빠는 자기 행
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_set_member_avatar(:'fam', 7::smallint);
+select public.sp_set_member_avatar(:'fam2', 12::smallint);
+select pg_temp.ok((select avatar = 7 from public.members where id = :'m_gm') and (select avatar = 12 from public.members where id = :'m_h2'), '가족방마다 내 구성원 캐릭터');
+select pg_temp.ok((select avatar is null from public.members where id = :'m_gf'), '다른 구성원은 그대로');
+select pg_temp.ok(public.sp_entry_info(:'code1') -> 'groups' -> 0 -> 'members' @> '[{"name": "외할머니", "avatar": 7}]', '누구세요 이름 목록에 캐릭터');
+select pg_temp.ok(public.sp_me() -> 'families' @> '[{"name": "외할머니", "avatar": 7}, {"name": "할머니", "avatar": 12}]', 'sp_me 가족방마다 내 캐릭터');
+select public.sp_set_member_avatar(:'fam', null);
+select pg_temp.ok((select avatar is null from public.members where id = :'m_gm'), '고르지 않음으로 되돌림');
+select public.sp_set_member_avatar(:'fam', 7::smallint);
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_set_parent_avatar(5::smallint);
+select pg_temp.ok((public.sp_parent_home() ->> 'avatar')::int = 5, '엄빠 내 캐릭터');
+select pg_temp.ok((select avatar = 7 from public.members where id = :'m_gm'), '엄빠 설정 › 가족 목록에 가족 캐릭터');
+reset role;
+select pg_temp.ok((select avatar is null from public.parents where user_id = :'P2'), '다른 엄빠는 그대로');
+\set ON_ERROR_STOP 0
+\echo '아래 에러 9줄은 의도된 거부(캐릭터: 범위 밖 2, 남의 구성원 직접 고치기 2, 안 들어간 가족방, 엄빠가 가족 것, 가족이 엄빠 것, 엄빠 범위 밖, 기기 없는 사용자)'
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_set_member_avatar(:'fam', 46::smallint);
+select public.sp_set_member_avatar(:'fam', 0::smallint);
+update public.members set avatar = 3 where id = :'m_gf';
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+update public.members set avatar = 3 where id = :'m_gm';
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GF', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_set_member_avatar(:'fam2', 3::smallint);
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_set_member_avatar(:'fam', 3::smallint);
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_set_parent_avatar(3::smallint);
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_set_parent_avatar(46::smallint);
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'NEW', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_set_member_avatar(:'fam', 3::smallint);
+reset role;
+\set ON_ERROR_STOP 1
+select pg_temp.ok((select avatar = 7 from public.members where id = :'m_gm') and (select avatar is null from public.members where id = :'m_gf') and (select avatar = 5 from public.parents where user_id = :'P'), '거부된 캐릭터 바꾸기는 안 들어감');
 select set_config('request.jwt.claims', json_build_object('sub', :'P2', 'is_anonymous', false)::text, false);
 set role authenticated;
 select pg_temp.ok((select count(*) = 1 from public.devices) and (select count(*) = 1 from public.members), 'P2는 자기 가족방 기기·이름만(외할머니의 다른 가족방은 모름)');
@@ -621,6 +680,9 @@ select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anony
 set role authenticated;
 select pg_temp.ok((select mine from public.sp_comment_list(:'m3') where body = '엄마 한마디'), '엄마가 보면 내 것');
 select pg_temp.ok((select bool_and(id is not null) from public.sp_comment_list(:'m3')), '목록에 지울 때 쓸 id');
+select pg_temp.ok((select avatar = 5 from public.sp_comment_list2(:'m3') where body = '엄마 한마디'), '한마디 목록2: 엄빠 캐릭터');
+select pg_temp.ok((select avatar = 7 from public.sp_comment_list2(:'m3') where name = '외할머니'), '한마디 목록2: 가족 캐릭터');
+select pg_temp.ok((select count(*) from public.sp_comment_list2(:'m3')) = (select count(*) from public.sp_comment_list(:'m3')), '한마디 목록2는 옛 목록과 같은 줄');
 reset role;
 -- 승인 대기는 볼 수 있는 사진이어도 목록을 못 봄(가족 명단을 못 보는 것과 같게)
 select m.status as km_status, coalesce(m.pending_until::text, '') as km_until, d.status as km_dev from public.members m join public.devices d on d.member_id = m.id and d.auth_user_id = :'AU' where m.display_name = '큰이모' \gset

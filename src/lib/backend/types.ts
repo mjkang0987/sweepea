@@ -8,9 +8,13 @@ export interface Pass {
   expiresAt: number;
 }
 
+/** 가족 캐릭터 번호(public/avatar/<n>.webp, 1~45). null = 안 고름(이름 첫 글자) */
+export type Avatar = number | null;
+
 export interface EntryMember {
   id: string;
   name: string;
+  avatar?: Avatar;
 }
 
 export interface EntryGroup {
@@ -63,6 +67,8 @@ export interface MeFamily extends EntryMe {
   /** 부모가 '가족도 사진 저장하기'를 켰는지 */
   download_allowed?: boolean;
   child_name: string | null;
+  /** 이 가족방에서 내 캐릭터 */
+  avatar?: Avatar;
   /** 아이들(기념일 표시용). 승인된 가족 기기만, 아니면 null */
   children?: { name: string; birth_date: string }[] | null;
 }
@@ -172,6 +178,8 @@ export type TextSizeMode = 'relation' | 'base' | 'large' | 'xlarge';
 export interface ParentHome {
   family_id: string | null;
   role?: 'mom' | 'dad';
+  /** 내 캐릭터 */
+  avatar?: Avatar;
   /** 로그인 제공자(kakao·naver·google·apple). 모르면 null */
   provider?: string | null;
   text_size_mode?: TextSizeMode;
@@ -220,6 +228,7 @@ export interface AdminMember {
   pending_until: string | null;
   /** 홈 화면에 두기를 부탁한 때 */
   install_help_at: string | null;
+  avatar: Avatar;
   created_at: string;
 }
 export interface AdminDevice {
@@ -304,6 +313,10 @@ export interface Backend {
   /** R2 정리 대기열(폴더 접두사) 오래된 것부터 */
   r2CleanupTake(limit: number): Promise<string[]>;
   r2CleanupDone(prefix: string): Promise<void>;
+  /** 가족 기기: 그 가족방에서 내 캐릭터(승인된 구성원만, 아니면 BackendError 403) */
+  setMemberAvatar(pass: Pass, familyId: string, avatar: Avatar): Promise<void>;
+  /** 엄빠: 내 캐릭터 */
+  setParentAvatar(pass: Pass, avatar: Avatar): Promise<void>;
   /** 홈 화면에 두기를 엄마아빠에게 부탁(가족 기기 본인) */
   requestInstallHelp(pass: Pass, familyId: string): Promise<void>;
   /** 접종·검진 완료 기록(부모만) */
@@ -358,11 +371,12 @@ export interface MediaComment {
   body: string;
   created_at: string;
   mine: boolean;
+  avatar?: Avatar;
 }
 
 /** 함께 관리하는 엄빠(설정 › 가족 맨 위) */
 export interface FamilyParents {
-  parents: { user_id: string; role: 'mom' | 'dad'; display_name: string; since: string; me: boolean }[];
+  parents: { user_id: string; role: 'mom' | 'dad'; display_name: string; since: string; me: boolean; avatar?: number | null }[];
   invite: { code: string; expires_at: string } | null;
 }
 /** 엄빠 초대 받은 화면(/join) */
