@@ -23,8 +23,8 @@ with sync_playwright() as p:
     pk=enter(KAKAO,'이모'); g=pk.get_by_role('complementary',name='홈 화면에 두세요'); check('앱 안에서는' in g.inner_text(),'카톡 안내')
     pk.screenshot(path=D+'i-2.png')
     pk.get_by_role('button',name='엄마아빠에게 부탁하기').click(); g.wait_for(state='detached')
-    check(pk.get_by_role('status').count()==1 and pk.get_by_role('complementary',name='홈 화면에 두세요').count()==0,'부탁하면 안내 숨기고 알림')
-    pk.reload(); check(pk.get_by_role('status').count()==0,'알림은 한 번만')
+    check(pk.get_by_role('status').filter(has_text='엄마아빠에게 부탁했어요').count()==1 and pk.get_by_role('complementary',name='홈 화면에 두세요').count()==0,'부탁하면 안내 숨기고 알림')
+    pk.reload(); check(pk.get_by_role('status').filter(has_text='엄마아빠에게 부탁했어요').count()==0,'알림은 한 번만')
     # 부모 쪽: 새 가족방에서 카톡으로 들어온 가족이 부탁 → 부모 최근 반응
     c=b.new_context(viewport={'width':390,'height':844}); pp=c.new_page()
     pp.goto(B+'/login'); pp.get_by_role('link',name='개발용으로 계속하기').click(); pp.wait_for_url('**/setup')
