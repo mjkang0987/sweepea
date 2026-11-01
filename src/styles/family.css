@@ -1923,6 +1923,12 @@
   padding-block: var(--space-2);
   background: var(--bg);
 }
+/* 달·해 카드에서 #m-YYYY-MM으로 올 때 그 달 첫 칸이 위에 붙은 기간 줄 밑에 숨지 않게(117b: 날 묶음 대신 첫 칸 안 표식) */
+.sp-a__anchor {
+  display: block;
+  height: 0;
+  scroll-margin-top: calc(env(safe-area-inset-top) + 4rem);
+}
 /* 키보드로 올라갈 때 붙은 날짜 제목이 고른 칸을 가리지 않게(WCAG 2.4.11) */
 .sp-a__cell-link {
   scroll-margin-top: calc(env(safe-area-inset-top) + 4rem);

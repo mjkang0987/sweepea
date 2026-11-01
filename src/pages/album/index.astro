@@ -109,13 +109,25 @@ const headKid = births.find((b) => !q.f || b.family === q.f);
 const todayEvents = cont ? [] : births.filter((b) => !q.f || b.family === q.f).map((b) => ({ name: b.name, what: milestone(b.birth, todayIs) })).filter((x) => x.what);
 // 달의 첫 날짜 묶음에 id(m-YYYY-MM): 달·해 카드에서 그 달로 바로 가게(?at=, #m-)
 const ymOf = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
-const days: { day: string; ym: string; first: boolean; top?: boolean; cards: (typeof cards[number] & { ratio: number; at?: string })[] }[] = [];
+const days: { day: string; ym: string; first: boolean; top?: boolean; cards: (typeof cards[number] & { ratio: number; at?: string; d?: string; mark?: string | null; anchor?: string })[] }[] = [];
 const topCards = cards.filter((c) => c.top);
 if (topCards.length) days.push({ day: 'new', ym: '', first: false, top: true, cards: topCards.map((c) => ({ ...c, ratio: ratioOf(c.width, c.height) })) });
-for (const c of cards) {
-  if (c.top) continue;
-  if (days.at(-1)?.day !== c.day) days.push({ day: c.day, ym: ymOf(c.taken_at), first: days.at(-1)?.ym !== ymOf(c.taken_at), cards: [] });
-  days.at(-1)!.cards.push({ ...c, ratio: ratioOf(c.width, c.height) });
+// 빈칸 없는 앨범(117b): 날마다 끊지 않고 한 격자('all'). 날짜는 위에 붙는 기간 줄, 기념일은 그날 칸에(data-mark), 달로 바로 가기는 그 달 첫 칸 표식
+const rest = cards.filter((c) => !c.top);
+if (rest.length) {
+  let lastYM = '';
+  days.push({
+    day: 'all',
+    ym: ymOf(rest[0].taken_at),
+    first: false,
+    cards: rest.map((c) => {
+      const ym = ymOf(c.taken_at);
+      const anchor = ym !== lastYM ? ym : undefined;
+      lastYM = ym;
+      const mark = marksOf(new Set([c.family_id]), c.taken_at).join(', ') || null;
+      return { ...c, ratio: ratioOf(c.width, c.height), d: seoulDayOf(c.taken_at), mark, anchor };
+    }),
+  });
 }
 // 2줄(넓은 화면 4줄)은 엇갈린 배열(디자인 GrandList, 부모 홈과 같은 계산): 날짜 묶음마다 자리를 정해 내보낸다.
 // 다음 쪽을 합칠 때 브라우저가 그 묶음만 다시 계산해도 앞 칸은 움직이지 않는다(CSS columns는 줄을 다시 나눠 옮겨감)
@@ -330,19 +342,20 @@ const monthCards = !monthRows
             <p class="sp-a__lead">{q.z === 'y' ? '해마다' : '달마다'} 모아 보기를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
           )
         ) : days.map((d) => (
-          <section class="sp-a__day" id={d.first ? `m-${d.ym}` : undefined} data-day={d.day} aria-label={d.top ? `방금 올라온 사진 ${d.cards.length}장` : `${d.day} ${d.cards.length}장`}>
+          <section class="sp-a__day" data-day={d.day} aria-label={d.top ? `방금 올라온 사진 ${d.cards.length}장` : '사진'}>
             {d.top ? (
               <h2 class="sp-a__day-title sp-a__day-title--new">방금 올라왔어요 <span class="sp-a__day-count">· {d.cards.length}장</span></h2>
             ) : (
-              <h2 class="sp-a__day-title">
-                {d.day}
-                {marksOf(new Set(d.cards.map((c) => c.family_id)), d.cards[0].taken_at).map((m) => <span class="sp-a__day-mark"> · {m}</span>)}
-                {' '}<span class="sp-a__day-count">· {d.cards.length}장</span>
+              // 기간 줄(117b, 엄빠 앨범과 같은 방식): 처음엔 맨 위 사진의 날(+기념일), 스크립트가 스크롤 따라 3·5칸은 보이는 기간('10월 14일 ~ 21일')
+              <h2 class="sp-a__day-title" data-when={q.z === 3 || q.z === 5 ? 'range' : 'day'} data-year={thisYear}>
+                {d.cards[0].day}
+                {d.cards[0].mark && <span class="sp-a__day-mark"> · {d.cards[0].mark}</span>}
               </h2>
             )}
             <ul class={`sp-a__grid sp-a__grid--${q.z}`}>
               {d.cards.map((c) => (
-                <li class="sp-a__cell" id={`c-${c.id}`} style={c.at} data-ratio={c.ratio}>
+                <li class="sp-a__cell" id={`c-${c.id}`} style={c.at} data-ratio={c.ratio} data-d={c.d} data-mark={c.mark ?? undefined}>
+                  {c.anchor && <span class="sp-a__anchor" id={`m-${c.anchor}`} aria-hidden="true" />}
                   <a class="sp-a__cell-link" href={c.href}>
                     <img
                       class="sp-a__cell-img"
@@ -431,7 +444,7 @@ const monthCards = !monthRows
     swipe.addEventListener('scrollend', settle);
     settle();
   } else {
-    // 모아 보기: 같은 날이 쪽을 넘어 이어지면 그날 묶음에 칸을 합치고 장 수를 고친다
+    // 모아 보기: 다음 쪽 칸을 한 격자(117b)에 이어 붙인다
     autoMore((doc) => {
       const added: HTMLElement[] = [];
       for (const sec of doc.querySelectorAll<HTMLElement>('.sp-a__day')) {
@@ -439,16 +452,16 @@ const monthCards = !monthRows
         if (!last) break;
         const ul = last.querySelector<HTMLElement>('.sp-a__grid');
         if (last.dataset.day === sec.dataset.day && ul) {
-          for (const li of sec.querySelectorAll<HTMLElement>('.sp-a__cell')) added.push(ul.appendChild(document.importNode(li, true)));
+          for (const li of sec.querySelectorAll<HTMLElement>('.sp-a__cell')) {
+            // 쪽마다 첫 칸에 그 달 표식이 붙어 오므로 이미 있는 달 표식은 뺀다(117b: 한 격자)
+            const mark = li.querySelector<HTMLElement>('.sp-a__anchor');
+            if (mark && document.getElementById(mark.id)) mark.remove();
+            added.push(ul.appendChild(document.importNode(li, true)));
+          }
           if (ul.classList.contains('sp-a__grid--2')) relayout(ul);
-          const n = ul.children.length;
-          last.setAttribute('aria-label', `${last.dataset.day} ${n}장`);
-          const count = last.querySelector('.sp-a__day-count');
-          if (count) count.textContent = `· ${n}장`;
         } else {
           const node = document.importNode(sec, true);
-          // 쪽 첫 날짜 묶음은 달 첫날이 아니어도 m- id를 달고 오므로 이미 있으면 뗀다(id 겹침 없게)
-          if (node.id && document.getElementById(node.id)) node.removeAttribute('id');
+          for (const mark of node.querySelectorAll<HTMLElement>('.sp-a__anchor')) if (document.getElementById(mark.id)) mark.remove();
           last.insertAdjacentElement('afterend', node);
           added.push(...node.querySelectorAll<HTMLElement>('.sp-a__cell'));
         }
@@ -456,6 +469,38 @@ const monthCards = !monthRows
       return added;
     });
     keepSpot('.sp-a__cell-link');
+    // 기간 줄(117b, 엄빠 앨범과 같은 방식): 스크롤 따라 위에 붙은 줄 아래 첫 사진의 날(+기념일), 3·5칸은 보이는 사진들의 기간. 한 프레임에 한 번만
+    {
+      const label = (d: string, withYear: boolean) => `${withYear ? `${d.slice(0, 4)}년 ` : ''}${Number(d.slice(5, 7))}월 ${Number(d.slice(8))}일`;
+      let queued = false;
+      const update = () => {
+        queued = false;
+        const when = document.querySelector<HTMLElement>('.sp-a__day-title[data-when]');
+        if (!when) return;
+        const year = when.dataset.year;
+        const top = when.getBoundingClientRect().bottom;
+        const seen: { d: string; mark?: string }[] = [];
+        for (const li of document.querySelectorAll<HTMLElement>('.sp-a__day[data-day="all"] .sp-a__cell[data-d]')) {
+          const r = li.getBoundingClientRect();
+          if (r.bottom <= top) continue;
+          if (r.top >= innerHeight) break;
+          seen.push({ d: li.dataset.d!, mark: li.dataset.mark });
+        }
+        if (!seen.length) return;
+        const newest = seen[0].d, oldest = seen.reduce((a, b) => (b.d < a ? b.d : a), newest);
+        const oy = oldest.slice(0, 4) !== year, ny = newest.slice(0, 4) !== oldest.slice(0, 4);
+        const text =
+          when.dataset.when === 'range' && oldest !== newest
+            ? oldest.slice(0, 7) === newest.slice(0, 7)
+              ? `${label(oldest, oy)} ~ ${Number(newest.slice(8))}일`
+              : `${label(oldest, oy)} ~ ${label(newest, ny)}`
+            : label(newest, newest.slice(0, 4) !== year) + (seen[0].mark ? ` · ${seen[0].mark}` : '');
+        if (when.textContent !== text) when.textContent = text;
+      };
+      addEventListener('scroll', () => queued || ((queued = true), requestAnimationFrame(update)), { passive: true });
+      document.addEventListener('sp:album-swapped', update);
+      update();
+    }
     // 사진 크기 −/+: 페이지 전환 없이 그 자리에서(98e)
     zoomInPlace({ button: '.sp-a__zoom-btn', cell: '.sp-a__cell', also: ['.sp-a__zoom', '.sp-a__tabs', '.sp-a__chips', '.sp-a__save'] });
     // 위 탭·집 칩·저장 링크에도 새 단계(z)가 들어 있어 같이 바꾼다(옛 단계로 되돌아가지 않게, 리뷰 2026-10-29)
