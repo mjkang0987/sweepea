@@ -78,6 +78,8 @@ const cards = await Promise.all(
     kid: kids.get(m.family_id) ?? '',
     n: page.offset + i + 1,
     what: m.kind === 'video' ? '영상' : '사진',
+    // 영상 길이(117w: 넘겨 보기 카드 오른쪽 아래)
+    length: m.kind === 'video' && m.duration_sec ? ((s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`)(Math.round(Number(m.duration_sec))) : null,
   })),
 );
 // 기념일(사용자 2026-10-29 "100일 이벤트 이런 식으로", 가족 앨범에도): 집마다 아이 생일로 그날 표시('하린 100일'), 오늘이면 맨 위 안내
@@ -233,6 +235,9 @@ const monthCards = !monthRows
               <div class="sp-a__card">
                 <a class="sp-a__card-link" href={c.href} aria-label={`${c.day} ${showTag ? `${c.kid} ` : ''}${c.what} 크게 보기`}>
                   <img class="sp-a__card-img" src={c.src} alt="" loading={c.n > 3 ? 'lazy' : 'eager'} fetchpriority={c.n === 1 ? 'high' : undefined} decoding="async" />
+                  {/* 영상이면 사진 가운데 큰 ▶ + 길이(117w, 모바일에서 아래 '· 영상' 글자만으론 잘 안 보임) */}
+                  {c.kind === 'video' && <span class="sp-a__card-play" aria-hidden="true"><svg class="sp-a__card-play-icon" width="24" height="24" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
+                  {c.length && <span class="sp-a__card-length" aria-hidden="true">{c.length}</span>}
                 </a>
                 <div class="sp-a__card-cap">
                   {showTag && <span class="sp-a__tag">{c.kid}</span>}
