@@ -673,6 +673,24 @@
 .sp-p__new-count {
   font-weight: 600;
 }
+/* 칸 왼쪽 위 배지 묶음(119): 새 사진·기념일을 위아래로 */
+.sp-p__pills {
+  position: absolute;
+  z-index: 1;
+  left: 6px;
+  right: 6px;
+  top: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  pointer-events: none;
+}
+.sp-p__grid--z5 .sp-p__pills {
+  left: 3px;
+  top: 3px;
+  gap: 2px;
+}
 .sp-p__new {
   position: absolute;
   z-index: 1;
@@ -692,6 +710,14 @@
   line-height: 1.125rem;
   font-weight: 800;
   pointer-events: none;
+}
+.sp-p__pills .sp-p__new {
+  position: static;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  /* 칸보다 길면 오른쪽 끝만 잘리게 */
+  justify-content: flex-start;
 }
 .sp-p__grid--z5 .sp-p__new {
   left: 3px;
@@ -1405,6 +1431,12 @@
   background: var(--fill);
   overflow-x: auto;
   scrollbar-width: none;
+}
+/* 모바일에서 상단 탭 위아래 간격 줄임(119) */
+@media (max-width: 32rem) {
+  .sp-p__seg {
+    margin-block: -0.25rem;
+  }
 }
 .sp-p__seg-item {
   flex: 1 0 auto;
@@ -2538,22 +2570,20 @@
 .sp-p__albumhead-kid--many ~ .sp-p__albumhead-sub {
   grid-row: 3;
 }
-/* 기념일 표시(100일·첫돌·생일…, 사용자 "이벤트로"): 칸 왼쪽 위 작은 알약. 사진 위라 틸 바탕 흰 글자(대비 5.4:1) */
-.sp-p__cell-mark {
-  position: absolute;
-  top: var(--space-2);
-  left: var(--space-2);
-  padding: 2px var(--space-2);
-  border-radius: 999px;
-  background: var(--pea);
-  color: var(--on-pea);
-  font-size: var(--footnote-size);
-  font-weight: 700;
-  line-height: 1.125rem;
-  pointer-events: none;
+/* 기념일 표시(100일·첫돌·생일…, 사용자 "이벤트로"): 119부터 '새 사진'과 같은 알약에 색만 분홍(사용자 "이벤트 있는 경우 배지랑 컬러만 다르게"). 5칸은 분홍 점 */
+.sp-p__new.sp-p__cell-mark {
+  background: var(--blossom);
+}
+.sp-p__grid--z5 .sp-p__new.sp-p__cell-mark {
+  width: 0.75rem;
+  min-height: 0.75rem;
+  height: 0.75rem;
+}
+.sp-p__grid--z5 .sp-p__new.sp-p__cell-mark::before {
+  content: none;
 }
 @media (forced-colors: active) {
-  .sp-p__cell-mark {
+  .sp-p__new {
     border: 1px solid CanvasText;
   }
 }
