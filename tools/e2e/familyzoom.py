@@ -3,6 +3,8 @@
 import os,sys
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D=os.path.dirname(os.path.abspath(__file__))+'/'
+# u2.jpg는 EXIF가 없어(takenat.py가 '파일 시각'을 보려고) 파일 시각이 찍은 날: 검사를 쓴 10월로 고정해야 달 묶음 수가 날짜와 상관없이 같다
+os.utime(D+'u2.jpg',(1793242800,1793242800))  # 2026-10-29 12:00 서울
 W=sys.argv[1] if len(sys.argv)>1 else '/tmp'
 eng=sys.argv[2] if len(sys.argv)>2 else 'chromium'
 fails=[]
