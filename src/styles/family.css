@@ -579,6 +579,45 @@
   color: var(--label);
   font-size: var(--senior-caption-size);
 }
+/* 맨 위 '방금 올라왔어요' 묶음 제목(117a) */
+.sp-a__day-title--new {
+  color: var(--pea-ink);
+}
+/* 새 사진 알약(117a): 아직 안 본 사진, 칸 왼쪽 위. 5칸은 점만 */
+.sp-a__new {
+  position: absolute;
+  left: var(--space-2);
+  top: var(--space-2);
+  min-height: 1.5rem;
+  padding: 0 0.5625rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--pea);
+  color: var(--on-pea);
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--footnote-size);
+  line-height: 1.125rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+.sp-a__grid--5 .sp-a__new {
+  left: 4px;
+  top: 4px;
+  width: 0.75rem;
+  min-height: 0.75rem;
+  height: 0.75rem;
+  padding: 0;
+  font-size: 0;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.sp-a__new--card {
+  left: 0.625rem;
+  top: 0.625rem;
+  min-height: 1.75rem;
+  padding: 0 0.75rem;
+  font-size: var(--subhead-size);
+}
 .sp-a__grid--5 .sp-a__play {
   /* 5칸(117w): 작은 칸을 가리지 않게 20px */
   right: 3px;
