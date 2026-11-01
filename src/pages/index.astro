@@ -3,11 +3,11 @@
 import { SITE_ORIGIN } from 'astro:env/server';
 import Parent from '../layouts/Parent.astro';
 import { getBackend } from '../lib/backend';
-import { currentPass, PARENT } from '../lib/pass';
+import { currentParent, currentPass } from '../lib/pass';
 import { isOpen } from '../lib/families';
 
-// 홈 화면 아이콘(시작 주소 /)으로 연 부모는 부모 앨범으로
-if (Astro.cookies.has(PARENT)) return Astro.redirect('/home');
+// 홈 화면 아이콘(시작 주소 /)으로 연 부모는 부모 앨범으로. 쿠키가 있는지만 보면 깨진 쿠키에서 /home ↔ / 이 돈다(114: 로그인 안 했으면 엄빠 화면이 여기로 보냄)
+if (await currentParent(Astro.cookies).catch(() => null)) return Astro.redirect('/home');
 // 출입증이 없으면 백엔드를 부르지 않는다(첫 방문·성능 검사에서 외부 호출 없음)
 const pass = await currentPass(Astro.cookies);
 if (pass) {
