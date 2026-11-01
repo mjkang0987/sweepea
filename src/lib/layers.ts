@@ -7,6 +7,8 @@ export const PHOTOS_SEEN = 'sp_photos_seen';
 export const MILESTONE_SEEN = 'sp_milestone_seen';
 export const STORAGE_SEEN = 'sp_storage_seen';
 export const COPARENT_SEEN = 'sp_coparent_seen';
+/** 새 사진 표시(117a): 레이어 '보기'를 누르기 전의 '본 때'. 이번에 보는 동안(1시간)은 이 값으로 새 사진 표시를 남긴다 */
+export const NEW_FROM = 'sp_new_from';
 
 const opts = { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: import.meta.env.PROD, maxAge: 365 * 24 * 3600 };
 
