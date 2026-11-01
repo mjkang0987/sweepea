@@ -32,7 +32,7 @@ with sync_playwright() as p:
     check(pg.get_by_role('alert').count()==1 and pg.get_by_label('모두 지워지는 것을 확인했어요').get_attribute('aria-invalid')=='true','체크 안 하면 이유와 함께 다시 확인')
     pg.get_by_label('모두 지워지는 것을 확인했어요').check(); pg.get_by_role('button',name='탈퇴하기').click(); pg.wait_for_url('**/goodbye?on=**')
     check('그동안 고마웠어요' in pg.content() and '월' in pg.locator('.sp-p__lead').inner_text(),'작별 화면에 지울 날'); shot('2')
-    pg.goto(B+'/home'); check('/login' in pg.url or '/start' in pg.url,'탈퇴하면 로그아웃')
+    pg.goto(B+'/home'); check(pg.url.rstrip('/')==B,'탈퇴하면 로그아웃(첫 화면으로)')
     gp.goto(B+'/album'); check(gp.locator('.sp-a__card-link').count()==0,'가족 화면은 바로 닫힘')
     # 다시 로그인 → 그대로 탈퇴하기
     relogin(); pg.wait_for_url('**/restore'); check('탈퇴 신청 중이에요' in pg.content(),'다시 로그인하면 되살리기 화면'); check(pg.locator('.sp-p__remaining').inner_text() in ('2일 23시간 남았어요','3일 남았어요'),'남은 시간 안내 ('+pg.locator('.sp-p__remaining').inner_text()+')'); shot('3')

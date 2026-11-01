@@ -17,9 +17,6 @@ def last_clear(pg,sel_last,sel_bar,msg):
 with sync_playwright() as p:
     br=p.chromium.launch()
     ctx=br.new_context(viewport={'width':390,'height':H}); pg=ctx.new_page()
-    # 소개(탭 없음): 맨 아래
-    pg.goto(B+'/start'); bar_at_bottom(pg,'.sp-p__savebar',0,'소개: 버튼 막대가 화면 맨 아래')
-    check(pg.locator('.sp-p__dots').bounding_box()['y']+12<=pg.locator('.sp-p__savebar').bounding_box()['y'],'소개: 점은 막대 위')
     pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
     bar_at_bottom(pg,'.sp-p__savebar',0,'처음 설정: 다음 막대 맨 아래')
     last_clear(pg,'#birth','.sp-p__savebar','처음 설정: 마지막 칸이 막대 밑에 안 숨음')
