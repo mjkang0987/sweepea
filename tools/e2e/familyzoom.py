@@ -1,4 +1,4 @@
-# 가족 앨범 사진 크기(98a): 모아 보기 −/+ 1·2·3칸 = 사진 전부 → 월별 달 카드(대표 3장, 누르면 그 달부터 3칸).
+# 가족 앨범 사진 크기(98a): 모아 보기 −/+ 1·2·3칸 = 사진 전부 → 월별 달 카드(대표 5장까지, 사용자 2026-11-01, 누르면 그 달부터 3칸).
 # 보기(넘겨/모아)와 칸 단계는 그 기기에 기억(달 카드로 들어간 쪽은 빼고) (mock, 인자: 스크린샷 폴더 엔진)
 import os,sys
 from playwright.sync_api import sync_playwright
@@ -42,7 +42,7 @@ with sync_playwright() as p:
     g.get_by_role('link',name='작게(달마다 대표 사진)').click(); g.wait_for_url('**z=m**'); g.wait_for_selector('.sp-a__mcard-pics--m')
     cards=g.locator('.sp-a__mcard'); t=cards.first.inner_text().replace('\n',' ')
     check(cards.count()==2 and '4장' in t,f'월별: 달 카드 2장, 장 수 ({cards.count()}, {t})')
-    check(cards.first.locator('.sp-a__mcard-img').count()==3,'대표 3장')
+    check(cards.first.locator('.sp-a__mcard-img').count()==4,'대표 5장까지(이 달 사진 4장이라 4장)')
     g.get_by_role('link',name='작게(해마다 대표 사진)').click(); g.wait_for_url('**z=y**'); g.wait_for_selector('.sp-a__mcard-pics--y')
     yt=g.locator('.sp-a__mcard').first.inner_text().replace('\n',' ')
     check(g.locator('.sp-a__mcard').count()==1 and '9–10월' in yt and g.locator('.sp-a__mcard').first.locator('.sp-a__mcard-img').count()==5,f'연별 카드: 기간·대표 5장 ({yt})')

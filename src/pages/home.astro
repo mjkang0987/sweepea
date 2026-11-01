@@ -68,7 +68,7 @@ const newP = fp?.parents.find((p) => !p.me && meP && Date.parse(p.since) > Date.
 const coparent = newP && Date.parse(newP.since) > (seenAt(Astro.cookies, COPARENT_SEEN) ?? 0) ? { who: newP.role === 'dad' ? '아빠' : '엄마', since: newP.since } : null;
 // 월별·연별 카드(옆 기능이 아니라 이 단계의 본문이라 실패하면 안내 글)
 const cardView = !swipe && (z === 'm' || z === 'y');
-const monthCards = cardView && page.items.length ? await b.mediaMonths(a.pass, { childId: picked?.id, reps: 3 }).catch(() => null) : null;
+const monthCards = cardView && page.items.length ? await b.mediaMonths(a.pass, { childId: picked?.id, reps: 5 }).catch(() => null) : null;
 const { items } = page;
 // 새 사진(117e, 사용자 2026-11-01): 상대 엄빠·가족이 올렸고 내가 아직 안 본 사진(서버, 사람마다. 본 것 = 크게 보기). 들어오기 전·내가 올린 사진은 아님.
 // 올린 지 3시간 안이면 맨 위 '방금 올라왔어요' 묶음으로 옮기고 제자리(모든 쪽)에서 빼고, 3시간 지났으면 제자리에서 '새 사진' 알약. 못 받으면 표시 없음
@@ -474,7 +474,7 @@ if (z !== 3 && z !== 5)
                   {((c.fresh && !c.top) || c.mark) && (
                     <span class="sp-p__pills" aria-hidden="true">
                       {c.fresh && !c.top && <span class="sp-p__new">신규</span>}
-                      {c.mark && <span class="sp-p__new sp-p__cell-mark">{c.mark}</span>}
+                      {c.mark && <span class="sp-p__new sp-p__cell-mark">{c.mark.replace(/ 돌/g, '\u00a0돌')}</span>}
                     </span>
                   )}
                 </a>

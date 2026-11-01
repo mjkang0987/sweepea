@@ -157,7 +157,7 @@ const fewer = zi < ZOOMS.length - 1 ? albumHref({ ...q, z: ZOOMS[zi + 1] }) : nu
 const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 // 월별·연별(98a·98c, 시안 GrandList): 월별 = 큰 1장 + 2장, 연별 = 큰 1장 + 4장, 날짜는 사진 위. 누르면 그 달(해는 가장 최근 달)부터 3칸.
 // 이 단계의 본문이라 실패하면 안내 글
-const monthRows = monthView && items.length ? await getBackend().mediaMonths(pass, { familyId: q.f, reps: 3 }).catch(() => null) : null;
+const monthRows = monthView && items.length ? await getBackend().mediaMonths(pass, { familyId: q.f, reps: 5 }).catch(() => null) : null;
 const thisYear = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric' }).format(new Date());
 const cardHref = (ym: string) => `${albumHref({ ...q, z: 3 })}&at=${ym}#m-${ym}`;
 const monthCards = !monthRows
@@ -376,7 +376,7 @@ const monthCards = !monthRows
                     {((c.fresh && !c.top) || c.mark) && (
                       <span class="sp-a__pills" aria-hidden="true">
                         {c.fresh && !c.top && <span class="sp-a__new">신규</span>}
-                        {c.mark && <span class="sp-a__new sp-a__new--event">{c.mark}</span>}
+                        {c.mark && <span class="sp-a__new sp-a__new--event">{c.mark.replace(/ 돌/g, '\u00a0돌')}</span>}
                       </span>
                     )}
                     {(reacts.get(c.id)?.counts.heart || reacts.get(c.id)?.counts.comment) && q.z !== 5 && (
