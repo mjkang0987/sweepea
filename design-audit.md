@@ -10,7 +10,12 @@
 - 앱 그대로 두고 보드를 고칠 것: 탈퇴 확인 꺼진 버튼(흰 바탕·빨간 테두리), '누구세요' 목록의 올리기 권한 구성원(하린 아빠)
 - 하단 버튼 영역 위 선은 앱·보드 모두 없앰("하단 버튼 영역 상단에 보더는 삭제하는걸로 디자인에서고"): 앱 가족 아래 막대는 0.16.0, 엄빠 저장 막대는 10-29에 이미. 보드는 보드 맞추기 때
 
-## 이미 고침
+## 보드를 앱에 맞춤(2026-11-01, 디자인 캔버스 v206)
+- [x] 50쌍(파일 100개) 보드를 지금 앱(dev 0.16.1)처럼 고침. 가족: GrandExpired·GrandNoLink·GrandPassword·GrandPending·GrandHome·GrandInstall·GrandList·GrandMulti·GrandListSelect·GrandListPC·Who·LayerNewPhotos·LayerApproved(GrandClosed는 이미 같음). 크게 보기·엄빠: PhotoView·VideoView·PhotoViewPC·ParentView·ParentHomeBleed·ParentHomeGlass·ParentHomePC·ParentEmpty·ParentUpload·ParentUploadPC·ParentReactions·ReactionsHealth·LayerJoin·ParentIntro1~3·ParentLogin·ParentOnboard·ParentOnboard2. 설정: Health·Settings·SettingsGlass·Family·SendSetup('링크 만든 뒤' 상태)·GroupSettings·GroupDetail·MemberDetail·PasswordChange·ChildAdd·ChildSettings·Storage·Account·AccountDelete·AccountDeleteSub·AccountDeleted·AccountRestore. 하단 버튼 막대 위 선은 WaitPhotos 등에서도 지움
+- 그대로 둔 것: 보드 위 상태 표시줄 여백, 옛 보드의 옛 탭바, 결제(Plan*·LayerPlan·가족 플랜·'구독 관리'), 앱에 없는 화면 InstallGuide(엄빠 홈 화면 안내), 한마디 시트 입력 막대 위 선(앱에도 있음)
+- 보드 맞추다 찾은 앱 버그: PC 가족 모아 보기 −/+가 32rem 칸 기준 오른쪽에 떠서 넓은 화면에선 사진 영역 가운데쯤(1440px에서 x≈900). 보드는 앱대로 그렸고 앱 고칠지 사용자 확인 대기
+- 아래 1~4절의 STILL 항목은 이 보드 맞춤으로 대부분 해소(보드가 앱과 같아짐). 기록으로 남겨 둠
+
 - [x] A 묶음(0.16.0, feature/audit-a): 크게 보기 '생후 N개월 · 날짜'(아이 하나 집·고른 아이만), 상태 화면 콩이(주소 없음·기간 지남·닫힘 128, 비밀번호·승인 대기 제목 옆 64, 탈퇴 끝·되살리기 112, 접종 머리 48, 아이 목록 상자 없이 48), 정보 레이어 처음 초점은 제목(첫 버튼 테두리 없음), 가족 레이어 여백 16px
 - [x] 엄빠 앨범 배열(2줄 엇갈린 배열·반응 알약·달 제목) — 49
 - [x] 크게 보기·수정 화면 위 버튼 자리 — 50
