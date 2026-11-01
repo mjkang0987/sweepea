@@ -57,9 +57,44 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 .sp-a__card-link {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
+}
+/* 영상 표시(117w): 사진 가운데 큰 ▶, 오른쪽 아래 길이. 어두운 바탕이라 밝은 사진 위에서도 보임 */
+.sp-a__card-play,
+.sp-a__card-length {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  pointer-events: none;
+}
+.sp-a__card-play {
+  left: 50%;
+  top: 50%;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: -1.75rem 0 0 -1.75rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-a__card-play-icon {
+  fill: currentColor;
+}
+.sp-a__card-length {
+  right: 0.625rem;
+  bottom: 0.625rem;
+  min-height: 1.625rem;
+  padding: 0 0.625rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--subhead-size);
+  font-weight: 600;
 }
 .sp-a__card-img {
   flex: 1;
