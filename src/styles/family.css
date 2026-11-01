@@ -320,8 +320,8 @@
   text-align: center;
 }
 .sp-f__kongi {
-  width: 7rem;
-  height: 7rem;
+  width: 8rem;
+  height: 8rem;
   border-radius: var(--radius-xl);
   image-rendering: pixelated;
 }

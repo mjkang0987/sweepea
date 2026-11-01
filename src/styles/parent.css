@@ -2207,20 +2207,19 @@
   color: var(--pea-ink);
 }
 /* 아이 줄: 콩이 상자, 오른쪽 '변경' */
-.sp-p__kid-box {
+/* 아이 줄 콩이(디자인 ChildSettings: 상자 없이 48px) */
+.sp-p__kid-box-img {
   flex: none;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 10px;
-  background: var(--pea-tint);
+  display: block;
+  width: 3rem;
+  height: 3rem;
+  image-rendering: pixelated;
+}
+/* 접종 화면 아이 이름 줄: 왼쪽 콩이(디자인 Health) */
+.sp-p__kid-head {
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-.sp-p__kid-box-img {
-  display: block;
-  width: 2rem;
-  height: 2rem;
+  gap: var(--space-3);
 }
 .sp-p__row-action {
   flex: none;
