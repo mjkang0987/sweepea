@@ -1,6 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ageLabel, agoLabel, birthLabel, dayMark, milestone, monthsOld, photoAge, remainingLabel, seenLabel } from '../src/lib/age.ts';
+import { ageLabel, agoLabel, birthLabel, dayMark, kidImage, kidStage, milestone, monthsOld, photoAge, remainingLabel, seenLabel } from '../src/lib/age.ts';
+
+test('kidStage: 나이별 아기 그림 단계', () => {
+  const b = '2025-01-01';
+  assert.equal(kidStage(b, '2024-12-31'), 1); // 태어나기 전
+  assert.equal(kidStage(b, '2025-04-10'), 1); // 100일째
+  assert.equal(kidStage(b, '2025-04-11'), 2); // 101일
+  assert.equal(kidStage(b, '2025-07-01'), 3); // 6개월
+  assert.equal(kidStage(b, '2025-09-01'), 4); // 8개월
+  assert.equal(kidStage(b, '2026-01-01'), 5); // 첫돌
+  assert.equal(kidStage(b, '2026-07-01'), 6); // 18개월
+  assert.equal(kidStage(b, '2027-01-01'), 7); // 2세
+  assert.equal(kidStage(b, '2028-01-01'), 8); // 3세
+  assert.equal(kidStage(b, '2031-12-31'), 8); // 7세 전날
+  assert.equal(kidStage(b, '2032-01-01'), 9); // 7세
+  assert.equal(kidImage(null, '2026-01-01'), '/kongi.svg');
+  assert.equal(kidImage(b, '2026-01-01'), '/kid/5.png');
+});
 
 test('photoAge: 찍은 날의 생후 나이', () => {
   assert.equal(photoAge('2025-09-17', '2026-10-21'), '생후 13개월');
