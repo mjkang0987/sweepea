@@ -886,6 +886,19 @@
   font-size: var(--footnote-size);
   font-weight: 700;
 }
+/* 처음 설정 안내(115): 틸 연한 바탕 한 줄 */
+.sp-p__tip {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-p__tip-strong {
+  font-weight: 700;
+}
 .sp-p__cta {
   position: relative;
   padding: var(--space-4);
