@@ -36,11 +36,13 @@ const { pass, open, kids, q } = a;
 // 60장씩: ?before=<찍은 날~id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
 const cont = Astro.url.searchParams.has('before');
 // 전체 장 수는 제목·넘겨 보기 'n / 전체'에. 새 사진 레이어는 이 쪽(60장)이 아니라 최근 200장에서 본다(옛날에 찍고 새로 올린 사진도 잡게, 예전과 같은 범위)
-const [page, total, recent200] = await Promise.all([
+// 전체 수는 제목·'n / 전체' 글자에만 쓰는 옆 기능이라 실패하면 그 글자만 뺀다. 이어지는 쪽은 loadPage가 이미 셌다
+const [page, total0, recent200] = await Promise.all([
   loadPage(pass, a.base, Astro.url),
-  getBackend().countMedia(pass, a.base),
+  cont ? null : getBackend().countMedia(pass, a.base).catch(() => null),
   !cont && !q.f ? getBackend().listMedia(pass, { ...a.base, limit: 200 }) : null,
 ]);
+const total = page.total ?? total0;
 const { items } = page;
 const sep = albumHref(q).includes('?') ? '&' : '?';
 // 월별(달 카드)은 다음 쪽이 없다
@@ -177,7 +179,7 @@ const monthCards = !monthRows
   }
   <header class="sp-a__head">
     <div class="sp-a__head-text">
-      <h1 class="sp-f__title">{title} {total}장</h1>
+      <h1 class="sp-f__title">{title}{total !== null && ` ${total}장`}</h1>
       {latest && <p class="sp-f__lead">{latest}에 올라왔어요</p>}
     </div>
     <img class="sp-a__kongi" src="/kongi.svg" width="64" height="64" alt="" />
@@ -215,7 +217,7 @@ const monthCards = !monthRows
     ) : q.v === 'swipe' ? (
       <>
         {/* 시안(GrandHome): 가운데 카드 + 양옆 사진이 비스듬히 보임. 손가락으로 밀면 넘어감(scroll-snap), 기울기는 CSS 스크롤 애니메이션 */}
-        <ul class="sp-a__swipe" aria-label={`사진 ${total}장, 옆으로 밀어서 넘겨 보기`}>
+        <ul class="sp-a__swipe" aria-label={total === null ? '사진, 옆으로 밀어서 넘겨 보기' : `사진 ${total}장, 옆으로 밀어서 넘겨 보기`}>
           {cards.map((c) => (
             <li class="sp-a__slide" id={`p-${c.id}`}>
               <div class="sp-a__card">
@@ -232,7 +234,7 @@ const monthCards = !monthRows
                 </div>
               </div>
               <p class="sp-a__pos">
-                <strong class="sp-a__pos-n">{c.n}</strong> / {total}<span aria-hidden="true"> · 옆으로 밀거나 옆 사진을 누르세요</span>
+                <strong class="sp-a__pos-n">{c.n}</strong>{total !== null && ` / ${total}`}<span aria-hidden="true"> · 옆으로 밀거나 옆 사진을 누르세요</span>
               </p>
               {/* 반응 줄은 카드마다. 가운데 카드 것만 보이게(CSS), JS 없이 그 사진에 보낸다 */}
               <div class="sp-a__slide-react">
