@@ -1,5 +1,5 @@
 # 엄빠 앨범 사진 크기 −/+ (98a, 디자인 ParentHomeZoom): 머리 오른쪽 −/+, 처음 2칸(엇갈린 배열),
-# 1·2·3칸 사진 전부 → 월별 달 카드(대표 3장, 누르면 그 달부터 3칸), 끝 단계는 버튼 꺼짐, 고른 단계는 기기에 기억(달 카드로 들어간 쪽은 빼고), 넓은 화면은 2·4·6줄 (mock, 인자: 스크린샷 폴더 엔진)
+# 1·2·3칸 사진 전부 → 월별 달 카드(대표 3장, 누르면 그 달부터 3칸), 끝 단계는 버튼 꺼짐, 고른 단계는 기기에 기억(달 카드로 들어간 쪽은 빼고), 넓은 화면은 2·5·6줄 (mock, 인자: 스크린샷 폴더 엔진)
 import os,sys
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D=os.path.dirname(os.path.abspath(__file__))+'/'
@@ -93,6 +93,8 @@ with sync_playwright() as p:
     pg.goto(B+'/home?z=3'); pg.wait_for_selector('.sp-p__cell-img')
     check(pg.evaluate(COLS)==6 and pg.evaluate(SQ),'넓은 화면 3칸 = 6줄 정사각')
     pg.goto(B+'/home?z=2'); pg.wait_for_selector('.sp-p__cell-img')
-    check(pg.evaluate(COLS)==4,'넓은 화면 2칸 = 4줄(예전 그대로)')
+    check(pg.evaluate(COLS)==5,'넓은 화면 2칸 = 5줄(디자인 ParentHomePC)')
+    ov=pg.evaluate("(()=>{const r=[...document.querySelectorAll('.sp-p__cell')].map(e=>e.getBoundingClientRect());let n=0;for(let i=0;i<r.length;i++)for(let j=i+1;j<r.length;j++){const a=r[i],b=r[j];if(a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1)n++}return n})()")
+    check(ov==0,f'넓은 화면 5줄 칸끼리 안 겹침 ({ov})')
     br.close()
 print('FAILS',fails)

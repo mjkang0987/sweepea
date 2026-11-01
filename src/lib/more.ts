@@ -1,14 +1,15 @@
 // 목록 화면 공통(브라우저): 아래로 내리면 다음 쪽 이어 붙이기, 크게 보기에서 닫고 돌아오면 보던 자리로
 import { masonry } from './masonry';
 
-/** 엇갈린 배열 다시 계산(같은 묶음이 쪽을 넘어 이어져 칸을 합친 뒤 그 묶음 전체로). 앞에서부터 쌓으므로 이미 있던 칸 자리는 그대로 */
+/** 엇갈린 배열 다시 계산(넓은 화면 자리: 가족 4줄 --c4, 엄빠 5줄 --c5)(같은 묶음이 쪽을 넘어 이어져 칸을 합친 뒤 그 묶음 전체로). 앞에서부터 쌓으므로 이미 있던 칸 자리는 그대로 */
 export function relayout(ul: HTMLElement) {
   const cells = [...ul.children] as HTMLElement[];
   const r = cells.map((c) => Number(c.dataset.ratio) || 1);
   const two = masonry(r, 2);
   const four = masonry(r, 4);
+  const five = masonry(r, 5);
   cells.forEach((c, i) => {
-    for (const [k, v] of Object.entries({ c2: two[i].col, r2: two[i].row, s2: two[i].span, c4: four[i].col, r4: four[i].row, s4: four[i].span })) c.style.setProperty(`--${k}`, String(v));
+    for (const [k, v] of Object.entries({ c2: two[i].col, r2: two[i].row, s2: two[i].span, c4: four[i].col, r4: four[i].row, s4: four[i].span, c5: five[i].col, r5: five[i].row, s5: five[i].span })) c.style.setProperty(`--${k}`, String(v));
   });
 }
 
