@@ -119,6 +119,8 @@ export interface MediaQuery {
   /** 찍은 날 범위 [takenFrom, takenBefore)(달별 개수) */
   takenFrom?: string;
   takenBefore?: string;
+  /** 사진·영상 거르기(117c) */
+  kind?: MediaKind;
 }
 
 export interface MediaItem {
