@@ -57,6 +57,6 @@ for t in ['','-Light']:
     ref=B[f'CommentSheet{t}.dc.html']; n=f'VoiceSay{t}.dc.html'
     if n not in d['order']: d['order'].append(n)
     x=B[n]['x'] if n in B else max(v['x'] for v in B.values() if v['y']==ref['y'])+470
-    B[n]=dict(ref,x=x,title=('다크' if not t else '라이트')+' · 가족 · 음성 한마디(마이크 → 녹음 10초 → 받아 적기 → 글자 확인, 목록 재생)')
+    B[n]=dict(ref,x=x,title=('다크' if not t else '라이트')+' · 앱 · 음성 한마디(앱에서만, 웹 없음) — 마이크 → 녹음 10초 → 받아 적기 → 글자 확인, 목록 재생')
 json.dump(d,open('canvas.json','w'),ensure_ascii=False,indent=1)
 print('ok')
