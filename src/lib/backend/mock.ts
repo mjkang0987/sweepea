@@ -339,7 +339,7 @@ export function createMockBackend(): Backend {
       const ym = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
       const by = new Map<string, typeof all>();
       for (const x of all) by.set(ym(x.taken_at), [...(by.get(ym(x.taken_at)) ?? []), x]);
-      const k = Math.min(4, Math.max(1, opts.reps ?? 3));
+      const k = Math.min(5, Math.max(1, opts.reps ?? 3));
       return [...by]
         .sort(([a], [b]) => (a < b ? 1 : -1))
         .map(([m, xs]) => ({
