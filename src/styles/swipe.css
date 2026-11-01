@@ -73,9 +73,9 @@
 .sp-a__card-play {
   left: 50%;
   top: 50%;
-  width: 3.5rem;
-  height: 3.5rem;
-  margin: -1.75rem 0 0 -1.75rem;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: -2.25rem 0 0 -2.25rem;
   border-radius: 999px;
   display: flex;
   align-items: center;
@@ -87,14 +87,14 @@
 .sp-a__card-length {
   right: 0.625rem;
   bottom: 0.625rem;
-  min-height: 1.625rem;
-  padding: 0 0.625rem;
+  min-height: 2rem;
+  padding: 0 0.75rem;
   box-sizing: border-box;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  font-size: var(--subhead-size);
-  font-weight: 600;
+  font-size: var(--senior-caption-size);
+  font-weight: 700;
 }
 .sp-a__card-img {
   flex: 1;
