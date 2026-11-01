@@ -69,19 +69,19 @@ with sync_playwright() as p:
     gc=b.new_context(viewport={'width':390,'height':844}); gp=gc.new_page(); gp.goto(B+'/i/'+code)
     gp.fill('#who-name','외할머니'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/password**'); gp.fill('#pw','0301'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/wait')
     pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 외할머니').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
-    # 모아 보기: 60 → 120 → 130, 같은 날 묶음 합침, 제목은 전체 130장
+    # 모아 보기: 60 → 120 → 130, 한 격자에 이어 붙임(117b), 제목은 전체 130장
     gp.goto(B+'/album?v=list'); gp.wait_for_timeout(300)
     for btn in ('사진 보기','보기'):
         if gp.get_by_role('button',name=btn,exact=True).count(): gp.get_by_role('button',name=btn,exact=True).click(); gp.wait_for_url('**/album**')
     gcells=lambda: gp.locator('.sp-a__cell').count()
     check(gcells()==60 and '130장' in gp.locator('h1').inner_text(),'가족 모아 보기 처음 60장, 제목 130장 (%d, %s)'%(gcells(),gp.locator('h1').inner_text()))
     POS="(()=>{const o={};for(const e of document.querySelectorAll('.sp-a__cell')){const r=e.getBoundingClientRect();o[e.id]=[Math.round(r.left),Math.round(r.top+scrollY),Math.round(r.height)]}return o})()"
-    seam=gp.locator('.sp-a__day').last; seam_n=seam.locator('.sp-a__cell').count()
+    seam_n=gp.locator('.sp-a__cell[data-d$="-05-15"]').count()
     before=gp.evaluate(POS)
     bottom(gp); gp.wait_for_function("document.querySelectorAll('.sp-a__cell').length===120",timeout=20000)
     after=gp.evaluate(POS)
     moved=[k for k,v in before.items() if after.get(k)!=v]
-    seam_all=gp.locator('.sp-a__day').filter(has_text='5월 15일').locator('.sp-a__cell').count()
+    seam_all=gp.locator('.sp-a__cell[data-d$="-05-15"]').count()
     check(0<seam_n<30 and seam_all==30 and not moved,'쪽 경계에 걸친 날(5월 15일 %d장 + 나머지)을 합쳐도 이미 있던 칸이 안 움직임 (합친 뒤 %d장, 움직인 칸 %d)'%(seam_n,seam_all,len(moved)))
     gov=gp.evaluate("""(()=>{let n=0;for(const d of document.querySelectorAll('.sp-a__day')){const r=[...d.querySelectorAll('.sp-a__cell')].map(e=>e.getBoundingClientRect());
       for(let i=0;i<r.length;i++)for(let j=i+1;j<r.length;j++){const a=r[i],b=r[j];if(a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1)n++}}return n})()""")
@@ -90,9 +90,10 @@ with sync_playwright() as p:
     check(cols==2,'휴대폰 2줄 (%d줄)'%cols)
     bottom(gp); gp.wait_for_function("document.querySelectorAll('.sp-a__cell').length===130",timeout=20000)
     days=gp.eval_on_selector_all('.sp-a__day','e=>e.map(x=>x.dataset.day)')
-    check(len(days)==len(set(days)),'같은 날 묶음이 두 번 안 나옴 (%d개)'%len(days))
-    sums=gp.evaluate("[...document.querySelectorAll('.sp-a__day')].every(d=>d.querySelector('.sp-a__day-count').textContent.trim()===`· ${d.querySelectorAll('.sp-a__cell').length}장`)")
-    check(sums,'날짜 묶음 장 수가 칸 수와 같음')
+    check(days==['all'],'한 격자(날마다 안 끊음) %s'%days)
+    anc=gp.eval_on_selector_all('.sp-a__anchor','e=>e.map(x=>x.id)')
+    check(len(anc)==len(set(anc)) and len(anc)>=1,'달 표식이 두 번 안 나옴 %s'%anc)
+    w=gp.locator('.sp-a__day-title[data-when]').inner_text(); check('월' in w and '일' in w,'위에 붙은 기간 줄 (%s)'%w)
     gp.wait_for_selector('.sp-more__end'); check('처음 사진까지 모두 봤어요' in gp.locator('.sp-more__end').inner_text(),'가족 끝 줄')
     li=gp.locator('.sp-a__cell').nth(110); li.evaluate("e=>e.scrollIntoView({block:'center'})"); gp.wait_for_timeout(200)
     top=li.evaluate("e=>e.getBoundingClientRect().top"); cid=li.get_attribute('id')
