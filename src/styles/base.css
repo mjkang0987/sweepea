@@ -134,8 +134,8 @@
 .sp-layer__modal::backdrop {
   background: rgba(0, 0, 0, 0.45);
 }
-/* 처음 초점은 레이어 자체(제목·설명을 읽어 줌, Tab 한 번에 버튼). 상자는 누르는 곳이 아니라 테두리 없음(버튼 초점 테두리는 그대로) */
-.sp-body .sp-layer__box:focus-visible {
+/* 정보 레이어의 처음 초점은 제목(dialog에는 tabindex를 못 다는 HTML 규칙, Tab 한 번에 버튼). 제목은 누르는 곳이 아니라 테두리 없음(버튼 초점 테두리는 그대로) */
+.sp-body .sp-layer__title:focus-visible {
   outline: none;
 }
 /* 가족(어르신): 글자·버튼 크게, 버튼 하나. 화면 좌우 여백 16px(디자인 LayerNewPhotos·LayerApproved) */
