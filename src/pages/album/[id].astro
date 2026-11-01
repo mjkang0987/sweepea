@@ -2,6 +2,7 @@
 // 크게 보기: 사진·영상이 화면 가득, 위 메뉴·아래 판이 반투명으로 겹친다. 작은 스크립트(영상 재생 막대·옆으로 밀기).
 // 스크립트가 없어도 ‹ › 링크로 넘기고 영상은 브라우저 기본 재생 막대로 본다
 import { seoulDate } from '../../lib/parent';
+import { photoAge } from '../../lib/age';
 import Family from '../../layouts/Family.astro';
 import Viewer from '../../components/Viewer.astro';
 import { albumHref, dayLabel, handleReactPost, loadAlbum, loadReacts, loadWindow, slideWindow } from '../../lib/album';
@@ -37,6 +38,10 @@ const [reacts, comments] = await Promise.all([loadReacts(pass, [m.id]), getBacke
 const slides = await slideWindow(items, i, (x) => albumHref(q, `/album/${x.id}`), (x) => `${dayLabel(x.taken_at)} ${open.length > 1 && !q.f ? `${kids.get(x.family_id)} ` : ''}${x.kind === 'video' ? '영상' : '사진'}`);
 const here = albumHref(q, `/album/${m.id}`);
 const child = kids.get(m.family_id) ?? '아이';
+// 찍은 날 아이 나이: 그 가족방 아이가 하나일 때만(사진마다 어느 아이인지는 목록에 없음)
+// shortcut: 아이가 여럿인 집은 나이를 안 보임, 사진의 아이 태그를 목록에 실으면 그 아이로
+const famKids = open.find((f) => f.family_id === m.family_id)?.children ?? [];
+const age = famKids.length === 1 ? photoAge(famKids[0].birth_date, seoulDate(m.taken_at)) : null;
 const say = Astro.url.searchParams.get('say');
 // 부모가 '가족도 사진 저장하기'를 켠 가족방이면 저장 링크(같은 주소라 download 속성이 먹는다)
 const canSave = open.find((f) => f.family_id === m.family_id)?.download_allowed ?? false;
@@ -47,6 +52,7 @@ const saveName = `sweepea-${seoulDate(m.taken_at)}.${m.kind === 'video' ? 'mp4' 
 <Family title={`${label} · ${win.pos} / ${win.total}`} wide>
   <Viewer
     m={m}
+    age={age}
     label={label}
     src={src}
     poster={poster}

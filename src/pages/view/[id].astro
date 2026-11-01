@@ -6,6 +6,7 @@ import { applyReactPost, dayLabel, loadReacts, loadWindow, slideWindow } from '.
 import { getBackend } from '../../lib/backend';
 import { UUID } from '../../lib/media';
 import { callName } from '../../lib/ko';
+import { photoAge } from '../../lib/age';
 import { loadParent, seoulDate } from '../../lib/parent';
 import { signedMediaUrl } from '../../lib/signed';
 
@@ -45,6 +46,9 @@ const say = Astro.url.searchParams.get('say');
 const sayHere = Astro.url.searchParams.get('sm') === m.id || !Astro.url.searchParams.get('sm') ? say : null;
 // 아이를 안 골랐고 여럿이면 사진의 아이를 모르니 '아이'로
 const child = picked ? callName(picked.name) : kids.length === 1 ? callName(kids[0].name) : '아이';
+// 찍은 날 아이 나이: 고른 아이, 아이가 하나면 그 아이(여럿인데 안 골랐으면 어느 아이 사진인지 몰라 안 보임)
+const ageKid = picked ?? (kids.length === 1 ? kids[0] : undefined);
+const age = ageKid ? photoAge(ageKid.birth_date, seoulDate(m.taken_at)) : null;
 const saveName = `sweepea-${seoulDate(m.taken_at)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`;
 const view = (x: { id: string }) => `/view/${x.id}${kq}`;
 const slides = await slideWindow(items, i, view, (x) => `${dayLabel(x.taken_at)} ${x.kind === 'video' ? '영상' : '사진'}`);
@@ -53,6 +57,7 @@ const slides = await slideWindow(items, i, view, (x) => `${dayLabel(x.taken_at)}
 <Family title={`${label} · ${win.pos} / ${win.total}`} wide>
   <Viewer
     m={m}
+    age={age}
     label={label}
     src={src}
     poster={poster}
