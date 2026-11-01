@@ -145,9 +145,9 @@ const monthCards = !monthRows
   {sayToast && <Toast text={sayToast.text} tone={sayToast.tone} />}
   {
     (approved || fresh.length > 0) && (
-      <div class="sp-layer">
+      <div class="sp-layer sp-layer--senior">
         <div class="sp-layer__scrim" aria-hidden="true"></div>
-        <dialog class="sp-layer__box sp-layer__box--senior" open aria-labelledby="layer-t" aria-describedby="layer-d">
+        <dialog class="sp-layer__box sp-layer__box--senior" open tabindex="-1" autofocus aria-labelledby="layer-t" aria-describedby="layer-d">
           {approved ? (
             <>
               <img class="sp-layer__kongi" src="/kongi.svg" width="96" height="96" alt="" />
@@ -171,7 +171,7 @@ const monthCards = !monthRows
           <form class="sp-layer__actions" method="post">
             <input type="hidden" name="at" value={newestIso} />
             <input type="hidden" name="back" value={here} />
-            <button class="sp-f__btn" type="submit" name="do" value={approved ? 'approved' : 'photos'} autofocus>{approved ? '사진 보기' : '보기'}</button>
+            <button class="sp-f__btn" type="submit" name="do" value={approved ? 'approved' : 'photos'}>{approved ? '사진 보기' : '보기'}</button>
           </form>
         </dialog>
       </div>

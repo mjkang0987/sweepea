@@ -251,13 +251,13 @@ for (const mo of months) {
     join && (
       <div class="sp-layer">
         <div class="sp-layer__scrim" aria-hidden="true"></div>
-        <dialog class="sp-layer__box" open aria-labelledby="join-t" aria-describedby="join-d">
+        <dialog class="sp-layer__box" open tabindex="-1" autofocus aria-labelledby="join-t" aria-describedby="join-d">
           <span class="sp-layer__emoji" aria-hidden="true">{EMOJI.sparkle.char}</span>
           <h2 class="sp-layer__title" id="join-t"><strong>{join.who}</strong>{ga(join.who)} {join.what}</h2>
           <p class="sp-layer__text" id="join-d">{agoLabel(join.at, now)} 신청했어요.{joins.length > 1 && ` 기다리는 사람이 ${joins.length}명 있어요.`}{join.expires && ' 3일 안에 확인하지 않으면 자동으로 취소돼요.'}</p>
           <form class="sp-layer__actions" method="post">
             <input type="hidden" name="at" value={joins[0].at} />
-            <button class="sp-p__btn" type="submit" name="do" value="join-check" autofocus>확인하기</button>
+            <button class="sp-p__btn" type="submit" name="do" value="join-check">확인하기</button>
             <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value="join-later">나중에</button>
           </form>
         </dialog>
@@ -268,13 +268,13 @@ for (const mo of months) {
     coparent && (
       <div class="sp-layer" hidden={coparentLater} data-layer-later={coparentLater ? '' : undefined}>
         <div class="sp-layer__scrim" aria-hidden="true"></div>
-        <dialog class="sp-layer__box" open aria-labelledby="cop-t" aria-describedby="cop-d">
+        <dialog class="sp-layer__box" open tabindex="-1" autofocus={!join} aria-labelledby="cop-t" aria-describedby="cop-d">
           <span class="sp-layer__emoji" aria-hidden="true">{EMOJI.good.char}</span>
           <h2 class="sp-layer__title" id="cop-t">{coparent.who}가 앨범을<br />함께 관리하기 시작했어요</h2>
           <p class="sp-layer__text" id="cop-d">이제 사진 올리기·가족 승인·설정을 같이 할 수 있어요.</p>
           <form class="sp-layer__actions" method="post">
             <input type="hidden" name="since" value={coparent.since} />
-            <button class="sp-p__btn" type="submit" name="do" value="cop-ok" autofocus={!join}>좋아요</button>
+            <button class="sp-p__btn" type="submit" name="do" value="cop-ok">좋아요</button>
           </form>
         </dialog>
       </div>
@@ -284,13 +284,13 @@ for (const mo of months) {
     birthday && (
       <div class="sp-layer" hidden={birthdayLater} data-layer-later={birthdayLater ? '' : undefined}>
         <div class="sp-layer__scrim" aria-hidden="true"></div>
-        <dialog class="sp-layer__box" open aria-labelledby="day-t" aria-describedby="day-d">
+        <dialog class="sp-layer__box" open tabindex="-1" autofocus aria-labelledby="day-t" aria-describedby="day-d">
           <img class="sp-layer__kongi" src="/kongi.svg" width="96" height="96" alt="" />
           <h2 class="sp-layer__title" id="day-t">{birthday.title}<br />{birthday.what}</h2>
           <p class="sp-layer__text" id="day-d">오늘 찍은 사진을 올려서 가족과 함께 축하해요.</p>
           <form class="sp-layer__actions" method="post">
             <input type="hidden" name="day" value={dayKey} />
-            <button class="sp-p__btn" type="submit" name="do" value="day-upload" autofocus>사진 올리기</button>
+            <button class="sp-p__btn" type="submit" name="do" value="day-upload">사진 올리기</button>
             <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value="day-close">닫기</button>
           </form>
         </dialog>
@@ -301,13 +301,13 @@ for (const mo of months) {
     storage && (
       <div class="sp-layer" hidden={storageLater} data-layer-later={storageLater ? '' : undefined}>
         <div class="sp-layer__scrim" aria-hidden="true"></div>
-        <dialog class="sp-layer__box" open aria-labelledby="storage-t" aria-describedby="storage-d">
+        <dialog class="sp-layer__box" open tabindex="-1" autofocus aria-labelledby="storage-t" aria-describedby="storage-d">
           <h2 class="sp-layer__title" id="storage-t">저장 공간이 {storage.full ? '다' : '거의'} 찼어요</h2>
           <meter class="sp-p__meter sp-layer__meter" min="0" max="100" low="80" high="95" optimum="0" value={pct} aria-label={`5GB 중 ${pct}% 사용`}>{pct}%</meter>
           <p class="sp-layer__text" id="storage-d">5GB 중 {sizeLabel(usedBytes)}를 쓰고 있어요. 5GB가 차면 새로 올리기만 멈추고, 가족은 계속 볼 수 있어요.</p>
           <form class="sp-layer__actions" method="post">
             <input type="hidden" name="level" value={storage.level} />
-            <button class="sp-p__btn" type="submit" name="do" value="storage-view" autofocus>저장 용량 보기</button>
+            <button class="sp-p__btn" type="submit" name="do" value="storage-view">저장 용량 보기</button>
             <button class="sp-p__btn sp-p__btn--quiet" type="submit" name="do" value="storage-later">나중에</button>
           </form>
         </dialog>
