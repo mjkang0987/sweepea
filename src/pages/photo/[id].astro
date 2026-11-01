@@ -71,6 +71,27 @@ const confirmDelete = q.get('confirm') === 'delete';
 const what = isVideo ? '영상' : '사진';
 const delText = '가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요.';
 const done = q.get('done');
+// 변경 내역(123, 사용자 "DB에는 넣어 두고 사진엔 비노출, 수정 진입 시 내역 보이도록"): 올림·고침마다 누가·무엇을. 옆 기능이라 못 받으면 칸만 뺀다
+const changes = await b.mediaChanges(a.pass, id).catch(() => null);
+const thisYear = seoulToday().slice(0, 4);
+const md = (iso: string) => {
+  const d = seoul(iso).date;
+  return `${d.slice(0, 4) === thisYear ? '' : `${d.slice(0, 4)}년 `}${Number(d.slice(5, 7))}월 ${Number(d.slice(8))}일`;
+};
+const when = (iso: string) => `${md(iso)} ${new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' }).format(new Date(iso))}`;
+const names = (xs: string[]) => (xs.length ? xs.join(', ') : '없음');
+const sameSet = (x: string[], y: string[]) => [...x].sort().join('\n') === [...y].sort().join('\n');
+const hist = (changes ?? []).map((c) => ({
+  ...c,
+  lines:
+    c.kind === 'create'
+      ? [`보여줄 그룹: ${names(c.groups)}`, `${c.children.length ? `아이: ${names(c.children)} · ` : ''}찍은 날: ${md(c.taken_at)}`]
+      : [
+          c.old_groups && !sameSet(c.old_groups, c.groups) ? `보여줄 그룹: ${names(c.old_groups)} → ${names(c.groups)}` : null,
+          c.old_children && !sameSet(c.old_children, c.children) ? `아이: ${names(c.old_children)} → ${names(c.children)}` : null,
+          c.old_taken_at && md(c.old_taken_at) !== md(c.taken_at) ? `찍은 날: ${md(c.old_taken_at)} → ${md(c.taken_at)}` : null,
+        ].filter((l): l is string => !!l),
+}));
 const doneText: Record<string, string> = { saved: '저장했어요.', error: '처리하지 못했어요. 다시 눌러 주세요.' };
 ---
 
@@ -139,6 +160,26 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
     <p class="sp-p__hint" id="group-note">그룹을 빼면 그 가족 화면에서 바로 사라져요.</p>
     <div class="sp-p__savebar"><button class="sp-p__btn" type="submit" name="do" value="save">저장</button></div>
   </form>
+  {/* 변경 내역(디자인 ParentPhoto): 최근 것부터. 크게 보기에는 안 보임 */}
+  {
+    changes && (
+      <section class="sp-p__hist" aria-labelledby="hist-t">
+        <h2 class="sp-p__hist-title" id="hist-t">변경 내역</h2>
+        {hist.length ? (
+          <ol class="sp-p__hist-list" role="list">
+            {hist.map((c) => (
+              <li class="sp-p__hist-item">
+                <p class="sp-p__hist-head"><strong class="sp-p__hist-who">{c.who}</strong> {c.kind === 'create' ? '올림' : '고침'} · <time class="sp-p__hist-time" datetime={c.at}>{when(c.at)}</time></p>
+                {c.lines.map((l) => <p class="sp-p__hist-line">{l}</p>)}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p class="sp-p__hint">아직 남은 기록이 없어요.</p>
+        )}
+      </section>
+    )
+  }
   {/* 스크립트가 있으면 이 화면 위 레이어(showModal), 없으면 주소로 같은 레이어를 연 채 다시 그린다 */}
   <a class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text" href={`/photo/${id}${kq ? `${kq}&` : '?'}confirm=delete`} aria-haspopup="dialog" data-del-open>{isVideo ? '영상' : '사진'} 지우기</a>
   {/* 디자인 PhotoDeleteLayer: 가운데 레이어, 지우기(빨강)·취소 */}
@@ -237,6 +278,15 @@ const doneText: Record<string, string> = { saved: '저장했어요.', error: '�
         });
         document.title = '사진 정보 수정 · 스위피';
         toast('저장했어요.');
+        // 방금 고친 줄이 변경 내역에 보이게 그 칸만 새로(옆 기능이라 실패하면 그대로)
+        fetch(location.href, { credentials: 'same-origin' })
+          .then((g) => g.text())
+          .then((html) => {
+            const next = new DOMParser().parseFromString(html, 'text/html').querySelector('.sp-p__hist');
+            const cur = document.querySelector('.sp-p__hist');
+            if (next && cur) cur.replaceWith(document.importNode(next, true));
+          })
+          .catch(() => {});
       } else if (to.pathname === location.pathname) {
         const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
         const next = doc.querySelector('.sp-p__form');
