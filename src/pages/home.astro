@@ -436,7 +436,8 @@ for (const mo of months) {
                       )}
                     </span>
                   )}
-                  {c.video && <span class="sp-p__cell-length" aria-hidden="true"><svg class="sp-p__cell-play" width="10" height="10" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg>{c.length && <span class="sp-p__cell-time">{c.length}</span>}</span>}
+                  {c.video && <span class="sp-p__cell-play" aria-hidden="true"><svg class="sp-p__cell-play-icon" width="20" height="20" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
+                  {c.video && c.length && <span class="sp-p__cell-length" aria-hidden="true">{c.length}</span>}
                   {z !== 5 && c.mark && <span class="sp-p__cell-mark" aria-hidden="true">{c.mark}</span>}
                 </a>
               </li>
