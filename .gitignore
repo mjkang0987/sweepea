@@ -13,3 +13,5 @@ dist/
 /tools/render/*.png
 __pycache__/
 /tools/.node/
+# e2e 검사가 찍는 화면 사진(매번 새로 생김). 이미 저장소에 있는 것은 그대로
+/tools/e2e/*.png
