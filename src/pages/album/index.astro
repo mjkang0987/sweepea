@@ -15,7 +15,7 @@ import { getBackend } from '../../lib/backend';
 import { signedMediaUrl } from '../../lib/signed';
 import { masonry, ratioOf } from '../../lib/masonry';
 import { PHOTOS_SEEN, WAITED, seenAt, setLayerCookie } from '../../lib/layers';
-import { dayMark, milestone } from '../../lib/age';
+import { dayMark, kidImage, milestone } from '../../lib/age';
 import { EMOJI } from '../../lib/emoji';
 import { seoulToday } from '../../lib/parent';
 
@@ -83,6 +83,8 @@ const seoulDayOf = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone:
 const marksOf = (familyIds: Set<string>, iso: string) =>
   births.filter((b) => familyIds.has(b.family)).map((b) => ({ b, m: dayMark(b.birth, seoulDayOf(iso)) })).filter((x) => x.m).map((x) => `${x.b.name} ${x.m}`);
 const todayIs = seoulToday();
+// 제목 옆 아기 그림(109): 고른 집, 전체면 첫 집의 첫 아이 나이
+const headKid = births.find((b) => !q.f || b.family === q.f);
 const todayEvents = cont ? [] : births.filter((b) => !q.f || b.family === q.f).map((b) => ({ name: b.name, what: milestone(b.birth, todayIs) })).filter((x) => x.what);
 // 달의 첫 날짜 묶음에 id(m-YYYY-MM): 달·해 카드에서 그 달로 바로 가게(?at=, #m-)
 const ymOf = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
@@ -182,7 +184,7 @@ const monthCards = !monthRows
       <h1 class="sp-f__title">{title}{total !== null && ` ${total}장`}</h1>
       {latest && <p class="sp-f__lead">{latest}에 올라왔어요</p>}
     </div>
-    <img class="sp-a__kongi" src="/kongi.svg" width="64" height="64" alt="" />
+    <img class:list={["sp-a__kongi", headKid && "sp-kid"]} src={kidImage(headKid?.birth, todayIs)} width="64" height="64" alt="" />
   </header>
   {/* 오늘이 기념일이면(100일·200일…·첫돌·두 돌) 맨 위에 축하 안내 */}
   {todayEvents.map((e) => (
