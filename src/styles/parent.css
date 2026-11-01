@@ -2564,19 +2564,9 @@
 .sp-p__albumhead-kid--many ~ .sp-p__albumhead-sub {
   grid-row: 3;
 }
-/* 기념일 표시(100일·첫돌·생일…, 사용자 "이벤트로"): 119부터 '새 사진'과 같은 알약에 색만 분홍(사용자 "이벤트 있는 경우 배지랑 컬러만 다르게"). 5칸은 분홍 점 */
+/* 기념일 표시(100일·첫돌·생일…, 사용자 "이벤트로"): 119부터 '새 사진'과 같은 알약에 색만 분홍(사용자 "이벤트 있는 경우 배지랑 컬러만 다르게"). 5칸도 '두 돌' 글자 그대로(사용자 2026-11-01 "두 돌 잘 나오던 걸 왜") */
 .sp-p__new.sp-p__cell-mark {
   background: var(--blossom);
-}
-.sp-p__grid--z5 .sp-p__new.sp-p__cell-mark {
-  padding: 0;
-  font-size: 0;
-  width: 0.75rem;
-  min-height: 0.75rem;
-  height: 0.75rem;
-}
-.sp-p__grid--z5 .sp-p__new.sp-p__cell-mark::before {
-  content: none;
 }
 @media (forced-colors: active) {
   .sp-p__new {
