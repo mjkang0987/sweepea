@@ -25,6 +25,9 @@ with sync_playwright() as p:
     gp.goto(B+'/album?v=list'); gp.get_by_role('link',name='골라서 저장하기').click(); gp.wait_for_url('**/album/save**')
     st=gp.locator('[data-count]')
     check(gp.locator('.sp-s__check').count()==3,'사진 3장 고를 수 있음')
+    # 엇갈린 배열 칸끼리 안 겹침(자리 값이 없으면 한자리에 겹치던 것, 2026-11-01), 칸이 사진 높이만큼
+    ov=gp.evaluate("(()=>{const r=[...document.querySelectorAll('.sp-s__pick')].map(e=>e.getBoundingClientRect());let n=0;for(let i=0;i<r.length;i++)for(let j=i+1;j<r.length;j++){const a=r[i],b=r[j];if(a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1)n++}return [n,r.every(x=>x.height>40)]})()")
+    check(ov==[0,True],f'고르기 칸끼리 안 겹침 {ov}')
     check(gp.get_by_role('button',name='휴대폰에 저장하기').is_disabled(),'안 골랐을 땐 버튼 꺼짐')
     labels=gp.locator('.sp-s__pick')
     labels.nth(0).click(); labels.nth(2).click()
