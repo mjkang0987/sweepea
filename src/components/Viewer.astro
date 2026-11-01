@@ -41,7 +41,8 @@ interface Props {
   /** 엄빠 크게 보기: 이 사진을 본 가족 이름(보신 기록, 95). 횟수·시간은 안 보임 */
   viewers?: string[];
   /** 가족 크게 보기: 옆으로 넘긴 사진은 1.5초 머물면 본 것으로 남긴다(보신 기록, 95) */
-  noteViews?: boolean;
+  /** 보신 기록 남기기: 가족(true) 또는 엄빠('parent', 117e) */
+  noteViews?: boolean | 'parent';
   /** 찍은 날의 아이 나이('생후 13개월', 디자인 PhotoView). 어느 아이 사진인지 모르면 없음 */
   age?: string | null;
 }
@@ -65,7 +66,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 
 {/* 시안엔 제목 줄이 없어 화면에선 숨기고 화면 읽기에만 */}
 <h1 class="sp-vh" id="v-title">{label}</h1>
-<div class="sp-v" data-v data-slides={m.kind === 'photo' && slides && slides.slides.length > 1 ? JSON.stringify(slides) : undefined} data-id={m.id} data-views={noteViews ? '' : undefined}>
+<div class="sp-v" data-v data-slides={m.kind === 'photo' && slides && slides.slides.length > 1 ? JSON.stringify(slides) : undefined} data-id={m.id} data-views={noteViews === 'parent' ? 'parent' : noteViews ? '' : undefined}>
   {note && <Toast text={note.text} tone={note.tone} id={sheetOpen ? 'talk-note' : undefined} />}
   <figure class="sp-v__stage">
     {
@@ -347,7 +348,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       if ('views' in v.dataset) {
         dwell = setTimeout(() => {
           if (at !== i) return;
-          fetch('/api/views', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [x.id] }), keepalive: true, credentials: 'same-origin' }).catch(() => {});
+          fetch('/api/views', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [x.id], parent: v.dataset.views === 'parent' }), keepalive: true, credentials: 'same-origin' }).catch(() => {});
         }, 1500);
       }
       v.dataset.id = x.id;
