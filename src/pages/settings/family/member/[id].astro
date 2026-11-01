@@ -41,7 +41,7 @@ const doneText: Record<string, string> = {
     <h1 class="sp-p__nav-title">{m.display_name}</h1>
   </div>
   <div class="sp-p__who">
-    {m.avatar ? <img class="sp-avatar sp-p__avatar--large" src={avatarSrc(m.avatar)} width="56" height="56" alt="" /> : <span class="sp-p__avatar sp-p__avatar--large" aria-hidden="true">{initialOf(m.display_name)}</span>}
+    {m.avatar ? <img class="sp-avatar sp-avatar--large" src={avatarSrc(m.avatar)} width="56" height="56" alt="" /> : <span class="sp-p__avatar sp-p__avatar--large" aria-hidden="true">{initialOf(m.display_name)}</span>}
     <div>
       <p class="sp-p__who-name sp-p__who-name--large">{m.display_name}</p>
       <p class="sp-p__hint">{group} · 휴대폰 {devices.length}대{lastSeen && ` · ${seenLabel(lastSeen, Date.now())}`}</p>

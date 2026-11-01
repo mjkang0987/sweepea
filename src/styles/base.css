@@ -468,6 +468,11 @@
   width: 2rem;
   height: 2rem;
 }
+/* 구성원 상세 머리(56px). 엄빠 .sp-p__avatar--large와 순서에 기대지 않게 따로 */
+.sp-avatar--large {
+  width: 3.5rem;
+  height: 3.5rem;
+}
 /* 고르기 칸(디자인 AvatarPick 가족 4칸 72px·AvatarPickParent 엄빠 5칸 56px): 고른 것은 틸 테두리 + 체크 */
 .sp-av {
   position: relative;
