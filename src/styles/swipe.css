@@ -33,6 +33,8 @@
   scroll-margin-top: 14rem;
   flex: 0 0 var(--card-w);
   scroll-snap-align: center;
+  /* 빠르게 튕겨도 한 장씩만(사용자 2026-11-01 "한 번씩 두 장씩 넘어갈 때 있음": 관성이 다음 멈춤 자리를 지나치던 것) */
+  scroll-snap-stop: always;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);

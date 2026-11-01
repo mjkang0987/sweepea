@@ -470,8 +470,13 @@ if (z !== 3 && z !== 5)
                   )}
                   {c.video && <span class="sp-p__cell-play" aria-hidden="true"><svg class="sp-p__cell-play-icon" width="20" height="20" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
                   {c.video && c.length && <span class="sp-p__cell-length" aria-hidden="true">{c.length}</span>}
-                  {z !== 5 && c.mark && <span class="sp-p__cell-mark" aria-hidden="true">{c.mark}</span>}
-                  {c.fresh && !c.top && <span class="sp-p__new" aria-hidden="true">새 사진</span>}
+                  {/* 왼쪽 위 배지(119): 새 사진(틸)·기념일(분홍, 같은 알약), 둘 다면 위아래로 */}
+                  {((c.fresh && !c.top) || c.mark) && (
+                    <span class="sp-p__pills" aria-hidden="true">
+                      {c.fresh && !c.top && <span class="sp-p__new">새 사진</span>}
+                      {c.mark && <span class="sp-p__new sp-p__cell-mark">{c.mark}</span>}
+                    </span>
+                  )}
                 </a>
               </li>
             ))}

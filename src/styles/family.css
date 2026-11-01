@@ -409,6 +409,15 @@
   font-weight: 600;
   text-decoration: none;
 }
+/* 모바일에서 상단 탭이 자리를 너무 차지하지 않게(119, 사용자 "상단 탭 모바일에서 상하 여백 조절"): 탭 48px, 위아래 간격 16px·탭 두 줄 사이 8px */
+@media (max-width: 32rem) {
+  .sp-a__tabs {
+    margin-block: calc(-1 * var(--space-2));
+  }
+  .sp-a__tab {
+    min-height: 3rem;
+  }
+}
 .sp-a__tab[aria-current='page'] {
   background: var(--seg);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
@@ -595,6 +604,44 @@
   font-weight: 600;
 }
 /* 새 사진 알약(117a): 아직 안 본 사진, 칸 왼쪽 위. 5칸은 점만 */
+/* 칸 왼쪽 위 배지 묶음(119): 새 사진·기념일을 위아래로 */
+.sp-a__pills {
+  position: absolute;
+  z-index: 1;
+  left: var(--space-2);
+  right: var(--space-2);
+  top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  pointer-events: none;
+}
+.sp-a__grid--5 .sp-a__pills {
+  left: 4px;
+  top: 4px;
+  gap: 2px;
+}
+.sp-a__pills .sp-a__new {
+  position: static;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  /* 칸보다 길면 오른쪽 끝만 잘리게 */
+  justify-content: flex-start;
+}
+/* 기념일(119, 사용자 "이벤트 있는 경우 배지랑 컬러만 다르게"): 같은 알약, 분홍. 5칸은 분홍 점 */
+.sp-a__new.sp-a__new--event {
+  background: var(--blossom);
+}
+.sp-a__grid--5 .sp-a__new.sp-a__new--event {
+  width: 0.875rem;
+  min-height: 0.875rem;
+  height: 0.875rem;
+}
+.sp-a__grid--5 .sp-a__new.sp-a__new--event::before {
+  content: none;
+}
 .sp-a__new {
   /* 새 사진(117a·117y): 어르신도 보이게 크게 + 흰 테(사진 위 대비) */
   position: absolute;
