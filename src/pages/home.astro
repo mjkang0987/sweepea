@@ -129,13 +129,14 @@ const storage = level && Number(level) > storageSeen ? { level, full: level === 
 const storageLater = !!(join || coparent || birthday);
 const helpers = admin?.members.filter((m) => m.status === 'active' && m.install_help_at && now - Date.parse(m.install_help_at) < 7 * 86_400_000) ?? [];
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
-const monthFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' });
 // 칸마다 받은 하트·한마디 수(디자인: 칸 왼쪽 아래 알약). 옆 기능이라 실패하면 알약만 뺀다
 const reacts = cardView ? null : await loadReacts(a.pass, items.map((m) => m.id)).catch(() => null);
 // 반올림을 먼저 해서 59.6초가 '0:60'이 되지 않게(리뷰 2026-10-31)
 const clock = (sec: number) => ((s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`)(Math.round(sec));
-type Cell = { id: string; src: string; video: boolean; day: string; d: string; mark: string | null; ratio: number; hearts: number; says: number; length: string | null; at2?: string };
-const months: { ym: string; label: string; count: number; cells: Cell[] }[] = [];
+type Cell = { id: string; src: string; video: boolean; day: string; d: string; mark: string | null; ratio: number; hearts: number; says: number; length: string | null; at2?: string; anchor?: string };
+// 빈칸 없는 앨범(117b): 달마다 끊지 않고 한 격자. 달로 바로 가기(#m-YYYY-MM)는 그 달 첫 칸 안 표식으로
+const cells: Cell[] = [];
+let lastYM = '';
 // 달 묶음 이름(화면 읽기용 제목): 올해면 '10월', 아니면 '2025년 10월'
 // 기념일(100일·200일·첫돌·생일…) 표시: 고른 아이·아이 하나면 그 아이, 전체면 그날 기념일인 아이 이름과 함께(사용자 "이벤트로", 2026-10-29)
 const ageKid = picked ?? (kids.length === 1 ? kids[0] : undefined);
@@ -149,13 +150,11 @@ const seoulDay = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: '
 const seoulYM = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
 for (const m of cardView || swipe ? [] : items) {
   const ym = seoulYM(m.taken_at);
-  const label = ym.slice(0, 4) === today.slice(0, 4) ? `${Number(ym.slice(5, 7))}월` : monthFmt.format(new Date(m.taken_at));
-  if (months.at(-1)?.label !== label) {
-    const end = ym === today.slice(0, 7) ? today : new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).toISOString().slice(0, 10);
-    months.push({ ym, label, count: 0, cells: [] });
-  }
+  const anchor = ym !== lastYM ? ym : undefined;
+  lastYM = ym;
   const r = reacts?.get(m.id)?.counts;
-  months.at(-1)!.cells.push({
+  cells.push({
+    anchor,
     id: m.id,
     // 1칸은 한 줄에 한 장을 크게 보여서 작은 그림(480px) 대신 사진(영상은 포스터)
     src: await signedMediaUrl(z === 1 ? (m.kind === 'video' ? (m.poster_key ?? m.thumb_key) : m.view_key) : m.thumb_key),
@@ -169,15 +168,6 @@ for (const m of cardView || swipe ? [] : items) {
     length: m.kind === 'video' && m.duration_sec ? clock(Number(m.duration_sec)) : null,
   });
 }
-// 달 사진 수는 그 달 전체(서울 달 기준). 쪽 가운데 달은 칸 수가 곧 전체라, 쪽 경계에 걸칠 수 있는 첫 달(앞 쪽이 있을 때)·끝 달(다음 쪽이 있을 때)만 센다
-const nextYM = (ym: string) => (ym.slice(5) === '12' ? `${Number(ym.slice(0, 4)) + 1}-01` : `${ym.slice(0, 4)}-${String(Number(ym.slice(5)) + 1).padStart(2, '0')}`);
-await Promise.all(
-  months.map(async (mo, i) => {
-    mo.count = mo.cells.length;
-    if (!((i === 0 && page.offset > 0) || (i === months.length - 1 && page.next))) return;
-    mo.count = await b.countMedia(a.pass, { childId: picked?.id, takenFrom: `${mo.ym}-01T00:00:00+09:00`, takenBefore: `${nextYM(mo.ym)}-01T00:00:00+09:00` }).catch(() => mo.cells.length);
-  }),
-);
 // 머리 작은 줄 첫 값(스크립트 없어도): 맨 위 사진의 찍은 날, 올해가 아니면 연도도
 const d0 = items[0] ? seoulDay(items[0].taken_at) : '';
 const mark0 = d0 && (z === 1 || z === 2) ? markOf(d0) : null;
@@ -212,11 +202,10 @@ const slides = !swipe
       }),
     );
 // 엇갈린 배열 자리: 휴대폰 2줄, 넓은 화면 5줄(CSS가 화면 폭에 맞는 쪽을 씀). 1칸은 휴대폰 한 줄(원래 모양 --ar), 넓은 화면 2줄. 3·5칸은 정사각이라 자리 없음
-for (const mo of months) {
-  if (z === 3 || z === 5) continue;
-  const two = masonry(mo.cells.map((c) => c.ratio), 2);
-  const five = masonry(mo.cells.map((c) => c.ratio), 5);
-  mo.cells.forEach((c, i) => {
+if (z !== 3 && z !== 5) {
+  const two = masonry(cells.map((c) => c.ratio), 2);
+  const five = masonry(cells.map((c) => c.ratio), 5);
+  cells.forEach((c, i) => {
     c.at2 = `--c2:${two[i].col};--r2:${two[i].row};--s2:${two[i].span};--c5:${five[i].col};--r5:${five[i].row};--s5:${five[i].span};--ar:${1 / c.ratio}`;
   });
 }
@@ -410,13 +399,14 @@ for (const mo of months) {
     ) : cardView ? (
       <p class="sp-p__lead">{z === 'y' ? '해마다' : '달마다'} 모아 보기를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
     ) : (
-      months.map((mo) => (
-        <section class="sp-p__month" id={`m-${mo.ym}`} data-ym={mo.ym} aria-label={`${mo.label} ${mo.count}장`}>
-          {/* 달 제목 줄은 위 날짜 줄과 겹쳐 뺌(사용자 "중복 내용"), 화면 읽기용 제목만 */}
-          <h2 class="sp-vh">{mo.label} 사진 {mo.count}장</h2>
+      cells.length > 0 && (
+        <section class="sp-p__month" data-ym="all" aria-labelledby="album-grid-t">
+          {/* 빈칸 없는 앨범(117b): 날짜는 위 기간 줄, 화면 읽기용 제목만 */}
+          <h2 class="sp-vh" id="album-grid-t">사진</h2>
           <ul class={`sp-p__grid sp-p__grid--z${z}`}>
-            {mo.cells.map((c) => (
+            {cells.map((c) => (
               <li class="sp-p__cell" id={`c-${c.id}`} style={c.at2} data-ratio={c.ratio} data-d={c.d} data-mark={c.mark ?? undefined}>
+                {c.anchor && <span class="sp-p__anchor" id={`m-${c.anchor}`} aria-hidden="true" />}
                 <a class="sp-p__cell-link" href={`/view/${c.id}?${kq}z=${z}`}>
                   <img
                     class="sp-p__cell-img"
@@ -444,7 +434,7 @@ for (const mo of months) {
             ))}
           </ul>
         </section>
-      ))
+      )
     )
   }
   {/* 목록 끝(디자인 LoadMore): 다음 쪽 링크(스크립트가 보이기 전에 받아 붙임) 또는 이어 본 뒤 끝 */}
@@ -477,7 +467,7 @@ for (const mo of months) {
   // 넘겨 보기(98d): 옆으로 밀다 남은 카드가 다섯 장쯤이면 다음 60장 카드를 뒤에 붙인다. 돌아온 카드(#c-<id>)는 브라우저가 가운데로
   const swipe = document.querySelector<HTMLElement>('.sp-a__swipe');
   if (swipe) swipeMore(swipe);
-  // 다음 60장: 같은 달이면 그 달에 칸을 합치고, 아니면 달 묶음을 뒤에 붙인다(달 사진 수는 서버가 그 달 전체로 셈)
+  // 다음 60장: 한 격자(117b)에 칸을 이어 붙이고 엇갈린 배열을 다시 계산
   else autoMore((doc) => {
     const added: HTMLElement[] = [];
     for (const sec of doc.querySelectorAll<HTMLElement>('.sp-p__month')) {
@@ -485,7 +475,12 @@ for (const mo of months) {
       if (!last) break;
       const ul = last.querySelector<HTMLElement>('.sp-p__grid');
       if (last.dataset.ym === sec.dataset.ym && ul) {
-        for (const li of sec.querySelectorAll<HTMLElement>('.sp-p__cell')) added.push(ul.appendChild(document.importNode(li, true)));
+        for (const li of sec.querySelectorAll<HTMLElement>('.sp-p__cell')) {
+          // 쪽마다 첫 칸에 그 달 표식이 붙어 오므로, 이미 있는 달 표식은 뺀다(117b: 한 격자)
+          const mark = li.querySelector<HTMLElement>('.sp-p__anchor');
+          if (mark && document.getElementById(mark.id)) mark.remove();
+          added.push(ul.appendChild(document.importNode(li, true)));
+        }
         relayout(ul);
       } else {
         const node = document.importNode(sec, true);
