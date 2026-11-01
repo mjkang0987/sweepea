@@ -17,6 +17,7 @@ with sync_playwright() as p:
     check(True,'로그인 뒤 설정 전이면 처음 설정으로'); 
     pg.goto(B+'/setup/password?child=x&birth=2025-02-31&role=mom'); check(pg.url.endswith('e=birth'),'없는 날짜(2월 31일)는 1단계로')
     pg.goto(B+'/setup')
+    check('앨범은 엄마·아빠 중 한 분만 만들어요.' in pg.locator('.sp-p__tip').inner_text(),'처음 설정: 한 분만 만든다는 안내')
     pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_label('아빠').check(); shot('5')
     pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','12'); pg.evaluate("document.querySelector('#pw').removeAttribute('pattern');document.querySelector('#pw').removeAttribute('required')")
