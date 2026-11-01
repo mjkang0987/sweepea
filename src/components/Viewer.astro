@@ -300,7 +300,18 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       track.appendChild(li);
     });
     stage.replaceChildren(track);
-    track.scrollLeft = at * track.clientWidth;
+    // 칸 자리는 '칸 폭 × 번호'가 아니라 실제 칸 위치로(화면 폭이 소수점이면 뒤로 갈수록 어긋나 넘어가지 않던 것, 사용자 2026-11-01 "넘겨 보는데 안 넘어감")
+    const leftOf = (i: number) => ((track.children[i] as HTMLElement | undefined)?.offsetLeft ?? 0) - (track.firstElementChild as HTMLElement).offsetLeft;
+    const slideAt = () => {
+      let i = 0;
+      let gap = Infinity;
+      for (let j = 0; j < track.children.length; j++) {
+        const d = Math.abs(leftOf(j) - track.scrollLeft);
+        if (d < gap) [i, gap] = [j, d];
+      }
+      return { i, gap };
+    };
+    track.scrollLeft = leftOf(at);
     v.dataset.swiper = '';
     const bar = v.querySelector<HTMLElement>('.sp-v__bar');
     const dock = v.querySelector<HTMLElement>('.sp-v__dock');
@@ -344,9 +355,9 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     let to: number | undefined;
     let dwell: ReturnType<typeof setTimeout> | undefined;
     const settle = async () => {
-      const i = Math.round(track.scrollLeft / track.clientWidth);
-      // 손가락을 댄 채 멈춘 중간 위치에선 아무것도 안 한다(칸에 딱 맞았을 때만)
-      if (Math.abs(track.scrollLeft - i * track.clientWidth) > 2) return;
+      const { i, gap } = slideAt();
+      // 손가락을 댄 채 멈춘 중간 위치에선 아무것도 안 한다(칸에 맞았을 때만, 반올림 몇 px은 봐줌)
+      if (gap > 4) return;
       to = undefined;
       if (i === at || !slides[i]) return;
       at = i;
@@ -389,7 +400,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
     track.addEventListener('scroll', () => {
       // 넘기기 시작하면 머문 시간은 다시 센다(넘겨 보기 앨범과 같게)
       clearTimeout(dwell);
-      arrows(Math.round(track.scrollLeft / track.clientWidth));
+      arrows(slideAt().i);
       // 멈춤 알림(scrollend)이 없는 브라우저만 시간으로
       if ('onscrollend' in window) return;
       clearTimeout(t);
@@ -404,11 +415,31 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       if (!slides[i]) return; // 창 끝: 링크대로 페이지를 연다
       e.preventDefault();
       to = i;
-      track.scrollTo({ left: i * track.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      track.scrollTo({ left: leftOf(i), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     };
     prev?.addEventListener('click', go(-1));
     next?.addEventListener('click', go(1));
-    addEventListener('resize', () => (track.scrollLeft = at * track.clientWidth));
+    addEventListener('resize', () => (track.scrollLeft = leftOf(at)));
+  }
+  // 영상 화면(넘겨 보기 줄이 없음)도 옆으로 밀면 이전·다음(사용자 2026-11-01 "크게 보기 들어갔을 때 영상 위에서 스와이퍼 안 됨").
+  // 화살표 링크와 같은 곳으로, 기록을 쌓지 않게 replace(닫기·뒤로 가기가 앨범으로)
+  if (v && stage && !(win && slides)) {
+    let sx = 0;
+    let sy = 0;
+    let st = 0;
+    stage.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      [sx, sy, st] = [e.touches[0].clientX, e.touches[0].clientY, e.timeStamp];
+    }, { passive: true });
+    stage.addEventListener('touchend', (e) => {
+      const p = e.changedTouches[0];
+      const dx = p.clientX - sx;
+      const dy = p.clientY - sy;
+      // 재생 막대를 끄는 손짓·세로 스크롤·길게 누른 것은 빼고, 옆으로 확실히 민 것만
+      if (e.timeStamp - st > 800 || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      const a = v.querySelector<HTMLAnchorElement>(dx < 0 ? 'a[rel="next"]' : 'a[rel="prev"]');
+      if (a && !a.hidden) location.replace(a.href);
+    }, { passive: true });
   }
   // 사진만 보기: 사진을 한 번 누르면 위 메뉴·아래 판·화살표·영상 막대를 숨기고(검은 바탕), 다시 누르면 돌아온다.
   // 사진 칸을 덮는 버튼은 손가락 넘기기를 막아서 쓰지 않고, 키보드·화면 읽기용 버튼은 포커스하면 보인다. Esc로도 돌아온다
