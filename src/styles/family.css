@@ -625,14 +625,17 @@
 .sp-a__pills .sp-a__new {
   position: static;
   max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  /* 칸보다 길면 오른쪽 끝만 잘리게 */
-  justify-content: flex-start;
+  /* 칸보다 길면 잘리지 않고 다음 줄로(사용자 "5장 화면에서도 두 돌 텍스트 다 노출") */
+  white-space: normal;
+  word-break: keep-all;
+  text-align: center;
+  /* 두 줄이 되면 줄 사이를 조금 */
+  padding-block: 0.125rem;
 }
-/* 기념일(119, 사용자 "이벤트 있는 경우 배지랑 컬러만 다르게"): 같은 알약, 분홍. 5칸도 '두 돌' 글자 그대로(사용자 2026-11-01 "두 돌 잘 나오던 걸 왜", 점이면 뜻을 모름) */
+/* 기념일(119): 같은 알약, 틸(원래 색). 5칸도 '두 돌' 글자 그대로(사용자 2026-11-01 "두 돌 잘 나오던 걸 왜", 점이면 뜻을 모름) */
 .sp-a__new.sp-a__new--event {
-  background: var(--blossom);
+  /* 기념일은 원래 색(틸), 신규가 분홍(사용자 2026-11-01 "신규랑 이벤트랑 배지 색 바꿔") */
+  background: var(--pea);
 }
 .sp-a__new {
   /* 새 사진(117a·117y): 어르신도 보이게 크게 + 흰 테(사진 위 대비) */
@@ -644,7 +647,7 @@
   padding: 0 0.75rem;
   box-sizing: border-box;
   border-radius: 999px;
-  background: var(--pea);
+  background: var(--blossom);
   color: var(--on-pea);
   display: inline-flex;
   align-items: center;
@@ -1873,11 +1876,12 @@
   gap: 2px;
   height: 13.75rem;
 }
-.sp-a__mcard-pics--m {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
+/* 월별·연별 모두 큰 1장 + 4장(사용자 2026-11-01 "월별 보기 레이아웃 3장 말고 5장으로"). 연별은 더 높게 */
+.sp-a__mcard-pics--m,
 .sp-a__mcard-pics--y {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.sp-a__mcard-pics--y {
   height: 16.25rem;
 }
 .sp-a__mcard-img {
@@ -1887,42 +1891,35 @@
   min-height: 0;
   object-fit: cover;
 }
-.sp-a__mcard-pics--m .sp-a__mcard-img:first-child {
-  grid-row: span 2;
-}
-.sp-a__mcard-pics--m .sp-a__mcard-img:not(:first-child) {
-  grid-column: span 2;
-}
+/* 첫 장(가장 반응 많은 사진)을 2×2로 크게 */
+.sp-a__mcard-pics--m .sp-a__mcard-img:first-child,
 .sp-a__mcard-pics--y .sp-a__mcard-img:first-child {
   grid-column: span 2;
   grid-row: span 2;
 }
-/* 연별 대표가 5장보다 적은 해(옛 해·한두 달): 4장이면 오른쪽 위 한 장을 넓게, 3장이면 월별 모양, 2장이면 반반 */
-.sp-a__mcard-pics--y.sp-a__mcard-pics--n4 .sp-a__mcard-img:nth-child(2) {
+/* 대표가 5장보다 적은 달·해: 4장이면 오른쪽 위 한 장을 넓게, 3장이면 큰 1장 + 2장, 2장이면 반반 */
+.sp-a__mcard-pics--n4 .sp-a__mcard-img:nth-child(2) {
   grid-column: span 2;
 }
-.sp-a__mcard-pics--y.sp-a__mcard-pics--n3 {
+.sp-a__mcard-pics--n3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-.sp-a__mcard-pics--y.sp-a__mcard-pics--n3 .sp-a__mcard-img:first-child {
+.sp-a__mcard-pics--n3 .sp-a__mcard-img:first-child {
   grid-column: auto;
 }
-.sp-a__mcard-pics--y.sp-a__mcard-pics--n3 .sp-a__mcard-img:not(:first-child) {
+.sp-a__mcard-pics--n3 .sp-a__mcard-img:not(:first-child) {
   grid-column: span 2;
 }
-.sp-a__mcard-pics--y.sp-a__mcard-pics--n2 {
+.sp-a__mcard-pics--n2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.sp-a__mcard-pics--y.sp-a__mcard-pics--n2 .sp-a__mcard-img {
+.sp-a__mcard-pics--n2 .sp-a__mcard-img {
   grid-column: auto;
   grid-row: span 2;
 }
-/* 두 장뿐이면 오른쪽 한 장이 두 줄을 채움 */
-.sp-a__mcard-pics--m .sp-a__mcard-img:nth-child(2):last-child {
-  grid-row: span 2;
-}
+/* 사진이 한 장뿐이면 꽉(큰 칸 규칙보다 강하게, 리뷰 2026-10-29) */
 .sp-a__mcard-pics .sp-a__mcard-img:only-child,
-.sp-a__mcard-pics--y.sp-a__mcard-pics--n1 .sp-a__mcard-img {
+.sp-a__mcard-pics--n1 .sp-a__mcard-img {
   grid-column: 1 / -1;
   grid-row: 1 / -1;
 }
