@@ -124,3 +124,33 @@ export function keepSpot(cellLink: string) {
   if (document.readyState === 'complete') place();
   else addEventListener('load', place, { once: true });
 }
+
+const CLOSE = 'sp-close';
+/** 크게 보기 '닫기'가 뒤로 가기로 돌아왔을 때(사용자 2026-11-01 "닫기 속도"): 브라우저가 들고 있던 앨범을 그대로 보여 주고
+ * 마지막에 본 사진 칸(모아 보기 #c-, 넘겨 보기 #p-·#c-)으로 옮긴다. 그 칸이 이 앨범에 없으면 그 칸까지 그린 앨범(닫기 주소)을 새로 연다 */
+export function closeReturn() {
+  // 사진 칸·카드를 누르면 그 사진 id를 적어 둔다(크게 보기가 '앨범에서 왔음'을 안다)
+  document.addEventListener('click', (e) => {
+    const a = (e.target as Element).closest<HTMLAnchorElement>('a[href]');
+    const m = a && /^\/(album|view)\/([0-9a-f-]{36})$/.exec(new URL(a.href, location.href).pathname);
+    try {
+      if (m) sessionStorage.setItem('sp-open', m[2]);
+    } catch {
+      // 못 적으면 닫기는 지금처럼 주소로
+    }
+  });
+  addEventListener('pageshow', () => {
+    let c: { id?: string; href?: string } | null = null;
+    try {
+      c = JSON.parse(sessionStorage.getItem(CLOSE) ?? 'null');
+      sessionStorage.removeItem(CLOSE);
+    } catch {
+      c = null;
+    }
+    if (!c?.id) return;
+    const el = document.getElementById(`c-${c.id}`) ?? document.getElementById(`p-${c.id}`);
+    if (!el) return void (c.href && location.replace(c.href));
+    el.scrollIntoView(el.classList.contains('sp-a__slide') ? { block: 'nearest', inline: 'center' } : { block: 'center' });
+  });
+}
+
