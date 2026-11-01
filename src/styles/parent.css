@@ -2495,11 +2495,14 @@
     border: 1px solid CanvasText;
   }
 }
-/* 달·해 카드에서 #m-YYYY-MM으로 올 때 그 달이 위에 붙은 머리 밑에 숨지 않게(아이가 여럿이면 머리가 한 줄 더 높음) */
-.sp-p__month {
+/* 달·해 카드에서 #m-YYYY-MM으로 올 때 그 달 첫 칸이 위에 붙은 머리 밑에 숨지 않게(아이가 여럿이면 머리가 한 줄 더 높음). 117b: 달 묶음 대신 첫 칸 안 표식 */
+.sp-p__anchor {
+  position: absolute;
+  top: 0;
+  left: 0;
   scroll-margin-top: 7rem;
 }
-.sp-p:has(.sp-p__albumhead-kid--many) .sp-p__month {
+.sp-p:has(.sp-p__albumhead-kid--many) .sp-p__anchor {
   scroll-margin-top: 9rem;
 }
 

@@ -26,8 +26,8 @@ def check(c,msg):
     print('ok' if c else 'FAIL',msg)
     if not c: FAILS.append(msg)
 def overlap(pg,ym):
-    """그 달 칸끼리 겹치는 쌍 수"""
-    return pg.evaluate("""ym=>{const r=[...document.querySelectorAll(`.sp-p__month[data-ym="${ym}"] .sp-p__cell`)].map(e=>e.getBoundingClientRect());let n=0;
+    """그 달 칸끼리 겹치는 쌍 수(117b: 한 격자라 찍은 날 data-d로 그 달 칸을 고름)"""
+    return pg.evaluate("""ym=>{const r=[...document.querySelectorAll(`.sp-p__cell[data-d^="${ym}"]`)].map(e=>e.getBoundingClientRect());let n=0;
       for(let i=0;i<r.length;i++)for(let j=i+1;j<r.length;j++){const a=r[i],b=r[j];if(a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1)n++}return n}""",ym)
 def bottom(pg):
     pg.evaluate("window.scrollTo(0,document.body.scrollHeight)")
@@ -41,18 +41,18 @@ with sync_playwright() as p:
         pg.goto(B+'/upload'); pg.set_input_files('#up-files',FILES[k:k+50]); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=300000)
         pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=300000)
     cells=lambda: pg.locator('.sp-p__cell').count()
-    # 1) 처음 60장, 달 사진 수는 그 달 전체
+    # 1) 처음 60장(117b: 달마다 끊지 않는 한 격자)
     check(cells()==60,'처음 60장 (%d)'%cells())
-    check(pg.locator('.sp-p__month[data-ym="2024-05"] h2').inner_text().endswith('사진 70장'),'5월 사진 수는 처음부터 70')
+    check(pg.locator('.sp-p__month').count()==1 and pg.locator('#m-2024-05').count()==1,'한 격자, 5월로 바로 가기 표식')
     check(pg.locator('[data-more] a').count()==1,'끝에 다음 쪽 링크')
     # 2) 내리면 120 → 130, 걸친 달은 한 묶음, 안 겹침
     bottom(pg); pg.wait_for_function("document.querySelectorAll('.sp-p__cell').length===120",timeout=20000)
     check('60장을 더 불러왔어요' in pg.locator('p.sp-vh[role=status]:not([data-zoom])').inner_text(),'화면 읽기 알림: 60장을 더 불러왔어요')
-    check(pg.locator('.sp-p__month[data-ym="2024-05"]').count()==1,'5월은 한 묶음')
-    check(pg.locator('.sp-p__month[data-ym="2024-05"] .sp-p__cell').count()==70,'5월 칸 70')
+    check(pg.locator('.sp-p__month').count()==1 and pg.locator('#m-2024-05').count()==1,'이어 붙여도 한 격자, 5월 표식 하나')
+    check(pg.locator('.sp-p__cell[data-d^="2024-05"]').count()==70,'5월 칸 70')
     check(overlap(pg,'2024-05')==0,'합친 5월 칸이 안 겹침')
     bottom(pg); pg.wait_for_function("document.querySelectorAll('.sp-p__cell').length===130",timeout=20000)
-    check(pg.locator('.sp-p__month').count()==3 and overlap(pg,'2024-04')==0,'달 묶음 3개, 4월 안 겹침')
+    check(pg.locator('.sp-p__month').count()==1 and pg.locator('.sp-p__anchor').count()==3 and overlap(pg,'2024-04')==0 and overlap(pg,'')==0,'한 격자에 달 표식 3개, 전체 칸 안 겹침')
     pg.wait_for_selector('.sp-more__end'); check('처음 사진까지 모두 봤어요' in pg.locator('.sp-more__end').inner_text() and pg.locator('[data-more] a').count()==0,'끝 줄: 처음 사진까지 모두 봤어요')
     ids=pg.eval_on_selector_all('.sp-p__cell','e=>e.map(x=>x.id)'); check(len(set(ids))==130,'같은 사진 두 번 안 붙음')
     # 3) 크게 보기에서 닫으면 보던 자리로(같은 높이)
@@ -125,6 +125,12 @@ with sync_playwright() as p:
     check(np_.locator('.sp-p__cell').count()==60,'다음 쪽 60장')
     np_.get_by_role('link',name='사진 더 보기').click(); np_.wait_for_url('**before=**')
     check(np_.locator('.sp-p__cell').count()==10 and np_.locator('.sp-more__end').count()==1,'마지막 쪽 10장 + 끝 줄')
+    # 6) 달이 바뀌어도 줄이 끊기지 않음(117b): 3칸을 끝까지 불러 마지막 줄 말고는 줄마다 칸 3개
+    pg.goto(B+'/home?v=list&z=3'); pg.wait_for_selector('.sp-p__cell-img')
+    for _ in range(4): bottom(pg); pg.wait_for_timeout(1200)
+    pg.wait_for_function("document.querySelectorAll('.sp-p__cell').length===130",timeout=20000)
+    rows=pg.evaluate("""(()=>{const m={};for(const e of document.querySelectorAll('.sp-p__cell')){const k=Math.round(e.getBoundingClientRect().top+scrollY);m[k]=(m[k]||0)+1}return Object.keys(m).map(Number).sort((a,b)=>a-b).map(k=>m[k])})()""")
+    check(all(n==3 for n in rows[:-1]),'3칸: 마지막 줄 말고는 줄마다 3칸(달 사이 빈칸 없음) 덜 찬 줄 %d'%sum(1 for n in rows[:-1] if n!=3))
     nc.close(); c.close()
     b.close()
 print('FAILS',FAILS)
