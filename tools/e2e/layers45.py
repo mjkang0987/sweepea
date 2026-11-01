@@ -17,7 +17,7 @@ with sync_playwright() as p:
     pg=start(b,D100)
     d=pg.get_by_role('dialog')
     check(d.count()==1 and '태어난 지 100일이에요' in d.inner_text() and '오늘은 하린이' in d.inner_text(),'백일 레이어')
-    check(pg.evaluate("document.activeElement.textContent.trim()")=='사진 올리기','첫 버튼에 초점')
+    check(pg.evaluate("document.activeElement.matches('dialog[open].sp-layer__box')"),'처음 초점은 레이어')
     pg.screenshot(path=D+'ly4-100.png')
     d.get_by_role('button',name='닫기').click(); pg.wait_for_url('**/home')
     d=pg.get_by_role('dialog')
@@ -29,7 +29,7 @@ with sync_playwright() as p:
     pg.reload(); check(pg.get_by_role('dialog').count()==0,'다시 열어도 없음')
     # 돌 + 사진 올리기, 다크
     pg2=start(b,DOL,'dark')
-    d=pg2.get_by_role('dialog'); check('첫 생일이에요' in d.inner_text(),'돌 레이어')
+    d=pg2.get_by_role('dialog'); check('첫돌이에요' in d.inner_text(),'돌 레이어')
     pg2.screenshot(path=D+'ly4-dol-dark.png')
     d.get_by_role('button',name='사진 올리기').click(); pg2.wait_for_url('**/upload')
     pg2.goto(B+'/home'); check('생일' not in (pg2.get_by_role('dialog').inner_text() if pg2.get_by_role('dialog').count() else ''),'올리기 뒤 생일 레이어 없음')
