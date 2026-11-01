@@ -1493,6 +1493,12 @@
   padding: 0;
   border: 0;
   min-width: 0;
+  /* 2줄 엇갈린 배열의 칸 높이 단위(cqi)를 이 폭 기준으로(모아 보기 .sp-a__day와 같게) */
+  container-type: inline-size;
+}
+/* 고르기 칸이 배열이 정한 높이를 꽉 채우게(사진은 그 안에서 100%) */
+.sp-a__grid--2 .sp-s__pick {
+  height: 100%;
 }
 .sp-s__pick {
   position: relative;
