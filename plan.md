@@ -8,7 +8,7 @@
 
 ### 지금 상태
 
-- dev = 0.15.1, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
+- dev = 0.15.2, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
 - main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다. 2026-10-31 확인: PR의 Lighthouse·'Workers Builds: sweepea' 모두 성공(예전 실패 기록은 지난 것)
 - 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울)에 마이그레이션 모두 적용(저장소 파일 22개, 마지막 `20261029000005_me_children.sql`은 98g에서 사용자 "넣고 배포"로 적용. 예전 기록의 '23개'와 파일 수가 안 맞음 — 필요하면 `list_migrations`로 확인. 19번째 `20261029000002_coparent_unique.sql`은 사용자가 SQL 편집기에서, 20번째 `20261029000003_coparent.sql`은 2026-10-29 사용자 지시로 적용 도구). 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다
 - 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (기록상 최근 v183). 화면 바꾸기 전에 반드시 여기부터 고친다. 보드 콩이 그림은 data URI로 넣는다(`/_blob`은 새 보드에서 깨짐)
