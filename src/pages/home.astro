@@ -565,6 +565,8 @@ for (const mo of months) {
     wrap.querySelector<HTMLElement>('.sp-layer__scrim')?.setAttribute('hidden', '');
     box.classList.add('sp-layer__modal');
     box.showModal();
+    // 처음 초점은 레이어 자체(첫 버튼 테두리 없이). showModal은 dialog의 autofocus를 무시하고 첫 버튼에 주는 브라우저가 있어 직접
+    box.focus();
     // Esc는 닫기·나중에와 같게(봤음을 적는다)
     box.addEventListener('cancel', (e) => {
       e.preventDefault();
