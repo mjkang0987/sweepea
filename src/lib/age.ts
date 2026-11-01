@@ -5,6 +5,17 @@ export function monthsOld(birth: string, today: string): number {
   return Math.max(0, (ty - by) * 12 + (tm - bm) - (td < bd ? 1 : 0));
 }
 
+/** 자라는 아기 그림 단계 1~9(109, 사용자 2026-11-01): 강보 ~100일 · 누운 ~6개월 · 앉기 ~8개월 · 기기 ~첫돌 · 서기 ~18개월 · 만세 ~2세 · 걸음마 ~3세 · 어린이 ~6세 · 7세~. 태어나기 전은 1 */
+export function kidStage(birth: string, today: string): number {
+  if (today < birth || Math.round((Date.parse(today) - Date.parse(birth)) / 86_400_000) + 1 <= 100) return 1;
+  const m = monthsOld(birth, today);
+  const i = [6, 8, 12, 18, 24, 36, 84].findIndex((end) => m < end);
+  return i < 0 ? 9 : i + 2;
+}
+
+/** 그 아이 나이의 아기 그림 주소. 생일을 모르면 콩이 */
+export const kidImage = (birth: string | null | undefined, today: string) => (birth ? `/kid/${kidStage(birth, today)}.png` : '/kongi.svg');
+
 /** 사진 찍은 날의 나이(크게 보기 날짜 줄 '생후 13개월 · 10월 21일', 디자인 PhotoView). 한 달 전이면 '생후 N일'(백일처럼 난 날이 1일), 태어나기 전이면 null */
 export function photoAge(birth: string, day: string): string | null {
   if (day < birth) return null;
