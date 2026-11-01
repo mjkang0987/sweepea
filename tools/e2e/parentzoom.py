@@ -62,8 +62,8 @@ with sync_playwright() as p:
     pg.goto(B+'/home'); pg.wait_for_selector('.sp-p__mcard')
     check(pg.url.endswith('/home'),'다시 열면 고른 단계(월별) 기억')
     pg.locator('.sp-p__mcard').nth(1).click(); pg.wait_for_url('**at=**'); pg.wait_for_selector('.sp-p__cell-img'); pg.wait_for_timeout(500)
-    sec=pg.locator('.sp-p__month[id$="-09"]'); y=sec.bounding_box()['y'] if sec.count() else -1
-    check('z=3' in pg.url and pg.evaluate(COLS)==3 and pg.locator('.sp-p__month[id$="-10"]').count()==1 and 0<=y<844 and (y<200 or pg.evaluate('scrollY+innerHeight>=document.documentElement.scrollHeight-2')),f'달 카드 → 처음부터 그려 그 달로(위로 올리면 최근 달도, 사진이 적으면 끝까지 내려간 채) y={y}')
+    sec=pg.locator('.sp-p__anchor[id$="-09"]'); y=sec.bounding_box()['y'] if sec.count() else -1
+    check('z=3' in pg.url and pg.evaluate(COLS)==3 and pg.locator('.sp-p__anchor[id$="-10"]').count()==1 and 0<=y<844 and (y<200 or pg.evaluate('scrollY+innerHeight>=document.documentElement.scrollHeight-2')),f'달 카드 → 처음부터 그려 그 달로(위로 올리면 최근 달도, 사진이 적으면 끝까지 내려간 채) y={y}')
     # 크게 보기에서 닫으면 그 3칸 자리로(기억한 월별로 바뀌지 않음, 리뷰 2026-10-29)
     cid=pg.locator('.sp-p__cell').first.get_attribute('id'); pg.locator('.sp-p__cell-link').first.click(); pg.wait_for_url('**/view/**')
     pg.get_by_role('link',name='닫기').first.click(); pg.wait_for_url('**/home**'); pg.wait_for_selector('.sp-p__cell-img')
