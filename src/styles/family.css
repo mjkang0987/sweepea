@@ -822,6 +822,10 @@
   .sp-f--wide {
     max-width: 72rem;
   }
+  /* 칸 크기 −/+: 넓은 사진 영역의 오른쪽 아래(휴대폰 폭 32rem 기준이면 사진 가운데쯤 떠서, 엄빠 앨범과 같은 자리) */
+  .sp-f--wide .sp-a__zoom {
+    right: max(var(--space-5), calc((100vw - 72rem) / 2 + var(--space-5)));
+  }
   .sp-f--wide .sp-a__grid--2 {
     --cols: 4;
   }
