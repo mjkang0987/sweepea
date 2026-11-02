@@ -531,7 +531,7 @@ if (z !== 3 && z !== 5)
               <li class="sp-p__cell" id={`c-${c.id}`} style={c.at2} data-ratio={c.ratio} data-d={c.d} data-mark={c.mark ?? undefined}>
                 {c.anchor && <span class="sp-p__anchor" id={`m-${c.anchor}`} aria-hidden="true" />}
                 <Cell class:list={['sp-p__cell-link', sel && 'sp-p__cell-pick']} href={sel ? undefined : `/view/${c.id}?${kq}z=${z}`}>
-                  {sel && <input class="sp-p__pick" type="checkbox" name="id" value={c.id} form="sel-form" aria-describedby="sel-help" />}
+                  {sel && <input class="sp-p__selbox" type="checkbox" name="id" value={c.id} form="sel-form" aria-describedby="sel-help" />}
                   <img
                     class="sp-p__cell-img"
                     src={c.src}
@@ -606,14 +606,14 @@ if (z !== 3 && z !== 5)
     const MAX = 60;
     const btns = selForm.querySelectorAll<HTMLButtonElement>('button[name="do"]');
     const sync = () => {
-      const n = document.querySelectorAll('.sp-p__pick:checked').length;
+      const n = document.querySelectorAll('.sp-p__selbox:checked').length;
       selN.textContent = n ? `${n}장 고름` : '사진을 골라 주세요';
       btns.forEach((b) => (b.disabled = n === 0));
     };
     document.addEventListener('change', (e) => {
       const box = e.target as HTMLInputElement;
-      if (!box.classList?.contains('sp-p__pick')) return;
-      if (box.checked && document.querySelectorAll('.sp-p__pick:checked').length > MAX) {
+      if (!box.classList?.contains('sp-p__selbox')) return;
+      if (box.checked && document.querySelectorAll('.sp-p__selbox:checked').length > MAX) {
         box.checked = false;
         selN.textContent = `${MAX}장까지 고를 수 있어요`;
         return;
