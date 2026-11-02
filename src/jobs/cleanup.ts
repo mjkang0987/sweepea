@@ -8,7 +8,7 @@ export interface CleanupBucket {
   delete(keys: string[]): Promise<void>;
 }
 
-type CleanupBackend = Pick<Backend, 'purgeDeletedFamilies' | 'cleanupStaleUploads' | 'r2CleanupTake' | 'r2CleanupDone'>;
+type CleanupBackend = Pick<Backend, 'purgeDeletedFamilies' | 'cleanupStaleUploads' | 'cleanupAuth' | 'r2CleanupTake' | 'r2CleanupDone'>;
 
 /** 남은 외부 호출 수. 쓰기 전에 하나씩 뺀다 */
 export interface Budget {
@@ -53,6 +53,7 @@ export async function runCleanup(backend: CleanupBackend, bucket: CleanupBucket,
   };
   const families = await step('가족방', () => backend.purgeDeletedFamilies(), [] as string[]);
   const stale = await step('올리는 중', () => backend.cleanupStaleUploads(), 0);
+  const accounts = await step('로그인 계정', () => backend.cleanupAuth(), 0);
   let folders = 0;
   let files = 0;
   const failed: string[] = [];
@@ -80,5 +81,5 @@ export async function runCleanup(backend: CleanupBackend, bucket: CleanupBucket,
       errors.push(`R2 ${prefix}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
-  return { families: families.length, stale, folders, files, failed, errors, calls: limit - budget.left };
+  return { families: families.length, stale, accounts, folders, files, failed, errors, calls: limit - budget.left };
 }

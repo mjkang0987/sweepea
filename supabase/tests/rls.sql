@@ -1192,6 +1192,8 @@ select set_config('request.jwt.claims', json_build_object('sub', :'Q1', 'is_anon
 select pg_temp.ok(public.sp_parent_home() ->> 'closing' = 'false', '남은 엄빠의 가족방은 그대로');
 reset role;
 select pg_temp.ok(not exists (select 1 from public.parents where user_id = :'Q3'), '기록 없이 나간 엄빠는 행 삭제');
+select pg_temp.ok(not exists (select 1 from auth.users where id = :'Q3'), '기록 없이 나간 엄빠는 로그인 계정도 삭제(20261102000002)');
+select pg_temp.ok(exists (select 1 from auth.users where id = :'Q2'), '기록이 남아 행이 남은 엄빠는 로그인 계정도 남김');
 -- 3일 지난 초대는 지남
 set role authenticated;
 select public.sp_create_parent_invite() as inv3 \gset
@@ -1203,3 +1205,27 @@ select pg_temp.ok(public.sp_parent_invite_info(:'inv3') ->> 'result' = 'expired'
 select pg_temp.ok(public.sp_request_delete() is not null, '마지막 엄빠 탈퇴는 삭제 예정');
 select public.sp_restore_family();
 reset role;
+
+-- ── 로그인 계정 정리(20261102000002): 가족방이 지워지면 엄빠·가족 기기 로그인 계정도 지움, 남은 익명 계정·틀린 기록은 7일 뒤
+select gen_random_uuid() as ax \gset
+select gen_random_uuid() as ad \gset
+select gen_random_uuid() as ao \gset
+select gen_random_uuid() as an \gset
+insert into auth.users (id, is_anonymous) values (:'ax', false), (:'ad', true);
+insert into auth.users (id, is_anonymous, created_at) values (:'ao', true, now() - interval '8 days'), (:'an', true, now() - interval '1 day');
+select set_config('request.jwt.claims', json_build_object('sub', :'ax', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_create_family('mom', '테스트', '아이', '2025-01-01', '1111') as afam \gset
+reset role;
+select id as agrp from public.groups where family_id = :'afam' \gset
+insert into public.members (family_id, group_id, display_name) values (:'afam', :'agrp', '할머니') returning id as amem \gset
+insert into public.devices (auth_user_id, family_id, member_id, status) values (:'ad', :'afam', :'amem', 'active');
+insert into public.entry_failures (family_id, group_id, auth_user_id, at) values (:'afam', :'agrp', :'an', now() - interval '8 days'), (:'afam', :'agrp', :'an', now());
+select set_config('request.jwt.claims', '', false);
+set role service_role;
+select pg_temp.ok(public.sp_cleanup_auth() = 1, '정리: 기기 없이 7일 넘은 익명 계정 1개만');
+reset role;
+select pg_temp.ok(not exists (select 1 from auth.users where id = :'ao') and exists (select 1 from auth.users where id = :'an'), '7일 안 된 익명 계정은 남김');
+select pg_temp.ok((select count(*) = 1 from public.entry_failures where auth_user_id = :'an'), '7일 넘은 틀린 기록만 지움');
+select public.sp_purge_family(:'afam');
+select pg_temp.ok(not exists (select 1 from auth.users where id in (:'ax', :'ad')), '가족방을 지우면 엄빠·가족 기기 로그인 계정도 지움');

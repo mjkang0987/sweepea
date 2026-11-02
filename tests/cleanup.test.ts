@@ -28,6 +28,7 @@ function fakeBackend(queue: string[]) {
     done,
     purgeDeletedFamilies: async () => ['x'],
     cleanupStaleUploads: async () => 2,
+    cleanupAuth: async () => 3,
     r2CleanupTake: async (_n: number) => [...queue],
     r2CleanupDone: async (p: string) => void done.push(p),
   };
@@ -38,7 +39,7 @@ test('대기열 폴더의 파일을 지우고 끝 표시, 다른 폴더는 그�
   const bucket = fakeBucket([`${F}/${M}/view-1`, `${F}/${M}/thumb-1`, `${F}/b/view-1`, `${other}/x/view-1`]);
   const backend = fakeBackend([`${F}/${M}/`]);
   const r = await runCleanup(backend, bucket);
-  assert.deepEqual(r, { families: 1, stale: 2, folders: 1, files: 2, failed: [], errors: [], calls: 6 });
+  assert.deepEqual(r, { families: 1, stale: 2, accounts: 3, folders: 1, files: 2, failed: [], errors: [], calls: 7 });
   assert.deepEqual([...bucket.keys].sort(), [`${F}/b/view-1`, `${other}/x/view-1`]);
   assert.deepEqual(backend.done, [`${F}/${M}/`]);
 });

@@ -332,6 +332,8 @@ export interface Backend {
   purgeDeletedFamilies(): Promise<string[]>;
   /** 하루 지난 '올리는 중' 사진 지우기. 지운 개수 */
   cleanupStaleUploads(): Promise<number>;
+  /** 기기 없이 남은 익명 로그인 계정·비밀번호 틀린 기록 7일 뒤 지우기(138). 지운 계정 수 */
+  cleanupAuth(): Promise<number>;
   /** R2 정리 대기열(폴더 접두사) 오래된 것부터 */
   r2CleanupTake(limit: number): Promise<string[]>;
   r2CleanupDone(prefix: string): Promise<void>;
