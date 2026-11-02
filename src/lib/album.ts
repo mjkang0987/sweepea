@@ -92,8 +92,8 @@ function readCursor(v: string | null): MediaCursor | undefined {
 }
 /** 주소에 맞는 한 쪽: ?before=<커서>면 그 다음 PAGE장, ?to=<id>면(크게 보기에서 닫고 돌아옴) 그 사진이 든 쪽까지 처음부터(아래로 30장은 더), 아니면 처음 PAGE장 */
 // around(128, 사용자 "닫기 더 빠르게"): 칸 보기는 ?to=·?at=에 그 사진(달) 주변 한 쪽만 그리고 위로 올리면 ?after=로 최근 사진을 이어 붙인다(예전: 처음부터 그 사진까지 최대 900장).
-// 칸 보기는 'n / 전체'가 없어 이어지는 쪽의 개수 세기도 건너뛴다. 넘겨 보기·가족 앨범은 지금처럼(around 없음)
-export async function loadPage(pass: Pass, base: MediaQuery, url: URL, { around = false } = {}): Promise<MediaPage> {
+// 칸 보기는 'n / 전체'가 없어 이어지는 쪽의 개수 세기도 건너뛴다. 넘겨 보기는 count로 'n / 전체'의 n·전체를 함께 센다(129: 가족 앨범·엄빠 넘겨 보기도 around)
+export async function loadPage(pass: Pass, base: MediaQuery, url: URL, { around = false, count = false } = {}): Promise<MediaPage> {
   const backend = getBackend();
   const page = (rows: MediaItem[], limit: number, more: boolean, offset: number): MediaPage => {
     const items = rows.slice(0, limit);
@@ -101,22 +101,24 @@ export async function loadPage(pass: Pass, base: MediaQuery, url: URL, { around 
   };
   // 기준(c) 위 30장 + (그 사진) + 아래로 한 쪽 남짓. 위에 더 있으면 prev
   const UP = 30;
+  // 넘겨 보기 'n / 전체': c보다 최근 사진 수와 전체 수(칸 보기는 0·없음)
+  const counts = (c: MediaCursor) => (count ? Promise.all([backend.countMedia(pass, { ...base, after: c }), backend.countMedia(pass, base)]) : Promise.resolve([0, undefined] as const));
   const aroundPage = async (c: MediaCursor, mid?: MediaItem): Promise<MediaPage> => {
     const down = PAGE - UP - (mid ? 1 : 0);
-    const [above, below] = await Promise.all([backend.listMedia(pass, { ...base, after: c, limit: UP + 1 }), backend.listMedia(pass, { ...base, before: c, limit: down + 1 })]);
+    const [above, below, [newer, total]] = await Promise.all([backend.listMedia(pass, { ...base, after: c, limit: UP + 1 }), backend.listMedia(pass, { ...base, before: c, limit: down + 1 }), counts(c)]);
     const up = above.length > UP ? above.slice(1) : above;
     const items = [...up, ...(mid ? [mid] : []), ...below.slice(0, down)];
-    return { items, next: below.length > down && items.length ? cursorParam(items[items.length - 1]) : null, more: true, offset: 0, prev: above.length > UP ? cursorParam(items[0]) : null };
+    return { items, next: below.length > down && items.length ? cursorParam(items[items.length - 1]) : null, more: true, offset: Math.max(0, newer - up.length), total, prev: above.length > UP ? cursorParam(items[0]) : null };
   };
   const after = around ? readCursor(url.searchParams.get('after')) : undefined;
   if (after) {
     // 그보다 최근 것 중 가까운 PAGE장(+1장으로 더 있는지)
-    const rows = await backend.listMedia(pass, { ...base, after, limit: PAGE + 1 });
+    const [rows, [newer, total]] = await Promise.all([backend.listMedia(pass, { ...base, after, limit: PAGE + 1 }), counts(after)]);
     const items = rows.length > PAGE ? rows.slice(1) : rows;
-    return { items, next: null, more: true, offset: 0, prev: rows.length > PAGE && items.length ? cursorParam(items[0]) : null };
+    return { items, next: null, more: true, offset: Math.max(0, newer - items.length), total, prev: rows.length > PAGE && items.length ? cursorParam(items[0]) : null };
   }
   const before = readCursor(url.searchParams.get('before'));
-  if (before && around) return page(await backend.listMedia(pass, { ...base, before, limit: PAGE + 1 }), PAGE, true, 0);
+  if (before && around && !count) return page(await backend.listMedia(pass, { ...base, before, limit: PAGE + 1 }), PAGE, true, 0);
   if (before) {
     // 앞에 있는 수 = 전체 - 커서보다 옛것(기준 사진이 그사이 지워져도 맞게)
     const [rows, total, older] = await Promise.all([
