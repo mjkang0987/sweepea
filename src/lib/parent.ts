@@ -6,12 +6,14 @@ import { currentParent, PARENT } from './pass';
 
 export const PROVIDERS = {
   kakao: { label: '카카오로 계속하기', cls: 'sp-p__login--kakao' },
-  // 네이버는 Supabase 기본 제공자가 아니다: 따로 연결하기 전엔 PARENT_PROVIDERS에 넣지 않는다
+  // 네이버는 Supabase 기본 제공자가 아니라 대시보드 Custom OAuth Providers에 'custom:naver'로 만든다(AUTH_IDS)
   naver: { label: '네이버로 계속하기', cls: 'sp-p__login--naver' },
   google: { label: 'Google로 계속하기', cls: 'sp-p__login--google' },
   apple: { label: 'Apple로 계속하기', cls: 'sp-p__login--apple' },
 } as const;
 export type Provider = keyof typeof PROVIDERS;
+/** Supabase 쪽 이름이 다른 제공자: 우리 주소(/login/naver) → Supabase provider */
+export const AUTH_IDS: Record<string, string> = { naver: 'custom:naver' };
 
 /** 켠 제공자만(시안 순서). 개발 mock이면 가짜 로그인 'dev'도 */
 export function enabledProviders(): string[] {
@@ -44,7 +46,7 @@ export function validBirth(birth: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === birth && birth >= '2010-01-01' && birth <= seoulToday();
 }
 /** 계정 화면에 쓰는 로그인 제공자 이름 */
-export const PROVIDER_NAMES: Record<string, string> = { kakao: '카카오', naver: '네이버', google: 'Google', apple: 'Apple' };
+export const PROVIDER_NAMES: Record<string, string> = { kakao: '카카오', naver: '네이버', 'custom:naver': '네이버', google: 'Google', apple: 'Apple' };
 /** 엄빠 함께 관리 초대: 로그인을 건너 콜백까지 가는 '코드:역할'(15분) */
 export const JOIN_COOKIE = 'sp_join';
 /** 초대 받기 실패 → 초대 화면 안내(?e=). DB raise 글로 가른다(23505를 family_exists·parents_full이 같이 써서) */
