@@ -2758,37 +2758,22 @@
     margin-block: 0;
   }
 }
-.sp-p__select,
-.sp-p__selhead-cancel {
+.sp-p__select {
   flex: none;
   min-height: 2.75rem;
   padding: 0 0.875rem;
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
+  background: var(--fill);
   color: var(--pea-ink);
   font-size: var(--subhead-size);
   font-weight: 700;
   text-decoration: none;
 }
-.sp-p__select {
-  background: var(--fill);
-}
-.sp-p__select:focus-visible,
-.sp-p__selhead-cancel:focus-visible {
+.sp-p__select:focus-visible {
   outline: 2px solid var(--pea-ink);
   outline-offset: 2px;
-}
-.sp-p__selhead {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-.sp-p__selhead-text {
-  flex: 1;
-  margin: 0;
-  color: var(--label-2);
-  font-size: var(--subhead-size);
 }
 .sp-p__cell-pick {
   cursor: pointer;
@@ -2815,21 +2800,69 @@
   outline: 3px solid var(--pea-ink);
   outline-offset: -3px;
 }
+/* 고르기 막대: 앨범 머리(폰은 위에 떠 있음) 안 제목 아래 한 줄. 사진이 비치는 머리 위라 막대는 흐린 바탕 */
 .sp-p__selbar {
+  grid-column: 1 / -1;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1) var(--space-2);
+  border-radius: var(--radius-lg);
+  background: var(--bar);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+@media (forced-colors: active) {
+  .sp-p__selbar {
+    border: 1px solid CanvasText;
+  }
 }
 .sp-p__selbar-n {
   flex: 1;
+  min-width: 6em;
   margin: 0;
   font-size: var(--body-size);
   font-weight: 700;
 }
 .sp-p__selbar-btn {
   flex: none;
-  width: auto;
-  padding-inline: var(--space-5);
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pea-ink);
+  font-family: inherit;
+  font-size: var(--subhead-size);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sp-p__selbar-btn--danger {
+  color: var(--danger);
+}
+.sp-p__selbar-btn--main {
+  padding: 0 var(--space-4);
+  background: var(--pea);
+  color: var(--on-pea);
+}
+.sp-p__selbar-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.sp-p__selbar-btn:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+.sp-p__selbar-help {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--label-2);
+  font-size: var(--footnote-size);
 }
 
 /* 여러 장 고치기 화면(126, 디자인 ParentPhotosEdit): 맨 위 '한꺼번에', 사진마다 작은 사진 + 그룹 체크 칸 */
