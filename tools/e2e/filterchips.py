@@ -54,6 +54,13 @@ with sync_playwright() as p:
     pg.get_by_role('navigation',name='거르기').get_by_role('link',name='전체').click(); pg.wait_for_load_state()
     check(all(x not in pg.url for x in ('k=','t=','g=')) and pg.locator('.sp-p__cell').count()==3,'전체는 다 풂')
     pg.goto(B+'/home?g=nope&v=list&z=3'); check(pg.locator('.sp-p__cell').count()==3,'모르는 그룹이면 전체')
+    # 132: 달 카드도 거르기를 따름(친가 2장), 카드 보기에도 그룹 알약 보임
+    pg.goto(B+'/home?v=list&z=m')
+    pg.get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
+    n=sum(int(''.join(ch for ch in t if ch.isdigit()) or 0) for t in pg.locator('.sp-p__mcard-count').all_inner_texts())
+    check(n==2 and pg.get_by_role('link',name='친가에 보이는 사진').get_attribute('aria-current')=='true','월별 카드도 친가만 2장, 알약에 친가 고름 표시 '+str(n))
+    pg.goto(B+'/home?v=list&z=m&t=photo'); n=sum(int(''.join(ch for ch in t if ch.isdigit()) or 0) for t in pg.locator('.sp-p__mcard-count').all_inner_texts())
+    check(n==3 and '불러오지' not in pg.content(),'월별 사진만 3장 '+str(n))
     # 넘겨 보기도 같은 거르기, 보기는 그대로
     pg.goto(B+'/home?v=swipe'); pg.get_by_role('navigation',name='거르기').get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
     check('v=swipe' in pg.url and pg.locator('.sp-a__slide').count()==2,'넘겨 보기에서 그룹 거르기 2장')
