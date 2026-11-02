@@ -33,5 +33,22 @@ with sync_playwright() as p:
     print('deliveryType:',repr(dt))
     check(dt=='navigational-prefetch','열린 크게 보기는 미리 받은 화면')
     gp.goto(B+'/album?v=list&z=3'); check(gp.locator(NEW).count()==1,"열면 '봤음' 남음(신규 1장)")
+    # 133: 로그인 표를 갱신할 때가 된 출입증이면 미리 받기 요청만 503(갱신은 실제로 연 화면에서), 그냥 열면 정상
+    import base64,json
+    ck=[x for x in pg.context.cookies() if x['name']=='sp_parent'][0]
+    ps=json.loads(base64.b64decode(ck['value'])); ps['expiresAt']=0
+    ec=b.new_context(); ec.add_cookies([{**{k:ck[k] for k in ('name','domain','path')},'value':base64.b64encode(json.dumps(ps).encode()).decode()}])
+    vid=pg.context.request.get(B+'/home?v=list&z=3').text().split('/view/')[1].split('?')[0]
+    r1=ec.request.get(B+'/view/'+vid,headers={'sec-purpose':'prefetch'},max_redirects=0)
+    check(r1.status==503,f'만료된 출입증 + 미리 받기 → 503 ({r1.status})')
+    r2=ec.request.get(B+'/view/'+vid,max_redirects=0)
+    check(r2.status==200,f'만료된 출입증이어도 그냥 열면 정상(그때 갱신) ({r2.status})')
+    # 엄빠 화면은 엄빠 출입증만 본다: 안 쓰는 가족 출입증이 오래됐어도 미리 받기 정상(3회차 리뷰)
+    sc=pg.context.cookies(); stale_family={**{k:ck[k] for k in ('domain','path')},'name':'sp_pass','value':base64.b64encode(json.dumps({**ps,'expiresAt':0}).encode()).decode()}
+    oc=b.new_context(); oc.add_cookies([{k:x[k] for k in ('name','value','domain','path')} for x in sc if x['name']=='sp_parent']+[stale_family])
+    r4=oc.request.get(B+'/view/'+vid,headers={'sec-purpose':'prefetch'},max_redirects=0)
+    check(r4.status==200,f'안 쓰는 가족 출입증이 오래돼도 엄빠 미리 받기 정상 ({r4.status})')
+    r3=pg.context.request.get(B+'/view/'+vid,headers={'sec-purpose':'prefetch'},max_redirects=0)
+    check(r3.status==200,f'갱신할 때가 아니면 미리 받기 정상 ({r3.status})')
     b.close()
 print('FAILS',FAILS)

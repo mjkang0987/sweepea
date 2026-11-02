@@ -1,8 +1,9 @@
 // 출입증: 이 기기의 익명 세션을 httpOnly 쿠키에 담는다. 브라우저 JS는 읽지 못한다.
 import type { AstroCookies } from 'astro';
 import { getBackend, type Pass, type TextSizeMode } from './backend';
+import { parsePass, REFRESH_EARLY } from './passcheck';
 
-const PASS = 'sp_pass';
+export const PASS = 'sp_pass';
 /** 부모 로그인 세션. 가족 기기 출입증과 같은 모양, 쿠키만 따로 */
 export const PARENT = 'sp_parent';
 const SIZE = 'sp_size';
@@ -21,22 +22,13 @@ export function writePass(cookies: AstroCookies, pass: Pass, name = PASS) {
   });
 }
 
-function read(cookies: AstroCookies, name: string): Pass | null {
-  const raw = cookies.get(name)?.value;
-  if (!raw) return null;
-  try {
-    const p = JSON.parse(atob(raw)) as Pass;
-    return typeof p.access === 'string' && typeof p.refresh === 'string' && typeof p.expiresAt === 'number' ? p : null;
-  } catch {
-    return null;
-  }
-}
+const read = (cookies: AstroCookies, name: string): Pass | null => parsePass(cookies.get(name)?.value);
 
 /** 출입증이 있으면 (만료됐으면 갱신해서) 돌려준다. 없으면 null. 갱신이 일시적으로 실패하면 예외(쿠키는 그대로) */
 export async function currentPass(cookies: AstroCookies, name = PASS): Promise<Pass | null> {
   const pass = read(cookies, name);
   if (!pass) return null;
-  if (pass.expiresAt - 60 > Date.now() / 1000) return pass;
+  if (pass.expiresAt - REFRESH_EARLY > Date.now() / 1000) return pass;
   const fresh = await getBackend().refresh(pass);
   if (!fresh) {
     cookies.delete(name, { path: '/' });
