@@ -79,7 +79,8 @@ with sync_playwright() as p:
     pg.locator('.sp-v__tap').focus(); pg.keyboard.press('Enter'); pg.wait_for_function("document.querySelector('video').paused",timeout=5000)
     check(not pg.evaluate(bare),'일시정지 버튼은 메뉴도 돌려줌')
     # 토스트가 있던 화면: 사진만을 켰다 끄면 지난 안내가 다시 뜨지 않음
-    pg.goto(B+'/view/'+photos[0]+'?done=saved'); pg.wait_for_selector('.sp-v__track')
+    # 사진 id에 칸 단계(?z=)가 붙어 있어 떼고 붙인다(예전: '?z=2?done=saved'라 결과 안내가 안 붙어 had=0)
+    pg.goto(B+'/view/'+photos[0].split('?')[0]+'?done=saved'); pg.wait_for_selector('.sp-v__track')
     had=pg.locator('.sp-v > .sp-toast').count()
     tap(pg,195,420); tap(pg,195,420)
     check(had==1 and pg.locator('.sp-v > .sp-toast').count()==0,'사진만을 켜면 토스트는 지움(다시 안 뜸) had=%d'%had)
