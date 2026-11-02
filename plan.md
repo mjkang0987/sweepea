@@ -1384,7 +1384,7 @@
 - 결과(0.17.0, 캔버스 v208): 단위 검사에서 7세 이상이 1단계로 나오던 버그를 잡음. e2e entry·health·kidtabs·layers 통과, 리뷰 1회(작은 변경: 경계·시간대·CSS 우선순위 이상 없음). 그대로 둔 것: 가족 앨범 제목 옆 아기도 콩이처럼 톡 뜀(기획서 '움직임 있음', 움직임 줄이기면 멈춤), 백일·첫돌 레이어는 콩이(안내 레이어)
 - 다음(110): 가족 캐릭터 고르기(각자 자기 것만, 사용자 "각자만"). DB 칸 필요 → 운영 적용 전 확인
 
-### 140. fix/privacy-contact + feature/naver-login — 보호책임자·로그인 네 곳 (진행 중)
+### 140. fix/privacy-contact + feature/naver-login — 보호책임자·로그인 네 곳 (코드 완료 0.33.3, 제공자 설정은 사용자)
 - 요구(사용자 2026-11-02 "강지우 010 7188 0987 / 사업자등록되어있어", "구글 카카오 네이버 애플 네 군데", "지금은 카카오만 되어있는데 경로 더 추가")
 - ① 처리방침(0.33.2): 보호책임자 이름·전화, 로그인 문구를 네 곳으로·애플 '이메일 가리기'. e2e privacy 통과
 - ② 앱은 이미 네 버튼(PARENT_PROVIDERS로 켬). 구글·애플은 Supabase 기본 제공자라 설정만. 네이버는 Supabase 'Custom OAuth/OIDC Providers'(식별자 custom: 접두사, 무료 3개까지)로 연결 → /login/naver가 Supabase에 provider=custom:naver로 보내고, 로그인 기록 provider(custom:naver)도 '네이버'로 표시
