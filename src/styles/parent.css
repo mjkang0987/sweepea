@@ -2947,3 +2947,53 @@
 .sp-p__multi-strip-item {
   flex: none;
 }
+
+/* 처리방침 같은 긴 글 화면(138): 읽기 쉬운 줄 길이·간격, 제목 단계 */
+.sp-doc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.sp-doc__title {
+  margin: 0;
+  font-size: var(--title-2-size);
+  font-weight: 800;
+}
+.sp-doc__lead,
+.sp-doc__p,
+.sp-doc__item {
+  margin: 0;
+  font-size: var(--subhead-size);
+  line-height: 1.6;
+}
+.sp-doc__h {
+  margin: var(--space-4) 0 0;
+  font-size: var(--headline-size);
+  font-weight: 700;
+}
+.sp-doc__h3 {
+  margin: var(--space-2) 0 0;
+  font-size: var(--subhead-size);
+  font-weight: 700;
+  color: var(--label-2);
+}
+.sp-doc__list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.sp-doc__link {
+  color: var(--pea-ink);
+}
+.sp-doc__date {
+  margin-top: var(--space-4);
+  color: var(--label-2);
+}
+.sp-p__fine-link {
+  color: inherit;
+  text-decoration: underline;
+}
