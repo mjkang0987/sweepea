@@ -62,7 +62,9 @@ with sync_playwright() as p:
     pg.get_by_role('link',name='닫기').first.click(); pg.wait_for_url('**/home**'); pg.wait_for_timeout(400)
     back=pg.locator('#'+cid)
     check(back.count()==1 and abs(back.evaluate("e=>e.getBoundingClientRect().top")-top)<3,'닫으면 같은 사진이 같은 높이 (%s → %s)'%(round(top),round(back.evaluate("e=>e.getBoundingClientRect().top")) if back.count() else None))
-    check(cells()>=120,'돌아오면 그 사진이 든 쪽까지 그려짐 (%d)'%cells())
+    # 128: 처음부터 다 그리지 않고 그 사진 주변 한 쪽 + 위로 올리면 이어 붙임(closefast.py가 자세히)
+    ids2=pg.eval_on_selector_all('.sp-p__cell','e=>e.map(x=>x.id)')
+    check(len(ids2)==len(set(ids2)) and len(ids2)<=130,'돌아온 앨범에 같은 사진 두 번 없음 (%d칸)'%len(ids2))
     # 4) 가족: 링크로 들어와 승인
     pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
     code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
