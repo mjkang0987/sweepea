@@ -39,8 +39,10 @@ if (Astro.request.method === 'POST') {
 // 본 사람(보신 기록, 95)도 같이. 못 받아도 화면은 연다
 // 엄빠가 이 사진을 봤음(117e: 엄빠 앨범 새 사진 표시가 사람마다 빠짐). 눌러서 연 것만 바로, 옆으로 넘겨 미리 받은 페이지(x-sp-slide)는 화면이 1.5초 머문 뒤. 못 남겨도 화면은 연다
 const slid = Astro.request.headers.get('x-sp-slide') === '1';
+// 앨범이 누르기 직전에 미리 받은 크게 보기(131, Sec-Purpose: prefetch)는 아직 연 게 아니라 '봤음'을 안 남기고, 실제로 열리면 화면이 남긴다(data-unnoted)
+const prefetched = /prefetch/i.test(Astro.request.headers.get('sec-purpose') ?? '');
 // 보이는 그룹(118, 사용자 "사진 수정 들어가기 전에 어느 그룹에 노출되는지"): 사진의 그룹 이름, 그룹이 둘 이상인 가족방만. 옆 기능이라 못 받으면 줄만 뺌
-const [win, reacts, comments, viewers, , info, admin] = await Promise.all([loadWindow(a.pass, { childId: picked?.id, kind, groupId: group?.id }, id), loadReacts(a.pass, [id]), b.mediaComments(a.pass, id), b.mediaViewers(a.pass, id).catch(() => []), slid ? undefined : b.noteParentViews(a.pass, [id]).catch(() => {}), b.mediaInfo(a.pass, id).catch(() => null), admin0 ?? b.familyAdmin(a.pass).catch(() => null)]);
+const [win, reacts, comments, viewers, , info, admin] = await Promise.all([loadWindow(a.pass, { childId: picked?.id, kind, groupId: group?.id }, id), loadReacts(a.pass, [id]), b.mediaComments(a.pass, id), b.mediaViewers(a.pass, id).catch(() => []), slid || prefetched ? undefined : b.noteParentViews(a.pass, [id]).catch(() => {}), b.mediaInfo(a.pass, id).catch(() => null), admin0 ?? b.familyAdmin(a.pass).catch(() => null)]);
 const groupNames = admin && info && admin.groups.length > 1 ? admin.groups.filter((g) => info.group_ids.includes(g.id)).map((g) => g.name) : [];
 if (!win) return Astro.redirect(`/home${kq}`);
 const { items, i } = win;
@@ -67,6 +69,7 @@ const slides = await slideWindow(items, i, view, (x) => `${dayLabel(x.taken_at)}
 <Family title={`${label} · ${win.pos} / ${win.total}`} wide>
   <Viewer
     noteViews="parent"
+    unnoted={prefetched}
     groups={groupNames}
     m={m}
     age={age}
