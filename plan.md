@@ -1389,7 +1389,7 @@
 - 앨범(엄빠 /home·가족 /album)에 speculationrules prefetch(eagerness conservative = 누르기 시작할 때). 크롬 계열만, 사파리는 무시(그대로)
 - '봤음' 보호: 미리 받기 요청(Sec-Purpose: prefetch)은 서버가 '봤음'을 안 남기고 화면에 data-unnoted → 실제로 열리면 스크립트가 /api/views로 남김(성공하면 돌아갈 앨범 배지도 sp-seen으로)
 - 확인: 헤드리스 크롬에서 열린 크게 보기 deliveryType = navigational-prefetch(cache-control no-store여도 쓰임), 누르기만 하고 안 열면 신규 그대로, 열면 빠짐
-- 검사: prefetch(새, 4개)
+- 검사: prefetch(새, 4개)·newbadge·pview·vplay·viewbare·photo·family·parent·multiedit·filterchips·closefast·loadmore 통과, 단위 48
 
 ### 130. fix/viewbare-test — 오래 실패하던 '사진만 켜면 토스트 지움' 검사 (완료, 검사만)
 - 원인: 검사가 사진 주소에 붙은 칸 단계를 떼지 않고 '?done=saved'를 붙여 '/view/<id>?z=2?done=saved'(물음표 둘) → done이 안 읽혀 저장 안내 자체가 없었음(had=0). 화면 문제 아님(직접 열면 '사진 정보를 저장했어요.' 뜨고 사진만을 켜면 지워짐)
