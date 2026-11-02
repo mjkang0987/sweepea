@@ -1,5 +1,5 @@
 // 사진 파일 주소에 서명을 붙인다. 앨범을 그리는 서버(RLS로 볼 수 있는 것만 받음)가 서명하고,
-// /m/<키>는 서명·만료만 확인해 DB를 부르지 않는다. 부모가 기기를 막아도 이미 받은 주소는 만료(최대 12시간, mediattl.ts)까지 열린다
+// /m/<키>는 서명·만료만 확인해 DB를 부르지 않는다. 부모가 기기를 막아도 이미 받은 주소는 만료(최대 6시간, mediattl.ts)까지 열린다
 import { MEDIA_URL_SECRET } from 'astro:env/server';
 import { expiryOf, leftOf } from './mediattl';
 
@@ -21,7 +21,7 @@ async function sign(msg: string): Promise<string> {
   return btoa(String.fromCharCode(...sig)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** 만료를 6시간 단위로 맞춰 6시간 동안은 같은 주소(브라우저 캐시). 만료까지 6~12시간(135) */
+/** 만료를 3시간 단위로 맞춰 3시간 동안은 같은 주소(브라우저 캐시). 만료까지 3~6시간(135) */
 export async function signedMediaUrl(key: string, nowMs = Date.now()): Promise<string> {
   const e = expiryOf(nowMs);
   return `/m/${key}?e=${e}&s=${await sign(`${key}:${e}`)}`;

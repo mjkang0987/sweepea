@@ -1,4 +1,4 @@
-# 사진 주소 캐시(135): 다시 열어도 같은 주소(6시간 단위), /m 응답 캐시는 6~12시간, 엉터리 만료는 404
+# 사진 주소 캐시(135): 다시 열어도 같은 주소(3시간 단위), /m 응답 캐시는 3~6시간, 엉터리 만료는 404
 import layerfix
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D='/home/user/sweepea/tools/e2e/'
@@ -18,9 +18,9 @@ with sync_playwright() as p:
     check(s1==s2,'다시 열어도 같은 사진 주소(브라우저 캐시를 씀)')
     r=pg.context.request.get(B+s1)
     cc=r.headers.get('cache-control',''); age=int(cc.split('max-age=')[1]) if 'max-age=' in cc else -1
-    check(r.status==200 and 6*3600 < age <= 12*3600,f'사진 응답 캐시 6~12시간 ({cc})')
+    check(r.status==200 and 3*3600 < age <= 6*3600,f'사진 응답 캐시 3~6시간 ({cc})')
     e=int(s1.split('e=')[1].split('&')[0])
-    bad=s1.replace(f'e={e}',f'e={e+13*3600}')
+    bad=s1.replace(f'e={e}',f'e={e+7*3600}')
     check(pg.context.request.get(B+bad).status==404,'만료를 늘려 고친 주소는 404(서명·범위)')
     b.close()
 print('FAILS',FAILS)
