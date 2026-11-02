@@ -15,8 +15,10 @@ with sync_playwright() as p:
     check(all(k in t for k in ['Supabase','Cloudflare','위치','3일','7일','118']),'맡기는 곳·위치 지움·보관 기간·구제 기관')
     check(pg.get_by_role('heading',level=2).count()>=10,'항목 제목(10개 이상)')
     pg.screenshot(path='/home/user/sweepea/tools/shots/privacy.png',full_page=False)
+    r=pg.goto(B+'/terms'); t2=pg.content()
+    check(r.status==200 and pg.get_by_role('heading',level=1).inner_text()=='이용약관' and '원본은 보관하지 않습니다' in t2 and '5GB' in t2 and '3일' in t2,'이용약관: 로그인 없이, 원본 보관 안 함·5GB·탈퇴 3일')
     for path in ['/','/login']:
-        pg.goto(B+path); check(pg.get_by_role('link',name='개인정보 처리방침').count()==1,f'{path} 에서 처리방침 링크')
+        pg.goto(B+path); check(pg.get_by_role('link',name='개인정보 처리방침').count()==1 and pg.get_by_role('link',name='이용약관').count()==1,f'{path} 에서 처리방침·이용약관 링크')
     pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
     pg.fill('#child','하린'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
