@@ -205,7 +205,8 @@ const whenFirst = d0 && !cardView && !swipe ? `${d0.slice(0, 4) === today.slice(
 // 머리 오른쪽 위 아이 오늘 나이(사용자 2026-10-29 "아기 정보는 항상 노출, N개월 NN일", 디자인 ParentHomeZoom): 고른 아이, 전체면 아이마다
 const kidAges = (picked ? [picked] : kids).map((k) => ({ name: k.name, age: ageLabel(k.birth_date, today) })).filter((k) => k.age);
 // 넘겨 보기 카드(98d, 가족 넘겨 보기와 같은 카드): 사진(영상은 포스터) 크게, 누르면 크게 보기. 칸 단계(z)는 안 붙인다(닫으면 기억한 넘겨 보기로)
-const viewQ = picked ? `?k=${encodeURIComponent(picked.id)}` : '';
+// 거르기(아이·사진/영상·그룹)는 크게 보기로 이어 그 안에서만 넘김(125)
+const viewQ = kq ? `?${kq.slice(0, -1)}` : '';
 const toAt = shown.findIndex((m) => m.id === Astro.url.searchParams.get('to'));
 const slides = !swipe
   ? []

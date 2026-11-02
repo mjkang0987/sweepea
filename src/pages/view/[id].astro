@@ -1,5 +1,5 @@
 ---
-// 엄빠 크게 보기: 조부모와 같은 화면(반응·한마디 남기기·저장) + 사진 정보 수정 버튼. 순서는 앨범과 같음(아이를 골랐으면 ?k=)
+// 엄빠 크게 보기: 조부모와 같은 화면(반응·한마디 남기기·저장) + 사진 정보 수정 버튼. 순서는 앨범과 같음(아이 ?k=, 사진/영상 ?t=, 그룹 ?g=를 골랐으면 그 안에서만)
 import Family from '../../layouts/Family.astro';
 import Viewer from '../../components/Viewer.astro';
 import { applyReactPost, dayLabel, loadReacts, loadWindow, slideWindow } from '../../lib/album';
@@ -20,7 +20,13 @@ const kids = a.home.children ?? [];
 const picked = kids.length > 1 ? kids.find((x) => x.id === Astro.url.searchParams.get('k')) : undefined;
 // 앨범 칸 단계(1·2·3)도 이어 받아 닫을 때 그 단계로(기억한 단계가 월별이어도 보던 자리로 돌아가게, 리뷰 2026-10-29)
 const zp = ['1', '2', '3'].includes(Astro.url.searchParams.get('z') ?? '') ? Astro.url.searchParams.get('z') : null;
-const qs = [picked && `k=${encodeURIComponent(picked.id)}`, zp && `z=${zp}`].filter(Boolean).join('&');
+// 앨범 거르기를 이어 받아 그 안에서만 넘김(125, 사용자 "외가 사진만 보는 게 맞지 않나?"). 그룹은 내 가족방 그룹일 때만(목록이 있어야 알아서 그때만 먼저 받음)
+const t0 = Astro.url.searchParams.get('t');
+const kind = t0 === 'photo' || t0 === 'video' ? t0 : undefined;
+const g0 = Astro.url.searchParams.get('g');
+const admin0 = g0 ? await b.familyAdmin(a.pass).catch(() => null) : null;
+const group = admin0?.groups.find((x) => x.id === g0);
+const qs = [picked && `k=${encodeURIComponent(picked.id)}`, kind && `t=${kind}`, group && `g=${encodeURIComponent(group.id)}`, zp && `z=${zp}`].filter(Boolean).join('&');
 const kq = qs ? `?${qs}` : '';
 // 반응·한마디: 부모 계정으로. 돌아갈 곳은 이 화면 주소만
 if (Astro.request.method === 'POST') {
@@ -34,7 +40,7 @@ if (Astro.request.method === 'POST') {
 // 엄빠가 이 사진을 봤음(117e: 엄빠 앨범 새 사진 표시가 사람마다 빠짐). 눌러서 연 것만 바로, 옆으로 넘겨 미리 받은 페이지(x-sp-slide)는 화면이 1.5초 머문 뒤. 못 남겨도 화면은 연다
 const slid = Astro.request.headers.get('x-sp-slide') === '1';
 // 보이는 그룹(118, 사용자 "사진 수정 들어가기 전에 어느 그룹에 노출되는지"): 사진의 그룹 이름, 그룹이 둘 이상인 가족방만. 옆 기능이라 못 받으면 줄만 뺌
-const [win, reacts, comments, viewers, , info, admin] = await Promise.all([loadWindow(a.pass, { childId: picked?.id }, id), loadReacts(a.pass, [id]), b.mediaComments(a.pass, id), b.mediaViewers(a.pass, id).catch(() => []), slid ? undefined : b.noteParentViews(a.pass, [id]).catch(() => {}), b.mediaInfo(a.pass, id).catch(() => null), b.familyAdmin(a.pass).catch(() => null)]);
+const [win, reacts, comments, viewers, , info, admin] = await Promise.all([loadWindow(a.pass, { childId: picked?.id, kind, groupId: group?.id }, id), loadReacts(a.pass, [id]), b.mediaComments(a.pass, id), b.mediaViewers(a.pass, id).catch(() => []), slid ? undefined : b.noteParentViews(a.pass, [id]).catch(() => {}), b.mediaInfo(a.pass, id).catch(() => null), admin0 ?? b.familyAdmin(a.pass).catch(() => null)]);
 const groupNames = admin && info && admin.groups.length > 1 ? admin.groups.filter((g) => info.group_ids.includes(g.id)).map((g) => g.name) : [];
 if (!win) return Astro.redirect(`/home${kq}`);
 const { items, i } = win;
