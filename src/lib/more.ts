@@ -238,7 +238,7 @@ function dropSeen() {
   for (const id of seen) {
     const el = document.getElementById(`c-${id}`) ?? document.getElementById(`p-${id}`);
     if (!el) continue;
-    el.querySelectorAll('.sp-a__new:not(.sp-a__new--event), .sp-p__new:not(.sp-p__cell-mark)').forEach((x) => x.remove());
+    el.querySelectorAll('.sp-a__new:not(.sp-a__new--event), .sp-p__new:not(.sp-p__cell-mark):not(.sp-p__new--up)').forEach((x) => x.remove());
     el.querySelectorAll('.sp-a__pills, .sp-p__pills').forEach((x) => x.childElementCount || x.remove());
     el.querySelectorAll('[aria-label^="신규, "], [alt^="신규, "]').forEach((x) => {
       for (const at of ['aria-label', 'alt']) {

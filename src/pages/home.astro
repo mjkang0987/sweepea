@@ -104,10 +104,13 @@ const nowMs = Date.now();
 // 반응 수도 '안 본 사진'과 함께 묻는다(128): 보일 수 있는 칸 = 이 쪽 + 올린 지 3시간 안(맨 위 묶음 후보)
 const reactIds = cardView ? [] : [...new Set([...items, ...(recent200 ?? []).filter((m) => !!m.created_at && nowMs - Date.parse(m.created_at) < 3 * 3600 * 1000)].map((m) => m.id))];
 const [unseenList, reacts] = await Promise.all([
-  candidates.length ? b.unseenMedia(a.pass, candidates.map((m) => m.id)).catch(() => []) : [],
+  candidates.length ? b.unseenMedia(a.pass, candidates.map((m) => m.id)).catch(() => null) : [],
   cardView ? null : loadReacts(a.pass, reactIds).catch(() => null),
 ]);
-const unseenIds = new Set(unseenList);
+const unseenIds = new Set(unseenList ?? []);
+// '방금 올림'(137, 사용자 "내가 올린 사진도 '방금 올림' 표시 따로"): 올린 지 3시간 안인데 나한테 신규가 아닌 사진 = 대부분 내가 올린 것(상대 엄빠가 올려 내가 이미 본 사진도 포함, 문구는 맞음).
+// 누가 올렸는지는 목록에 없어(DB가 따로만 줌) 이렇게 가늠. 안 본 사진을 못 받았으면 표시 안 함(모두 '방금 올림'으로 보이지 않게)
+const justUp = (m: { id: string; created_at?: string | null }) => unseenList !== null && !unseenIds.has(m.id) && !!m.created_at && nowMs - Date.parse(m.created_at) < 3 * 3600 * 1000;
 // 주변만 그린 쪽(위에 더 최근 사진이 있음)과 그 뒤로 이어지는 쪽(nb=1)은 맨 위 묶음을 만들지 않고 제자리에 둔다(132: 묶음이 쪽 가운데 끼면 넘겨 보기 번호·앞에 붙이는 순서가 꼬임)
 const noBand = Astro.url.searchParams.get('nb') === '1' || (!cont && !!page.prev);
 const nbq = noBand ? '&nb=1' : '';
@@ -189,7 +192,7 @@ const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric',
 // 칸마다 받은 하트·한마디 수(디자인: 칸 왼쪽 아래 알약). 옆 기능이라 실패하면 알약만 뺀다
 // 반올림을 먼저 해서 59.6초가 '0:60'이 되지 않게(리뷰 2026-10-31)
 const clock = (sec: number) => ((s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`)(Math.round(sec));
-type Cell = { id: string; src: string; video: boolean; day: string; d: string; mark: string | null; ratio: number; hearts: number; says: number; length: string | null; at2?: string; anchor?: string; top?: boolean; fresh?: boolean };
+type Cell = { id: string; src: string; video: boolean; day: string; d: string; mark: string | null; ratio: number; hearts: number; says: number; length: string | null; at2?: string; anchor?: string; top?: boolean; fresh?: boolean; up?: boolean };
 // 빈칸 없는 앨범(117b): 달마다 끊지 않고 한 격자. 달로 바로 가기(#m-YYYY-MM)는 그 달 첫 칸 안 표식으로
 const cells: Cell[] = [];
 // 맨 위 '방금 올라왔어요' 묶음(117e)
@@ -216,6 +219,7 @@ for (const m of cardView || swipe ? [] : shown) {
     anchor,
     top,
     fresh: unseenIds.has(m.id),
+    up: justUp(m),
     id: m.id,
     // 1칸은 한 줄에 한 장을 크게 보여서 작은 그림(480px) 대신 사진(영상은 포스터)
     src: await signedMediaUrl(z === 1 ? (m.kind === 'video' ? (m.poster_key ?? m.thumb_key) : m.view_key) : m.thumb_key),
@@ -261,6 +265,7 @@ const slides = !swipe
           first: !cont && i === (toAt >= 0 ? toAt : 0),
           href: `/view/${m.id}${viewQ}`,
           fresh: unseenIds.has(m.id),
+          up: justUp(m),
           video,
           length,
         };
@@ -466,11 +471,12 @@ if (z !== 3 && z !== 5)
       <ul class="sp-a__swipe sp-p__swipe" aria-label={swipeTotal === null ? '사진, 옆으로 밀어서 넘겨 보기' : `사진 ${swipeTotal.toLocaleString('ko-KR')}장, 옆으로 밀어서 넘겨 보기`}>
         {slides.map((c) => (
           <li class="sp-a__slide" id={`c-${c.id}`}>
-            <a class="sp-a__card" href={c.href} aria-label={`${c.fresh ? '신규, ' : ''}${c.label}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''} 크게 보기`}>
+            <a class="sp-a__card" href={c.href} aria-label={`${c.fresh ? '신규, ' : c.up ? '방금 올림, ' : ''}${c.label}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''} 크게 보기`}>
               {/* 사진과 그 위 표시를 한 상자로: ▶·길이·새 사진이 아래 글자 줄 말고 사진 기준으로 자리 잡게 */}
               <span class="sp-p__card-media">
                 <img class="sp-a__card-img" src={c.src} alt="" loading={c.eager ? 'eager' : 'lazy'} fetchpriority={c.first ? 'high' : undefined} decoding="async" />
                 {c.fresh && <span class="sp-p__new sp-p__new--card" aria-hidden="true">신규</span>}
+                {c.up && <span class="sp-p__new sp-p__new--card sp-p__new--up" aria-hidden="true">방금 올림</span>}
                 {/* 영상이면 사진 가운데 큰 ▶ + 길이(118, 사용자 "넘겨 보기에서 영상인지 잘 안 보여서", 가족 카드와 같은 모양) */}
                 {c.video && <span class="sp-a__card-play" aria-hidden="true"><svg class="sp-a__card-play-icon" width="32" height="32" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
                 {c.video && c.length && <span class="sp-a__card-length" aria-hidden="true">{c.length}</span>}
@@ -535,7 +541,7 @@ if (z !== 3 && z !== 5)
                   <img
                     class="sp-p__cell-img"
                     src={c.src}
-                    alt={`${c.fresh && !c.top ? '신규, ' : ''}${c.day}${c.mark ? ` ${c.mark}` : ''} ${c.video ? `영상${c.length ? ` ${c.length}` : ''}` : '사진'}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''}`}
+                    alt={`${c.fresh && !c.top ? '신규, ' : c.up ? '방금 올림, ' : ''}${c.day}${c.mark ? ` ${c.mark}` : ''} ${c.video ? `영상${c.length ? ` ${c.length}` : ''}` : '사진'}${c.hearts ? `, 하트 ${c.hearts}개` : ''}${c.says ? `, 한마디 ${c.says}개` : ''}`}
                     loading="lazy"
                     decoding="async"
                   />
@@ -553,9 +559,10 @@ if (z !== 3 && z !== 5)
                   {c.video && <span class="sp-p__cell-play" aria-hidden="true"><svg class="sp-p__cell-play-icon" width="20" height="20" viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15L19.5 12z" /></svg></span>}
                   {c.video && c.length && <span class="sp-p__cell-length" aria-hidden="true">{c.length}</span>}
                   {/* 왼쪽 위 배지(119): 새 사진(틸)·기념일(분홍, 같은 알약), 둘 다면 위아래로 */}
-                  {((c.fresh && !c.top) || c.mark) && (
+                  {((c.fresh && !c.top) || c.up || c.mark) && (
                     <span class="sp-p__pills" aria-hidden="true">
                       {c.fresh && !c.top && <span class="sp-p__new">신규</span>}
+                      {c.up && <span class="sp-p__new sp-p__new--up">방금 올림</span>}
                       {c.mark && <span class="sp-p__new sp-p__cell-mark">{c.mark.replace(/ 돌/g, '\u00a0돌')}</span>}
                     </span>
                   )}

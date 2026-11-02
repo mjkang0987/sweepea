@@ -729,6 +729,16 @@
   font-size: 0.6875rem;
   line-height: 1;
 }
+/* 방금 올림(137): 내가 올린 지 3시간 안. 신규(분홍)·기념일(틸)과 구분되게 어두운 반투명(영상 길이와 같은 결) */
+.sp-p__new--up {
+  background: rgba(0, 0, 0, 0.62);
+  color: #ffffff;
+}
+@media (forced-colors: active) {
+  .sp-p__new--up {
+    border: 1px solid CanvasText;
+  }
+}
 .sp-p__new--card {
   left: 0.75rem;
   top: 0.75rem;
