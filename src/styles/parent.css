@@ -2997,3 +2997,6 @@
   color: inherit;
   text-decoration: underline;
 }
+.sp-doc__strong {
+  font-weight: 700;
+}
