@@ -620,14 +620,17 @@ if (z !== 3 && z !== 5)
     sync();
   }
 
-  // 거르기 알약 줄(123): 고른 알약이 줄 밖(오른쪽)이면 줄만 옆으로 밀어 보이게
-  const chipRow = document.querySelector<HTMLElement>('.sp-p__chips-list');
-  const picks = chipRow?.querySelectorAll<HTMLElement>('.sp-p__chip[aria-current]');
-  const lastPick = picks?.[picks.length - 1];
-  if (chipRow && lastPick) {
+  // 거르기 알약 줄(123): 고른 알약이 줄 밖(오른쪽)이면 줄만 옆으로 밀어 보이게. 크기를 그 자리에서 바꿔 줄을 새로 받은 뒤에도(132)
+  const showPick = () => {
+    const chipRow = document.querySelector<HTMLElement>('.sp-p__chips-list');
+    const picks = chipRow?.querySelectorAll<HTMLElement>('.sp-p__chip[aria-current]');
+    const lastPick = picks?.[picks.length - 1];
+    if (!chipRow || !lastPick) return;
     const over = lastPick.getBoundingClientRect().right - chipRow.getBoundingClientRect().right;
     if (over > 0) chipRow.scrollLeft += over + 20;
-  }
+  };
+  showPick();
+  document.addEventListener('sp:album-swapped', showPick);
 
   // 앞으로 이어 붙이기(128·129): 사진 주변만 그린 앨범에서 맨 위(넘겨 보기는 맨 앞) '최근 사진 더 보기'
   const swipeList = document.querySelector<HTMLElement>('.sp-a__swipe');
