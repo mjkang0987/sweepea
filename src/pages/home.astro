@@ -580,6 +580,9 @@ if (z !== 3 && z !== 5)
       <a class="sp-p__zoom-btn" href={bigger ?? undefined} role="link" aria-disabled={bigger ? undefined : 'true'} aria-label="크게(한 줄에 더 적게)">+</a>
     </nav>
   )}
+  {/* 크게 보기 미리 받기(131, 사용자 "속도 개선"): 사진을 누르기 시작하면(손가락·마우스를 대는 순간) 브라우저가 크게 보기를 미리 받는다(크롬 계열, 지원 안 하면 무시).
+     미리 받은 화면은 서버가 '봤음'을 안 남기고 실제로 열리면 화면이 남긴다 */}
+  <script type="speculationrules" is:inline set:html={'{"prefetch":[{"where":{"href_matches":"/view/*"},"eagerness":"conservative"}]}'} />
 </Parent>
 
 <script>
