@@ -43,6 +43,11 @@ with sync_playwright() as p:
     check(r1.status==503,f'만료된 출입증 + 미리 받기 → 503 ({r1.status})')
     r2=ec.request.get(B+'/view/'+vid,max_redirects=0)
     check(r2.status==200,f'만료된 출입증이어도 그냥 열면 정상(그때 갱신) ({r2.status})')
+    # 엄빠 화면은 엄빠 출입증만 본다: 안 쓰는 가족 출입증이 오래됐어도 미리 받기 정상(3회차 리뷰)
+    sc=pg.context.cookies(); stale_family={**{k:ck[k] for k in ('domain','path')},'name':'sp_pass','value':base64.b64encode(json.dumps({**ps,'expiresAt':0}).encode()).decode()}
+    oc=b.new_context(); oc.add_cookies([{k:x[k] for k in ('name','value','domain','path')} for x in sc if x['name']=='sp_parent']+[stale_family])
+    r4=oc.request.get(B+'/view/'+vid,headers={'sec-purpose':'prefetch'},max_redirects=0)
+    check(r4.status==200,f'안 쓰는 가족 출입증이 오래돼도 엄빠 미리 받기 정상 ({r4.status})')
     r3=pg.context.request.get(B+'/view/'+vid,headers={'sec-purpose':'prefetch'},max_redirects=0)
     check(r3.status==200,f'갱신할 때가 아니면 미리 받기 정상 ({r3.status})')
     b.close()
