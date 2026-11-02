@@ -63,8 +63,8 @@ const cardView = !swipe && (z === 'm' || z === 'y');
 // 서버 왕복을 한 번에(128 속도): 최근 200장(새 사진 판단)·달 카드도 같은 차례에 함께 묻는다(예전엔 쪽을 받은 뒤 차례로)
 const [page0, admin, fp, swipeTotal0, recent200, monthCards0] = await Promise.all([
   loadPage(a.pass, { childId: picked?.id, kind, groupId: g0 }, Astro.url, { around: true, count: swipe }).catch((e) => (g0 ? null : Promise.reject(e))),
-  // 그룹 목록: 띠·거르기 알약과 g 확인에(이어지는 쪽도 g가 있으면 확인용으로)
-  cont && !g0 ? null : b.familyAdmin(a.pass).catch(() => null),
+  // 그룹 목록: 띠·거르기 알약과 g 확인에(이어지는 쪽은 둘 다 안 씀)
+  cont ? null : b.familyAdmin(a.pass).catch(() => null),
   cont ? null : b.familyParents(a.pass).catch(() => null),
   // 'n / 전체'의 전체만 빠지는 옆 기능이라 실패하면 그 글자만 뺀다
   // 이어지는 쪽은 loadPage가 이미 셌으니 다시 세지 않는다
@@ -74,14 +74,17 @@ const [page0, admin, fp, swipeTotal0, recent200, monthCards0] = await Promise.al
   cardView ? b.mediaMonths(a.pass, { childId: picked?.id, kind, groupId: g0, reps: 5 }).catch(() => null) : null,
 ]);
 const group = g0 ? admin?.groups.find((x) => x.id === g0) : undefined;
-// 내 가족방 그룹이 아니면(또는 그룹 목록을 못 받으면) 그룹 거르기를 뺀 같은 주소로
-if (g0 && (!group || !page0)) {
+// 첫 쪽: 내 가족방 그룹이 아니면(또는 그룹 목록을 못 받으면) 그룹 거르기를 뺀 같은 주소로.
+// 이어지는 쪽(?before·?after)은 확인하지 않는다: 돌려보내면 받는 스크립트가 거르지 않은 쪽을 이어 붙이므로. 내 가족방 것만 나오는 건 DB 권한이 지킴
+if (g0 && !cont && (!group || !page0)) {
   const u = new URL(Astro.url);
   u.searchParams.delete('g');
-  return Astro.redirect(u.pathname + u.search + u.hash);
+  return Astro.redirect(u.pathname + u.search);
 }
-const page = page0!;
-const gq = group ? `g=${encodeURIComponent(group.id)}&` : '';
+if (!page0) throw new Error('album page');
+const page = page0;
+const gid = cont ? g0 : group?.id;
+const gq = gid ? `g=${encodeURIComponent(gid)}&` : '';
 const swipeTotal = page.total ?? swipeTotal0;
 // 함께 관리 시작 알림(사용자 2026-10-29 "아빠 접속했다고 알람은 안 뜨네?"): 나보다 나중에 들어온 엄빠가 있고 이 기기에서 아직 안 봤으면 한 번.
 // 옆 기능이라 실패하면 레이어만 뺀다. 30일 지난 일은 띄우지 않음
