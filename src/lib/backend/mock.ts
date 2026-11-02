@@ -662,6 +662,7 @@ export function createMockBackend(): Backend {
     // 정리 작업은 mock에선 할 일이 없다(실제 규칙은 DB 검사와 cleanup 단위 검사가 맡는다)
     purgeDeletedFamilies: async () => [],
     cleanupStaleUploads: async () => 0,
+    cleanupAuth: async () => 0,
     r2CleanupTake: async () => [],
     r2CleanupDone: async () => {},
     async setMemberAvatar(pass, familyId, avatar) {

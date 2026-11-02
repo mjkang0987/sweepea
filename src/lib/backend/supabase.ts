@@ -139,6 +139,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
       serviceRpc<boolean>('sp_finish_upload', { p_media_id: id, p_view_key: keys.view, p_thumb_key: keys.thumb, p_poster_key: keys.poster, p_bytes: bytes }),
     purgeDeletedFamilies: () => serviceRpc<string[]>('sp_purge_deleted_families', {}),
     cleanupStaleUploads: () => serviceRpc<number>('sp_cleanup_stale_uploads', {}),
+    cleanupAuth: () => serviceRpc<number>('sp_cleanup_auth', {}),
     r2CleanupTake: (limit) => serviceRpc<string[]>('sp_r2_cleanup_take', { p_limit: limit }),
     r2CleanupDone: (prefix) => serviceRpc<void>('sp_r2_cleanup_done', { p_prefix: prefix }),
     async listMedia(pass, opts = {}) {
