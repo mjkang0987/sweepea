@@ -62,5 +62,40 @@ with sync_playwright() as p:
     saved=c.cookies(); nc=b.new_context(viewport={'width':390,'height':844},java_script_enabled=False); nc.add_cookies(saved); np_=nc.new_page()
     np_.goto(B+f'/home?v=list&z=3&to={deep}'); np_.get_by_role('link',name='최근 사진 더 보기').click(); np_.wait_for_url('**after=**')
     check(np_.locator('.sp-p__cell').count()>0,'스크립트 없음: 최근 사진 더 보기 링크로 그 쪽')
+    nc.close()
+    # 7) 엄빠 넘겨 보기(129): 깊은 카드도 주변만, 'n / 전체'의 n이 맞고 맨 앞으로 밀면 최근 카드가 앞에 붙음(보던 카드 그대로)
+    def swipe_check(page,url,prefix,who):
+        page.goto(url); page.wait_for_timeout(600)
+        n=page.locator('.sp-a__slide').count()
+        pos=page.locator(f'#{prefix}{deep} .sp-a__pos-n').inner_text().replace(',','')
+        check(n<=60 and pos=='101',f'{who} 넘겨 보기 깊은 카드: 주변 {n}장, 자리 {pos}번째')
+        for _ in range(10):
+            page.evaluate("document.querySelector('.sp-a__swipe').scrollLeft=0"); page.wait_for_timeout(700)
+            if page.locator('[data-less]').count()==0: break
+        got=page.eval_on_selector_all('.sp-a__slide','e=>e.map(x=>x.id.slice(2))')
+        check(page.locator('[data-less]').count()==0 and got==ids[:len(got)] and len(got)==len(set(got)) and got[0]==ids[0],f'{who} 넘겨 보기: 앞으로 밀면 최근 카드까지 순서대로 붙음 ({len(got)}장)')
+        firstpos=page.locator(f'#{prefix}{ids[0]} .sp-a__pos-n').inner_text()
+        check(firstpos=='1','붙인 맨 앞 카드는 1번째')
+    swipe_check(pg,B+f'/home?v=swipe&to={deep}#c-{deep}','c-','엄빠')
+    # 8) 가족 앨범(129): 칸·넘겨 보기 둘 다
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
+    code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
+    gc=b.new_context(viewport={'width':390,'height':844}); gp=gc.new_page(); gp.goto(B+'/i/'+code)
+    gp.fill('#who-name','외할머니'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/password**'); gp.fill('#pw','0301'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/wait')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 외할머니').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
+    gp.goto(B+f'/album?v=list&z=3&to={deep}#c-{deep}'); gp.wait_for_timeout(500)
+    for sel in ['.sp-layer:not([hidden]) form button']:
+        while gp.locator(sel).count(): gp.locator(sel).last.click(); gp.wait_for_load_state(); gp.wait_for_timeout(200)
+    gp.goto(B+f'/album?v=list&z=3&to={deep}#c-{deep}'); gp.wait_for_timeout(500)
+    n=gp.locator('.sp-a__cell').count()
+    check(n<=60 and gp.locator(f'#c-{deep}').count()==1 and gp.locator('[data-less] a').count()==1,f'가족 칸 보기 깊은 사진: 주변 {n}장 + 위 이어 붙이기')
+    for _ in range(8):
+        gp.evaluate("window.scrollTo(0,0)"); gp.wait_for_timeout(900)
+        if gp.locator('[data-less]').count()==0: break
+    got=gp.eval_on_selector_all('.sp-a__day[data-day="all"] .sp-a__cell','e=>e.map(x=>x.id.slice(2))')
+    check(gp.locator('[data-less]').count()==0 and got==ids[:len(got)] and len(got)==len(set(got)) and got[0]==ids[0],f'가족 칸 보기: 위로 올리면 최근 사진까지 순서대로 ({len(got)}장)')
+    swipe_check(gp,B+f'/album?v=swipe&to={deep}#p-{deep}','p-','가족')
+    gp.screenshot(path='/home/user/sweepea/tools/shots/family-swipe-close.png')
+    gc.close()
     b.close()
 print('FAILS',FAILS)
