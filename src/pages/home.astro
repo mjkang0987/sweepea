@@ -52,18 +52,24 @@ const z = pickZoom(Astro.url, Astro.cookies, 'sp_pz');
 // 넘겨 보기·모아 보기(98d): 기기 쿠키 sp_pv에 기억, 처음엔 모아 보기(지금까지와 같게)
 const swipe = pickView(Astro.url, Astro.cookies, 'sp_pv', 'list') === 'swipe';
 // 60장씩: ?before=<찍은 날~id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
-const cont = Astro.url.searchParams.has('before');
+// ?after=는 위로 이어 붙이는 쪽(128, 칸 보기)
+const cont = Astro.url.searchParams.has('before') || Astro.url.searchParams.has('after');
 const today = seoulToday();
 // 승인 대기·설치 부탁 띠도 옆 기능이라 실패하면 띠만 뺀다
 // 이어지는 쪽은 사진만 쓰므로 띠는 건너뛴다
 // 넘겨 보기 'n / 전체'의 전체(고른 아이 기준)
-const [page, admin, fp, swipeTotal0] = await Promise.all([
-  loadPage(a.pass, { childId: picked?.id, kind, groupId: group?.id }, Astro.url),
+// 월별·연별 카드(옆 기능이 아니라 이 단계의 본문이라 실패하면 안내 글)
+const cardView = !swipe && (z === 'm' || z === 'y');
+// 서버 왕복을 한 번에(128 속도): 최근 200장(새 사진 판단)·달 카드도 같은 차례에 함께 묻는다(예전엔 쪽을 받은 뒤 차례로)
+const [page, admin, fp, swipeTotal0, recent200, monthCards0] = await Promise.all([
+  loadPage(a.pass, { childId: picked?.id, kind, groupId: group?.id }, Astro.url, { around: !swipe }),
   cont ? null : admin0 ?? b.familyAdmin(a.pass).catch(() => null),
   cont ? null : b.familyParents(a.pass).catch(() => null),
   // 'n / 전체'의 전체만 빠지는 옆 기능이라 실패하면 그 글자만 뺀다
   // 이어지는 쪽은 loadPage가 이미 셌으니 다시 세지 않는다
   swipe && !cont ? b.countMedia(a.pass, { childId: picked?.id, kind, groupId: group?.id }).catch(() => null) : null,
+  cont || cardView ? null : b.listMedia(a.pass, { childId: picked?.id, kind, groupId: group?.id, limit: 200 }).catch(() => null),
+  cardView ? b.mediaMonths(a.pass, { childId: picked?.id, reps: 5 }).catch(() => null) : null,
 ]);
 const swipeTotal = page.total ?? swipeTotal0;
 // 함께 관리 시작 알림(사용자 2026-10-29 "아빠 접속했다고 알람은 안 뜨네?"): 나보다 나중에 들어온 엄빠가 있고 이 기기에서 아직 안 봤으면 한 번.
@@ -71,20 +77,23 @@ const swipeTotal = page.total ?? swipeTotal0;
 const meP = fp?.parents.find((p) => p.me);
 const newP = fp?.parents.find((p) => !p.me && meP && Date.parse(p.since) > Date.parse(meP.since) && Date.now() - Date.parse(p.since) < 30 * 86_400_000);
 const coparent = newP && Date.parse(newP.since) > (seenAt(Astro.cookies, COPARENT_SEEN) ?? 0) ? { who: newP.role === 'dad' ? '아빠' : '엄마', since: newP.since } : null;
-// 월별·연별 카드(옆 기능이 아니라 이 단계의 본문이라 실패하면 안내 글)
-const cardView = !swipe && (z === 'm' || z === 'y');
 // 여러 장 고르기(126, 사용자 "사진 수정하기 멀티로"): ?sel=1이면 칸마다 체크 칸, 아래 막대 'N장 · 지우기 · 수정'(스크립트 없어도 폼 GET /photos/edit). 칸 보기에서만
 const sel = Astro.url.searchParams.get('sel') === '1' && !swipe && !cardView;
 const SEL_MAX = 60;
 const Cell = sel ? 'label' : 'a';
-const monthCards = cardView && page.items.length ? await b.mediaMonths(a.pass, { childId: picked?.id, reps: 5 }).catch(() => null) : null;
+const monthCards = page.items.length ? monthCards0 : null;
 const { items } = page;
 // 새 사진(117e, 사용자 2026-11-01): 상대 엄빠·가족이 올렸고 내가 아직 안 본 사진(서버, 사람마다. 본 것 = 크게 보기). 들어오기 전·내가 올린 사진은 아님.
 // 올린 지 3시간 안이면 맨 위 '방금 올라왔어요' 묶음으로 옮기고 제자리(모든 쪽)에서 빼고, 3시간 지났으면 제자리에서 '새 사진' 알약. 못 받으면 표시 없음
-const recent200 = cont || cardView ? null : await b.listMedia(a.pass, { childId: picked?.id, kind, groupId: group?.id, limit: 200 }).catch(() => null);
 const candidates = cardView ? [] : [...new Map([...(recent200 ?? []), ...items].map((m) => [m.id, m])).values()];
-const unseenIds = new Set(candidates.length ? await b.unseenMedia(a.pass, candidates.map((m) => m.id)).catch(() => []) : []);
 const nowMs = Date.now();
+// 반응 수도 '안 본 사진'과 함께 묻는다(128): 보일 수 있는 칸 = 이 쪽 + 올린 지 3시간 안(맨 위 묶음 후보)
+const reactIds = cardView ? [] : [...new Set([...items, ...(recent200 ?? []).filter((m) => !!m.created_at && nowMs - Date.parse(m.created_at) < 3 * 3600 * 1000)].map((m) => m.id))];
+const [unseenList, reacts] = await Promise.all([
+  candidates.length ? b.unseenMedia(a.pass, candidates.map((m) => m.id)).catch(() => []) : [],
+  cardView ? null : loadReacts(a.pass, reactIds).catch(() => null),
+]);
+const unseenIds = new Set(unseenList);
 const isTop = (m: { id: string; created_at?: string | null }) => unseenIds.has(m.id) && !!m.created_at && nowMs - Date.parse(m.created_at) < 3 * 3600 * 1000;
 const topItems = cont || cardView ? [] : (recent200 ?? items).filter(isTop);
 const shown = [...topItems, ...items.filter((m) => !isTop(m))];
@@ -99,6 +108,8 @@ const filterGroups = !cardView && (admin?.groups.length ?? 0) > 1 ? admin!.group
 // 월별·연별은 카드라 다음 쪽이 없다
 // 보기도 주소에 적는다(받은 쪽이 같은 보기로 그려지게)
 const nextHref = page.next && !cardView ? `/home?${kq}${swipe ? 'v=swipe' : `v=list&z=${z}`}${sel ? '&sel=1' : ''}&before=${encodeURIComponent(page.next)}` : null;
+// 위로 이어 붙일 쪽(128): 사진 주변만 그린 쪽이면 맨 위에 '최근 사진 더 보기'(스크립트가 보이기 전에 받아 위에 붙임)
+const prevHref = page.prev && !cardView && !swipe ? `/home?${kq}v=list&z=${z}${sel ? '&sel=1' : ''}&after=${encodeURIComponent(page.prev)}` : null;
 // 보기(v=list)도 주소에: 다른 창에서 넘겨 보기를 골라 쿠키가 바뀌어도 칸 단계로 그려지게(리뷰 2026-10-31)
 const zoomHref = (to: Zoom) => `/home?${kq}v=list&z=${to}`;
 const zi = ZOOMS.indexOf(z);
@@ -159,7 +170,6 @@ const storageLater = !!(join || coparent || birthday);
 const helpers = admin?.members.filter((m) => m.status === 'active' && m.install_help_at && now - Date.parse(m.install_help_at) < 7 * 86_400_000) ?? [];
 const dayFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 // 칸마다 받은 하트·한마디 수(디자인: 칸 왼쪽 아래 알약). 옆 기능이라 실패하면 알약만 뺀다
-const reacts = cardView ? null : await loadReacts(a.pass, shown.map((m) => m.id)).catch(() => null);
 // 반올림을 먼저 해서 59.6초가 '0:60'이 되지 않게(리뷰 2026-10-31)
 const clock = (sec: number) => ((s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`)(Math.round(sec));
 type Cell = { id: string; src: string; video: boolean; day: string; d: string; mark: string | null; ratio: number; hearts: number; says: number; length: string | null; at2?: string; anchor?: string; top?: boolean; fresh?: boolean };
@@ -491,6 +501,12 @@ if (z !== 3 && z !== 5)
         { ym: 'new', list: topCells },
         { ym: 'all', list: cells },
       ].filter((g) => g.list.length > 0).map((g) => (
+        <>
+        {g.ym === 'all' && prevHref && (
+          <div class="sp-more sp-more--up" data-less>
+            <a class="sp-more__btn" href={prevHref}>최근 사진 더 보기</a>
+          </div>
+        )}
         <section class="sp-p__month" data-ym={g.ym} aria-label={g.ym === 'new' ? `방금 올라온 사진 ${g.list.length}장` : '사진'}>
           {/* 빈칸 없는 앨범(117b): 날짜는 위 기간 줄, 화면 읽기용 제목만. 맨 위 새 사진 묶음(117e)은 보이는 제목 */}
           {g.ym === 'new' ? <h2 class="sp-p__new-title">방금 올라왔어요 <span class="sp-p__new-count">· {g.list.length}장</span></h2> : <h2 class="sp-vh">사진</h2>}
@@ -532,6 +548,7 @@ if (z !== 3 && z !== 5)
             ))}
           </ul>
         </section>
+        </>
       ))
     )
   }
@@ -597,6 +614,50 @@ if (z !== 3 && z !== 5)
     const over = lastPick.getBoundingClientRect().right - chipRow.getBoundingClientRect().right;
     if (over > 0) chipRow.scrollLeft += over + 20;
   }
+
+  // 위로 이어 붙이기(128): 사진 주변만 그린 앨범(닫고 돌아옴·달 카드)에서 맨 위 '최근 사진 더 보기'가 가까워지면 그 쪽을 받아 격자 앞에 붙인다.
+  // 보던 칸이 화면에서 움직이지 않게 붙인 만큼 스크롤을 보정하고, 그 달 표식(#m-)은 새로 붙인(더 최근) 칸으로 옮긴다. 못 받으면 링크 그대로(누르면 그 쪽)
+  const upMore = () => {
+    const el = document.querySelector<HTMLElement>('[data-less]');
+    const a = el?.querySelector('a');
+    if (!el || !a || typeof IntersectionObserver !== 'function') return;
+    const io = new IntersectionObserver(
+      async (es) => {
+        if (!es.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        try {
+          const res = await fetch(a.href, { credentials: 'same-origin' });
+          if (!res.ok || (res.redirected && new URL(res.url).pathname !== '/home')) throw new Error(String(res.status));
+          const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+          const ul = document.querySelector<HTMLElement>('.sp-p__month[data-ym="all"] .sp-p__grid');
+          if (!ul) return;
+          const ref = ([...ul.children] as HTMLElement[]).find((c) => c.getBoundingClientRect().bottom > 0);
+          const top0 = ref?.getBoundingClientRect().top ?? 0;
+          const frag = document.createDocumentFragment();
+          for (const li of doc.querySelectorAll<HTMLElement>('.sp-p__month[data-ym="all"] .sp-p__cell')) {
+            if (document.getElementById(li.id)) continue; // 맨 위 '방금 올라왔어요'에 이미 있는 사진
+            const mark = li.querySelector<HTMLElement>('.sp-p__anchor');
+            if (mark) document.getElementById(mark.id)?.remove();
+            frag.appendChild(document.importNode(li, true));
+          }
+          ul.insertBefore(frag, ul.firstChild);
+          relayout(ul);
+          if (ref) scrollBy(0, ref.getBoundingClientRect().top - top0);
+          const next = doc.querySelector('[data-less]');
+          if (next) el.replaceWith(document.importNode(next, true));
+          else el.remove();
+          upMore();
+        } catch {
+          // 다시 저절로 받지는 않는다. 누르면 그 쪽 페이지로
+        }
+      },
+      { rootMargin: '600px 0px' },
+    );
+    // 닫고 돌아와 그 사진으로 스크롤한 뒤부터 지켜본다(처음 그릴 때 맨 위라 바로 받아 버리지 않게)
+    requestAnimationFrame(() => requestAnimationFrame(() => io.observe(el)));
+  };
+  if (document.readyState === 'complete') upMore();
+  else addEventListener('load', upMore, { once: true });
 
   // 넘겨 보기(98d): 옆으로 밀다 남은 카드가 다섯 장쯤이면 다음 60장 카드를 뒤에 붙인다. 돌아온 카드(#c-<id>)는 브라우저가 가운데로
   const swipe = document.querySelector<HTMLElement>('.sp-a__swipe');
