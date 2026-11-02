@@ -62,7 +62,7 @@ const today = seoulToday();
 const cardView = !swipe && (z === 'm' || z === 'y');
 // 서버 왕복을 한 번에(128 속도): 최근 200장(새 사진 판단)·달 카드도 같은 차례에 함께 묻는다(예전엔 쪽을 받은 뒤 차례로)
 const [page, admin, fp, swipeTotal0, recent200, monthCards0] = await Promise.all([
-  loadPage(a.pass, { childId: picked?.id, kind, groupId: group?.id }, Astro.url, { around: !swipe }),
+  loadPage(a.pass, { childId: picked?.id, kind, groupId: group?.id }, Astro.url, { around: true, count: swipe }),
   cont ? null : admin0 ?? b.familyAdmin(a.pass).catch(() => null),
   cont ? null : b.familyParents(a.pass).catch(() => null),
   // 'n / 전체'의 전체만 빠지는 옆 기능이라 실패하면 그 글자만 뺀다
@@ -109,7 +109,7 @@ const filterGroups = !cardView && (admin?.groups.length ?? 0) > 1 ? admin!.group
 // 보기도 주소에 적는다(받은 쪽이 같은 보기로 그려지게)
 const nextHref = page.next && !cardView ? `/home?${kq}${swipe ? 'v=swipe' : `v=list&z=${z}`}${sel ? '&sel=1' : ''}&before=${encodeURIComponent(page.next)}` : null;
 // 위로 이어 붙일 쪽(128): 사진 주변만 그린 쪽이면 맨 위에 '최근 사진 더 보기'(스크립트가 보이기 전에 받아 위에 붙임)
-const prevHref = page.prev && !cardView && !swipe ? `/home?${kq}v=list&z=${z}${sel ? '&sel=1' : ''}&after=${encodeURIComponent(page.prev)}` : null;
+const prevHref = page.prev && !cardView ? `/home?${kq}${swipe ? 'v=swipe' : `v=list&z=${z}${sel ? '&sel=1' : ''}`}&after=${encodeURIComponent(page.prev)}` : null;
 // 보기(v=list)도 주소에: 다른 창에서 넘겨 보기를 골라 쿠키가 바뀌어도 칸 단계로 그려지게(리뷰 2026-10-31)
 const zoomHref = (to: Zoom) => `/home?${kq}v=list&z=${to}`;
 const zi = ZOOMS.indexOf(z);
@@ -444,6 +444,12 @@ if (z !== 3 && z !== 5)
       </section>
     ) : swipe ? (
       /* 가족 넘겨 보기와 같은 카드(swipe.css): 가운데 카드 + 양옆 비스듬히, 손가락으로 밀면 넘어감(scroll-snap). 카드 전체가 크게 보기 링크 */
+      <>
+      {prevHref && (
+        <div class="sp-more sp-more--up" data-less>
+          <a class="sp-more__btn" href={prevHref}>최근 사진 더 보기</a>
+        </div>
+      )}
       <ul class="sp-a__swipe sp-p__swipe" aria-label={swipeTotal === null ? '사진, 옆으로 밀어서 넘겨 보기' : `사진 ${swipeTotal.toLocaleString('ko-KR')}장, 옆으로 밀어서 넘겨 보기`}>
         {slides.map((c) => (
           <li class="sp-a__slide" id={`c-${c.id}`}>
@@ -477,6 +483,7 @@ if (z !== 3 && z !== 5)
           </li>
         ))}
       </ul>
+      </>
     ) : cards ? (
       <ul class="sp-p__mcards">
         {cards.map((c) => (
@@ -576,7 +583,7 @@ if (z !== 3 && z !== 5)
 </Parent>
 
 <script>
-  import { autoMore, closeReturn, keepSpot, relayout, swipeMore } from '../lib/more';
+  import { autoMore, closeReturn, keepSpot, lessMore, relayout, swipeMore } from '../lib/more';
   closeReturn();
   import { zoomInPlace } from '../lib/zoomswap';
 
@@ -615,49 +622,10 @@ if (z !== 3 && z !== 5)
     if (over > 0) chipRow.scrollLeft += over + 20;
   }
 
-  // 위로 이어 붙이기(128): 사진 주변만 그린 앨범(닫고 돌아옴·달 카드)에서 맨 위 '최근 사진 더 보기'가 가까워지면 그 쪽을 받아 격자 앞에 붙인다.
-  // 보던 칸이 화면에서 움직이지 않게 붙인 만큼 스크롤을 보정하고, 그 달 표식(#m-)은 새로 붙인(더 최근) 칸으로 옮긴다. 못 받으면 링크 그대로(누르면 그 쪽)
-  const upMore = () => {
-    const el = document.querySelector<HTMLElement>('[data-less]');
-    const a = el?.querySelector('a');
-    if (!el || !a || typeof IntersectionObserver !== 'function') return;
-    const io = new IntersectionObserver(
-      async (es) => {
-        if (!es.some((e) => e.isIntersecting)) return;
-        io.disconnect();
-        try {
-          const res = await fetch(a.href, { credentials: 'same-origin' });
-          if (!res.ok || (res.redirected && new URL(res.url).pathname !== '/home')) throw new Error(String(res.status));
-          const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-          const ul = document.querySelector<HTMLElement>('.sp-p__month[data-ym="all"] .sp-p__grid');
-          if (!ul) return;
-          const ref = ([...ul.children] as HTMLElement[]).find((c) => c.getBoundingClientRect().bottom > 0);
-          const top0 = ref?.getBoundingClientRect().top ?? 0;
-          const frag = document.createDocumentFragment();
-          for (const li of doc.querySelectorAll<HTMLElement>('.sp-p__month[data-ym="all"] .sp-p__cell')) {
-            if (document.getElementById(li.id)) continue; // 맨 위 '방금 올라왔어요'에 이미 있는 사진
-            const mark = li.querySelector<HTMLElement>('.sp-p__anchor');
-            if (mark) document.getElementById(mark.id)?.remove();
-            frag.appendChild(document.importNode(li, true));
-          }
-          ul.insertBefore(frag, ul.firstChild);
-          relayout(ul);
-          if (ref) scrollBy(0, ref.getBoundingClientRect().top - top0);
-          const next = doc.querySelector('[data-less]');
-          if (next) el.replaceWith(document.importNode(next, true));
-          else el.remove();
-          upMore();
-        } catch {
-          // 다시 저절로 받지는 않는다. 누르면 그 쪽 페이지로
-        }
-      },
-      { rootMargin: '600px 0px' },
-    );
-    // 닫고 돌아와 그 사진으로 스크롤한 뒤부터 지켜본다(처음 그릴 때 맨 위라 바로 받아 버리지 않게)
-    requestAnimationFrame(() => requestAnimationFrame(() => io.observe(el)));
-  };
-  if (document.readyState === 'complete') upMore();
-  else addEventListener('load', upMore, { once: true });
+  // 앞으로 이어 붙이기(128·129): 사진 주변만 그린 앨범에서 맨 위(넘겨 보기는 맨 앞) '최근 사진 더 보기'
+  const swipeList = document.querySelector<HTMLElement>('.sp-a__swipe');
+  if (swipeList) lessMore({ list: () => document.querySelector('.sp-a__swipe'), items: '.sp-a__swipe .sp-a__slide', swipe: true });
+  else lessMore({ list: () => document.querySelector('.sp-p__month[data-ym="all"] .sp-p__grid'), items: '.sp-p__month[data-ym="all"] .sp-p__cell', anchor: '.sp-p__anchor', after: relayout });
 
   // 넘겨 보기(98d): 옆으로 밀다 남은 카드가 다섯 장쯤이면 다음 60장 카드를 뒤에 붙인다. 돌아온 카드(#c-<id>)는 브라우저가 가운데로
   const swipe = document.querySelector<HTMLElement>('.sp-a__swipe');
