@@ -23,7 +23,9 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   }
   // 미리 받기(크게 보기, 131)는 로그인 표를 갱신하지 않는다(133): 갱신할 때가 된 출입증이면 미리 받기만 그만둔다.
   // 갱신은 쓴 갱신 토큰을 바꾸므로, 버려진 미리 받기 응답의 쿠키를 브라우저가 안 담으면 다음 요청이 옛 토큰으로 세션이 끊길 수 있어서
-  if (/prefetch/i.test(ctx.request.headers.get('sec-purpose') ?? '') && [PARENT, PASS].some((n) => passStale(ctx.cookies.get(n)?.value))) {
+  // 그 화면이 실제로 쓰는 출입증만 본다(엄빠 크게 보기 /view = 엄빠, 가족 /album = 가족 기기). 안 쓰는 쪽이 오래돼 미리 받기가 늘 꺼지지 않게
+  const uses = ctx.url.pathname.startsWith('/view/') ? [PARENT] : ctx.url.pathname.startsWith('/album') ? [PASS] : [PARENT, PASS];
+  if (/prefetch/i.test(ctx.request.headers.get('sec-purpose') ?? '') && uses.some((n) => passStale(ctx.cookies.get(n)?.value))) {
     return new Response(null, { status: 503, headers: { 'cache-control': 'no-store' } });
   }
   let res = await next();
