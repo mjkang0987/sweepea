@@ -54,6 +54,9 @@ with sync_playwright() as p:
     pg.get_by_role('navigation',name='거르기').get_by_role('link',name='전체').click(); pg.wait_for_load_state()
     check(all(x not in pg.url for x in ('k=','t=','g=')) and pg.locator('.sp-p__cell').count()==3,'전체는 다 풂')
     pg.goto(B+'/home?g=nope&v=list&z=3'); check(pg.locator('.sp-p__cell').count()==3,'모르는 그룹이면 전체')
+    check('g=' not in pg.url,'모르는 그룹이면 g를 뺀 주소로(134)')
+    vid=pg.locator('.sp-p__cell').first.get_attribute('id')[2:]
+    pg.goto(B+f'/view/{vid}?g=nope'); check('/view/'+vid in pg.url and 'g=' not in pg.url and '/ 3' in pg.locator('.sp-v__pos').inner_text(),'크게 보기도 모르는 그룹이면 g 빼고 전체(134)')
     # 132: 달 카드도 거르기를 따름(친가 2장), 카드 보기에도 그룹 알약 보임
     pg.goto(B+'/home?v=list&z=m')
     pg.get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
