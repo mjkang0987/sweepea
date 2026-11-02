@@ -101,6 +101,7 @@ const kid = callName(kids[0]?.name ?? '아이');
 
 <script>
   import { fitSize, mp4CreatedAt, photoTakenAt, plausible, stripJpeg } from '../lib/exif';
+  import { stripVideoLocation } from '../lib/videometa';
   import { copyText } from '../lib/copy';
 
   type Item = {
@@ -266,6 +267,8 @@ const kid = callName(kids[0]?.name ?? '아이');
         // 가로·세로를 둘 다 정해 서버에 적는 크기와 실제 영상 크기를 맞춘다
         video: { width, height, fit: 'fill', codec: 'avc', bitrate: SHRINK.bitrate },
         audio: { codec: 'aac' },
+        // 원본 정보 태그(아이폰 찍은 장소 등)는 옮기지 않는다(138 개인정보)
+        tags: {},
       });
       if (!conv.isValid || conv.discardedTracks.some((d) => d.track === video || d.track === audio)) return null;
       beat = Date.now();
@@ -328,7 +331,8 @@ const kid = callName(kids[0]?.name ?? '아이');
       v.load();
       const [small, taken] = await Promise.all([shrink(file, duration, progress), videoTakenAt(file)]);
       return {
-        kind: 'video', view: small?.blob ?? file, poster: poster.blob, thumb: thumb.blob,
+        // 줄였든 원본이든 찍은 장소는 지우고 올린다(138 개인정보, 사진은 그리기·stripJpeg로 이미 지움)
+        kind: 'video', view: await stripVideoLocation(small?.blob ?? file), poster: poster.blob, thumb: thumb.blob,
         width: small?.width ?? videoWidth, height: small?.height ?? videoHeight,
         durationSec: Math.round(duration * 100) / 100,
         // 파일 안 시각은 DB 출처 값 중 'exif'로 적는다
