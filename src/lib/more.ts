@@ -215,6 +215,17 @@ export function noteSeen(id: string) {
   }
 }
 
+/** '봤음' 남기기(가족 = 보신 기록, 엄빠 = parent): 남겼으면 돌아갈 앨범의 신규 배지도 빠지게(noteSeen) 하고 true. 못 남기면 false(134: 세 곳에 복사돼 있던 것) */
+export async function postViews(id: string, parent = false): Promise<boolean> {
+  try {
+    const r = await fetch('/api/views', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [id], parent }), keepalive: true, credentials: 'same-origin' });
+    if (r.ok) noteSeen(id);
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** 본 사진 칸의 '신규' 알약과 읽어 주는 글의 '신규, '를 뺀다(기념일 알약은 그대로) */
 function dropSeen() {
   let seen: string[] = [];
