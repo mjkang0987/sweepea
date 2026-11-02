@@ -93,6 +93,82 @@ export function swipeMore(swipe: HTMLElement) {
   near();
 }
 
+/** 앞으로(최근 쪽) 이어 붙이기(128·129): 사진 주변만 그린 앨범(닫고 돌아옴·달 카드)의 [data-less] '최근 사진 더 보기' 쪽을 받아 목록 앞에 붙인다.
+ * 칸(세로): 링크가 화면 600px 안에 오면 받고, 보던 칸이 안 움직이게 세로 스크롤 보정, 그 달 표식(anchor)은 더 최근 칸으로 옮김.
+ * 넘겨 보기(옆): 앞쪽 끝에서 카드 여섯 장쯤 남으면 받고 가로 스크롤 보정(보던 카드 그대로). 이미 있는 사진(맨 위 '방금 올라왔어요')은 건너뜀.
+ * 못 받으면 다시 저절로 받지 않는다(누르면 그 쪽 페이지로) */
+export function lessMore(o: { list: () => HTMLElement | null; items: string; anchor?: string; swipe?: boolean; after?: (ul: HTMLElement) => void }) {
+  let busy = false;
+  let failed = false;
+  const load = async () => {
+    const el = document.querySelector<HTMLElement>('[data-less]');
+    const a = el?.querySelector('a');
+    const ul = o.list();
+    if (!el || !a || !ul || busy || failed) return;
+    busy = true;
+    try {
+      const res = await fetch(a.href, { credentials: 'same-origin' });
+      if (!res.ok || (res.redirected && new URL(res.url).pathname !== new URL(a.href).pathname)) throw new Error(String(res.status));
+      const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      const ref = o.swipe ? undefined : ([...ul.children] as HTMLElement[]).find((c) => c.getBoundingClientRect().bottom > 0);
+      const top0 = ref?.getBoundingClientRect().top ?? 0;
+      const w0 = ul.scrollWidth;
+      const left0 = ul.scrollLeft;
+      const frag = document.createDocumentFragment();
+      for (const li of doc.querySelectorAll<HTMLElement>(o.items)) {
+        if (li.id && document.getElementById(li.id)) continue;
+        const mark = o.anchor ? li.querySelector<HTMLElement>(o.anchor) : null;
+        if (mark) document.getElementById(mark.id)?.remove();
+        frag.appendChild(document.importNode(li, true));
+      }
+      ul.insertBefore(frag, ul.firstChild);
+      o.after?.(ul);
+      if (o.swipe) ul.scrollLeft = left0 + (ul.scrollWidth - w0);
+      else if (ref) scrollBy(0, ref.getBoundingClientRect().top - top0);
+      const next = doc.querySelector<HTMLElement>('[data-less]');
+      if (next) {
+        const n = document.importNode(next, true);
+        n.hidden = !!o.swipe;
+        el.replaceWith(n);
+      } else el.remove();
+    } catch {
+      failed = true;
+    } finally {
+      busy = false;
+    }
+    watch();
+  };
+  let io: IntersectionObserver | null = null;
+  const watch = () => {
+    if (o.swipe) {
+      const ul = o.list();
+      if (ul && ul.scrollLeft < ul.clientWidth * 6) void load();
+      return;
+    }
+    const el = document.querySelector<HTMLElement>('[data-less]');
+    if (!el || typeof IntersectionObserver !== 'function') return;
+    io?.disconnect();
+    io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && (io?.disconnect(), void load()), { rootMargin: '600px 0px' });
+    io.observe(el);
+  };
+  // 넘겨 보기는 앞으로 밀면(손가락·키보드 모두 옆 스크롤) 저절로 붙으니 버튼은 스크립트 없을 때만(카드를 아래로 밀어내지 않게)
+  if (o.swipe) {
+    const el = document.querySelector<HTMLElement>('[data-less]');
+    if (el) el.hidden = true;
+  }
+  // 닫고 돌아와 그 사진으로 옮긴 뒤부터 지켜본다(처음 그릴 때 맨 앞이라 바로 받아 버리지 않게)
+  const start = () =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (!document.querySelector('[data-less]')) return;
+        if (o.swipe) o.list()?.addEventListener('scroll', watch, { passive: true });
+        watch();
+      }),
+    );
+  if (document.readyState === 'complete') start();
+  else addEventListener('load', start, { once: true });
+}
+
 const SPOT = 'sp-spot';
 /** 칸 링크를 누를 때 그 칸의 화면 속 높이를 적어 두고, #c-<id>로 돌아오면 그 칸을 같은 높이에(모르면 가운데) 둔다 */
 export function keepSpot(cellLink: string) {

@@ -35,11 +35,13 @@ const a = await loadAlbum(Astro.cookies, Astro.url);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const { pass, open, kids, q } = a;
 // 60장씩: ?before=<찍은 날~id>는 다음 쪽(스크립트가 받아 이어 붙임, 스크립트 없으면 그 쪽만), ?to=<id>는 크게 보기에서 닫고 돌아와 그 사진까지
-const cont = Astro.url.searchParams.has('before');
+// ?after=는 앞(최근 쪽)으로 이어 붙이는 쪽(129)
+const cont = Astro.url.searchParams.has('before') || Astro.url.searchParams.has('after');
 // 전체 장 수는 제목·넘겨 보기 'n / 전체'에. 새 사진 레이어는 이 쪽(60장)이 아니라 최근 200장에서 본다(옛날에 찍고 새로 올린 사진도 잡게, 예전과 같은 범위)
 // 전체 수는 제목·'n / 전체' 글자에만 쓰는 옆 기능이라 실패하면 그 글자만 뺀다. 이어지는 쪽은 loadPage가 이미 셌다
 const [page, total0, recent200] = await Promise.all([
-  loadPage(pass, a.base, Astro.url),
+  // 닫고 돌아옴(?to=)·달 카드(?at=)는 그 주변 한 쪽만(129, 엄빠 앨범 128과 같게). 넘겨 보기는 'n / 전체'를 함께 셈
+  loadPage(pass, a.base, Astro.url, { around: true, count: q.v === 'swipe' }),
   cont ? null : getBackend().countMedia(pass, a.base).catch(() => null),
   !cont && !q.f ? getBackend().listMedia(pass, { ...a.base, limit: 200 }) : null,
 ]);
@@ -48,6 +50,8 @@ const { items } = page;
 const sep = albumHref(q).includes('?') ? '&' : '?';
 // 월별(달 카드)은 다음 쪽이 없다
 const nextHref = page.next && !(q.v === 'list' && (q.z === 'm' || q.z === 'y')) ? `${albumHref(q)}${sep}before=${encodeURIComponent(page.next)}` : null;
+// 앞으로 이어 붙일 쪽(129): 주변만 그린 쪽이면 맨 위(넘겨 보기는 맨 앞)에 '최근 사진 더 보기'
+const prevHref = page.prev && !(q.v === 'list' && (q.z === 'm' || q.z === 'y')) ? `${albumHref(q)}${sep}after=${encodeURIComponent(page.prev)}` : null;
 // 넘겨 보기 반응·한마디 뒤 돌아올 곳: 그 카드까지 그리게 to=, 가운데로 #p-
 const backTo = (id: string) => `${here}${sep}to=${id}#p-${id}`;
 // 한마디 결과는 보낸 카드에만(sm=사진 id)
@@ -264,6 +268,11 @@ const monthCards = !monthRows
     ) : q.v === 'swipe' ? (
       <>
         {/* 시안(GrandHome): 가운데 카드 + 양옆 사진이 비스듬히 보임. 손가락으로 밀면 넘어감(scroll-snap), 기울기는 CSS 스크롤 애니메이션 */}
+        {prevHref && (
+          <div class="sp-more sp-more--up" data-less>
+            <a class="sp-more__btn" href={prevHref}>최근 사진 더 보기</a>
+          </div>
+        )}
         <ul class="sp-a__swipe" aria-label={total === null ? '사진, 옆으로 밀어서 넘겨 보기' : `사진 ${total}장, 옆으로 밀어서 넘겨 보기`}>
           {cards.map((c) => (
             <li class="sp-a__slide" id={`p-${c.id}`}>
@@ -346,6 +355,12 @@ const monthCards = !monthRows
             <p class="sp-a__lead">{q.z === 'y' ? '해마다' : '달마다'} 모아 보기를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
           )
         ) : days.map((d) => (
+          <>
+          {d.day === 'all' && prevHref && (
+            <div class="sp-more sp-more--up" data-less>
+              <a class="sp-more__btn" href={prevHref}>최근 사진 더 보기</a>
+            </div>
+          )}
           <section class="sp-a__day" data-day={d.day} aria-label={d.top ? `방금 올라온 사진 ${d.cards.length}장` : '사진'}>
             {d.top ? (
               <h2 class="sp-a__day-title sp-a__day-title--new">방금 올라왔어요 <span class="sp-a__day-count">· {d.cards.length}장</span></h2>
@@ -390,6 +405,7 @@ const monthCards = !monthRows
               ))}
             </ul>
           </section>
+          </>
         ))}
         {/* 목록 끝(디자인 LoadMoreFamily) */}
         {nextHref ? (
@@ -412,7 +428,7 @@ const monthCards = !monthRows
 </Family>
 
 <script>
-  import { autoMore, closeReturn, keepSpot, relayout, swipeMore } from '../../lib/more';
+  import { autoMore, closeReturn, keepSpot, lessMore, relayout, swipeMore } from '../../lib/more';
   closeReturn();
   import { zoomInPlace } from '../../lib/zoomswap';
 
@@ -420,6 +436,8 @@ const monthCards = !monthRows
   if (swipe) {
     // 넘겨 보기: 옆으로 밀다 남은 카드가 다섯 장쯤이면 다음 60장 카드를 뒤에 붙인다(옆 스크롤이라 직접 부름)
     swipeMore(swipe);
+    // 닫고 돌아와 주변만 그렸으면 맨 앞쪽으로 밀 때 최근 카드를 앞에 붙인다(129)
+    lessMore({ list: () => document.querySelector('.sp-a__swipe'), items: '.sp-a__swipe .sp-a__slide', swipe: true });
     // 보신 기록(95): 가운데 카드에 1.5초 머물면 그 사진을 남긴다(사진마다 한 번). 실패는 버림(다음에 다시 보면 남음)
     const seen = new Set<string>();
     let dwell: ReturnType<typeof setTimeout> | undefined;
@@ -480,6 +498,8 @@ const monthCards = !monthRows
       return added;
     });
     keepSpot('.sp-a__cell-link');
+    // 닫고 돌아와 주변만 그렸으면 위로 올릴 때 최근 칸을 앞에 붙인다(129)
+    lessMore({ list: () => document.querySelector('.sp-a__day[data-day="all"] .sp-a__grid'), items: '.sp-a__day[data-day="all"] .sp-a__cell', anchor: '.sp-a__anchor', after: (ul) => ul.classList.contains('sp-a__grid--2') && relayout(ul) });
     // 기간 줄(117b, 엄빠 앨범과 같은 방식): 스크롤 따라 위에 붙은 줄 아래 첫 사진의 날(+기념일), 3·5칸은 보이는 사진들의 기간. 한 프레임에 한 번만
     {
       const label = (d: string, withYear: boolean) => `${withYear ? `${d.slice(0, 4)}년 ` : ''}${Number(d.slice(5, 7))}월 ${Number(d.slice(8))}일`;
