@@ -13,7 +13,8 @@ with sync_playwright() as p:
     heart.click(); pg.wait_for_load_state()
     heart=pg.locator('.sp-a__slide').first.locator('.sp-a__slide-react .sp-r__btn').first
     check(heart.get_attribute('aria-pressed')=='true' and heart.get_attribute('aria-label').startswith('하트 1개'),'하트 누르면 1개, 눌림')
-    check('/album#p-' in pg.url,'원래 카드로 돌아옴')
+    # 2026-10-28부터 반응 뒤 주소는 그 카드까지 그리는 /album?…to=<id>#p-<id>(예전 검사는 '/album#p-'만 봐서 늘 실패)
+    check('/album' in pg.url and '#p-' in pg.url,'원래 카드로 돌아옴')
     check(not pg.locator('.sp-a__slide').nth(2).locator('.sp-a__slide-react .sp-r__btn').first.is_visible(),'옆 카드 하트는 숨김(옆 사진 누르기와 안 헷갈리게)')
     third=pg.locator('.sp-a__slide').nth(2); third.evaluate("e=>e.scrollIntoView({inline:'center',block:'nearest'})"); pg.wait_for_timeout(400); third.locator('.sp-a__slide-react .sp-r__btn').first.click(); pg.wait_for_load_state(); pg.wait_for_timeout(300)
     box=pg.locator('.sp-a__slide').nth(2).locator('.sp-a__card').bounding_box()
