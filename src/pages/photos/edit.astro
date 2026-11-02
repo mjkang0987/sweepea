@@ -1,0 +1,186 @@
+---
+// 여러 장 고치기(126, 디자인 ParentPhotosEdit, 사용자 "사진별로 지금 설정된 그룹 체크해 두고 각 사진별로 보이는 화면"): 앨범 고르기 막대의 '수정'·'지우기'로 들어옴(?id=…&do=edit|delete).
+// 수정: 맨 위 '한꺼번에'(스크립트, 섞이면 '일부') + 사진마다 그룹 체크 칸. 저장하면 바뀐 사진만 사진 한 장 고치기(sp_update_media)와 같은 길로(찍은 날·아이는 그대로, 변경 내역은 사진마다).
+// 지우기: 한 번 더 확인하는 화면 → 사진마다 지우기. 내 가족방 사진만(mediaInfo가 아니면 빠짐)
+import Parent from '../../layouts/Parent.astro';
+import { BackendError, getBackend } from '../../lib/backend';
+import { dayLabel } from '../../lib/album';
+import { loadParent } from '../../lib/parent';
+import { signedMediaUrl } from '../../lib/signed';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const b = getBackend();
+const MAX = 60;
+const post = Astro.request.method === 'POST';
+const form = post ? await Astro.request.formData() : null;
+const get = (k: string) => String((form ? form.get(k) : Astro.url.searchParams.get(k)) ?? '');
+const all = (k: string) => (form ? form.getAll(k).map(String) : Astro.url.searchParams.getAll(k));
+// 돌아갈 앨범: 거르기(아이·사진/영상·그룹)와 칸 단계 그대로. 값 모양만 보고 실제 확인은 앨범이
+const k = /^[\w-]{1,64}$/.test(get('k')) ? get('k') : '';
+const t = ['photo', 'video'].includes(get('t')) ? get('t') : '';
+const g = /^[\w-]{1,64}$/.test(get('g')) ? get('g') : '';
+const z = ['1', '2', '3', '5'].includes(get('z')) ? get('z') : '3';
+const backQ = `${k ? `k=${encodeURIComponent(k)}&` : ''}${t ? `t=${t}&` : ''}${g ? `g=${encodeURIComponent(g)}&` : ''}v=list&z=${z}`;
+const home = `/home?${backQ}`;
+const ids = [...new Set(all('id').filter((x) => /^[0-9a-f-]{36}$/.test(x)))];
+if (ids.length === 0) return Astro.redirect(`${home}&sel=1`, post ? 303 : 302);
+const tooMany = ids.length > MAX;
+const infos = tooMany ? [] : (await Promise.all(ids.map((id) => b.mediaInfo(a.pass, id).catch(() => null)))).filter((x) => x !== null);
+if (!tooMany && infos.length === 0) return Astro.redirect(home, post ? 303 : 302);
+const groups = (await b.familyAdmin(a.pass)).groups;
+const deleting = get('do') === 'delete';
+// 사진 칸 수만큼 서버를 부르니 6개씩 나눠 보낸다. 실패한 사진 수를 돌려준다
+const each = async (fn: (id: string) => Promise<void>, list: string[]) => {
+  let failed = 0;
+  for (let i = 0; i < list.length; i += 6) {
+    const r = await Promise.allSettled(list.slice(i, i + 6).map(fn));
+    for (const x of r) {
+      if (x.status === 'rejected') {
+        if (!(x.reason instanceof BackendError)) throw x.reason;
+        failed++;
+      }
+    }
+  }
+  return failed;
+};
+// 사진마다 고른 그룹(처음엔 지금 설정, 다시 그릴 땐 보낸 값)
+const chosen = new Map(infos.map((x) => [x.item.id, x.group_ids]));
+let error: { text: string; rows: string[] } | null = null;
+if (post && !tooMany) {
+  if (get('do') === 'delete') {
+    const failed = await each((id) => b.deleteMedia(a.pass, id), infos.map((x) => x.item.id));
+    if (!failed) return Astro.redirect(`${home}&done=deleted`, 303);
+    error = { text: `${failed}장은 지우지 못했어요. 다시 눌러 주세요.`, rows: [] };
+  } else {
+    for (const x of infos) chosen.set(x.item.id, form!.getAll(`g-${x.item.id}`).map(String).filter((id) => groups.some((y) => y.id === id)));
+    const empty = infos.filter((x) => chosen.get(x.item.id)!.length === 0).map((x) => x.item.id);
+    if (empty.length) error = { text: `보여줄 그룹이 없는 사진이 ${empty.length}장 있어요. 사진마다 하나 이상 골라 주세요.`, rows: empty };
+    else {
+      const same = (p: string[], q: string[]) => [...p].sort().join() === [...q].sort().join();
+      const changed = infos.filter((x) => !same(x.group_ids, chosen.get(x.item.id)!));
+      const failed = await each(
+        (id) => {
+          const x = infos.find((y) => y.item.id === id)!;
+          return b.updateMedia(a.pass, id, { takenAt: x.item.taken_at, childIds: x.child_ids, groupIds: chosen.get(id)! });
+        },
+        changed.map((x) => x.item.id),
+      );
+      if (!failed) return Astro.redirect(`${home}&done=saved&n=${changed.length}`, 303);
+      error = { text: `${failed}장은 저장하지 못했어요. 다시 눌러 주세요.`, rows: [] };
+    }
+  }
+}
+const rows = await Promise.all(
+  infos.map(async (x, i) => ({
+    id: x.item.id,
+    label: `${i + 1}. ${dayLabel(x.item.taken_at)} ${x.item.kind === 'video' ? '영상' : '사진'}`,
+    src: await signedMediaUrl(x.item.thumb_key),
+    groups: chosen.get(x.item.id)!,
+  })),
+);
+const n = infos.length;
+const title = deleting ? `사진 ${n}장 지우기` : `사진 ${n}장 수정`;
+---
+
+<Parent title={`${error ? '다시 확인해 주세요 · ' : ''}${title} · 스위피`} tab="home" savebar={!deleting && !tooMany} alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+  <div class="sp-p__nav">
+    <a class="sp-p__back sp-p__back--cancel" href={`${home}&sel=1`}>닫기</a>
+    <h1 class="sp-p__nav-title">{tooMany ? '사진 고르기' : title}</h1>
+  </div>
+  {
+    tooMany ? (
+      <p class="sp-p__error" role="alert">한 번에 {MAX}장까지 고칠 수 있어요. 닫고 {MAX}장 이하로 다시 골라 주세요.</p>
+    ) : deleting ? (
+      /* 지우기 확인(디자인 PhotoDeleteLayer와 같은 말) */
+      <form class="sp-p__form" method="post">
+        {ids.map((id) => <input type="hidden" name="id" value={id} />)}
+        {k && <input type="hidden" name="k" value={k} />}
+        {t && <input type="hidden" name="t" value={t} />}
+        {g && <input type="hidden" name="g" value={g} />}
+        <input type="hidden" name="z" value={z} />
+        {error && <p class="sp-p__error" role="alert">{error.text}</p>}
+        <h2 class="sp-layer__title">사진 {n}장을 지울까요?</h2>
+        <p class="sp-p__lead">가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요.</p>
+        <ul class="sp-p__multi-strip" role="list" aria-label="지울 사진">
+          {rows.map((r) => (
+            <li class="sp-p__multi-strip-item"><img class="sp-p__multi-thumb" src={r.src} alt={r.label} /></li>
+          ))}
+        </ul>
+        <button class="sp-p__btn sp-p__btn--danger-strong" type="submit" name="do" value="delete">{n}장 지우기</button>
+        <a class="sp-p__btn sp-p__btn--quiet" href={`${home}&sel=1`}>취소</a>
+      </form>
+    ) : (
+      <form class="sp-p__form" method="post">
+        {ids.map((id) => <input type="hidden" name="id" value={id} />)}
+        {k && <input type="hidden" name="k" value={k} />}
+        {t && <input type="hidden" name="t" value={t} />}
+        {g && <input type="hidden" name="g" value={g} />}
+        <input type="hidden" name="z" value={z} />
+        {error && <p class="sp-p__error" role="alert" id="pe-err">{error.text}</p>}
+        {/* 한꺼번에: 이름 없는 체크 칸이라 스크립트가 있을 때만 보인다(아래 사진 칸을 켜고 끔) */}
+        <section class="sp-p__bulk" aria-labelledby="bulk-t" hidden data-bulk>
+          <h2 class="sp-p__bulk-title" id="bulk-t">한꺼번에</h2>
+          <p class="sp-p__hint" id="bulk-hint">누르면 아래 사진 모두에 적용돼요. −는 일부 사진에만 보이는 그룹이에요.</p>
+          <div class="sp-p__checks">
+            {groups.map((x) => (
+              <label class="sp-p__check">
+                <input class="sp-p__checkbox" type="checkbox" data-all={x.id} aria-describedby="bulk-hint" />
+                {x.name}
+              </label>
+            ))}
+          </div>
+        </section>
+        <h2 class="sp-p__section-title sp-p__multi-title">사진마다</h2>
+        <ul class="sp-p__multi" role="list">
+          {rows.map((r) => (
+            <li class="sp-p__multi-item" id={`r-${r.id}`}>
+              <img class="sp-p__multi-thumb" src={r.src} alt="" />
+              <fieldset class="sp-p__fieldset sp-p__multi-field" aria-describedby={error?.rows.includes(r.id) ? 'pe-err' : undefined}>
+                <legend class="sp-p__multi-legend">{r.label}{error?.rows.includes(r.id) && <span class="sp-p__multi-bad"> · 그룹을 골라 주세요</span>}</legend>
+                <div class="sp-p__checks">
+                  {groups.map((x) => (
+                    <label class="sp-p__check">
+                      <input class="sp-p__checkbox" type="checkbox" name={`g-${r.id}`} value={x.id} checked={r.groups.includes(x.id)} />
+                      {x.name}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </li>
+          ))}
+        </ul>
+        <p class="sp-p__hint">그룹을 빼면 그 가족 화면에서 바로 사라져요. 사진마다 그룹을 하나 이상 골라 주세요.</p>
+        <div class="sp-p__savebar"><button class="sp-p__btn" type="submit" name="do" value="save">저장</button></div>
+      </form>
+    )
+  }
+</Parent>
+
+<script>
+  // 한꺼번에(126): 그룹마다 아래 사진 칸이 모두 켜졌으면 체크, 하나도 없으면 빈칸, 섞였으면 '일부'(indeterminate). 누르면 아래 전부 같게
+  const bulk = document.querySelector<HTMLElement>('[data-bulk]');
+  if (bulk) {
+    bulk.hidden = false;
+    const rowsOf = (g: string) => [...document.querySelectorAll<HTMLInputElement>(`.sp-p__multi input[value="${CSS.escape(g)}"]`)];
+    const sync = (box: HTMLInputElement) => {
+      const on = rowsOf(box.dataset.all!).filter((x) => x.checked).length;
+      const n = rowsOf(box.dataset.all!).length;
+      box.checked = n > 0 && on === n;
+      box.indeterminate = on > 0 && on < n;
+    };
+    const boxes = [...bulk.querySelectorAll<HTMLInputElement>('[data-all]')];
+    boxes.forEach(sync);
+    document.addEventListener('change', (e) => {
+      const x = e.target as HTMLInputElement;
+      if (x.dataset?.all) {
+        for (const r of rowsOf(x.dataset.all)) r.checked = x.checked;
+        x.indeterminate = false;
+      } else if (x.closest('.sp-p__multi')) {
+        const box = boxes.find((b) => b.dataset.all === x.value);
+        if (box) sync(box);
+      }
+    });
+  }
+</script>
