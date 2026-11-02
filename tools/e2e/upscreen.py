@@ -36,7 +36,8 @@ with sync_playwright() as p:
     check(pg.locator('.sp-p__cell').count()==3,'부모 앨범에 3장')
     pg.wait_for_function("[...document.querySelectorAll('.sp-p__cell-img')].every(i=>i.complete && i.naturalWidth>0)",timeout=15000)
     check(True,'부모 앨범 썸네일이 실제로 보임')
-    hs=pg.locator('.sp-p__month h2, h2').all_inner_texts(); check(any('10월' in h for h in hs) and any('9월' in h for h in hs),'EXIF 찍은 날로 월 묶음(올해는 연도 없이)')
+    # 117b(2026-11-01)부터 달 제목 대신 그 달 첫 칸에 표식(#m-YYYY-MM)
+    check(pg.locator('.sp-p__anchor[id$="-10"]').count()==1 and pg.locator('.sp-p__anchor[id$="-09"]').count()==1,'EXIF 찍은 날로 달 나눔(10월·9월 첫 칸 표식)')
     pg.screenshot(path=D+'up-3.png')
     b.close()
 from PIL import Image as I
