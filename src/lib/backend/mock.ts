@@ -343,7 +343,7 @@ export function createMockBackend(): Backend {
     },
     async mediaMonths(pass, opts = {}) {
       // DB(sp_media_months)처럼: 볼 수 있는 사진, 서울 달, 반응·한마디 많은 순 → 최근
-      const all = visibleMedia(pass, { familyId: opts.familyId, childId: opts.childId });
+      const all = visibleMedia(pass, { familyId: opts.familyId, childId: opts.childId, kind: opts.kind, groupId: opts.groupId });
       const score = (id: string) => [...reactions].filter((r) => r.startsWith(`${id}|`) && authorName(r.split('|')[1])).length + comments.filter((c) => c.mediaId === id && !c.deleted && authorName(c.memberId)).length;
       const ym = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date(iso));
       const by = new Map<string, typeof all>();
