@@ -1384,6 +1384,13 @@
 - 결과(0.17.0, 캔버스 v208): 단위 검사에서 7세 이상이 1단계로 나오던 버그를 잡음. e2e entry·health·kidtabs·layers 통과, 리뷰 1회(작은 변경: 경계·시간대·CSS 우선순위 이상 없음). 그대로 둔 것: 가족 앨범 제목 옆 아기도 콩이처럼 톡 뜀(기획서 '움직임 있음', 움직임 줄이기면 멈춤), 백일·첫돌 레이어는 콩이(안내 레이어)
 - 다음(110): 가족 캐릭터 고르기(각자 자기 것만, 사용자 "각자만"). DB 칸 필요 → 운영 적용 전 확인
 
+### 131. feature/viewer-prefetch — 크게 보기 미리 받기 (완료, 0.30.0)
+- 요구(사용자 2026-11-02 속도 개선 후보 1번 "응")
+- 앨범(엄빠 /home·가족 /album)에 speculationrules prefetch(eagerness conservative = 누르기 시작할 때). 크롬 계열만, 사파리는 무시(그대로)
+- '봤음' 보호: 미리 받기 요청(Sec-Purpose: prefetch)은 서버가 '봤음'을 안 남기고 화면에 data-unnoted → 실제로 열리면 스크립트가 /api/views로 남김(성공하면 돌아갈 앨범 배지도 sp-seen으로)
+- 확인: 헤드리스 크롬에서 열린 크게 보기 deliveryType = navigational-prefetch(cache-control no-store여도 쓰임), 누르기만 하고 안 열면 신규 그대로, 열면 빠짐
+- 검사: prefetch(새, 4개)·newbadge·pview·vplay·viewbare·photo·family·parent·multiedit·filterchips·closefast·loadmore 통과, 단위 48
+
 ### 130. fix/viewbare-test — 오래 실패하던 '사진만 켜면 토스트 지움' 검사 (완료, 검사만)
 - 원인: 검사가 사진 주소에 붙은 칸 단계를 떼지 않고 '?done=saved'를 붙여 '/view/<id>?z=2?done=saved'(물음표 둘) → done이 안 읽혀 저장 안내 자체가 없었음(had=0). 화면 문제 아님(직접 열면 '사진 정보를 저장했어요.' 뜨고 사진만을 켜면 지워짐)
 - 고침: 검사에서 id의 '?…'를 떼고 붙임. viewbare 전체 통과(had=1). 앱 코드 바뀐 것 없음(버전 그대로)

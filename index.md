@@ -15,6 +15,7 @@
 - PC 화면(64rem 이상): 가족 모아 보기·크게 보기 넓게(4·6·8칸), 부모 앨범 넓게(1·2·3·5칸 → 2·5·6·8줄, 0.16.1~ 2칸이 5줄)·메뉴 위, 올리기 두 칸·끌어다 놓기 완료.
 - 매일 정리 예약 작업(`src/worker.ts` scheduled, 서울 새벽 3:17): 탈퇴 기한 지난 가족방·하루 지난 올리기 지우기, R2 정리 대기열 폴더 지우기(`src/jobs/cleanup.ts`). 무료 가족방 5GB가 차면 새로 올리기만 멈춤 완료.
 - 엄빠 둘이 함께 관리(0.7.0~): 가족방마다 엄빠 계정 둘까지, 설정 › 가족 맨 위 '함께 관리하는 엄빠'에서 초대 링크(한 번·3일) → `/join/[code]`에서 역할 고르고 로그인 → `/auth/callback`이 받음. 서로 내보낼 수 있고, 탈퇴는 둘이면 나만 나가기(기록 있으면 `parents.removed_at`만). DB `20261029000002`·`000003`
+- 크게 보기 미리 받기(0.30.0, plan 131): 앨범에 speculationrules prefetch(누르기 시작할 때, 크롬 계열). Sec-Purpose: prefetch면 서버가 '봤음'을 안 남기고 data-unnoted → 열리면 Viewer가 /api/views
 - 닫기 빠르게 ②(0.28.0~0.29.0, plan 128·129): 엄빠·가족 앨범 칸·넘겨 보기 ?to=·?at=는 그 주변 60장 이하만 그리고 맨 위 '최근 사진 더 보기'(?after=, src/lib/album.ts loadPage around·count)를 스크립트가 앞으로 이어 붙임(src/lib/more.ts lessMore, 넘겨 보기는 버튼 숨김). 첫 화면 서버 호출은 최근 200장·달 카드·반응 수를 같은 차례에
 - 여러 장 고치기(0.27.0, plan 126): 엄빠 앨범 칸 보기 '선택'(?sel=1) → 체크(고르기 막대는 위 앨범 머리 안) → '수정'(/photos/edit: 사진마다 그룹 + 한꺼번에(indeterminate), 바뀐 사진만 sp_update_media) 또는 '지우기'(확인 뒤 sp_delete_media). 60장까지, DB 변경 없음
 - 거르기·변경 내역(0.26.0, plan 123): 엄빠 앨범은 아이·사진/영상·그룹(?k·?t·?g, 그룹은 둘 이상일 때) 알약 한 줄(.sp-p__chips, 옆으로 밀림, 다시 누르면 풀림), 크게 보기·사진 정보 수정도 같은 거르기 안에서(0.26.1, plan 125). 사진 올림·고침마다 DB media_changes에 한 줄(sp_create_media·sp_update_media), 사진 정보 수정 화면 아래 '변경 내역'(sp_media_changes, 엄빠만). 크게 보기에서 본 사진은 sessionStorage sp-seen으로 돌아온 앨범의 '신규' 배지를 뺌(src/lib/more.ts noteSeen·closeReturn, plan 124)
