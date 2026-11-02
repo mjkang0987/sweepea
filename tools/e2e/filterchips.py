@@ -61,6 +61,11 @@ with sync_playwright() as p:
     check(n==2 and pg.get_by_role('link',name='친가에 보이는 사진').get_attribute('aria-current')=='true','월별 카드도 친가만 2장, 알약에 친가 고름 표시 '+str(n))
     pg.goto(B+'/home?v=list&z=m&t=photo'); n=sum(int(''.join(ch for ch in t if ch.isdigit()) or 0) for t in pg.locator('.sp-p__mcard-count').all_inner_texts())
     check(n==3 and '불러오지' not in pg.content(),'월별 사진만 3장 '+str(n))
+    # 132: 그 자리에서 크기를 바꾸면 알약·'선택' 링크도 새 칸 단계로(예전엔 옛 z로 데려감)
+    pg.goto(B+'/home?v=list&z=3'); pg.get_by_role('link',name='작게(한 줄에 더 많이)').click(); pg.wait_for_function("location.search.includes('z=5')")
+    pg.wait_for_timeout(500)
+    hrefs=[pg.get_by_role('link',name='친가에 보이는 사진').get_attribute('href'), pg.get_by_role('link',name='선택').get_attribute('href')]
+    check(all('z=5' in h for h in hrefs),'크기 바꾼 뒤 알약·선택 링크도 5칸 '+str(hrefs))
     # 넘겨 보기도 같은 거르기, 보기는 그대로
     pg.goto(B+'/home?v=swipe'); pg.get_by_role('navigation',name='거르기').get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
     check('v=swipe' in pg.url and pg.locator('.sp-a__slide').count()==2,'넘겨 보기에서 그룹 거르기 2장')
