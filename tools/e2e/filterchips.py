@@ -34,6 +34,19 @@ with sync_playwright() as p:
     check('g=' in pg.url and pg.locator('.sp-p__cell').count()==1,'친가 + 하린 = 1장(거르기 겹침)')
     pg.get_by_role('navigation',name='거르기').get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_load_state()
     check('g=' not in pg.url and 'k=' in pg.url and pg.locator('.sp-p__cell').count()==2,'다시 누르면 그 거르기만 풀림(하린 2장)')
+    # 125: 거른 채 크게 보면 그 안에서만 넘김(친가 + 하린 = 1장 → 1 / 1), 친가만이면 2장
+    pg.get_by_role('navigation',name='거르기').get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
+    pg.get_by_role('navigation',name='거르기').get_by_role('link',name='하린').click(); pg.wait_for_load_state()
+    check('g=' in pg.url and 'k=' not in pg.url and pg.locator('.sp-p__cell').count()==2,'친가만 2장')
+    pg.locator('.sp-p__cell-link').first.click(); pg.wait_for_url('**/view/**')
+    check('g=' in pg.url and pg.locator('.sp-v__pos').inner_text().strip()=='1 / 2','크게 보기도 친가 사진만(1 / 2)')
+    pg.get_by_role('link',name='사진 정보 수정').click(); pg.wait_for_url('**/photo/**')
+    check('g=' in pg.get_by_role('link',name='닫기').get_attribute('href'),'사진 정보 수정에서 닫아도 거르기 그대로')
+    pg.get_by_role('link',name='닫기').click(); pg.wait_for_url('**/view/**')
+    check('g=' in pg.url and pg.locator('.sp-v__pos').inner_text().strip()=='1 / 2','돌아온 크게 보기도 1 / 2')
+    pg.get_by_role('link',name='닫기').first.click(); pg.wait_for_url('**/home**')
+    check(pg.locator('.sp-p__cell').count()==2,'닫으면 거른 앨범 그대로(2장)')
+    pg.goto(B+'/home?v=list&z=3'); pg.get_by_role('navigation',name='거르기').get_by_role('link',name='하린').click(); pg.wait_for_url('**k=**')
     pg.get_by_role('navigation',name='거르기').get_by_role('link',name='가족에 보이는 사진').click(); pg.wait_for_url('**g=**')
     check(pg.locator('.sp-p__cell').count()==1,'가족 + 하린 = 1장')
     pg.get_by_role('navigation',name='거르기').get_by_role('link',name='영상').click(); pg.wait_for_url('**t=video**')
@@ -44,6 +57,7 @@ with sync_playwright() as p:
     # 넘겨 보기도 같은 거르기, 보기는 그대로
     pg.goto(B+'/home?v=swipe'); pg.get_by_role('navigation',name='거르기').get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
     check('v=swipe' in pg.url and pg.locator('.sp-a__slide').count()==2,'넘겨 보기에서 그룹 거르기 2장')
+    check('g=' in pg.locator('.sp-a__card').first.get_attribute('href'),'넘겨 보기 카드도 크게 보기에 거르기 넘김')
     # 좁은 폰: 줄은 옆으로 밀리고 화면은 안 넓어짐
     pg.set_viewport_size({'width':320,'height':700}); pg.goto(B+'/home?v=list&z=3')
     sw=pg.evaluate("(()=>{const l=document.querySelector('.sp-p__chips-list');return [l.scrollWidth,l.clientWidth,document.documentElement.scrollWidth]})()")
