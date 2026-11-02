@@ -292,8 +292,9 @@ export interface Backend {
   /** 부모 계정 한마디(1~200자, 하루 30개) */
   parentComment(pass: Pass, mediaId: string, body: string): Promise<void>;
   reactionCounts(pass: Pass, mediaIds: string[]): Promise<ReactionCount[]>;
-  /** 월별 보기: 달마다 사진 수와 대표 reps장(1~4, 기본 3), 최근 달부터 */
-  mediaMonths(pass: Pass, opts?: { familyId?: string; childId?: string; reps?: number }): Promise<MediaMonth[]>;
+  /** 월별 보기: 달마다 사진 수와 대표 reps장(1~5, 기본 3), 최근 달부터 */
+  /** kind·groupId(132)는 앨범 거르기: 있으면 그 사진만 센다 */
+  mediaMonths(pass: Pass, opts?: { familyId?: string; childId?: string; reps?: number; kind?: MediaKind; groupId?: string }): Promise<MediaMonth[]>;
   /** 크게 보기 한마디 목록(최근 것부터, 볼 수 있는 사진만, 승인된 가족·엄빠 것) */
   mediaComments(pass: Pass, mediaId: string): Promise<MediaComment[]>;
   /** 가족 기기가 본 사진 남기기(볼 수 있는 사진만, 승인된 구성원만, 한 번에 50장). 엄빠 계정은 아무것도 안 남음 */

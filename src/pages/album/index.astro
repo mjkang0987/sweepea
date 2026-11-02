@@ -49,9 +49,12 @@ const total = page.total ?? total0;
 const { items } = page;
 const sep = albumHref(q).includes('?') ? '&' : '?';
 // 월별(달 카드)은 다음 쪽이 없다
-const nextHref = page.next && !(q.v === 'list' && (q.z === 'm' || q.z === 'y')) ? `${albumHref(q)}${sep}before=${encodeURIComponent(page.next)}` : null;
+// 주변만 그린 쪽(위에 더 최근 사진이 있음)과 그 뒤로 이어지는 쪽(nb=1)은 맨 위 '방금 올라왔어요' 묶음 없이 제자리에(132: 묶음이 쪽 가운데 끼면 넘겨 보기 번호·앞에 붙이는 순서가 꼬임, 엄빠 앨범과 같게)
+const noBand = Astro.url.searchParams.get('nb') === '1' || (!cont && !!page.prev);
+const nbq = noBand ? 'nb=1&' : '';
+const nextHref = page.next && !(q.v === 'list' && (q.z === 'm' || q.z === 'y')) ? `${albumHref(q)}${sep}${nbq}before=${encodeURIComponent(page.next)}` : null;
 // 앞으로 이어 붙일 쪽(129): 주변만 그린 쪽이면 맨 위(넘겨 보기는 맨 앞)에 '최근 사진 더 보기'
-const prevHref = page.prev && !(q.v === 'list' && (q.z === 'm' || q.z === 'y')) ? `${albumHref(q)}${sep}after=${encodeURIComponent(page.prev)}` : null;
+const prevHref = page.prev && !(q.v === 'list' && (q.z === 'm' || q.z === 'y')) ? `${albumHref(q)}${sep}${nbq}after=${encodeURIComponent(page.prev)}` : null;
 // 넘겨 보기 반응·한마디 뒤 돌아올 곳: 그 카드까지 그리게 to=, 가운데로 #p-
 const backTo = (id: string) => `${here}${sep}to=${id}#p-${id}`;
 // 한마디 결과는 보낸 카드에만(sm=사진 id)
@@ -68,7 +71,7 @@ const candidates = monthView ? [] : [...new Map([...(recent200 ?? []), ...items]
 const unseenIds = new Set(candidates.length ? await getBackend().unseenMedia(pass, candidates.map((m) => m.id)).catch(() => []) : []);
 const nowMs = Date.now();
 const unseen = (m: { id: string }) => unseenIds.has(m.id);
-const isTop = (m: { id: string; created_at?: string | null }) => unseen(m) && !!m.created_at && nowMs - Date.parse(m.created_at) < 3 * 3600 * 1000;
+const isTop = (m: { id: string; created_at?: string | null }) => !noBand && unseen(m) && !!m.created_at && nowMs - Date.parse(m.created_at) < 3 * 3600 * 1000;
 const topItems = cont || monthView ? [] : (recent200 ?? items).filter(isTop);
 const shown = [...topItems, ...items.filter((m) => !isTop(m))];
 const reacts = monthView ? new Map() : await loadReacts(pass, shown.map((m) => m.id));
@@ -77,7 +80,8 @@ const many = open.length > 1;
 const kidTitle = q.f ? kids.get(q.f)! : [...kids.values()].join('·');
 const title = `${kidTitle} ${q.t === 'video' ? '영상' : '사진'}`;
 // 가장 최근 사진 날짜(이어지는 쪽·아래부터 그린 쪽은 첫 사진이 최근 것이 아니라 뺀다)
-const latest = items[0] && page.offset === 0 ? dayLabel(items[0].taken_at) : null;
+// 맨 위 쪽일 때만(주변만 그린 쪽은 위에 더 최근 사진이 있어 offset이 0이어도 아님, 132)
+const latest = items[0] && page.offset === 0 && !page.prev && !cont ? dayLabel(items[0].taken_at) : null;
 const showTag = many && !q.f;
 // 내 캐릭터(110)는 집마다 따로라, 여러 집을 섞어 보는 '모두'에선 숨김(어느 집 것인지 들어올 때마다 바뀔 수 있어서, 리뷰 2회차). 집을 고르면 그 집 것
 const meFam = q.f ? open.find((f) => f.family_id === q.f) : open.length === 1 ? open[0] : undefined;
@@ -161,7 +165,7 @@ const fewer = zi < ZOOMS.length - 1 ? albumHref({ ...q, z: ZOOMS[zi + 1] }) : nu
 const more = zi > 0 ? albumHref({ ...q, z: ZOOMS[zi - 1] }) : null;
 // 월별·연별(98a·98c, 시안 GrandList): 월별 = 큰 1장 + 2장, 연별 = 큰 1장 + 4장, 날짜는 사진 위. 누르면 그 달(해는 가장 최근 달)부터 3칸.
 // 이 단계의 본문이라 실패하면 안내 글
-const monthRows = monthView && items.length ? await getBackend().mediaMonths(pass, { familyId: q.f, reps: 5 }).catch(() => null) : null;
+const monthRows = monthView && items.length ? await getBackend().mediaMonths(pass, { familyId: q.f, kind: q.t, reps: 5 }).catch(() => null) : null;
 const thisYear = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric' }).format(new Date());
 const cardHref = (ym: string) => `${albumHref({ ...q, z: 3 })}&at=${ym}#m-${ym}`;
 const monthCards = !monthRows
@@ -253,14 +257,12 @@ const monthCards = !monthRows
     <a class="sp-a__tab" href={albumHref({ ...q, v: 'swipe' })} aria-current={q.v === 'swipe' ? 'page' : undefined}>넘겨 보기</a>
     <a class="sp-a__tab" href={albumHref({ ...q, v: 'list' })} aria-current={q.v === 'list' ? 'page' : undefined}>모아 보기</a>
   </nav>
-  {/* 사진·영상 거르기(117c): 달·해 카드 단계에선 숨김 */}
-  {!monthView && (
-    <nav class="sp-a__tabs" aria-label="사진 종류">
-      <a class="sp-a__tab" href={albumHref({ ...q, t: undefined })} aria-current={!q.t ? 'page' : undefined}>전체</a>
-      <a class="sp-a__tab" href={albumHref({ ...q, t: 'photo' })} aria-current={q.t === 'photo' ? 'page' : undefined}>사진</a>
-      <a class="sp-a__tab" href={albumHref({ ...q, t: 'video' })} aria-current={q.t === 'video' ? 'page' : undefined}>영상</a>
-    </nav>
-  )}
+  {/* 사진·영상 거르기(117c). 달·해 카드도 같은 거르기를 따라(132) 카드 단계에서도 보임 */}
+  <nav class="sp-a__tabs" aria-label="사진 종류">
+    <a class="sp-a__tab" href={albumHref({ ...q, t: undefined })} aria-current={!q.t ? 'page' : undefined}>전체</a>
+    <a class="sp-a__tab" href={albumHref({ ...q, t: 'photo' })} aria-current={q.t === 'photo' ? 'page' : undefined}>사진</a>
+    <a class="sp-a__tab" href={albumHref({ ...q, t: 'video' })} aria-current={q.t === 'video' ? 'page' : undefined}>영상</a>
+  </nav>
 
   {
     items.length === 0 && cont ? null : items.length === 0 ? (

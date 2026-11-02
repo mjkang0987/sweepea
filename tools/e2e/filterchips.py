@@ -54,6 +54,18 @@ with sync_playwright() as p:
     pg.get_by_role('navigation',name='거르기').get_by_role('link',name='전체').click(); pg.wait_for_load_state()
     check(all(x not in pg.url for x in ('k=','t=','g=')) and pg.locator('.sp-p__cell').count()==3,'전체는 다 풂')
     pg.goto(B+'/home?g=nope&v=list&z=3'); check(pg.locator('.sp-p__cell').count()==3,'모르는 그룹이면 전체')
+    # 132: 달 카드도 거르기를 따름(친가 2장), 카드 보기에도 그룹 알약 보임
+    pg.goto(B+'/home?v=list&z=m')
+    pg.get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
+    n=sum(int(''.join(ch for ch in t if ch.isdigit()) or 0) for t in pg.locator('.sp-p__mcard-count').all_inner_texts())
+    check(n==2 and pg.get_by_role('link',name='친가에 보이는 사진').get_attribute('aria-current')=='true','월별 카드도 친가만 2장, 알약에 친가 고름 표시 '+str(n))
+    pg.goto(B+'/home?v=list&z=m&t=photo'); n=sum(int(''.join(ch for ch in t if ch.isdigit()) or 0) for t in pg.locator('.sp-p__mcard-count').all_inner_texts())
+    check(n==3 and '불러오지' not in pg.content(),'월별 사진만 3장 '+str(n))
+    # 132: 그 자리에서 크기를 바꾸면 알약·'선택' 링크도 새 칸 단계로(예전엔 옛 z로 데려감)
+    pg.goto(B+'/home?v=list&z=3'); pg.get_by_role('link',name='작게(한 줄에 더 많이)').click(); pg.wait_for_function("location.search.includes('z=5')")
+    pg.wait_for_timeout(500)
+    hrefs=[pg.get_by_role('link',name='친가에 보이는 사진').get_attribute('href'), pg.get_by_role('link',name='선택').get_attribute('href')]
+    check(all('z=5' in h for h in hrefs),'크기 바꾼 뒤 알약·선택 링크도 5칸 '+str(hrefs))
     # 넘겨 보기도 같은 거르기, 보기는 그대로
     pg.goto(B+'/home?v=swipe'); pg.get_by_role('navigation',name='거르기').get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
     check('v=swipe' in pg.url and pg.locator('.sp-a__slide').count()==2,'넘겨 보기에서 그룹 거르기 2장')
@@ -65,6 +77,10 @@ with sync_playwright() as p:
     pg.get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
     vis=pg.evaluate("(()=>{const l=document.querySelector('.sp-p__chips-list').getBoundingClientRect(),c=document.querySelector('.sp-p__chip[aria-current]').getBoundingClientRect();return c.right<=l.right&&c.left>=l.left})()")
     check(vis,'고른 알약이 줄 밖이면 보이게 밀어 둠')
+    # 132(3회차): 그 자리에서 크기를 바꿔 알약 줄을 새로 받아도 고른 알약이 보임
+    pg.get_by_role('link',name='작게(한 줄에 더 많이)').click(); pg.wait_for_function("location.search.includes('z=5')"); pg.wait_for_timeout(600)
+    vis=pg.evaluate("(()=>{const l=document.querySelector('.sp-p__chips-list').getBoundingClientRect(),c=document.querySelector('.sp-p__chip[aria-current]').getBoundingClientRect();return c.right<=l.right&&c.left>=l.left})()")
+    check(vis,'크기 바꾼 뒤에도 고른 알약이 보임')
     pg.set_viewport_size({'width':390,'height':844}); pg.goto(B+'/home?v=list&z=3'); pg.screenshot(path='/home/user/sweepea/tools/shots/filterchips.png')
     b.close()
 print('ALL OK')

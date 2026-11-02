@@ -63,9 +63,10 @@ export function zoomInPlace({ button, cell, head, also }: Opts) {
 
       const apply = async () => {
         now.replaceWith(document.importNode(next, true));
+        // 같은 이름 덩어리가 여럿이면(가족 위 탭 두 줄) 차례대로 모두 바꾼다(132: 예전엔 첫 줄만 바뀌어 둘째 줄 링크가 옛 단계로 데려감)
         for (const sel of also) {
-          const old = document.querySelector(sel), nw = doc.querySelector(sel);
-          if (old && nw) old.replaceWith(document.importNode(nw, true));
+          const olds = document.querySelectorAll(sel), nws = doc.querySelectorAll(sel);
+          olds.forEach((old, i) => nws[i] && old.replaceWith(document.importNode(nws[i], true)));
         }
         history.replaceState(history.state, '', href);
         const same = anchor && document.getElementById(anchor.id);
