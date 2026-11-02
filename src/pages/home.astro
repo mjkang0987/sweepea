@@ -73,6 +73,10 @@ const newP = fp?.parents.find((p) => !p.me && meP && Date.parse(p.since) > Date.
 const coparent = newP && Date.parse(newP.since) > (seenAt(Astro.cookies, COPARENT_SEEN) ?? 0) ? { who: newP.role === 'dad' ? '아빠' : '엄마', since: newP.since } : null;
 // 월별·연별 카드(옆 기능이 아니라 이 단계의 본문이라 실패하면 안내 글)
 const cardView = !swipe && (z === 'm' || z === 'y');
+// 여러 장 고르기(126, 사용자 "사진 수정하기 멀티로"): ?sel=1이면 칸마다 체크 칸, 아래 막대 'N장 · 지우기 · 수정'(스크립트 없어도 폼 GET /photos/edit). 칸 보기에서만
+const sel = Astro.url.searchParams.get('sel') === '1' && !swipe && !cardView;
+const SEL_MAX = 60;
+const Cell = sel ? 'label' : 'a';
 const monthCards = cardView && page.items.length ? await b.mediaMonths(a.pass, { childId: picked?.id, reps: 5 }).catch(() => null) : null;
 const { items } = page;
 // 새 사진(117e, 사용자 2026-11-01): 상대 엄빠·가족이 올렸고 내가 아직 안 본 사진(서버, 사람마다. 본 것 = 크게 보기). 들어오기 전·내가 올린 사진은 아님.
@@ -86,7 +90,7 @@ const topItems = cont || cardView ? [] : (recent200 ?? items).filter(isTop);
 const shown = [...topItems, ...items.filter((m) => !isTop(m))];
 const kq = `${picked ? `k=${encodeURIComponent(picked.id)}&` : ''}${tq}${gq}`;
 // 거르기 알약 줄(123, 디자인 ParentHomeZoom3): 아이·사진/영상·그룹. 누른 걸 다시 누르면 그 거르기만 풀림, '전체'는 다 풂. 보기(넘겨/칸)는 그대로
-const viewQ0 = swipe ? 'v=swipe' : `v=list&z=${z}`;
+const viewQ0 = swipe ? 'v=swipe' : `v=list&z=${z}${sel ? '&sel=1' : ''}`;
 const filterHref = (f: { k?: string; t?: string; g?: string }) =>
   `/home?${f.k ? `k=${encodeURIComponent(f.k)}&` : ''}${f.t ? `t=${f.t}&` : ''}${f.g ? `g=${encodeURIComponent(f.g)}&` : ''}${viewQ0}`;
 const cur = { k: picked?.id, t: kind, g: group?.id };
@@ -94,7 +98,7 @@ const cur = { k: picked?.id, t: kind, g: group?.id };
 const filterGroups = !cardView && (admin?.groups.length ?? 0) > 1 ? admin!.groups : [];
 // 월별·연별은 카드라 다음 쪽이 없다
 // 보기도 주소에 적는다(받은 쪽이 같은 보기로 그려지게)
-const nextHref = page.next && !cardView ? `/home?${kq}${swipe ? 'v=swipe' : `v=list&z=${z}`}&before=${encodeURIComponent(page.next)}` : null;
+const nextHref = page.next && !cardView ? `/home?${kq}${swipe ? 'v=swipe' : `v=list&z=${z}`}${sel ? '&sel=1' : ''}&before=${encodeURIComponent(page.next)}` : null;
 // 보기(v=list)도 주소에: 다른 창에서 넘겨 보기를 골라 쿠키가 바뀌어도 칸 단계로 그려지게(리뷰 2026-10-31)
 const zoomHref = (to: Zoom) => `/home?${kq}v=list&z=${to}`;
 const zi = ZOOMS.indexOf(z);
@@ -246,7 +250,7 @@ if (z !== 3 && z !== 5)
   }
 ---
 
-<Parent title="앨범 · 스위피" tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0} wide={!swipe}>
+<Parent title={sel ? '사진 고르기 · 스위피' : '앨범 · 스위피'} tab={sel ? undefined : 'home'} savebar={sel} alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0} wide={!swipe}>
   {/* 위에 붙는 머리(디자인 ParentHomeBleed, 아이폰 사진 앱처럼 사진이 밑으로 흐리게 지나감). 아이를 고르면 수는 가족 전체라 숨김 */}
   <header class="sp-p__albumhead">
     <h1 class="sp-p__title sp-p__title--large">앨범</h1>
@@ -339,6 +343,12 @@ if (z !== 3 && z !== 5)
     )
   }
   {Astro.url.searchParams.get('done') === 'deleted' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !coparent && !birthday && !storage}>지웠어요.</p>}
+  {/* 여러 장 고치기(126) 저장 뒤: 바뀐 장 수(0이면 바뀐 게 없음) */}
+  {Astro.url.searchParams.get('done') === 'saved' && (
+    <p class="sp-p__toast" tabindex="-1" autofocus={!join && !coparent && !birthday && !storage}>
+      {/^[1-9]\d{0,2}$/.test(Astro.url.searchParams.get('n') ?? '') ? `사진 ${Astro.url.searchParams.get('n')}장을 저장했어요.` : '바뀐 것이 없어요.'}
+    </p>
+  )}
   {Astro.url.searchParams.get('joined') === '1' && <p class="sp-p__toast" tabindex="-1" autofocus={!join && !coparent && !birthday && !storage}>이제 {callName(a.home.children?.[0]?.name ?? '아이')} 앨범을 함께 관리해요.</p>}
   {
     s && s.waiting > 0 && (
@@ -359,10 +369,21 @@ if (z !== 3 && z !== 5)
   {/* 넘겨 보기·모아 보기(98d, 디자인 ParentHomeSwipe). 사진이 하나도 없으면 첫 사진 안내만 */}
   {
     (a.home.photo_count ?? 0) + (a.home.video_count ?? 0) > 0 && (
-      <nav class="sp-p__seg" aria-label="보기 방식">
-        <a class="sp-p__seg-item" href={`/home?${kq}v=swipe`} aria-current={swipe ? 'page' : undefined}>넘겨 보기</a>
-        <a class="sp-p__seg-item" href={`/home?${kq}v=list`} aria-current={swipe ? undefined : 'page'}>모아 보기</a>
-      </nav>
+      sel ? (
+        <div class="sp-p__selhead">
+          <p class="sp-p__selhead-text" id="sel-help">고칠 사진을 눌러 고르세요. {SEL_MAX}장까지 고를 수 있어요.</p>
+          <a class="sp-p__selhead-cancel" href={`/home?${kq}v=list&z=${z}`}>취소</a>
+        </div>
+      ) : (
+        <div class="sp-p__viewrow">
+          <nav class="sp-p__seg" aria-label="보기 방식">
+            <a class="sp-p__seg-item" href={`/home?${kq}v=swipe`} aria-current={swipe ? 'page' : undefined}>넘겨 보기</a>
+            <a class="sp-p__seg-item" href={`/home?${kq}v=list`} aria-current={swipe ? undefined : 'page'}>모아 보기</a>
+          </nav>
+          {/* 여러 장 고르기(126, 디자인 ParentHomeSelect): 칸 보기에서만 */}
+          {!swipe && !cardView && items.length > 0 && <a class="sp-p__select" href={`/home?${kq}v=list&z=${z}&sel=1`}>선택</a>}
+        </div>
+      )
     )
   }
   {
@@ -468,7 +489,8 @@ if (z !== 3 && z !== 5)
             {g.list.map((c) => (
               <li class="sp-p__cell" id={`c-${c.id}`} style={c.at2} data-ratio={c.ratio} data-d={c.d} data-mark={c.mark ?? undefined}>
                 {c.anchor && <span class="sp-p__anchor" id={`m-${c.anchor}`} aria-hidden="true" />}
-                <a class="sp-p__cell-link" href={`/view/${c.id}?${kq}z=${z}`}>
+                <Cell class:list={['sp-p__cell-link', sel && 'sp-p__cell-pick']} href={sel ? undefined : `/view/${c.id}?${kq}z=${z}`}>
+                  {sel && <input class="sp-p__pick" type="checkbox" name="id" value={c.id} form="sel-form" aria-describedby="sel-help" />}
                   <img
                     class="sp-p__cell-img"
                     src={c.src}
@@ -496,7 +518,7 @@ if (z !== 3 && z !== 5)
                       {c.mark && <span class="sp-p__new sp-p__cell-mark">{c.mark.replace(/ 돌/g, '\u00a0돌')}</span>}
                     </span>
                   )}
-                </a>
+                </Cell>
               </li>
             ))}
           </ul>
@@ -518,7 +540,20 @@ if (z !== 3 && z !== 5)
   )}
   </div>
   {/* 사진 크기(디자인 ParentHomeZoom): 오른쪽 아래 떠 있는 유리 −/+. 키보드 순서도 사진 목록 뒤(화면 자리와 맞게) */}
-  {items.length > 0 && !swipe && (
+  {
+    sel && (
+      <form class="sp-p__savebar sp-p__selbar" id="sel-form" method="get" action="/photos/edit">
+        {picked && <input type="hidden" name="k" value={picked.id} />}
+        {kind && <input type="hidden" name="t" value={kind} />}
+        {group && <input type="hidden" name="g" value={group.id} />}
+        <input type="hidden" name="z" value={String(z)} />
+        <p class="sp-p__selbar-n" id="sel-n" role="status">사진을 골라 주세요</p>
+        <button class="sp-p__btn sp-p__btn--text sp-p__btn--danger-text sp-p__selbar-btn" type="submit" name="do" value="delete">지우기</button>
+        <button class="sp-p__btn sp-p__selbar-btn" type="submit" name="do" value="edit">수정</button>
+      </form>
+    )
+  }
+  {items.length > 0 && !swipe && !sel && (
     <nav class="sp-p__zoom" aria-label="사진 크기">
       {/* 끝 단계는 꺼진 링크(화면 읽기에도 '사용 불가'로 들리게) */}
       <a class="sp-p__zoom-btn" href={smaller ?? undefined} role="link" aria-disabled={smaller ? undefined : 'true'} aria-label={z === 5 ? '작게(달마다 대표 사진)' : z === 'm' ? '작게(해마다 대표 사진)' : z === 'y' ? '작게' : '작게(한 줄에 더 많이)'}>−</a>
@@ -531,6 +566,32 @@ if (z !== 3 && z !== 5)
   import { autoMore, closeReturn, keepSpot, relayout, swipeMore } from '../lib/more';
   closeReturn();
   import { zoomInPlace } from '../lib/zoomswap';
+
+  // 여러 장 고르기(126): 고른 수를 막대에 적고, 없으면 버튼을 끄고, 60장 넘게는 못 고르게. 이어 붙인 칸도(위임)
+  const selForm = document.getElementById('sel-form') as HTMLFormElement | null;
+  const selN = document.getElementById('sel-n');
+  if (selForm && selN) {
+    const MAX = 60;
+    const btns = selForm.querySelectorAll<HTMLButtonElement>('button[name="do"]');
+    const sync = () => {
+      const n = document.querySelectorAll('.sp-p__pick:checked').length;
+      selN.textContent = n ? `${n}장 고름` : '사진을 골라 주세요';
+      btns.forEach((b) => (b.disabled = n === 0));
+    };
+    document.addEventListener('change', (e) => {
+      const box = e.target as HTMLInputElement;
+      if (!box.classList?.contains('sp-p__pick')) return;
+      if (box.checked && document.querySelectorAll('.sp-p__pick:checked').length > MAX) {
+        box.checked = false;
+        selN.textContent = `${MAX}장까지 고를 수 있어요`;
+        return;
+      }
+      sync();
+    });
+    // 뒤로 가기로 돌아와 체크가 남아 있어도 숫자가 맞게
+    addEventListener('pageshow', sync);
+    sync();
+  }
 
   // 거르기 알약 줄(123): 고른 알약이 줄 밖(오른쪽)이면 줄만 옆으로 밀어 보이게
   const chipRow = document.querySelector<HTMLElement>('.sp-p__chips-list');
