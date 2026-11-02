@@ -109,6 +109,7 @@ with sync_playwright() as p:
     check(gp.locator('.sp-a__slide').count()==60 and '/ 130' in gp.locator('.sp-a__pos').first.inner_text(),'넘겨 보기 60장, n / 130')
     gp.evaluate("(()=>{const s=document.querySelector('.sp-a__swipe');s.scrollLeft=s.scrollWidth})()")
     gp.wait_for_function("document.querySelectorAll('.sp-a__slide').length===120",timeout=20000)
+    sids=gp.eval_on_selector_all('.sp-a__slide','e=>e.map(x=>x.id.slice(2))')  # 129: 하트 뒤(to=)엔 주변만 그려서 미리 적어 둠
     check(gp.locator('.sp-a__slide').nth(60).locator('.sp-a__pos-n').inner_text()=='61','붙은 카드 번호가 이어짐(61)')
     check('/ 130' in gp.locator('.sp-a__slide').nth(60).locator('.sp-a__pos').inner_text(),'붙은 카드도 / 130(이어지는 쪽 전체 수)')
     # 붙은 카드(70번째)에서 하트를 보내도 그 카드로 돌아옴(스크립트 없는 폼 → to=)
@@ -117,7 +118,7 @@ with sync_playwright() as p:
     s70.locator('.sp-a__slide-react button[value="heart:on"]').first.click(); gp.wait_for_url('**to=**'); gp.wait_for_timeout(600)
     check(gp.evaluate(f"(()=>{{const s=document.querySelector('.sp-a__swipe'),e=document.getElementById('{sid70}');if(!e)return false;const a=s.getBoundingClientRect(),r=e.getBoundingClientRect();return r.left<a.right&&r.right>a.left}})()"),'붙은 카드에서 하트 보내도 그 카드로')
     # 넘겨 보기에서 크게 보기 → 닫으면 그 카드
-    sid=gp.locator('.sp-a__slide').nth(90).get_attribute('id')[2:]
+    sid=sids[90]
     gp.goto(B+'/album/'+sid); gp.get_by_role('link',name='닫기').first.click(); gp.wait_for_url('**/album**'); gp.wait_for_timeout(600)
     check(gp.evaluate(f"(()=>{{const s=document.querySelector('.sp-a__swipe'),e=document.getElementById('p-{sid}');if(!e)return false;const a=s.getBoundingClientRect(),r=e.getBoundingClientRect();return r.left<a.right&&r.right>a.left}})()"),'넘겨 보기에서 닫으면 그 카드가 보임')
     gc.close()
