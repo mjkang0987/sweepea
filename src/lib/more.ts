@@ -126,6 +126,41 @@ export function keepSpot(cellLink: string) {
 }
 
 const CLOSE = 'sp-close';
+const SEEN = 'sp-seen';
+
+/** 크게 보기에서 '봤음'을 남긴 사진(사용자 2026-11-02 "신규 사진 확인하고 닫기 누르면 신규 배지 안 없어짐").
+ * 닫기(뒤로 가기)로 돌아온 앨범을 사파리가 메모리에서 그대로 꺼내면(bfcache) 서버는 봤음을 알아도 화면엔 배지가 남아서, 앨범이 이 목록으로 빼 준다 */
+export function noteSeen(id: string) {
+  try {
+    const s: string[] = JSON.parse(sessionStorage.getItem(SEEN) ?? '[]');
+    if (!s.includes(id)) sessionStorage.setItem(SEEN, JSON.stringify([...s, id].slice(-200)));
+  } catch {
+    // 못 적으면 다음에 앨범을 새로 받을 때 빠진다
+  }
+}
+
+/** 본 사진 칸의 '신규' 알약과 읽어 주는 글의 '신규, '를 뺀다(기념일 알약은 그대로) */
+function dropSeen() {
+  let seen: string[] = [];
+  try {
+    seen = JSON.parse(sessionStorage.getItem(SEEN) ?? '[]');
+    sessionStorage.removeItem(SEEN);
+  } catch {
+    return;
+  }
+  for (const id of seen) {
+    const el = document.getElementById(`c-${id}`) ?? document.getElementById(`p-${id}`);
+    if (!el) continue;
+    el.querySelectorAll('.sp-a__new:not(.sp-a__new--event), .sp-p__new:not(.sp-p__cell-mark)').forEach((x) => x.remove());
+    el.querySelectorAll('.sp-a__pills, .sp-p__pills').forEach((x) => x.childElementCount || x.remove());
+    el.querySelectorAll('[aria-label^="신규, "], [alt^="신규, "]').forEach((x) => {
+      for (const at of ['aria-label', 'alt']) {
+        const t = x.getAttribute(at);
+        if (t?.startsWith('신규, ')) x.setAttribute(at, t.slice('신규, '.length));
+      }
+    });
+  }
+}
 /** 크게 보기 '닫기'가 뒤로 가기로 돌아왔을 때(사용자 2026-11-01 "닫기 속도"): 브라우저가 들고 있던 앨범을 그대로 보여 주고
  * 마지막에 본 사진 칸(모아 보기 #c-, 넘겨 보기 #p-·#c-)으로 옮긴다. 그 칸이 이 앨범에 없으면 그 칸까지 그린 앨범(닫기 주소)을 새로 연다 */
 export function closeReturn() {
@@ -140,6 +175,7 @@ export function closeReturn() {
     }
   });
   addEventListener('pageshow', () => {
+    dropSeen();
     let c: { id?: string; href?: string } | null = null;
     try {
       c = JSON.parse(sessionStorage.getItem(CLOSE) ?? 'null');
