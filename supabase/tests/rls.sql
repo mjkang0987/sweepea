@@ -630,10 +630,17 @@ set role authenticated;
 select pg_temp.ok((select reps -> 0 ->> 'id' = :'m3' and n = :all3 and jsonb_array_length(reps) <= 3 from public.sp_media_months() where ym = :'ym3'), '엄빠 월별: 반응 많은 사진이 대표 1번, 달 사진 수 전부');
 select pg_temp.ok((select jsonb_array_length(reps) = 1 from public.sp_media_months(null, null, 1) where ym = :'ym3'), '대표 장 수 지정');
 reset role;
+select count(*) as gma3 from public.media x where status = 'ready' and exists (select 1 from public.media_groups g where g.media_id = x.id and g.group_id = :'gma') \gset
+set role authenticated;
+select pg_temp.ok((select coalesce(sum(n), 0) from public.sp_media_months_f(null, null, 3, null, :'gma')) = :gma3 and :gma3 > 0, '엄빠 그룹(외가)만 달 카드 수');
+reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'GM', 'is_anonymous', true)::text, false);
 set role authenticated;
 select pg_temp.ok(coalesce((select sum(n) from public.sp_media_months()), 0) = (select count(*) from public.media where status = 'ready'), '가족 월별 수 = 볼 수 있는 사진 수');
 select pg_temp.ok(not exists (select 1 from public.sp_media_months(), jsonb_array_elements(reps) e where e ->> 'id' = :'m2'), '안 보이는 사진은 대표에 없음');
+-- 거르기 달 카드(20261102000001): 조건 없으면 sp_media_months와 같고, 영상만·그룹만이면 그 사진만 셈
+select pg_temp.ok((select coalesce(sum(n), 0) from public.sp_media_months_f()) = (select coalesce(sum(n), 0) from public.sp_media_months()), '거르기 없는 달 카드 = 기존 달 카드');
+select pg_temp.ok((select coalesce(sum(n), 0) from public.sp_media_months_f(null, null, 3, 'video')) = (select count(*) from public.media where status = 'ready' and kind = 'video'), '영상만 달 카드 수');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
 set role authenticated;
