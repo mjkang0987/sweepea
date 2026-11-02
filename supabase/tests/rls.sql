@@ -211,6 +211,9 @@ select pg_temp.ok((select count(*) = 4 from public.media), '올리기 권한이�
 select public.sp_create_media(:'fam', 'photo', now(), 'exif', null, null, null, array[:'gpa']::uuid[]) as m6 \gset
 reset role;
 select pg_temp.ok((select uploaded_by_member = :'m_sp' and uploaded_by_parent is null from public.media where id = :'m6'), '가족 기기가 올리면 올린 사람은 그 구성원');
+-- 변경 기록(20261101000004): 가족 기기가 올리면 누가 = 그 구성원, 처음 그룹 그대로
+select pg_temp.ok((select count(*) = 1 from public.media_changes where media_id = :'m6' and kind = 'create' and by_member = :'m_sp' and by_parent is null and group_ids = array[:'gpa']::uuid[]), '올리면 변경 기록 한 줄(가족 구성원)');
+select pg_temp.ok(not has_table_privilege('authenticated', 'public.media_changes', 'select'), '변경 기록 표는 직접 못 읽음');
 -- 엄빠 안 본 사진(20261101000002): 가족이 올린 사진은 엄빠에게 새 사진, 보고 나면 빠짐(잠깐 다 올라간 것으로)
 update public.media set status = 'ready' where id = :'m6';
 select set_config('request.jwt.claims', json_build_object('sub', :'P', 'is_anonymous', false)::text, false);
@@ -944,6 +947,12 @@ select public.sp_update_media(:'mg', '2026-01-02T03:04:05+09', array[:'kid1']::u
 select pg_temp.ok((select taken_at = '2026-01-02T03:04:05+09' and taken_at_source = 'manual' from public.media where id = :'mg'), '찍은 날 고치기');
 select pg_temp.ok((select array_agg(group_id) = array[:'g_other']::uuid[] from public.media_groups where media_id = :'mg'), '보여줄 그룹 바꾸기');
 select pg_temp.ok((select array_agg(child_id) = array[:'kid1']::uuid[] from public.media_children where media_id = :'mg'), '아이 태그');
+-- 변경 기록: 고친 한 줄(전·후) + 올린 한 줄, 최근 것부터. 안 바뀐 저장은 안 남김
+select public.sp_update_media(:'mg', '2026-01-02T03:04:05+09', array[:'kid1']::uuid[], array[:'g_other', :'g_other']::uuid[]);
+select pg_temp.ok((select array_agg(kind order by at desc) = array['update', 'create'] from public.sp_media_changes(:'mg')), '변경 기록 2줄(고침·올림), 같은 값 저장은 안 남김');
+select pg_temp.ok((select who = '엄마' and groups = array['그룹1'] and old_groups = array['우리집'] and cardinality(children) = 1 and old_children = '{}'
+  and taken_at = '2026-01-02T03:04:05+09' and old_taken_at is not null from public.sp_media_changes(:'mg') where kind = 'update'), '고친 기록: 누가·그룹·아이·찍은 날 전후');
+select pg_temp.ok((select who = '엄마' and groups = array['우리집'] and old_groups is null from public.sp_media_changes(:'mg') where kind = 'create'), '올린 기록: 처음 그룹');
 \set ON_ERROR_STOP 0
 \echo '아래 에러 2줄은 의도된 거부(그룹 없이 저장, 남의 가족방 그룹)'
 select public.sp_update_media(:'mg', now(), '{}', '{}');
@@ -957,6 +966,7 @@ set role authenticated;
 select public.sp_update_media(:'mg', now(), '{}', array[:'g_other']::uuid[]);
 select public.sp_delete_media(:'mg');
 \set ON_ERROR_STOP 1
+select pg_temp.ok(not exists (select 1 from public.sp_media_changes(:'mg')), '다른 가족방 엄빠는 변경 기록 못 봄');
 reset role;
 -- 탈퇴 유예 중엔 부모도 고치기·지우기 못 함
 update public.families set delete_after = now() + interval '3 days' where id = :'fam3';

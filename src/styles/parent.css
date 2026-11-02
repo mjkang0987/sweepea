@@ -1459,6 +1459,86 @@
   }
 }
 
+/* 거르기 알약 한 줄(123, 디자인 ParentHomeZoom3): 아이·사진/영상·그룹, 많아지면 옆으로 밀림. 고른 것은 진한 틸 */
+.sp-p__chips {
+  min-width: 0;
+}
+.sp-p__chips-list {
+  /* 초점 테두리(밖 2px + 2px)가 옆으로 밀리는 칸에 잘리지 않게 안쪽 여백만큼 바깥으로 */
+  margin: -4px;
+  padding: 4px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sp-p__chips-list::-webkit-scrollbar {
+  display: none;
+}
+/* 폰: 줄을 화면 끝까지 넓혀 밀리는 알약이 본문 여백에서 잘려 보이지 않게(첫 알약은 본문 줄에 맞춤) */
+@media (max-width: 32rem) {
+  .sp-p__chips {
+    margin-block: -0.25rem;
+    margin-inline: calc(-1 * var(--space-5));
+  }
+  .sp-p__chips-list {
+    margin-inline: 0;
+    padding-inline: var(--space-5);
+    scroll-padding-inline: var(--space-5);
+  }
+}
+.sp-p__chips-item {
+  flex: none;
+}
+.sp-p__chips-sep {
+  flex: none;
+  width: 1px;
+  height: 1.25rem;
+  margin-inline: var(--space-1);
+  background: var(--separator);
+}
+.sp-p__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--label);
+  font-size: var(--subhead-size);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sp-p__chip[aria-current] {
+  background: var(--pea);
+  color: var(--on-pea);
+  font-weight: 700;
+}
+.sp-p__chip:focus-visible {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+.sp-p__chip-icon {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+@media (forced-colors: active) {
+  .sp-p__chip {
+    border: 1px solid CanvasText;
+  }
+  .sp-p__chip[aria-current] {
+    outline: 2px solid CanvasText;
+  }
+}
+
 /* 켜기·끄기 버튼(폼 POST라 JS 없이 바로 저장). role=switch + aria-checked */
 .sp-p__switch {
   flex: none;
@@ -2614,4 +2694,48 @@
   stroke: currentColor;
   stroke-width: 2;
   stroke-linejoin: round;
+}
+
+/* 사진 변경 내역(123, 디자인 ParentPhoto): 사진 정보 수정 아래, 최근 것부터 */
+.sp-p__hist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-p__hist-title {
+  margin: 0;
+  font-size: var(--subhead-size);
+  font-weight: 700;
+  color: var(--label-2);
+}
+.sp-p__hist-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+.sp-p__hist-item {
+  padding: var(--space-3) var(--space-4);
+}
+.sp-p__hist-item + .sp-p__hist-item {
+  border-top: 1px solid var(--separator);
+}
+.sp-p__hist-head,
+.sp-p__hist-line {
+  margin: 0;
+  font-size: var(--subhead-size);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.sp-p__hist-who {
+  font-weight: 700;
+}
+.sp-p__hist-time,
+.sp-p__hist-line {
+  color: var(--label-2);
+}
+.sp-p__hist-line {
+  margin-top: 2px;
 }

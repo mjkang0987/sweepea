@@ -1,0 +1,56 @@
+# 엄빠 앨범 거르기 알약 줄(123): 아이·사진/영상·그룹, 누른 걸 다시 누르면 풀림, '전체'는 다 풂, 그룹에 보이는 사진만
+from playwright.sync_api import sync_playwright
+B='http://localhost:4321'; D='/home/user/sweepea/tools/e2e/'
+def check(c,msg):
+    if not c: raise SystemExit('FAIL '+msg)
+    print('ok',msg)
+def up(pg,f,kid,groups):
+    pg.goto(B+'/upload'); pg.set_input_files('#up-files',[D+f]); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=30000)
+    pg.locator('label',has_text=kid).locator('input[name=child]').check()
+    for name,on in groups.items():
+        box=pg.locator('input[name=group]').locator('xpath=..').filter(has_text=name).locator('input')
+        box.set_checked(on)
+    pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=30000)
+with sync_playwright() as p:
+    b=p.chromium.launch()
+    pg=b.new_context(viewport={'width':390,'height':844}).new_page()
+    pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
+    pg.fill('#child','하린'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
+    check(pg.get_by_role('navigation',name='거르기').count()==0,'사진 없으면 거르기 없음')
+    pg.goto(B+'/settings/children/new'); pg.fill('#name','도윤'); pg.fill('#birth','2023-03-02'); pg.get_by_role('button',name='추가').click(); pg.wait_for_url('**done=added**')
+    pg.goto(B+'/settings/family/groups/new'); pg.fill('#name','친가'); pg.fill('#pw','5678'); pg.get_by_role('button',name='추가').click(); pg.wait_for_url('**done=added**')
+    up(pg,'u0.jpg','하린',{'가족':True,'친가':False}); up(pg,'u1.jpg','도윤',{'가족':True,'친가':True}); up(pg,'u2.jpg','하린',{'가족':False,'친가':True})
+    pg.goto(B+'/home?v=list&z=3')
+    nav=pg.get_by_role('navigation',name='거르기')
+    names=[x.strip() for x in nav.get_by_role('link').all_inner_texts()]
+    check(names==['전체','하린','도윤','사진','영상','가족','친가'],'알약 순서: 전체·아이·사진/영상·그룹 '+str(names))
+    check(nav.get_by_role('link',name='전체').get_attribute('aria-current')=='true' and pg.locator('.sp-p__cell').count()==3,'처음엔 전체 3장')
+    nav.get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
+    check(pg.locator('.sp-p__cell').count()==2,'친가에 보이는 사진 2장')
+    nav=pg.get_by_role('navigation',name='거르기')
+    check(nav.get_by_role('link',name='친가에 보이는 사진').get_attribute('aria-current')=='true' and nav.get_by_role('link',name='전체').get_attribute('aria-current') is None,'친가 고름 표시')
+    nav.get_by_role('link',name='하린').click(); pg.wait_for_url('**k=**')
+    check('g=' in pg.url and pg.locator('.sp-p__cell').count()==1,'친가 + 하린 = 1장(거르기 겹침)')
+    pg.get_by_role('navigation',name='거르기').get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_load_state()
+    check('g=' not in pg.url and 'k=' in pg.url and pg.locator('.sp-p__cell').count()==2,'다시 누르면 그 거르기만 풀림(하린 2장)')
+    pg.get_by_role('navigation',name='거르기').get_by_role('link',name='가족에 보이는 사진').click(); pg.wait_for_url('**g=**')
+    check(pg.locator('.sp-p__cell').count()==1,'가족 + 하린 = 1장')
+    pg.get_by_role('navigation',name='거르기').get_by_role('link',name='영상').click(); pg.wait_for_url('**t=video**')
+    check('영상은 아직 없어요' in pg.locator('.sp-p__lead').first.inner_text() and '가족에 보이는' in pg.locator('.sp-p__lead').first.inner_text(),'없으면 거르기 그대로 안내')
+    pg.get_by_role('navigation',name='거르기').get_by_role('link',name='전체').click(); pg.wait_for_load_state()
+    check(all(x not in pg.url for x in ('k=','t=','g=')) and pg.locator('.sp-p__cell').count()==3,'전체는 다 풂')
+    pg.goto(B+'/home?g=nope&v=list&z=3'); check(pg.locator('.sp-p__cell').count()==3,'모르는 그룹이면 전체')
+    # 넘겨 보기도 같은 거르기, 보기는 그대로
+    pg.goto(B+'/home?v=swipe'); pg.get_by_role('navigation',name='거르기').get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
+    check('v=swipe' in pg.url and pg.locator('.sp-a__slide').count()==2,'넘겨 보기에서 그룹 거르기 2장')
+    # 좁은 폰: 줄은 옆으로 밀리고 화면은 안 넓어짐
+    pg.set_viewport_size({'width':320,'height':700}); pg.goto(B+'/home?v=list&z=3')
+    sw=pg.evaluate("(()=>{const l=document.querySelector('.sp-p__chips-list');return [l.scrollWidth,l.clientWidth,document.documentElement.scrollWidth]})()")
+    check(sw[0]>sw[1] and sw[2]<=320,'좁으면 알약 줄만 옆으로 밀림 '+str(sw))
+    pg.get_by_role('link',name='친가에 보이는 사진').click(); pg.wait_for_url('**g=**')
+    vis=pg.evaluate("(()=>{const l=document.querySelector('.sp-p__chips-list').getBoundingClientRect(),c=document.querySelector('.sp-p__chip[aria-current]').getBoundingClientRect();return c.right<=l.right&&c.left>=l.left})()")
+    check(vis,'고른 알약이 줄 밖이면 보이게 밀어 둠')
+    pg.set_viewport_size({'width':390,'height':844}); pg.goto(B+'/home?v=list&z=3'); pg.screenshot(path='/home/user/sweepea/tools/shots/filterchips.png')
+    b.close()
+print('ALL OK')
