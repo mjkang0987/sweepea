@@ -16,7 +16,7 @@ with sync_playwright() as p:
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home**',timeout=30000)
     pg.goto(B+'/home?v=list&z=3')
     pg.get_by_role('link',name='선택').click(); pg.wait_for_url('**sel=1**')
-    check(pg.locator('.sp-p__tabs').count()==0 and pg.locator('.sp-p__pick').count()==3,'선택 모드: 칸마다 체크 칸, 탭바 없음')
+    check(pg.locator('.sp-p__tabs').count()==0 and pg.locator('.sp-p__selbox').count()==3,'선택 모드: 칸마다 체크 칸, 탭바 없음')
     check(pg.locator('#sel-n').inner_text()=='사진을 골라 주세요' and pg.get_by_role('button',name='수정').is_disabled(),'안 골랐으면 버튼 꺼짐')
     cells=pg.locator('.sp-p__cell-pick')
     cells.nth(0).click(); cells.nth(1).click()
