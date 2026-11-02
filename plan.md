@@ -1384,6 +1384,16 @@
 - 결과(0.17.0, 캔버스 v208): 단위 검사에서 7세 이상이 1단계로 나오던 버그를 잡음. e2e entry·health·kidtabs·layers 통과, 리뷰 1회(작은 변경: 경계·시간대·CSS 우선순위 이상 없음). 그대로 둔 것: 가족 앨범 제목 옆 아기도 콩이처럼 톡 뜀(기획서 '움직임 있음', 움직임 줄이기면 멈춤), 백일·첫돌 레이어는 콩이(안내 레이어)
 - 다음(110): 가족 캐릭터 고르기(각자 자기 것만, 사용자 "각자만"). DB 칸 필요 → 운영 적용 전 확인
 
+### 134. refactor/cleanup — 코드리뷰 정리 거리(복사 코드·그룹 거르기 왕복) (완료, 0.30.3)
+- 요구(사용자 2026-11-02 "1 > 3 > 4", 3번 = 정리)
+- '봤음' 남기기 fetch(/api/views) 세 곳(크게 보기 미리 받은 화면·넘겨 본 사진, 가족 넘겨 보기 머문 카드)을 한 함수(postViews)로
+- '최근 사진 더 보기'([data-less]) 네 곳(엄빠·가족 × 칸·넘겨 보기)을 작은 컴포넌트(LessLink.astro)로
+- 그룹 거르기(?g=) 때 그룹 목록을 먼저 따로 기다리던 것(엄빠 앨범·크게 보기)을 다른 호출과 같은 차례로: 값 모양만 보고 바로 거르고, 그룹 목록으로 확인해 내 가족방 그룹이 아니면 g를 뺀 주소로 다시
+- 화면·동작은 그대로. 검사: 단위·astro check, e2e filterchips·closefast·prefetch·newbadge·family·parent 등
+- 1회차: 리뷰 이상 없음(가족 넘겨 보기 머문 카드도 이제 noteSeen — 돌아온 앨범 배지 정리에 더 맞음). e2e 14개(filterchips·prefetch·newbadge·family·parent·multiedit·kidtabs·parentzoom·familyzoom·viewbare·views·photo·closefast·loadmore) 통과
+- 2회차: 리뷰에서 찾음 — 그룹을 고른 채 이어지는 쪽(?before·?after)·넘기기 미리 받기(x-sp-slide)에서 그룹 목록을 일시적으로 못 받으면 g 뺀 주소로 돌려보내 받는 스크립트가 거르지 않은 사진을 이어 붙일 수 있음 → 이어지는 쪽·넘기기는 확인하지 않고 g 그대로(DB 권한이 내 가족방만 보장). filterchips·closefast·loadmore·prefetch·pview 통과
+- 3회차: 리뷰 이상 없음, 크게 보기 '모르는 그룹이면 g 빼고' 검사 추가. filterchips(+2)·newbadge·family·views·multiedit, 단위 50, astro check 통과
+
 ### 133. fix/prefetch-auth — 미리 받기 중 로그인 갱신 막기 (완료, 0.30.2)
 - 요구(사용자 2026-11-02 "1 > 3 > 4 진행, 각 번호 마무리 후 코드리뷰+검증+기능리뷰 3회차"): 코드리뷰 4번 '미리 받기가 로그인 표를 갱신하다 버려지면 로그아웃 위험'
 - 조사: 서버는 액세스 토큰이 만료(60초 전)면 요청 처리 중 갱신하고 새 갱신 토큰을 쿠키에 씀(pass.ts currentPass). Supabase는 쓴 갱신 토큰을 다시 쓰면(재사용 간격 밖) 세션을 끊을 수 있음. 실험(헤드리스 크롬, 같은 출처 speculationrules prefetch): 버려진 미리 받기 응답의 Set-Cookie도 저장됨 → 크롬에선 위험 낮음. 다른 크롬 계열·이후 버전은 모름

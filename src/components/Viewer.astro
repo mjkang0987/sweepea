@@ -211,7 +211,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
 <script>
   // 크게 보기 전용(가족 화면 중 유일한 스크립트). 영상 재생 막대·소리, 옆으로 밀어 넘기기
   import { wireSave } from '../lib/savephoto';
-  import { noteSeen } from '../lib/more';
+  import { noteSeen, postViews } from '../lib/more';
   // 저장: 휴대폰은 공유 창으로 사진 앱 앨범에(사용자 "다운로드로 가는데 앨범으로")
   wireSave('.sp-v__link[download]');
   const v = document.querySelector<HTMLElement>('[data-v]');
@@ -219,12 +219,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
   if (v) v.dataset.js = '';
   // 눌러서 연 사진은 서버가 이미 '봤음'을 남김 → 돌아갈 앨범이 신규 배지를 빼게 적어 둔다
   // 미리 받은 화면(131)은 서버가 안 남겼으니 열린 지금 남긴다(성공하면 돌아갈 앨범 배지도 빠지게)
-  if (v?.dataset.id && 'views' in v.dataset && 'unnoted' in v.dataset) {
-    const id = v.dataset.id;
-    fetch('/api/views', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [id], parent: v.dataset.views === 'parent' }), keepalive: true, credentials: 'same-origin' })
-      .then((r) => r.ok && noteSeen(id))
-      .catch(() => {});
-  } else if (v?.dataset.id && 'views' in v.dataset) noteSeen(v.dataset.id);
+  if (v?.dataset.id && 'views' in v.dataset) void ('unnoted' in v.dataset ? postViews(v.dataset.id, v.dataset.views === 'parent') : noteSeen(v.dataset.id));
   // 아래 판이 커지면(큰 글씨·작은 화면) ‹ › 화살표를 판 위 남은 칸 가운데로: 판·버튼에 가리지 않게
   const dock = v?.querySelector<HTMLElement>('.sp-v__dock');
   if (v && dock && 'ResizeObserver' in window) {
@@ -380,9 +375,7 @@ const length = m.duration_sec ? fmt(Number(m.duration_sec)) : '0:00';
       if ('views' in v.dataset) {
         dwell = setTimeout(() => {
           if (at !== i) return;
-          fetch('/api/views', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [x.id], parent: v.dataset.views === 'parent' }), keepalive: true, credentials: 'same-origin' })
-            .then((r) => r.ok && noteSeen(x.id))
-            .catch(() => {});
+          void postViews(x.id, v.dataset.views === 'parent');
         }, 1500);
       }
       v.dataset.id = x.id;

@@ -1,6 +1,7 @@
 ---
 // 부모 앨범: 사진이 없으면 첫 사진 안내, 있으면 월별 모아 보기. 아래 탭(앨범·설정)
 import Parent from '../layouts/Parent.astro';
+import LessLink from '../components/LessLink.astro';
 import { getBackend } from '../lib/backend';
 import { sizeLabel, summarize } from '../lib/familyAdmin';
 import { callName, hasBatchim } from '../lib/ko';
@@ -42,11 +43,10 @@ const t0 = Astro.url.searchParams.get('t');
 const kind = t0 === 'photo' || t0 === 'video' ? t0 : undefined;
 const tq = kind ? `t=${kind}&` : '';
 const b = getBackend();
-// 그룹 거르기(123, 사용자 "엄빠는 누구네 집에 어떤 사진 보이는지"): ?g=그룹id, 내 가족방 그룹이 아니면 전체. 그룹 목록이 있어야 알아서 그때만 먼저 받는다
-const g0 = Astro.url.searchParams.get('g');
-const admin0 = g0 ? await b.familyAdmin(a.pass).catch(() => null) : null;
-const group = admin0?.groups.find((x) => x.id === g0);
-const gq = group ? `g=${encodeURIComponent(group.id)}&` : '';
+// 그룹 거르기(123, 사용자 "엄빠는 누구네 집에 어떤 사진 보이는지"): ?g=그룹id. 값 모양만 보고 바로 거르고, 아래에서 함께 받는 그룹 목록으로
+// 내 가족방 그룹인지 확인해 아니면 g를 뺀 주소로(134: 예전엔 목록을 먼저 따로 기다려 서버 왕복이 한 번 더)
+const g1 = Astro.url.searchParams.get('g');
+const g0 = g1 && /^[\w-]{1,64}$/.test(g1) ? g1 : undefined;
 // 사진 크기(−/+, 98a): 1·2·3칸 = 사진 전부, 월별 = 달마다 대표 3장. 기기 쿠키에 기억
 const z = pickZoom(Astro.url, Astro.cookies, 'sp_pz');
 // 넘겨 보기·모아 보기(98d): 기기 쿠키 sp_pv에 기억, 처음엔 모아 보기(지금까지와 같게)
@@ -61,17 +61,30 @@ const today = seoulToday();
 // 월별·연별 카드(옆 기능이 아니라 이 단계의 본문이라 실패하면 안내 글)
 const cardView = !swipe && (z === 'm' || z === 'y');
 // 서버 왕복을 한 번에(128 속도): 최근 200장(새 사진 판단)·달 카드도 같은 차례에 함께 묻는다(예전엔 쪽을 받은 뒤 차례로)
-const [page, admin, fp, swipeTotal0, recent200, monthCards0] = await Promise.all([
-  loadPage(a.pass, { childId: picked?.id, kind, groupId: group?.id }, Astro.url, { around: true, count: swipe }),
-  cont ? null : admin0 ?? b.familyAdmin(a.pass).catch(() => null),
+const [page0, admin, fp, swipeTotal0, recent200, monthCards0] = await Promise.all([
+  loadPage(a.pass, { childId: picked?.id, kind, groupId: g0 }, Astro.url, { around: true, count: swipe }).catch((e) => (g0 ? null : Promise.reject(e))),
+  // 그룹 목록: 띠·거르기 알약과 g 확인에(이어지는 쪽은 둘 다 안 씀)
+  cont ? null : b.familyAdmin(a.pass).catch(() => null),
   cont ? null : b.familyParents(a.pass).catch(() => null),
   // 'n / 전체'의 전체만 빠지는 옆 기능이라 실패하면 그 글자만 뺀다
   // 이어지는 쪽은 loadPage가 이미 셌으니 다시 세지 않는다
-  swipe && !cont ? b.countMedia(a.pass, { childId: picked?.id, kind, groupId: group?.id }).catch(() => null) : null,
-  cont || cardView ? null : b.listMedia(a.pass, { childId: picked?.id, kind, groupId: group?.id, limit: 200 }).catch(() => null),
+  swipe && !cont ? b.countMedia(a.pass, { childId: picked?.id, kind, groupId: g0 }).catch(() => null) : null,
+  cont || cardView ? null : b.listMedia(a.pass, { childId: picked?.id, kind, groupId: g0, limit: 200 }).catch(() => null),
   // 달·해 카드도 거르기(사진/영상·그룹)를 따름(132)
-  cardView ? b.mediaMonths(a.pass, { childId: picked?.id, kind, groupId: group?.id, reps: 5 }).catch(() => null) : null,
+  cardView ? b.mediaMonths(a.pass, { childId: picked?.id, kind, groupId: g0, reps: 5 }).catch(() => null) : null,
 ]);
+const group = g0 ? admin?.groups.find((x) => x.id === g0) : undefined;
+// 첫 쪽: 내 가족방 그룹이 아니면(또는 그룹 목록을 못 받으면) 그룹 거르기를 뺀 같은 주소로.
+// 이어지는 쪽(?before·?after)은 확인하지 않는다: 돌려보내면 받는 스크립트가 거르지 않은 쪽을 이어 붙이므로. 내 가족방 것만 나오는 건 DB 권한이 지킴
+if (g0 && !cont && (!group || !page0)) {
+  const u = new URL(Astro.url);
+  u.searchParams.delete('g');
+  return Astro.redirect(u.pathname + u.search);
+}
+if (!page0) throw new Error('album page');
+const page = page0;
+const gid = cont ? g0 : group?.id;
+const gq = gid ? `g=${encodeURIComponent(gid)}&` : '';
 const swipeTotal = page.total ?? swipeTotal0;
 // 함께 관리 시작 알림(사용자 2026-10-29 "아빠 접속했다고 알람은 안 뜨네?"): 나보다 나중에 들어온 엄빠가 있고 이 기기에서 아직 안 봤으면 한 번.
 // 옆 기능이라 실패하면 레이어만 뺀다. 30일 지난 일은 띄우지 않음
@@ -449,11 +462,7 @@ if (z !== 3 && z !== 5)
     ) : swipe ? (
       /* 가족 넘겨 보기와 같은 카드(swipe.css): 가운데 카드 + 양옆 비스듬히, 손가락으로 밀면 넘어감(scroll-snap). 카드 전체가 크게 보기 링크 */
       <>
-      {prevHref && (
-        <div class="sp-more sp-more--up" data-less>
-          <a class="sp-more__btn" href={prevHref}>최근 사진 더 보기</a>
-        </div>
-      )}
+      {prevHref && <LessLink href={prevHref} />}
       <ul class="sp-a__swipe sp-p__swipe" aria-label={swipeTotal === null ? '사진, 옆으로 밀어서 넘겨 보기' : `사진 ${swipeTotal.toLocaleString('ko-KR')}장, 옆으로 밀어서 넘겨 보기`}>
         {slides.map((c) => (
           <li class="sp-a__slide" id={`c-${c.id}`}>
@@ -513,11 +522,7 @@ if (z !== 3 && z !== 5)
         { ym: 'all', list: cells },
       ].filter((g) => g.list.length > 0).map((g) => (
         <>
-        {g.ym === 'all' && prevHref && (
-          <div class="sp-more sp-more--up" data-less>
-            <a class="sp-more__btn" href={prevHref}>최근 사진 더 보기</a>
-          </div>
-        )}
+        {g.ym === 'all' && prevHref && <LessLink href={prevHref} />}
         <section class="sp-p__month" data-ym={g.ym} aria-label={g.ym === 'new' ? `방금 올라온 사진 ${g.list.length}장` : '사진'}>
           {/* 빈칸 없는 앨범(117b): 날짜는 위 기간 줄, 화면 읽기용 제목만. 맨 위 새 사진 묶음(117e)은 보이는 제목 */}
           {g.ym === 'new' ? <h2 class="sp-p__new-title">방금 올라왔어요 <span class="sp-p__new-count">· {g.list.length}장</span></h2> : <h2 class="sp-vh">사진</h2>}

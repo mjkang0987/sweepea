@@ -2,6 +2,7 @@
 // 앨범: 넘겨 보기(기본)·모아 보기. 여러 가족방이면 모두 섞어 보는 게 기본, 집 고르기는 링크.
 // 작은 스크립트는 60장씩 더 불러오기·닫고 돌아온 자리 맞추기만(없으면 '사진 더 보기' 링크와 #앵커)
 import Family from '../../layouts/Family.astro';
+import LessLink from '../../components/LessLink.astro';
 import ReactRow from '../../components/ReactRow.astro';
 import SayForm from '../../components/SayForm.astro';
 import Toast from '../../components/Toast.astro';
@@ -270,11 +271,7 @@ const monthCards = !monthRows
     ) : q.v === 'swipe' ? (
       <>
         {/* 시안(GrandHome): 가운데 카드 + 양옆 사진이 비스듬히 보임. 손가락으로 밀면 넘어감(scroll-snap), 기울기는 CSS 스크롤 애니메이션 */}
-        {prevHref && (
-          <div class="sp-more sp-more--up" data-less>
-            <a class="sp-more__btn" href={prevHref}>최근 사진 더 보기</a>
-          </div>
-        )}
+        {prevHref && <LessLink href={prevHref} />}
         <ul class="sp-a__swipe" aria-label={total === null ? '사진, 옆으로 밀어서 넘겨 보기' : `사진 ${total}장, 옆으로 밀어서 넘겨 보기`}>
           {cards.map((c) => (
             <li class="sp-a__slide" id={`p-${c.id}`}>
@@ -358,11 +355,7 @@ const monthCards = !monthRows
           )
         ) : days.map((d) => (
           <>
-          {d.day === 'all' && prevHref && (
-            <div class="sp-more sp-more--up" data-less>
-              <a class="sp-more__btn" href={prevHref}>최근 사진 더 보기</a>
-            </div>
-          )}
+          {d.day === 'all' && prevHref && <LessLink href={prevHref} />}
           <section class="sp-a__day" data-day={d.day} aria-label={d.top ? `방금 올라온 사진 ${d.cards.length}장` : '사진'}>
             {d.top ? (
               <h2 class="sp-a__day-title sp-a__day-title--new">방금 올라왔어요 <span class="sp-a__day-count">· {d.cards.length}장</span></h2>
@@ -433,7 +426,7 @@ const monthCards = !monthRows
 </Family>
 
 <script>
-  import { autoMore, closeReturn, keepSpot, lessMore, relayout, swipeMore } from '../../lib/more';
+  import { autoMore, closeReturn, keepSpot, lessMore, postViews, relayout, swipeMore } from '../../lib/more';
   closeReturn();
   import { zoomInPlace } from '../../lib/zoomswap';
 
@@ -464,7 +457,8 @@ const monthCards = !monthRows
       dwell = setTimeout(() => {
         if (centered() !== id || seen.has(id)) return;
         seen.add(id);
-        fetch('/api/views', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [id] }), keepalive: true, credentials: 'same-origin' }).catch(() => seen.delete(id));
+        // 못 남기면 다음에 다시 보면 남긴다
+        void postViews(id).then((ok) => ok || seen.delete(id));
       }, 1500);
     };
     let still: ReturnType<typeof setTimeout> | undefined;

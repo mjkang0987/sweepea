@@ -1,0 +1,11 @@
+---
+// 앞으로(최근 쪽) 이어 붙일 쪽 링크(128·129): 사진 주변만 그린 앨범의 맨 위(넘겨 보기는 맨 앞). 스크립트(lessMore)가 가까워지면 받아 붙이고, 없으면 누르면 그 쪽
+interface Props {
+  href: string;
+}
+const { href } = Astro.props;
+---
+
+<div class="sp-more sp-more--up" data-less>
+  <a class="sp-more__btn" href={href}>최근 사진 더 보기</a>
+</div>

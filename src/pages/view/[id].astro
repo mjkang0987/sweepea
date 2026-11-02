@@ -20,13 +20,14 @@ const kids = a.home.children ?? [];
 const picked = kids.length > 1 ? kids.find((x) => x.id === Astro.url.searchParams.get('k')) : undefined;
 // 앨범 칸 단계(1·2·3)도 이어 받아 닫을 때 그 단계로(기억한 단계가 월별이어도 보던 자리로 돌아가게, 리뷰 2026-10-29)
 const zp = ['1', '2', '3'].includes(Astro.url.searchParams.get('z') ?? '') ? Astro.url.searchParams.get('z') : null;
-// 앨범 거르기를 이어 받아 그 안에서만 넘김(125, 사용자 "외가 사진만 보는 게 맞지 않나?"). 그룹은 내 가족방 그룹일 때만(목록이 있어야 알아서 그때만 먼저 받음)
+// 앨범 거르기를 이어 받아 그 안에서만 넘김(125, 사용자 "외가 사진만 보는 게 맞지 않나?").
+// 그룹은 값 모양만 보고 바로 거르고, 아래에서 함께 받는 그룹 목록으로 내 가족방 그룹인지 확인(아니면 g를 뺀 주소로). 예전엔 목록을 먼저 따로 기다림(134)
 const t0 = Astro.url.searchParams.get('t');
 const kind = t0 === 'photo' || t0 === 'video' ? t0 : undefined;
-const g0 = Astro.url.searchParams.get('g');
-const admin0 = g0 ? await b.familyAdmin(a.pass).catch(() => null) : null;
-const group = admin0?.groups.find((x) => x.id === g0);
-const qs = [picked && `k=${encodeURIComponent(picked.id)}`, kind && `t=${kind}`, group && `g=${encodeURIComponent(group.id)}`, zp && `z=${zp}`].filter(Boolean).join('&');
+const g1 = Astro.url.searchParams.get('g');
+const g0 = g1 && /^[\w-]{1,64}$/.test(g1) ? g1 : undefined;
+const qsOf = (g?: string) => [picked && `k=${encodeURIComponent(picked.id)}`, kind && `t=${kind}`, g && `g=${encodeURIComponent(g)}`, zp && `z=${zp}`].filter(Boolean).join('&');
+const qs = qsOf(g0);
 const kq = qs ? `?${qs}` : '';
 // 반응·한마디: 부모 계정으로. 돌아갈 곳은 이 화면 주소만
 if (Astro.request.method === 'POST') {
@@ -42,8 +43,11 @@ const slid = Astro.request.headers.get('x-sp-slide') === '1';
 // 앨범이 누르기 직전에 미리 받은 크게 보기(131, Sec-Purpose: prefetch)는 아직 연 게 아니라 '봤음'을 안 남기고, 실제로 열리면 화면이 남긴다(data-unnoted)
 const prefetched = /prefetch/i.test(Astro.request.headers.get('sec-purpose') ?? '');
 // 보이는 그룹(118, 사용자 "사진 수정 들어가기 전에 어느 그룹에 노출되는지"): 사진의 그룹 이름, 그룹이 둘 이상인 가족방만. 옆 기능이라 못 받으면 줄만 뺌
-const [win, reacts, comments, viewers, , info, admin] = await Promise.all([loadWindow(a.pass, { childId: picked?.id, kind, groupId: group?.id }, id), loadReacts(a.pass, [id]), b.mediaComments(a.pass, id), b.mediaViewers(a.pass, id).catch(() => []), slid || prefetched ? undefined : b.noteParentViews(a.pass, [id]).catch(() => {}), b.mediaInfo(a.pass, id).catch(() => null), admin0 ?? b.familyAdmin(a.pass).catch(() => null)]);
+const [win, reacts, comments, viewers, , info, admin] = await Promise.all([loadWindow(a.pass, { childId: picked?.id, kind, groupId: g0 }, id).catch((e) => (g0 ? null : Promise.reject(e))), loadReacts(a.pass, [id]), b.mediaComments(a.pass, id), b.mediaViewers(a.pass, id).catch(() => []), slid || prefetched ? undefined : b.noteParentViews(a.pass, [id]).catch(() => {}), b.mediaInfo(a.pass, id).catch(() => null), b.familyAdmin(a.pass).catch(() => null)]);
 const groupNames = admin && info && admin.groups.length > 1 ? admin.groups.filter((g) => info.group_ids.includes(g.id)).map((g) => g.name) : [];
+// 내 가족방 그룹이 아니면(또는 그룹 목록을 못 받으면) 그룹 거르기를 뺀 같은 사진으로.
+// 옆으로 넘겨 미리 받는 화면(x-sp-slide)은 돌려보내지 않는다(받는 스크립트가 거르지 않은 넘기기 줄을 쓰게 되므로). 내 가족방 것만 나오는 건 DB 권한이 지킴
+if (g0 && !slid && !admin?.groups.some((x) => x.id === g0)) return Astro.redirect(`/view/${id}${qsOf() ? `?${qsOf()}` : ''}`);
 if (!win) return Astro.redirect(`/home${kq}`);
 const { items, i } = win;
 const m = items[i];
