@@ -50,7 +50,9 @@ export function pickView(url: URL, cookies: AstroCookies, name: string, first: A
 export function readQuery(url: URL, cookies: AstroCookies, familyIds: string[]): AlbumQuery {
   const f = url.searchParams.get('f') ?? undefined;
   const t = url.searchParams.get('t');
-  return { f: f && familyIds.includes(f) ? f : undefined, t: t === 'photo' || t === 'video' ? t : undefined, v: pickView(url, cookies, 'sp_av', 'swipe'), z: pickZoom(url, cookies, 'sp_az') };
+  const v = pickView(url, cookies, 'sp_av', 'swipe');
+  // 사진 종류(전체·사진·영상)는 모아 보기에만(160). 넘겨 보기엔 그 줄이 없으니 옛 주소의 t도 버린다(줄 없이 걸러져 보이지 않게)
+  return { f: f && familyIds.includes(f) ? f : undefined, t: v === 'list' && (t === 'photo' || t === 'video') ? t : undefined, v, z: pickZoom(url, cookies, 'sp_az') };
 }
 
 /** 보기·칸은 늘 주소에 적는다(기억한 값보다 링크가 먼저라, 빼면 기억한 값으로 바뀌어 버림) */
