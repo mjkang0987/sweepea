@@ -98,6 +98,18 @@ def bars(label,days,a,b=None,la='',lb='',unit='회'):
     table=f'<details style="font-size: 15px; line-height: 20px;"><summary style="display: inline-flex; align-items: center; min-height: 44px; color: var(--pea-ink); cursor: pointer;">숫자로 보기</summary><table style="width: 100%; border-collapse: collapse;"><caption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">{label}, 날짜별 숫자</caption><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></details>'
     return f'''<figure style="margin: 0; display: flex; flex-direction: column; gap: 8px;"><div role="img" aria-label="{label}" style="display: flex; align-items: flex-end; gap: 4px; height: 120px;">{cols}</div><figcaption style="{SUB} display: flex; justify-content: space-between;"><span>{days[0]}</span><span>{days[1]}</span></figcaption>{legend}{table}</figure>'''
 
+PERIODS=['오늘','7일','30일','90일']
+RANGE={'7일':('2026-10-29','2026-11-04','10월 29일 ~ 11월 4일'),'30일':('2026-10-06','2026-11-04','10월 6일 ~ 11월 4일')}
+def period(cur):
+    # 기간은 주소 ?p=7d(직접 고르면 ?from=&to=)로, 스크립트 없이. 화면을 옮겨도 같은 기간을 링크에 달고 다님
+    f,t,txt=RANGE[cur]
+    links=''.join(f'<a href="#"{AC if n==cur else ""} style="flex: 1 0 auto; padding: 0 16px; white-space: nowrap; min-height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; text-decoration: none; color: var(--label); font-size: 15px; {"background: var(--bg); box-shadow: 0 1px 2px rgba(0,0,0,0.12); font-weight: 600;" if n==cur else "font-weight: 500;"}">{n}</a>' for n in PERIODS)
+    IN='min-height: 44px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--separator); border-radius: 10px; background: var(--bg); color: var(--label); font-family: inherit; font-size: 15px;'
+    return f'''<section aria-labelledby="pd-h" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px;"><h2 id="pd-h" style="position: absolute; width: 1px; height: 1px; overflow: hidden;">기간</h2>
+<nav aria-label="기간 고르기" style="display: flex; gap: 2px; padding: 2px; background: var(--fill); border-radius: 10px; max-width: 100%; box-sizing: border-box; overflow-x: auto;">{links}</nav>
+<form method="get" style="flex: 1 1 20rem; max-width: 26rem; display: flex; align-items: center; gap: 8px; min-width: 0;"><label style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--label-2);"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden;">시작</span><input type="date" name="from" value="{f}" style="flex: 1; min-width: 0; {IN}"></label><label style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--label-2);"><span aria-hidden="true">~</span><span style="position: absolute; width: 1px; height: 1px; overflow: hidden;">끝</span><input type="date" name="to" value="{t}" style="flex: 1; min-width: 0; {IN}"></label><button type="submit" style="min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--fill); color: var(--label); font-family: inherit; font-size: 15px; font-weight: 600;">보기</button></form>
+<p style="flex-basis: 100%; {SUB}">{txt} · '직전'은 바로 앞 같은 길이 기간</p></section>'''
+
 def card(title,inner,sub=''):
     s=f'<p style="{SUB}">{sub}</p>' if sub else ''
     return f'<section style="{CARD}"><div><h2 style="{H2}">{title}</h2>{s}</div>{inner}</section>'
@@ -119,19 +131,23 @@ CHECK=[('승인 대기 2일 넘음','가족방 a3f9c2e1 · 1명 · 2일 6시간'
 def home(side):
     sfx='{{sfx}}'
     checks='<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column;">'+''.join(rowlink(a,b,f'{h}{sfx}.dc.html') for a,b,h in CHECK)+'</ul>'
-    left=f'''{stats([('가족방','12'),('엄빠','18'),('가족 기기','41','승인 36 · 대기 5'),('사진·영상','3,210'),('저장 용량','21.4GB')],5 if side else 2)}
-{card('방문',stats([('오늘 방문한 사람','23'),('오늘 방문','61회'),('7일 방문한 사람','47','엄빠 16 · 가족 31')],3)+bars('최근 14일 방문 수',('10월 22일','오늘'),VIS_A,VIS_B,'가족','엄빠'),'30분 안에 이어서 연 건 한 번으로 세요')}
-{card('이번 주',kv([('새 가족방','2 <span style="color: var(--label-2); font-weight: 400;">(지난주 1)</span>'),('새로 들어온 가족','5 <span style="color: var(--label-2); font-weight: 400;">(지난주 3)</span>'),('올린 사진·영상','214 <span style="color: var(--label-2); font-weight: 400;">(지난주 188)</span>')]))}
-{card('가족이 실제로 보는지',f'<p style="margin: 0; {NUM}">74%</p><meter class="sp-meter" min="0" max="100" value="74" style="width: 100%; height: 10px;">74%</meter>'+kv([('7일 안에 사진을 본 가족 기기','27 / 36'),('반응','88'),('한마디','17')]),'승인된 가족 기기 중 7일 안에 사진을 본 비율')}
-{card('들어오다 멈춘 곳',funnel([('링크로 처음 방문',64),('이름 고름',40),('들어오기 신청',22),('승인',19)])+f'<p style="{SUB}">비밀번호 틀림 9번 · 승인 대기 기한 지남 2명</p>','최근 30일')}'''
-    right=f'''{card('살펴볼 것',checks)}
-{card('로그인 방법',kv([('카카오','11'),('네이버','4'),('구글','3')]))}
-{card('홈 화면에 두기 부탁',kv([('7일 안','6'),('그 뒤 홈 화면에서 연 가족','4')]))}'''
+    PREV=lambda v,p: f'{v} <span style="color: var(--label-2); font-weight: 400;">직전 {p}</span>'
+    PS=lambda v,p: f'{v}<span style="display: block; font-size: 15px; line-height: 20px; color: var(--label-2); font-weight: 400;">직전 {p}</span>'
+    # 지금 전체(기간 안 탐)
+    now=stats([('가족방','12'),('엄빠','18'),('가족 기기','41','승인 36 · 대기 5'),('사진·영상','3,210'),('저장 용량','21.4GB')],5 if side else 2)
+    # 고른 기간(7일)
+    left=f'''{card('방문',stats([('방문한 사람',PS('47','41'),'엄빠 16 · 가족 31'),('방문',PS('312회','276회')),('하루 평균','45회')],3)+bars('기간 안 날짜별 방문 수',('10월 29일','오늘'),VIS_A[-7:],VIS_B[-7:],'가족','엄빠'),'30분 안에 이어서 연 건 한 번으로 세요')}
+{card('새로 생긴 것',kv([('새 가족방',PREV('2','1')),('새로 들어온 가족',PREV('5','3')),('올린 사진·영상',PREV('214','188'))]))}
+{card('가족이 실제로 보는지',f'<p style="margin: 0; {NUM}">74%</p><meter class="sp-meter" min="0" max="100" value="74" style="width: 100%; height: 10px;">74%</meter>'+kv([('사진을 본 가족 기기','27 / 36'),('반응',PREV('88','71')),('한마디',PREV('17','12'))]),'승인된 가족 기기 중 이 기간에 사진을 본 비율')}
+{card('들어오다 멈춘 곳',funnel([('링크로 처음 방문',21),('이름 고름',14),('들어오기 신청',8),('승인',7)])+f'<p style="{SUB}">비밀번호 틀림 3번 · 승인 대기 기한 지남 1명</p>')}
+{card('홈 화면에 두기 부탁',kv([('부탁','6'),('그 뒤 홈 화면에서 연 가족','4')]))}'''
+    right=f'''{card('살펴볼 것',checks,'지금 기준')}
+{card('로그인 방법',kv([('카카오','11'),('네이버','4'),('구글','3')]),'엄빠 전체')}'''
     body=head('현황','11월 4일 오후 3:20 기준')
     if side:
-        body+=f'\n<div style="display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start;"><div style="display: flex; flex-direction: column; gap: 20px; min-width: 0;">{left}</div><div style="display: flex; flex-direction: column; gap: 20px;">{right}</div></div>'
+        body+=f'\n{now}\n{period("7일")}\n<div style="display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start;"><div style="display: flex; flex-direction: column; gap: 20px; min-width: 0;">{left}</div><div style="display: flex; flex-direction: column; gap: 20px;">{right}</div></div>'
     else:
-        body+='\n'+card('살펴볼 것',checks)+left+card('로그인 방법',kv([('카카오','11'),('네이버','4'),('구글','3')]))
+        body+='\n'+card('살펴볼 것',checks,'지금 기준')+now+period('7일')+left+card('로그인 방법',kv([('카카오','11'),('네이버','4'),('구글','3')]),'엄빠 전체')
     return shell('현황',body,side)
 
 FAM=[('a3f9c2e1','10월 26일','2','6 / 1','412','3.1GB','34','오늘','오늘','정상'),
@@ -140,7 +156,7 @@ FAM=[('a3f9c2e1','10월 26일','2','6 / 1','412','3.1GB','34','오늘','오늘',
      ('e5b81f73','10월 31일','1','2 / 0','48','0.3GB','0','10월 25일','10월 25일','정상'),
      ('19d0a6c4','11월 1일','1','3 / 0','91','0.6GB','2','11월 1일','11월 2일','탈퇴 예정'),
      ('5f3e90bb','11월 3일','2','1 / 2','12','0.1GB','9','어제','오늘','정상')]
-COLS=['가족방','만든 날','엄빠','가족 승인 / 대기','사진·영상','용량','방문 7일','마지막 올림','마지막 방문','상태']
+COLS=['가족방','만든 날','엄빠','가족 승인 / 대기','사진·영상','용량','방문','마지막 올림','마지막 방문','상태']
 
 def families():
     sfx='{{sfx}}'
@@ -159,8 +175,8 @@ def families():
         badge=f'<span style="display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: 999px; font-size: 13px; font-weight: 600; {"background: var(--fill); color: var(--danger);" if st!="정상" else "background: var(--pea-tint); color: var(--pea-deep);"}">{st}</span>'
         tds+=f'<td style="padding: 0 12px;">{badge}</td>'
         rows+=f'<tr style="border-top: 1px solid var(--separator);">{tds}</tr>'
-    table=f'<div style="overflow-x: auto; border-radius: 16px; background: var(--surface);"><table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 20px;"><caption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">가족방 목록, 만든 날 최신순</caption><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div>'
-    body=head('가족방','12곳 · 이름 대신 번호 앞 8자리로 보여요')+'\n'+table+f'\n<nav aria-label="쪽" style="display: flex; justify-content: center; gap: 8px;"><a href="#" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 12px; background: var(--fill); color: var(--label); text-decoration: none; font-size: 15px; font-weight: 600;">다음 50곳</a></nav>'
+    table=f'<div style="overflow-x: auto; border-radius: 16px; background: var(--surface);"><table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 20px;"><caption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">가족방 목록, 만든 날 최신순, 방문은 고른 기간</caption><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div>'
+    body=head('가족방','12곳 · 이름 대신 번호 앞 8자리로 보여요')+'\n'+period('7일')+'\n'+table+f'\n<nav aria-label="쪽" style="display: flex; justify-content: center; gap: 8px;"><a href="#" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 12px; background: var(--fill); color: var(--label); text-decoration: none; font-size: 15px; font-weight: 600;">다음 50곳</a></nav>'
     return shell('가족방',body,True)
 
 UP=[0,12,0,0,24,3,0,0,8,0,41,0,6,0,0,15,0,2,0,0,33,0,0,9,0,0,18,4,0,11]
@@ -168,31 +184,32 @@ VS=[3,5,2,4,6,5,3,2,5,4,8,3,4,5,2,6,4,3,2,4,9,5,3,6,4,3,7,5,4,6]
 PEOPLE=[('엄빠 1','엄빠','—','22회','오늘'),('엄빠 2','엄빠','—','9회','어제'),('가족 기기 1','그룹 1','승인','14회','오늘'),('가족 기기 2','그룹 1','승인','11회','오늘'),('가족 기기 3','그룹 1','승인','6회','11월 2일'),('가족 기기 4','그룹 2','승인','3회','10월 31일'),('가족 기기 5','그룹 2','승인','0회','10월 27일'),('가족 기기 6','그룹 2','승인 대기','1회','11월 2일')]
 
 def family():
-    th=''.join(f'<th scope="col" style="padding: 0 12px; height: 44px; text-align: {"left" if i<3 else "right"}; font-size: 13px; font-weight: 500; color: var(--label-2); white-space: nowrap;">{c}</th>' for i,c in enumerate(['누구','그룹','상태','방문 30일','마지막 방문']))
+    th=''.join(f'<th scope="col" style="padding: 0 12px; height: 44px; text-align: {"left" if i<3 else "right"}; font-size: 13px; font-weight: 500; color: var(--label-2); white-space: nowrap;">{c}</th>' for i,c in enumerate(['누구','그룹','상태','방문','마지막 방문']))
     rows=''.join('<tr style="border-top: 1px solid var(--separator);">'+f'<th scope="row" style="padding: 0 12px; height: 48px; text-align: left; font-weight: 600;">{p[0]}</th><td style="padding: 0 12px;">{p[1]}</td><td style="padding: 0 12px; {"color: var(--danger); font-weight: 600;" if p[2]=="승인 대기" else ""}">{p[2]}</td>'+''.join(f'<td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;">{v}</td>' for v in p[3:])+'</tr>' for p in PEOPLE)
     people=f'<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 20px;"><caption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">사람별 방문, 이름 없이</caption><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div>'
     left=f'''{stats([('엄빠','2'),('가족','6','승인 5 · 대기 1'),('사진·영상','412','사진 398 · 영상 14'),('아이','2')],4)}
-{card('최근 30일 올린 사진·영상',bars('최근 30일 올린 사진·영상 수',('10월 6일','오늘'),UP,unit='개'))}
-{card('최근 30일 방문',bars('최근 30일 방문 수',('10월 6일','오늘'),VS))}
+{card('올린 사진·영상',bars('기간 안 날짜별 올린 사진·영상 수',('10월 6일','오늘'),UP,unit='개'))}
+{card('방문',bars('기간 안 날짜별 방문 수',('10월 6일','오늘'),VS))}
 {card('사람별 방문',people,'이름은 안 보여요. 번호는 들어온 순서예요')}'''
     right=f'''{card('저장 용량','<p style="margin: 0; font-size: 17px; line-height: 24px; font-weight: 700;"><span style="font-size: 22px;">3.1GB</span> / 5GB</p><meter class="sp-meter" min="0" max="5" low="4" high="4.5" optimum="1" value="3.1" style="width: 100%; height: 8px;">3.1GB / 5GB</meter>')}
 {card('그룹',kv([('그룹 1','4명'),('그룹 2','3명')]))}
-{card('들어오기',kv([('공유 링크','3개'),('링크로 처음 방문','9'),('비밀번호 틀림','2번')]))}
+{card('들어오기',kv([('공유 링크','3개'),('링크로 처음 방문','9'),('비밀번호 틀림','2번')]),'링크 수는 지금, 나머지는 고른 기간')}
 {card('함께 관리','<p style="margin: 0; font-size: 15px; line-height: 20px;">엄빠 둘 · 10월 28일부터</p>')}'''
     body=f'''<a href="OpsFamilies{{{{sfx}}}}.dc.html" style="display: inline-flex; align-items: center; gap: 2px; min-height: 44px; width: max-content; color: var(--pea-ink); text-decoration: none; font-size: 15px;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>가족방</a>
 <header style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;"><h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: -0.4px; font-variant-numeric: tabular-nums;">가족방 a3f9c2e1</h1><span style="display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; background: var(--pea-tint); color: var(--pea-deep); font-size: 13px; font-weight: 600;">정상</span><p style="flex-basis: 100%; margin: 0; font-size: 15px; line-height: 20px; color: var(--label-2);">10월 26일에 만듦 · 마지막 올림 오늘 · 사진·이름·한마디는 안 보여요</p></header>
+{period('30일')}
 <div style="display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start;"><div style="display: flex; flex-direction: column; gap: 20px; min-width: 0;">{left}</div><div style="display: flex; flex-direction: column; gap: 20px;">{right}</div></div>'''
     return shell('가족방',body,True)
 
-BOARDS=[('OpsHome','운영 · 현황 (PC)',lambda:home(True),1440,1360),
-        ('OpsFamilies','운영 · 가족방 목록 (PC)',families,1440,600),
-        ('OpsFamily','운영 · 가족방 상세 (PC)',family,1440,1420),
-        ('OpsHomeMobile','운영 · 현황 (휴대폰, 위 메뉴 한 단)',lambda:home(False),390,2100)]
+BOARDS=[('OpsHome','운영 · 현황 (PC)',lambda:home(True),1440,1560),
+        ('OpsFamilies','운영 · 가족방 목록 (PC)',families,1440,720),
+        ('OpsFamily','운영 · 가족방 상세 (PC)',family,1440,1560),
+        ('OpsHomeMobile','운영 · 현황 (휴대폰, 위 메뉴 한 단)',lambda:home(False),390,2500)]
 d=json.load(open('canvas.json')); b=d['boards']
 Y0=max(v['y']+v['h'] for k,v in b.items() if not k.startswith('Ops'))+520
 names=[]
 for row,(theme,sfx,lab) in enumerate([('dark','','다크'),('light','-Light','라이트')]):
-    x=0; y=Y0+row*(2100+120)
+    x=0; y=Y0+row*(2500+120)
     for stem,title,fn,w,h in BOARDS:
         n=stem+sfx+'.dc.html'
         src=page(title,fn(),theme,w,h).replace('{{sfx}}',sfx)
