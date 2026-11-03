@@ -228,15 +228,6 @@ const monthCards = !monthRows
     </div>
     <img class:list={["sp-a__kongi", headKid && "sp-kid"]} src={kidImage(headKid?.birth, todayIs)} width="64" height="64" alt="" />
   </header>
-  {/* 내 캐릭터·글자 크기(149): 가족이 들어온 뒤에도 자기 화면 글자를 바꿀 수 있게 같은 알약으로 나란히. 머리(제목·아기 그림) 아래 전체 폭이라 아주 크게여도 한 줄 */}
-  <div class="sp-a__mine">
-    {meFam && (
-      <a class="sp-a__chip sp-a__me" href={`/me/avatar?f=${meFam.family_id}`}>
-        {meFam.avatar && <img class="sp-avatar sp-avatar--small" src={avatarSrc(meFam.avatar)} width="32" height="32" alt="" />}내 캐릭터
-      </a>
-    )}
-    <a class="sp-a__chip sp-a__me" href="/me/text-size">글자 크기</a>
-  </div>
   {/* 오늘이 기념일이면(100일·200일…·첫돌·두 돌) 맨 위에 축하 안내 */}
   {todayEvents.map((e) => (
     <p class="sp-a__event">
@@ -263,12 +254,14 @@ const monthCards = !monthRows
     <a class="sp-a__tab" href={albumHref({ ...q, v: 'swipe' })} aria-current={q.v === 'swipe' ? 'page' : undefined}>넘겨 보기</a>
     <a class="sp-a__tab" href={albumHref({ ...q, v: 'list' })} aria-current={q.v === 'list' ? 'page' : undefined}>모아 보기</a>
   </nav>
-  {/* 사진·영상 거르기(117c). 달·해 카드도 같은 거르기를 따라(132) 카드 단계에서도 보임 */}
-  <nav class="sp-a__tabs" aria-label="사진 종류">
-    <a class="sp-a__tab" href={albumHref({ ...q, t: undefined })} aria-current={!q.t ? 'page' : undefined}>전체</a>
-    <a class="sp-a__tab" href={albumHref({ ...q, t: 'photo' })} aria-current={q.t === 'photo' ? 'page' : undefined}>사진</a>
-    <a class="sp-a__tab" href={albumHref({ ...q, t: 'video' })} aria-current={q.t === 'video' ? 'page' : undefined}>영상</a>
-  </nav>
+  {/* 사진·영상 거르기(117c)는 모아 보기에만(160: 넘겨 보기는 사진 위 줄을 줄임). 달·해 카드도 같은 거르기를 따라(132) 카드 단계에서도 보임 */}
+  {q.v === 'list' && (
+    <nav class="sp-a__tabs" aria-label="사진 종류">
+      <a class="sp-a__tab" href={albumHref({ ...q, t: undefined })} aria-current={!q.t ? 'page' : undefined}>전체</a>
+      <a class="sp-a__tab" href={albumHref({ ...q, t: 'photo' })} aria-current={q.t === 'photo' ? 'page' : undefined}>사진</a>
+      <a class="sp-a__tab" href={albumHref({ ...q, t: 'video' })} aria-current={q.t === 'video' ? 'page' : undefined}>영상</a>
+    </nav>
+  )}
 
   {
     items.length === 0 && cont ? null : items.length === 0 ? (
@@ -420,11 +413,20 @@ const monthCards = !monthRows
           )
         )}
         </div>
-        {/* 떠 있는 칸 크기 버튼 아래로 마지막 줄이 가리지 않게 */}
-        <div class="sp-a__zoom-space" aria-hidden="true"></div>
       </>
     )
   }
+  {/* 내 캐릭터·글자 크기(149): 가족이 들어온 뒤에도 자기 화면 글자를 바꿀 수 있게 같은 알약으로 나란히. 160부터 앨범 맨 아래(사진 위 줄을 줄임), 전체 폭이라 아주 크게여도 한 줄 */}
+  <div class="sp-a__mine">
+    {meFam && (
+      <a class="sp-a__chip sp-a__me" href={`/me/avatar?f=${meFam.family_id}`}>
+        {meFam.avatar && <img class="sp-avatar sp-avatar--small" src={avatarSrc(meFam.avatar)} width="32" height="32" alt="" />}내 캐릭터
+      </a>
+    )}
+    <a class="sp-a__chip sp-a__me" href="/me/text-size">글자 크기</a>
+  </div>
+  {/* 떠 있는 칸 크기 버튼(모아 보기) 아래로 마지막 줄이 가리지 않게 */}
+  {q.v === 'list' && items.length > 0 && <div class="sp-a__zoom-space" aria-hidden="true"></div>}
   {/* 크게 보기 미리 받기(131, 사용자 "속도 개선"): 사진을 누르기 시작하면(손가락·마우스를 대는 순간) 브라우저가 크게 보기를 미리 받는다(크롬 계열, 지원 안 하면 무시).
      미리 받은 화면은 서버가 '봤음'을 안 남기고 실제로 열리면 화면이 남긴다 */}
   <script type="speculationrules" is:inline set:html={'{"prefetch":[{"where":{"href_matches":"/album/*"},"eagerness":"conservative"}]}'} />
