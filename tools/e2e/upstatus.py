@@ -53,7 +53,7 @@ with sync_playwright() as p:
     check(('올리는 중','','') in seen and ('올림','올리는 중','') in seen,'올리는 동안 올리는 중 → 올림 '+str(seen[:6]))
     check(al.inner_text()=='인터넷 연결이 끊겼어요. 1장까지 올렸어요. 다시 누르면 나머지를 이어서 올려요.','실패 안내 '+al.inner_text())
     check(pg.locator('#up-status').inner_text()=='' and not pg.locator('#up-layer').evaluate('d=>d.open'),'진행 레이어는 닫힘')
-    lab=pg.locator('#up-grid .sp-p__upcell').first.get_attribute('aria-label')
+    lab=pg.locator('#up-grid .sp-p__upimg').first.get_attribute('alt')
     check(lab=='2번째 사진, 못 올림','그림 이름에 상태 '+str(lab))
     check(pg.locator('.sp-p__uptag').first.get_attribute('aria-hidden')=='true','표시 글은 화면 읽기에서 숨김(이름에 있음)')
     check(pg.evaluate("document.activeElement.textContent")=='나머지 2장 올리기만','실패하면 누른 버튼으로 포커스(글은 남은 장수로 바뀜)')

@@ -1,5 +1,5 @@
 # 161 올리기 흐름: 고르자마자 보내기 켜짐 → ✕로 빼기·되돌리기 → 가운데 레이어(n / N) → 그만 올리기(한 번 더 물음) → 남은/올린 두 묶음 → 나머지 올리고 카톡 → 보낼 주소는 모두 (mock)
-import os
+import os, time
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D=os.path.dirname(os.path.abspath(__file__))+'/'
 FAILS=[]
@@ -27,8 +27,9 @@ with sync_playwright() as p:
     pg.get_by_role('button',name='6번째 사진 빼기').click()
     pg.wait_for_timeout(6500)
     check(pg.locator('#up-undo').is_hidden() and pg.locator('#up-title').inner_text()=='사진 5장','되돌리기 알림은 6초 뒤 사라짐(뺀 것은 그대로)')
+    check(pg.evaluate("document.activeElement.classList.contains('sp-p__upx')"),'알림이 닫히면 초점은 칸의 ✕로')
     # 올리기: 느리게 해서 레이어·그만 올리기
-    pg.route('**/api/media**', lambda r: (pg.wait_for_timeout(400), r.continue_()))
+    pg.route('**/api/media**', lambda r: (time.sleep(0.4), r.continue_()))
     pg.get_by_role('button',name='보내지 않고 올리기만').click()
     pg.wait_for_selector('#up-layer[open]')
     check(pg.get_by_role('dialog',name='올리는 중이에요').count()==1,'가운데 레이어(올리는 중이에요)')
@@ -36,6 +37,8 @@ with sync_playwright() as p:
     check(pg.locator('#up-l-now').inner_text().endswith('올리는 중'),'지금 하는 일 한 줄 '+pg.locator('#up-l-now').inner_text())
     pg.keyboard.press('Escape')
     check(pg.get_by_role('alertdialog',name='그만 올릴까요?').count()==1,'Esc도 바로 닫지 않고 한 번 물음')
+    pg.keyboard.press('Escape'); pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+    check(pg.evaluate("document.getElementById('up-layer').open"),'Esc를 거듭 눌러도 올리는 동안 레이어는 열려 있음')
     pg.get_by_role('button',name='계속 올리기').click()
     check(pg.get_by_role('dialog',name='올리는 중이에요').count()==1,'계속 올리기면 다시 진행')
     pg.locator('#up-l-stop').click()
@@ -50,12 +53,26 @@ with sync_playwright() as p:
     check(pg.locator('#up-status').inner_text().startswith(f'{sent}장까지 올렸어요. 남은 {left}장은'),'멈춘 뒤 안내 '+pg.locator('#up-status').inner_text())
     check(pg.locator('#up-actions .sp-p__btn--kakao').inner_text()==f'나머지 {left}장 올리고 카톡으로 보내기','버튼에 남은 장수')
     check(all(c.is_disabled() for c in pg.locator('#up-actions input[name=group]').all()) and pg.locator('#up-files').is_disabled(),'첫 올리기 뒤 그룹·더 고르기 잠금')
-    # 나머지 올리고 카톡: 보낼 주소는 5장 모두
+    # 남은 걸 다 빼도 올린 것으로 카톡 주소는 만들 수 있음
+    left_keys=[x.get_attribute('data-x') for x in pg.locator('#up-grid .sp-p__upx').all()]
+    for k in left_keys:
+        pg.locator(f'#up-grid .sp-p__upx[data-x="{k}"]').click(); pg.get_by_role('button',name='되돌리기').click() if k==left_keys[-1] else None
+    check(pg.locator('#up-actions .sp-p__btn--kakao').inner_text()=='나머지 1장 올리고 카톡으로 보내기','마지막 하나는 되돌림(1장 남음)')
+    k=left_keys[-1]; pg.locator(f'#up-grid .sp-p__upx[data-x="{k}"]').click()
+    check(pg.locator('#up-actions .sp-p__btn--kakao').inner_text()=='카톡으로 보내기' and not pg.locator('#up-actions .sp-p__btn--kakao').is_disabled(),'남은 걸 다 빼면 버튼은 카톡으로 보내기(켜짐)')
+    check(pg.locator('#up-status').inner_text().startswith(f'{sent}장을 올렸어요'),'막대 안내도 지금 장수로 '+pg.locator('#up-status').inner_text())
+    # 올린 것만으로 카톡: 보낼 주소는 올린 장수만큼
     shares=[]
     pg.on('request', lambda r: r.url.endswith('/api/shares') and shares.append(r.post_data_json))
     pg.locator('#up-actions .sp-p__btn--kakao').click()
     pg.wait_for_selector('#up-done:not([hidden])',timeout=60000)
-    check(pg.locator('#up-done-title').inner_text()=='5장 다 올렸어요' and '앨범에 보여요' in pg.locator('#up-done-lead').inner_text(),'다 올림 카드 '+pg.locator('#up-done-lead').inner_text())
-    check(shares and len(shares[0]['mediaIds'])==5,'보낼 주소에 멈추기 전 것까지 5장')
+    check(pg.locator('#up-done-title').inner_text()==f'{sent}장 다 올렸어요' and '앨범에 보여요' in pg.locator('#up-done-lead').inner_text(),'다 올림 카드 '+pg.locator('#up-done-lead').inner_text())
+    check(shares and len(shares[0]['mediaIds'])==sent,'보낼 주소에 올린 것 모두')
+    # 못 여는 파일만 고르고 바로 보내면: 잠기지 않고 다시 고를 수 있음
+    pg.goto(B+'/upload')
+    # 준비(열어 보기)가 실패하기 전에 누르도록 같은 순간에 고르고 누른다
+    pg.evaluate("(()=>{const i=document.getElementById('up-files');const dt=new DataTransfer();dt.items.add(new File(['x'],'a.heic',{type:'image/heic'}));i.files=dt.files;i.dispatchEvent(new Event('change'));document.querySelector('#up-actions .sp-p__btn--text').click()})()")
+    pg.wait_for_function("!document.getElementById('up-layer').open && document.getElementById('up-alert').textContent!==''",timeout=30000)
+    check(not pg.locator('#up-files').is_disabled() and all(not c.is_disabled() for c in pg.locator('#up-actions input[name=group]').all()),'못 여는 파일만 보냈으면 잠기지 않음(다시 고르기·그룹)')
     b.close()
 print('FAILS',FAILS)
