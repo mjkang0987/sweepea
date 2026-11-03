@@ -1389,6 +1389,7 @@
 - 원인: 네이버까지는 성공(Supabase 기록에 네이버가 code를 돌려줌). 네이버 사용자 정보는 `{resultcode, message, response:{id,…}}`처럼 response 안에 감싸 오는데, Supabase 직접 설정(OAuth2) 제공자는 맨 위 칸(sub·email)만 읽고 속을 펴는 설정이 없음(supabase/auth custom_oauth.go applyAttributeMapping은 맨 위 이름만) → 사용자를 못 알아봐 실패
 - 고침: `/auth/naver-me` — Supabase가 보내는 네이버 토큰으로 네이버에 물어 `{sub: 네이버 id}`만 돌려줌(이메일은 앱이 안 써서 안 넘김). Supabase custom:naver의 UserInfo URL을 이 주소로, '이메일 없이 허용' 켬(사용자가 대시보드에서)
 - 영향 파일: src/pages/auth/naver-me.ts(새), plan.md, index.md
+- 1차 설정 뒤에도 실패(07:46, 네이버 code는 받음). 거절 이유가 버려져서 /auth/callback이 error_description을 /login?e=1&why=로 넘기게(0.38.7, 화면엔 안 보임·주소에만)
 - 확인: fetch를 바꿔 끼워 정상 → {sub}, 네이버 거절·토큰 없음 → 401, 네이버 안 닿음 → 502. astro check 0 errors. 실제는 사용자 로그인으로
 
 ### 157. fix/layer-seen — '아빠가 함께 관리하기 시작했어요'가 계속 뜸 (완료 0.38.4, 실기기 확인 대기)
