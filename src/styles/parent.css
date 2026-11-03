@@ -2019,10 +2019,6 @@
   flex-direction: column;
   gap: var(--space-5);
 }
-/* 원본·줄임 안내는 크기 칸 바로 아래에 붙여 읽히게 */
-.sp-p__up-note {
-  margin-top: calc(-1 * var(--space-2));
-}
 /* 올리기 기준(네이티브 details, 기본 펼침 표시는 그대로) */
 .sp-p__up-rules {
   font-size: var(--footnote-size);
@@ -2043,31 +2039,285 @@
   color: var(--label);
   font-weight: 600;
 }
-/* 상태 칸 바로 아래(8px)에 막대·안내. 쉬는 동안은 숨겨 빈 간격이 생기지 않게 */
-.sp-p__up-progress {
+/* ── 올리기(161): 사진 전부 + 아래 유리 막대 + 가운데 진행 레이어 ── */
+.sp-p__uplists {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin-top: calc(var(--space-2) - var(--space-5));
+  gap: var(--space-3);
 }
-.sp-p__up-progress[hidden] {
+.sp-p__uplists[hidden] {
   display: none;
 }
-/* 올리기 상태 칸이 진행 막대(진행 중일 때만): 옅게 차오르는 바탕 + 아래 3px 진한 줄(글자 대비 4.5 유지, 막대는 진한 줄로 구분) */
-@property --p {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: 0%;
+.sp-p__upgroup-title {
+  margin: var(--space-1) 0 0;
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+  font-weight: 700;
 }
-.sp-p__toast--progress {
-  background:
-    linear-gradient(var(--pea), var(--pea)) left bottom / var(--p) 3px no-repeat,
-    linear-gradient(to right, color-mix(in srgb, var(--pea) 20%, var(--pea-tint)) var(--p), var(--pea-tint) var(--p));
-  transition: --p 0.3s linear;
+.sp-p__upgroup-sub {
+  font-weight: 500;
+  color: var(--label-2);
+}
+/* 준비(줄이기) 전 칸: 빈 자리 */
+.sp-p__upcell--wait {
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+/* 이미 올린 칸: 흐리게 + ✓ */
+.sp-p__upcell--sent .sp-p__upimg {
+  opacity: 0.45;
+}
+.sp-p__upcheck {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--pea);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.sp-p__upcheck svg {
+  fill: none;
+  stroke: var(--on-pea);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* 빼기 ✕: 누르는 자리 44px는 칸 안 오른쪽 위, 보이는 동그라미는 24px */
+.sp-p__upx {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 4px;
+  box-sizing: border-box;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  cursor: pointer;
+}
+.sp-p__upx-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-p__upx-dot svg {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.sp-p__upx:focus-visible {
+  outline: none;
+}
+.sp-p__upx:focus-visible .sp-p__upx-dot {
+  outline: 2px solid var(--pea-ink);
+  outline-offset: 2px;
+}
+@media (forced-colors: active) {
+  .sp-p__upx-dot {
+    border: 1px solid CanvasText;
+  }
+}
+/* 아래 막대 유리(올리기만): 위 선 없이, 위 모서리 둥글게, 뒤 사진이 비침. 투명도 줄이기면 단색 */
+.sp-p__savebar--glass {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-radius: 22px 22px 0 0;
+  background: var(--glass-bar);
+  -webkit-backdrop-filter: blur(8px) saturate(180%);
+  backdrop-filter: blur(8px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 -8px 28px rgba(0, 0, 0, 0.1);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__savebar--glass {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+/* 막대 안 버튼 두 개는 붙여서(위 간격은 막대 gap) */
+.sp-p__savebar--glass .sp-p__btn--text {
+  margin-top: calc(-1 * var(--space-1));
+}
+/* 아이·보여줄 그룹 한 줄씩: 이름 왼쪽, 알약은 옆으로 밀림(엄빠 앨범 거르기 줄과 같은 방식). 오른쪽 끝까지 붙여 잘린 알약이 '더 있음'을 알림 */
+.sp-p__uprow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-right: calc(-1 * var(--space-5));
+}
+.sp-p__uprow-label {
+  float: left;
+  flex: none;
+  width: 4.75rem;
+  padding: 0;
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+  font-weight: 600;
+  color: var(--label);
+}
+.sp-p__uprow-list {
+  flex: 1;
+  min-width: 0;
+  /* 초점 테두리가 밀리는 칸에 잘리지 않게 안쪽 여백만큼 바깥으로 */
+  margin: -4px 0;
+  padding: 4px var(--space-5) 4px 4px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sp-p__uprow-list::-webkit-scrollbar {
+  display: none;
+}
+.sp-p__uprow-check {
+  flex: none;
+  white-space: nowrap;
+}
+/* 막대 위 글자: 앨범 머리처럼 진한 글자 + 둘레 화면색 번짐(사진이 비쳐도 읽히게) */
+@supports (text-shadow: 0 0 1px color-mix(in srgb, red 50%, transparent)) {
+  .sp-p__savebar--glass .sp-p__uprow-label,
+  .sp-p__savebar--glass .sp-p__fine {
+    text-shadow: 0 0 10px color-mix(in srgb, var(--bg) 50%, transparent);
+  }
+}
+.sp-p__savebar--glass .sp-p__fine {
+  color: var(--label);
+  font-weight: 600;
+}
+/* 되돌리기 알림(막대 안): 토스트와 같은 판 */
+.sp-p__upundo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 60px;
+  box-sizing: border-box;
+  padding: 10px 8px 10px var(--space-4);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 0 0 0.5px var(--separator), 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+.sp-p__upundo[hidden] {
+  display: none;
+}
+.sp-p__upundo-text {
+  flex: 1;
+  margin: 0;
+  font-size: 1.1875rem;
+  line-height: 1.625rem;
+  font-weight: 600;
+}
+.sp-p__upundo-btn {
+  min-height: var(--target-min);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--pea-ink);
+  font: inherit;
+  font-size: var(--body-size);
+  font-weight: 700;
+  cursor: pointer;
+}
+/* 올리는 중 레이어 */
+.sp-p__uplayer-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+}
+.sp-p__uplayer-step[hidden] {
+  display: none;
+}
+.sp-p__uplayer-count {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 2.125rem;
+  font-weight: 800;
+  color: var(--pea-ink);
+  font-variant-numeric: tabular-nums;
+}
+.sp-p__uplayer-bar {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  overflow: hidden;
+}
+.sp-p__uplayer-bar::-webkit-progress-bar {
+  background: var(--fill);
+}
+.sp-p__uplayer-bar::-webkit-progress-value {
+  border-radius: 999px;
+  background: var(--pea);
+  transition: width 0.3s linear;
+}
+.sp-p__uplayer-bar::-moz-progress-bar {
+  border-radius: 999px;
+  background: var(--pea);
 }
 @media (prefers-reduced-motion: reduce) {
-  .sp-p__toast--progress {
+  .sp-p__uplayer-bar::-webkit-progress-value {
     transition: none;
+  }
+}
+.sp-p__uplayer-now {
+  margin: calc(-1 * var(--space-1)) 0 0;
+  min-height: 1.25rem;
+  font-size: var(--subhead-size);
+  line-height: 1.25rem;
+  font-weight: 600;
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+.sp-p__uplayer .sp-layer__actions {
+  align-self: stretch;
+}
+/* 다 올림 카드 머리: 콩이 + 제목 */
+.sp-p__updone-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+@media (min-width: 64rem) {
+  /* 넓은 화면은 막대가 오른쪽 칸 제자리라 유리·둥근 모서리 없이 */
+  .sp-p.sp-p--wide .sp-p__savebar--glass {
+    padding-top: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .sp-p.sp-p--wide .sp-p__uprow {
+    margin-right: 0;
+  }
+  .sp-p.sp-p--wide .sp-p__uprow-list {
+    padding-right: 4px;
+  }
+}
+@media (max-height: 30rem) {
+  .sp-p__savebar--glass {
+    padding-top: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 }
 /* 끌어다 놓는 중(안쪽 글자에서 dragleave가 나지 않게) */
