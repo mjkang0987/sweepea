@@ -17,6 +17,8 @@ if (!home.family_id) return Astro.redirect('/setup');
 // 초대받아 막 들어온 엄빠면 동의 뒤 '함께 관리해요' 안내까지 이어서
 const next = Astro.url.searchParams.get('joined') === '1' ? '/home?joined=1' : '/home';
 if (hasAgreed(home, 'terms')) return Astro.redirect(next);
+// 예전 버전에 동의한 적이 있으면 약관이 바뀐 것(154)
+const changed = (home.agreed ?? []).some((x) => x.startsWith('terms:'));
 let error = false;
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData().catch(() => null);
@@ -35,8 +37,8 @@ if (Astro.request.method === 'POST') {
 <Parent title={error ? '다시 확인해 주세요 · 약관 동의' : '약관 동의'} savebar>
   <form class="sp-p__form" method="post">
     <header class="sp-p__head">
-      <h1 class="sp-p__title">약관에 동의해 주세요</h1>
-      <p class="sp-p__lead">스위피를 계속 쓰려면 이용약관과 개인정보 처리방침 동의가 필요해요. 한 번만 하면 돼요.</p>
+      <h1 class="sp-p__title">{changed ? '약관이 바뀌었어요' : '약관에 동의해 주세요'}</h1>
+      <p class="sp-p__lead">{changed ? "이용약관과 개인정보 처리방침이 바뀌었어요. '보기'로 확인한 뒤 다시 동의해 주세요." : '스위피를 계속 쓰려면 이용약관과 개인정보 처리방침 동의가 필요해요. 한 번만 하면 돼요.'}</p>
     </header>
     <Agree from="/agree" error={error} />
     <div class="sp-p__bottom sp-p__savebar">
