@@ -2155,6 +2155,11 @@
     backdrop-filter: none;
   }
 }
+/* 못 올린 파일 목록이 길어도 보내기 버튼이 막대 밖으로 밀리지 않게 목록만 밀림 */
+.sp-p__savebar--glass .sp-p__up-alert-list {
+  max-height: 7.5rem;
+  overflow-y: auto;
+}
 /* 막대 안 버튼 두 개는 붙여서(위 간격은 막대 gap) */
 .sp-p__savebar--glass .sp-p__btn--text {
   margin-top: calc(-1 * var(--space-1));
@@ -2327,6 +2332,34 @@
     max-height: none;
     overflow: visible;
   }
+}
+/* 고르기 전 큰 고르기 칸(보드 흐름 1): + · 글 · 한 번에 200개까지. 고른 뒤엔 '더 고르기' 한 줄 */
+.sp-p__pick-plus,
+.sp-p__pick-sub {
+  display: none;
+}
+.sp-p__pick--big {
+  min-height: 10rem;
+  border-radius: var(--radius-lg);
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 1.1875rem;
+  line-height: 1.625rem;
+}
+.sp-p__pick--big .sp-p__pick-plus {
+  display: block;
+  fill: none;
+  stroke: var(--pea-ink);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+.sp-p__pick--big .sp-p__pick-sub {
+  display: block;
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+  font-weight: 500;
+  color: var(--label-2);
+  pointer-events: none;
 }
 /* 끌어다 놓는 중(안쪽 글자에서 dragleave가 나지 않게) */
 .sp-p__pick-text {

@@ -14,19 +14,21 @@ const kid = callName(kids[0]?.name ?? '아이');
 ---
 
 <Parent title="사진 올리기 · 스위피" wide savebar={2}>
+  <nav class="sp-p__bar sp-p__bar--title" aria-label="올리기">
+    <a class="sp-p__back sp-p__back--cancel" href="/home" id="up-back">취소</a>
+    <h1 class="sp-p__bar-title" id="up-title">사진 올리기</h1>
+    <span class="sp-p__bar-space"></span>
+  </nav>
   <form class="sp-p__form" id="up-form" data-family={a.home.family_id} data-kid={kid} novalidate>
-    <nav class="sp-p__bar sp-p__bar--title" aria-label="올리기">
-      <a class="sp-p__back sp-p__back--cancel" href="/home">취소</a>
-      <h1 class="sp-p__bar-title" id="up-title">사진 올리기</h1>
-      <span class="sp-p__bar-space"></span>
-    </nav>
 
     <noscript><p class="sp-p__error">올리기는 자바스크립트를 켜야 쓸 수 있어요.</p></noscript>
 
     <div class="sp-p__up-main">
-    <label class="sp-p__pick" id="up-pick">
+    <label class="sp-p__pick sp-p__pick--big" id="up-pick">
       <input class="sp-vh sp-p__pick-input" id="up-files" type="file" multiple accept="image/*,video/mp4,video/quicktime" />
+      <svg class="sp-p__pick-plus" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg>
       <span class="sp-p__pick-text" id="up-pick-text">사진·영상 고르기</span>
+      <span class="sp-p__pick-sub">한 번에 200개까지</span>
     </label>
     {/* 고른 사진 전부(161). 멈추거나 실패한 뒤엔 '남은 사진'과 '이미 올린 사진' 두 묶음으로 나눈다 */}
     <div class="sp-p__uplists" id="up-lists" hidden>
@@ -464,6 +466,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     lists.hidden = all.length === 0;
     $('up-title').textContent = all.length ? `${all.some((e) => e.kind === 'video') ? '사진·영상' : '사진'} ${all.length}장` : '사진 올리기';
     $('up-pick-text').textContent = all.length ? '사진·영상 더 고르기' : '사진·영상 고르기';
+    $('up-pick').classList.toggle('sp-p__pick--big', !all.length);
     const leftTitle = $('up-left-title');
     const sentTitle = $('up-sent-title');
     leftTitle.hidden = sentTitle.hidden = sentGrid.hidden = !split;
@@ -478,7 +481,9 @@ const kid = callName(kids[0]?.name ?? '아이');
     for (const b of buttons) {
       b.textContent = onlySent ? (b.value === 'share' ? '카톡으로 보내기' : '앨범으로') : rest ? (b.value === 'share' ? `${rest}올리고 카톡으로 보내기` : `${rest}올리기만`) : LABEL[b.value];
       b.disabled = busy || all.length === 0;
+      if (b.value === 'only') onlySent ? b.removeAttribute('aria-describedby') : b.setAttribute('aria-describedby', 'up-only-hint');
     }
+    $('up-only-hint').hidden = onlySent;
     if (stopped) say(left.length ? `${sent.length}장까지 올렸어요. 남은 ${left.length}장은 아래 버튼으로 이어서 올려요. 아이·그룹은 처음 고른 그대로예요.` : sent.length ? `${sent.length}장을 올렸어요. 카톡으로 보내면 가족이 바로 알 수 있어요.` : '');
     input.disabled = busy || !!locked;
     choices.forEach((c) => (c.disabled = busy || !!locked));
@@ -586,9 +591,13 @@ const kid = callName(kids[0]?.name ?? '아이');
           e.item = await (e.kind === 'video' ? video(e.file, (p) => ((e.prog = p), onPrep?.(e))) : photo(e.file));
         } catch (err) {
           e.error = why(err);
-          skipped.push(`${e.file.name} · ${e.error}`);
-          warn(`${skipped.length - (overN ? 1 : 0) + overN}개는 올릴 수 없어서 뺐어요.`, skipped);
+          if (!e.removed) {
+            skipped.push(`${e.file.name} · ${e.error}`);
+            warn(`${skipped.length - (overN ? 1 : 0) + overN}개는 올릴 수 없어서 뺐어요.`, skipped);
+          }
         }
+        // 줄이는 동안 빼고 되돌리기 기간도 지났으면 줄인 파일·썸네일을 바로 놓는다(아이폰 메모리)
+        if (e.removed && e !== undone && e.item) URL.revokeObjectURL(e.item.url), (e.item = undefined);
         // 다 준비된 칸만 바꿔 끼운다(나머지 칸의 사진은 그대로)
         if (!e.removed) {
           const old = lists.querySelector(`[data-key="${e.key}"]`);
@@ -610,8 +619,9 @@ const kid = callName(kids[0]?.name ?? '아이');
     hideUndo();
     if (!pending) (skipped = []), (overN = 0);
     if (over) {
+      if (overN) skipped.shift();
       overN += over;
-      skipped.unshift(`뒤의 ${over}개 · 한 묶음에 ${MAX_ITEMS}장까지`);
+      skipped.unshift(`뒤의 ${overN}개 · 한 묶음에 ${MAX_ITEMS}장까지`);
     }
     if (skipped.length) warn(`${skipped.length - (overN ? 1 : 0) + overN}개는 올릴 수 없어서 뺐어요.`, skipped);
     else warn();
@@ -694,8 +704,10 @@ const kid = callName(kids[0]?.name ?? '아이');
     const t = p === undefined ? text : `${text} · ${p >= 1 ? 100 : Math.floor(pct(p) / 10) * 10}%`;
     if (t !== nowText) $('up-l-now').textContent = nowText = t;
   };
+  // 전체 수는 지금 올릴 수 있는 장수(줄이다 못 연 파일은 빠진다)
   const count = (done: number, total: number, part = 0) => {
-    $('up-l-count').textContent = `${done} / ${total}`;
+    const t = `${done} / ${total}`;
+    if ($('up-l-count').textContent !== t) $('up-l-count').textContent = t;
     bar.value = pct((done + part) / Math.max(1, total));
   };
   const showStep = (which: 'run' | 'ask') => {
@@ -738,8 +750,10 @@ const kid = callName(kids[0]?.name ?? '아이');
   };
   layer.addEventListener('close', () => {
     if (!layerOn) return;
+    const asking = !ask.hidden;
     layer.showModal();
-    askStop();
+    if (asking) askStop();
+    else showStep('run');
   });
 
   form.addEventListener('submit', async (ev) => {
@@ -756,8 +770,12 @@ const kid = callName(kids[0]?.name ?? '아이');
     warn();
     say('');
     hideUndo();
-    stopped = false;
     const all = live();
+    if (all.length && all.every((e) => e.done)) {
+      if (mode !== 'share') return location.assign('/home');
+      return share(groupIds);
+    }
+    stopped = false;
     // 지난번 못 올림 표시는 지우고 다시(이어 올리는 동안 남은 칸이 실패로 보이지 않게)
     for (const e of all) if (e.state === 'fail') e.state = undefined;
     locked = { groupIds, childIds };
@@ -769,7 +787,7 @@ const kid = callName(kids[0]?.name ?? '아이');
     keepAwake();
     render();
     showStep('run');
-    count(all.filter((e) => e.done).length, all.length);
+    count(all.filter((e) => e.done).length, live().length);
     now('');
     layerOn = true;
     layer.showModal();
@@ -807,7 +825,7 @@ const kid = callName(kids[0]?.name ?? '아이');
         ).id;
         try {
           const keys: Record<string, string> = {
-            view: await put(e.id, 'view', it.view, (p) => (now(`${label} 올리는 중`, p), count(sent(), all.length, p)), signal),
+            view: await put(e.id, 'view', it.view, (p) => (now(`${label} 올리는 중`, p), count(sent(), live().length, p)), signal),
           };
           keys.thumb = await put(e.id, 'thumb', it.thumb, undefined, signal);
           if (it.poster) keys.poster = await put(e.id, 'poster', it.poster, undefined, signal);
@@ -819,7 +837,7 @@ const kid = callName(kids[0]?.name ?? '아이');
         e.done = true;
         e.state = undefined;
         paint(e);
-        count(sent(), all.length);
+        count(sent(), live().length);
       }
       // 준비하다 못 연 파일만 남았으면 올린 게 없다
       if (!all.some((e) => e.done)) throw new Error('nothing');
@@ -865,7 +883,11 @@ const kid = callName(kids[0]?.name ?? '아이');
     letSleep();
     closeLayer();
     if (mode !== 'share') return location.assign('/home');
-    // 보낼 주소는 이번에 올린 것만이 아니라 이 묶음에서 올린 것 모두(멈췄다 이어 올린 것까지)
+    await share(groupIds);
+  });
+
+  /** 보낼 주소 만들기: 이번에 올린 것만이 아니라 이 묶음에서 올린 것 모두(멈췄다 이어 올린 것까지) */
+  async function share(groupIds: string[]) {
     const ids = live().filter((e) => e.done).map((e) => e.id!);
     say('보낼 주소를 만드는 중…');
     try {
@@ -879,6 +901,8 @@ const kid = callName(kids[0]?.name ?? '아이');
       form.closest('.sp-p')?.classList.remove('sp-p--savebar', 'sp-p--savebar2');
       const done = $('up-done');
       done.hidden = false;
+      $('up-back').textContent = '닫기';
+      $('up-title').textContent = '사진 올리기';
       $('up-done-title').textContent = `${ids.length}장 다 올렸어요`;
       const names = choices.filter((c) => c.name === 'group' && groupIds.includes(c.value)).map((c) => c.parentElement?.textContent?.trim() ?? '');
       // 기본 그룹 하나('가족')면 '가족 가족 앨범'이 되지 않게
@@ -900,5 +924,5 @@ const kid = callName(kids[0]?.name ?? '아이');
       $('up-noshare').hidden = false;
       $('up-noshare-title').focus();
     }
-  });
+  }
 </script>
