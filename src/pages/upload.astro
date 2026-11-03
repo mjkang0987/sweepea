@@ -366,7 +366,8 @@ const kid = callName(kids[0]?.name ?? '아이');
     return mp4CreatedAt(file).catch(() => null);
   }
 
-  async function video(file: File, progress: (p: number) => void): Promise<Item> {
+  /** ms: 첫 장면 기다림(처음 20초, 저절로 다시 할 때는 8초 — 정말 깨진 파일이면 안내가 너무 늦지 않게) */
+  async function video(file: File, progress: (p: number) => void, ms = 20_000): Promise<Item> {
     if (!VIDEO_TYPES.includes(file.type)) throw new Error('type');
     if (file.size > VIDEO_MAX) throw new Error('too_large');
     const v = document.createElement('video');
@@ -377,14 +378,14 @@ const kid = callName(kids[0]?.name ?? '아이');
     const src = URL.createObjectURL(file);
     try {
       v.src = src;
-      await wait(v, 'loadeddata');
+      // 아이폰은 큰 .mov를 처음 열 때 첫 장면이 늦게 나와 8초로는 모자란다(162: 처음엔 실패, 다시 고르면 됨)
+      await wait(v, 'loadeddata', ms);
       v.currentTime = Math.min(0.1, v.duration / 2 || 0);
-      await wait(v, 'seeked');
+      await wait(v, 'seeked', ms);
       const { view: poster, thumb } = await viewAndThumb(v, v.videoWidth, v.videoHeight, 1280);
       const { duration, videoWidth, videoHeight } = v;
       // 줄이는 동안 영상 칸이 같은 영상을 따로 풀고 있지 않게 비운다(아이폰 메모리)
-      v.removeAttribute('src');
-      v.load();
+      release(v);
       const [small, taken] = await Promise.all([shrink(file, duration, progress), videoTakenAt(file)]);
       return {
         // 줄였든 원본이든 찍은 장소는 지우고 올린다(138 개인정보, 사진은 그리기·stripJpeg로 이미 지움)
@@ -396,9 +397,16 @@ const kid = callName(kids[0]?.name ?? '아이');
         url: URL.createObjectURL(thumb.blob),
       };
     } finally {
+      // 실패해도 영상 칸을 비운다(다시 할 때 앞 칸이 디코더·메모리를 쥐고 있지 않게)
+      release(v);
       URL.revokeObjectURL(src);
     }
   }
+  const release = (v: HTMLVideoElement) => {
+    if (!v.hasAttribute('src')) return;
+    v.removeAttribute('src');
+    v.load();
+  };
 
   /** 칸 하나. 준비 전은 빈 자리, 올린 것은 흐리게 ✓, 보내기 전·남은 것은 ✕ */
   function cell(e: Entry) {
@@ -588,7 +596,14 @@ const kid = callName(kids[0]?.name ?? '아이');
         e.started = true;
         if (e.kind === 'video') keepAwake();
         try {
-          e.item = await (e.kind === 'video' ? video(e.file, (p) => ((e.prog = p), onPrep?.(e))) : photo(e.file));
+          const load = (ms?: number) => (e.kind === 'video' ? video(e.file, (p) => ((e.prog = p), onPrep?.(e)), ms) : photo(e.file));
+          try {
+            e.item = await load();
+          } catch (err) {
+            // 영상이 열리지 않으면 한 번 더(처음엔 안 되고 다시 하면 되는 아이폰 사례, 162). 형식·크기 문제는 다시 해도 같으므로 그대로
+            if (e.kind !== 'video' || why(err) !== '열 수 없는 파일') throw err;
+            e.item = await load(8000);
+          }
         } catch (err) {
           e.error = why(err);
           if (!e.removed) {
