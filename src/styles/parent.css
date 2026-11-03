@@ -2328,18 +2328,15 @@
 
 /* 알림 탭 '다가오는 일정'(디자인 ReactionsHealth): 문자로 공유하기 카드 모양 + 왼쪽 주사기 */
 .sp-p__soon {
-  padding-left: calc(var(--space-4) + 1.5rem + var(--space-3));
+  padding-left: calc(var(--space-4) + 2.5rem + var(--space-3));
 }
 .sp-p__soon-icon {
   position: absolute;
   left: var(--space-4);
   top: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
   transform: translateY(-50%);
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 .sp-p__soon + .sp-p__soon {
   margin-top: var(--space-2);
