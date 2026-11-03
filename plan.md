@@ -1384,6 +1384,13 @@
 - 결과(0.17.0, 캔버스 v208): 단위 검사에서 7세 이상이 1단계로 나오던 버그를 잡음. e2e entry·health·kidtabs·layers 통과, 리뷰 1회(작은 변경: 경계·시간대·CSS 우선순위 이상 없음). 그대로 둔 것: 가족 앨범 제목 옆 아기도 콩이처럼 톡 뜀(기획서 '움직임 있음', 움직임 줄이기면 멈춤), 백일·첫돌 레이어는 콩이(안내 레이어)
 - 다음(110): 가족 캐릭터 고르기(각자 자기 것만, 사용자 "각자만"). DB 칸 필요 → 운영 적용 전 확인
 
+### 158. fix/naver-userinfo — 네이버 로그인 실패 (완료 0.38.6, 대시보드 설정·실로그인 확인 대기)
+- 요구(사용자 2026-11-03 "로그인실패")
+- 원인: 네이버까지는 성공(Supabase 기록에 네이버가 code를 돌려줌). 네이버 사용자 정보는 `{resultcode, message, response:{id,…}}`처럼 response 안에 감싸 오는데, Supabase 직접 설정(OAuth2) 제공자는 맨 위 칸(sub·email)만 읽고 속을 펴는 설정이 없음(supabase/auth custom_oauth.go applyAttributeMapping은 맨 위 이름만) → 사용자를 못 알아봐 실패
+- 고침: `/auth/naver-me` — Supabase가 보내는 네이버 토큰으로 네이버에 물어 `{sub: 네이버 id}`만 돌려줌(이메일은 앱이 안 써서 안 넘김). Supabase custom:naver의 UserInfo URL을 이 주소로, '이메일 없이 허용' 켬(사용자가 대시보드에서)
+- 영향 파일: src/pages/auth/naver-me.ts(새), plan.md, index.md
+- 확인: fetch를 바꿔 끼워 정상 → {sub}, 네이버 거절·토큰 없음 → 401, 네이버 안 닿음 → 502. astro check 0 errors. 실제는 사용자 로그인으로
+
 ### 157. fix/layer-seen — '아빠가 함께 관리하기 시작했어요'가 계속 뜸 (완료 0.38.4, 실기기 확인 대기)
 - 요구(사용자 2026-11-03 "아빠가 관리하기 시작했다고 계속 뜨네")
 - 조사: 운영 DB 정상(아빠 10-29 들어옴 → 30일 동안 엄마 기기에 한 번). '좋아요'는 그 자리에서 닫고 뒤에서 POST(keepalive)로 '봤음' 쿠키를 적는데, 크롬에선 다시 안 뜸(coparent 통과). 이 환경엔 webkit이 없어 아이폰 사파리 재현 못 함 → 사파리가 keepalive 요청 응답의 Set-Cookie를 안 남기는 것으로 추정
