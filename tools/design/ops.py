@@ -74,16 +74,29 @@ def stat(label,val,note=''):
 def stats(items,cols):
     return f'<div style="display: grid; grid-template-columns: repeat({cols}, minmax(0, 1fr)); gap: 12px;">'+''.join(stat(*i) for i in items)+'</div>'
 
-def bars(label,days,a,b=None,la='',lb=''):
+def dates(n):
+    # 보드 기준일 11월 4일에서 거꾸로 n일
+    import datetime as dt
+    end=dt.date(2026,11,4)
+    return [f'{d.month}월 {d.day}일' for d in (end-dt.timedelta(days=n-1-i) for i in range(n))]
+
+def bars(label,days,a,b=None,la='',lb='',unit='회'):
     # a 위(가족), b 아래(엄빠) 쌓기. 이어진 두 색은 밝기가 달라 색 없이도 구분
-    mx=max((x+(b[i] if b else 0)) for i,x in enumerate(a))
+    # 막대마다 title(마우스 말풍선, 스크립트 없음) + 아래 접힌 '숫자로 보기' 표(휴대폰·키보드·화면 읽기)
+    ds=dates(len(a)); mx=max((x+(b[i] if b else 0)) for i,x in enumerate(a))
     cols=''
     for i,x in enumerate(a):
         y=b[i] if b else 0
-        cols+=f'<div style="flex: 1; display: flex; flex-direction: column-reverse; gap: 2px; height: 100%;"><span style="height: {y/mx*100:.1f}%; border-radius: 3px; background: var(--label-2);"></span><span style="height: {x/mx*100:.1f}%; border-radius: 3px; background: var(--pea);"></span></div>'
+        tip=f'{ds[i]} · {la} {x}{unit} · {lb} {y}{unit}' if b else f'{ds[i]} · {x}{unit}'
+        cols+=f'<div title="{tip}" style="flex: 1; display: flex; flex-direction: column-reverse; gap: 2px; height: 100%;"><span style="height: {y/mx*100:.1f}%; border-radius: 3px; background: var(--label-2);"></span><span style="height: {x/mx*100:.1f}%; border-radius: 3px; background: var(--pea);"></span></div>'
     legend=''
     if b: legend=f'<p style="{SUB} display: flex; gap: 16px;"><span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; background: var(--pea);"></span>{la}</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; background: var(--label-2);"></span>{lb}</span></p>'
-    return f'''<figure style="margin: 0; display: flex; flex-direction: column; gap: 8px;"><div role="img" aria-label="{label}" style="display: flex; align-items: flex-end; gap: 4px; height: 120px;">{cols}</div><figcaption style="{SUB} display: flex; justify-content: space-between;"><span>{days[0]}</span><span>{days[1]}</span></figcaption>{legend}</figure>'''
+    hd=['날짜']+([la,lb] if b else ['수'])
+    TD='padding: 0 8px; height: 36px; text-align: right; font-variant-numeric: tabular-nums;'
+    th=''.join(f'<th scope="col" style="{TD} text-align: {"left" if i==0 else "right"}; font-size: 13px; font-weight: 500; color: var(--label-2);">{h}</th>' for i,h in enumerate(hd))
+    rows=''.join(f'<tr style="border-top: 1px solid var(--separator);"><th scope="row" style="{TD} text-align: left; font-weight: 400;">{ds[i]}</th><td style="{TD}">{x}{unit}</td>'+(f'<td style="{TD}">{b[i]}{unit}</td>' if b else '')+'</tr>' for i,x in reversed(list(enumerate(a))))
+    table=f'<details style="font-size: 15px; line-height: 20px;"><summary style="display: inline-flex; align-items: center; min-height: 44px; color: var(--pea-ink); cursor: pointer;">숫자로 보기</summary><table style="width: 100%; border-collapse: collapse;"><caption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">{label}, 날짜별 숫자</caption><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></details>'
+    return f'''<figure style="margin: 0; display: flex; flex-direction: column; gap: 8px;"><div role="img" aria-label="{label}" style="display: flex; align-items: flex-end; gap: 4px; height: 120px;">{cols}</div><figcaption style="{SUB} display: flex; justify-content: space-between;"><span>{days[0]}</span><span>{days[1]}</span></figcaption>{legend}{table}</figure>'''
 
 def card(title,inner,sub=''):
     s=f'<p style="{SUB}">{sub}</p>' if sub else ''
@@ -107,7 +120,7 @@ def home(side):
     sfx='{{sfx}}'
     checks='<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column;">'+''.join(rowlink(a,b,f'{h}{sfx}.dc.html') for a,b,h in CHECK)+'</ul>'
     left=f'''{stats([('가족방','12'),('엄빠','18'),('가족 기기','41','승인 36 · 대기 5'),('사진·영상','3,210'),('저장 용량','21.4GB')],5 if side else 2)}
-{card('방문',stats([('오늘 방문한 사람','23'),('오늘 방문','61회'),('7일 방문한 사람','47','엄빠 16 · 가족 31')],3)+bars('최근 14일 방문 수, 가족이 엄빠보다 많고 마지막 날 27회로 가장 많음',('10월 22일','오늘'),VIS_A,VIS_B,'가족','엄빠'),'30분 안에 이어서 연 건 한 번으로 세요')}
+{card('방문',stats([('오늘 방문한 사람','23'),('오늘 방문','61회'),('7일 방문한 사람','47','엄빠 16 · 가족 31')],3)+bars('최근 14일 방문 수',('10월 22일','오늘'),VIS_A,VIS_B,'가족','엄빠'),'30분 안에 이어서 연 건 한 번으로 세요')}
 {card('이번 주',kv([('새 가족방','2 <span style="color: var(--label-2); font-weight: 400;">(지난주 1)</span>'),('새로 들어온 가족','5 <span style="color: var(--label-2); font-weight: 400;">(지난주 3)</span>'),('올린 사진·영상','214 <span style="color: var(--label-2); font-weight: 400;">(지난주 188)</span>')]))}
 {card('가족이 실제로 보는지',f'<p style="margin: 0; {NUM}">74%</p><meter class="sp-meter" min="0" max="100" value="74" style="width: 100%; height: 10px;">74%</meter>'+kv([('7일 안에 사진을 본 가족 기기','27 / 36'),('반응','88'),('한마디','17')]),'승인된 가족 기기 중 7일 안에 사진을 본 비율')}
 {card('들어오다 멈춘 곳',funnel([('링크로 처음 방문',64),('이름 고름',40),('들어오기 신청',22),('승인',19)])+f'<p style="{SUB}">비밀번호 틀림 9번 · 승인 대기 기한 지남 2명</p>','최근 30일')}'''
@@ -159,8 +172,8 @@ def family():
     rows=''.join('<tr style="border-top: 1px solid var(--separator);">'+f'<th scope="row" style="padding: 0 12px; height: 48px; text-align: left; font-weight: 600;">{p[0]}</th><td style="padding: 0 12px;">{p[1]}</td><td style="padding: 0 12px; {"color: var(--danger); font-weight: 600;" if p[2]=="승인 대기" else ""}">{p[2]}</td>'+''.join(f'<td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;">{v}</td>' for v in p[3:])+'</tr>' for p in PEOPLE)
     people=f'<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 20px;"><caption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">사람별 방문, 이름 없이</caption><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div>'
     left=f'''{stats([('엄빠','2'),('가족','6','승인 5 · 대기 1'),('사진·영상','412','사진 398 · 영상 14'),('아이','2')],4)}
-{card('최근 30일 올린 사진·영상',bars('최근 30일 올린 수, 10월 15일 41장이 가장 많음',('10월 6일','오늘'),UP))}
-{card('최근 30일 방문',bars('최근 30일 방문 수, 하루 2~9회',('10월 6일','오늘'),VS))}
+{card('최근 30일 올린 사진·영상',bars('최근 30일 올린 사진·영상 수',('10월 6일','오늘'),UP,unit='개'))}
+{card('최근 30일 방문',bars('최근 30일 방문 수',('10월 6일','오늘'),VS))}
 {card('사람별 방문',people,'이름은 안 보여요. 번호는 들어온 순서예요')}'''
     right=f'''{card('저장 용량','<p style="margin: 0; font-size: 17px; line-height: 24px; font-weight: 700;"><span style="font-size: 22px;">3.1GB</span> / 5GB</p><meter class="sp-meter" min="0" max="5" low="4" high="4.5" optimum="1" value="3.1" style="width: 100%; height: 8px;">3.1GB / 5GB</meter>')}
 {card('그룹',kv([('그룹 1','4명'),('그룹 2','3명')]))}
@@ -171,12 +184,12 @@ def family():
 <div style="display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start;"><div style="display: flex; flex-direction: column; gap: 20px; min-width: 0;">{left}</div><div style="display: flex; flex-direction: column; gap: 20px;">{right}</div></div>'''
     return shell('가족방',body,True)
 
-BOARDS=[('OpsHome','운영 · 현황 (PC)',lambda:home(True),1440,1300),
+BOARDS=[('OpsHome','운영 · 현황 (PC)',lambda:home(True),1440,1360),
         ('OpsFamilies','운영 · 가족방 목록 (PC)',families,1440,600),
         ('OpsFamily','운영 · 가족방 상세 (PC)',family,1440,1420),
         ('OpsHomeMobile','운영 · 현황 (휴대폰, 위 메뉴 한 단)',lambda:home(False),390,2100)]
 d=json.load(open('canvas.json')); b=d['boards']
-Y0=max(v['y']+v['h'] for v in b.values())+520
+Y0=max(v['y']+v['h'] for k,v in b.items() if not k.startswith('Ops'))+520
 names=[]
 for row,(theme,sfx,lab) in enumerate([('dark','','다크'),('light','-Light','라이트')]):
     x=0; y=Y0+row*(2100+120)
