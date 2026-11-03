@@ -18,7 +18,7 @@ const b = getBackend();
 const today = seoulToday();
 // 들어온 곳(알림 탭 다가오는 일정·설정 › 아이)으로 돌아가기. 저장 뒤에도 이어지게 주소에 남긴다
 const from = Astro.url.searchParams.get('from');
-const here = `/health/${kid.id}${from === 'alerts' || from === 'settings' ? `?from=${from}&` : '?'}`;
+const here = `/health/${kid.id}${from === 'alerts' || from === 'settings' || from === 'kid' ? `?from=${from}&` : '?'}`;
 // 건강 정보 동의(152): 완료 기록(민감정보)은 따로 동의한 엄빠만 남긴다. 일정 보기(생일로 계산)는 동의 없이도
 const okHealth = hasAgreed(a.home, 'health');
 if (Astro.request.method === 'POST') {
@@ -60,7 +60,7 @@ const doneList = HEALTH_ITEMS.filter((i) => doneOn.has(i.key)).sort((x, y) => (d
 const stateText = (s: HealthState) => (s.kind === 'now' ? '지금 가능' : s.kind === 'late' ? '시기 지남' : `${monthDay(s.from)}부터`);
 const KIND = { vaccine: '접종', checkup: '검진' };
 const done = Astro.url.searchParams.get('done');
-const back = from === 'alerts' ? { href: '/reactions', label: '알림', tab: 'alerts' as const } : from === 'settings' ? { href: '/settings/children', label: '아이', tab: 'settings' as const } : { href: '/home', label: '앨범', tab: 'home' as const };
+const back = from === 'alerts' ? { href: '/reactions', label: '알림', tab: 'alerts' as const } : from === 'settings' ? { href: '/settings/children', label: '아이', tab: 'settings' as const } : from === 'kid' ? { href: `/kid/${kid.id}`, label: kid.name, tab: 'home' as const } : { href: '/home', label: '앨범', tab: 'home' as const };
 ---
 
 <Parent title={`접종·검진 · ${kid.name}`} tab={back.tab} alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>

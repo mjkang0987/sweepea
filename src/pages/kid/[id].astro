@@ -1,0 +1,72 @@
+---
+// 아기 자세히 보기(153, 사용자 "아기 이름 나온 데에 아기 자세히 보기"): 엄빠 앨범 머리 아이 이름에서 온다. 엄빠만, 읽기만(고치기는 설정 › 아이)
+// shortcut: 개월별 발달은 아직 없음, CDC 원문 대조(www.cdc.gov 허용) 뒤 '이번 달 발달'을 여기 넣는다
+import Parent from '../../layouts/Parent.astro';
+import { ageLabel, birthLabel, kidImage, nextMark } from '../../lib/age';
+import { getBackend } from '../../lib/backend';
+import { monthDay, nextHealth } from '../../lib/kidHealth';
+import { loadParent, seoulToday } from '../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const kid = a.home.children?.find((k) => k.id === Astro.params.id);
+if (!kid) return Astro.redirect('/home');
+const today = seoulToday();
+const age = ageLabel(kid.birth_date, today);
+const lived = Math.round((Date.parse(today) - Date.parse(kid.birth_date)) / 86_400_000) + 1;
+const mark = nextMark(kid.birth_date, today);
+const [health] = kid.show_health ? await nextHealth(getBackend(), a.pass, [kid], today) : [];
+---
+
+<Parent title={`${kid.name} · 아이`} tab="home" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+  <div class="sp-p__nav">
+    <a class="sp-p__back" href="/home">앨범</a>
+  </div>
+  <div class="sp-p__kid-head">
+    <img class="sp-p__kid-box-img sp-kid" src={kidImage(kid.birth_date, today)} width="48" height="48" alt="" />
+    <h1 class="sp-p__title">{kid.name}</h1>
+  </div>
+  <p class="sp-p__lead">{birthLabel(kid.birth_date)}생{age && ` · ${age}`}{lived > 0 && ` · 태어난 지 ${lived.toLocaleString('ko-KR')}일`}</p>
+
+  {
+    mark && (
+      <section class="sp-p__section" aria-labelledby="sec-mark">
+        <h2 class="sp-p__section-title" id="sec-mark">{mark.inDays === 0 ? '오늘은' : '다음 기념일'}</h2>
+        <p class="sp-p__card sp-p__kid-mark">
+          <strong class="sp-p__big">{mark.mark}</strong>
+          <span class="sp-p__hint">{mark.inDays === 0 ? '축하해요! 오늘 찍은 사진에 표시돼요.' : `${monthDay(mark.day)} · ${mark.inDays}일 남았어요`}</span>
+        </p>
+      </section>
+    )
+  }
+
+  <section class="sp-p__section" aria-labelledby="sec-kid">
+    <h2 class="sp-p__section-title" id="sec-kid">{kid.name}</h2>
+    <ul class="sp-p__list">
+      {
+        kid.show_health && (
+          <li>
+            <a class="sp-p__row" href={`/health/${kid.id}?from=kid`}>
+              <span class="sp-p__row-label">접종·검진 일정</span>
+              <span class="sp-p__row-value">{health?.what ? (health.from ? `${health.what} · ${monthDay(health.from)}부터` : `${health.what} · 지금`) : '6개월 안에는 없어요'}</span>
+              <span class="sp-p__chev" aria-hidden="true">›</span>
+            </a>
+          </li>
+        )
+      }
+      <li>
+        <a class="sp-p__row" href={`/home?k=${kid.id}`}>
+          <span class="sp-p__row-label">{kid.name} 사진 보기</span>
+          <span class="sp-p__chev" aria-hidden="true">›</span>
+        </a>
+      </li>
+      <li>
+        <a class="sp-p__row" href={`/settings/children/${kid.id}`}>
+          <span class="sp-p__row-label">이름·생일 고치기</span>
+          <span class="sp-p__chev" aria-hidden="true">›</span>
+        </a>
+      </li>
+    </ul>
+  </section>
+</Parent>

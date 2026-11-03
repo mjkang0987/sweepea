@@ -238,7 +238,7 @@ const d0 = items[0] ? seoulDay(items[0].taken_at) : '';
 const mark0 = d0 && (z === 1 || z === 2) ? markOf(d0) : null;
 const whenFirst = d0 && !cardView && !swipe ? `${d0.slice(0, 4) === today.slice(0, 4) ? '' : `${d0.slice(0, 4)}년 `}${dayFmt.format(new Date(items[0].taken_at))}${mark0 ? ` · ${mark0}` : ''}` : null;
 // 머리 오른쪽 위 아이 오늘 나이(사용자 2026-10-29 "아기 정보는 항상 노출, N개월 NN일", 디자인 ParentHomeZoom): 고른 아이, 전체면 아이마다
-const kidAges = (picked ? [picked] : kids).map((k) => ({ name: k.name, age: ageLabel(k.birth_date, today) })).filter((k) => k.age);
+const kidAges = (picked ? [picked] : kids).map((k) => ({ id: k.id, name: k.name, age: ageLabel(k.birth_date, today) })).filter((k) => k.age);
 // 넘겨 보기 카드(98d, 가족 넘겨 보기와 같은 카드): 사진(영상은 포스터) 크게, 누르면 크게 보기. 칸 단계(z)는 안 붙인다(닫으면 기억한 넘겨 보기로)
 // 거르기(아이·사진/영상·그룹)는 크게 보기로 이어 그 안에서만 넘김(125)
 const viewQ = kq ? `?${kq.slice(0, -1)}` : '';
@@ -304,7 +304,8 @@ if (z !== 3 && z !== 5)
         {/* 가운뎃점은 앞 항목 끝에 붙여 줄이 바뀌어도 '·'로 시작하지 않게, 화면 읽기는 쉼표로 */}
         {kidAges.map((k, i) => (
           <span class="sp-p__albumhead-kid-one">
-            {k.name}{kidAges.length === 1 && <span aria-hidden="true"> ·</span>} <strong class="sp-p__albumhead-kid-age">{k.age}</strong>
+            {/* 누르면 아기 자세히 보기(153) */}
+            <a class="sp-p__albumhead-kid-link" href={`/kid/${k.id}`}>{k.name}{kidAges.length === 1 && <span aria-hidden="true"> ·</span>} <strong class="sp-p__albumhead-kid-age">{k.age}</strong></a>
             {i < kidAges.length - 1 && <><span aria-hidden="true"> ·</span><span class="sp-vh">,</span></>}
           </span>
         ))}
