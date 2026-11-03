@@ -159,10 +159,10 @@ const ga = (w: string) => (hasBatchim(w) ? '이' : '가');
 const joinSeen = seenAt(Astro.cookies, JOIN_SEEN) ?? 0;
 const joins = s
   ? [
-      ...s.pendingMembers.map((m) => ({ who: m.display_name, what: `${s.groupName(m.group_id)} 앨범에 들어오려고 해요`, at: m.created_at, expires: true })),
+      ...s.pendingMembers.map((m) => ({ who: m.display_name, what: `${s.groupName(m.group_id)} 그룹에 들어오려고 해요`, at: m.created_at, expires: true })),
       ...s.pendingDevices.map((d) => ({
         who: admin!.members.find((m) => m.id === (d.member_id ?? d.requested_member_id))?.display_name ?? d.requested_name ?? '가족',
-        what: '새 휴대폰으로 들어오려고 해요',
+        what: '비밀번호를 여러 번 틀린 휴대폰이 들어오려고 해요',
         at: d.created_at,
         expires: false,
       })),
@@ -333,7 +333,7 @@ if (z !== 3 && z !== 5)
   {sel && (
     <div class="sp-p__selbar">
       {/* 145(사용자 "하단 왼쪽 메뉴 영역에 몇 장 선택인지, 오른쪽 업로드 버튼을 쓰레기통으로"): 탭바와 같은 자리·모양, 내용만 바뀜. 휴지통은 빨간 아이콘으로 '+'와 다르게 */}
-      <p class="sp-p__selbar-n" id="sel-n" role="status">사진을 골라 주세요</p>
+      <p class="sp-p__selbar-n" id="sel-n" role="status">사진을 골라 주세요 · 60장까지</p>
       <button class="sp-p__selbar-del" type="submit" form="sel-form" name="do" value="delete" aria-label="고른 사진 지우기">
         <svg class="sp-p__icon-line" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>
       </button>
@@ -417,7 +417,7 @@ if (z !== 3 && z !== 5)
   {
     s && s.waiting > 0 && (
       <a class="sp-p__alert" href="/settings/family">
-        <span class="sp-p__alert-text">{firstWait ? <><strong>{firstWait.display_name}</strong>{ga(firstWait.display_name)} {s.groupName(firstWait.group_id)} 앨범에 들어오려고 해요</> : s.pendingMembers.length === 0 ? <>새 휴대폰 <strong>{s.waiting}대</strong>가 들어오려고 해요</> : <><strong>{s.waiting}명</strong>이 들어오려고 해요</>}</span>
+        <span class="sp-p__alert-text">{firstWait ? <><strong>{firstWait.display_name}</strong>{ga(firstWait.display_name)} {s.groupName(firstWait.group_id)} 그룹에 들어오려고 해요</> : s.pendingMembers.length === 0 ? <>새 휴대폰 <strong>{s.waiting}대</strong>가 들어오려고 해요</> : <><strong>{s.waiting}명</strong>이 들어오려고 해요</>}</span>
         <svg class="sp-p__icon-chev" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
       </a>
     )
@@ -478,7 +478,8 @@ if (z !== 3 && z !== 5)
       <section class="sp-p__empty" aria-labelledby="empty-title">
         <img class="sp-p__empty-kongi" src="/kongi.svg" width="128" height="128" alt="" />
         <h2 class="sp-p__empty-title" id="empty-title">{kid} 첫 사진을 올려 주세요</h2>
-        <p class="sp-p__lead">올리고 카톡으로 보내면 조부모님이<br />설치 없이 바로 보실 수 있어요</p>
+        <p class="sp-p__lead">올리고 카톡으로 보내면 조부모님이<br />설치 없이 보실 수 있어요</p>
+        <p class="sp-p__hint">처음 들어올 때 한 번 가족 비밀번호 4자리를 물어요. 비밀번호도 같이 알려 주세요.</p>
       </section>
     ) : swipe ? (
       /* 가족 넘겨 보기와 같은 카드(swipe.css): 가운데 카드 + 양옆 비스듬히, 손가락으로 밀면 넘어감(scroll-snap). 카드 전체가 크게 보기 링크 */
@@ -630,7 +631,7 @@ if (z !== 3 && z !== 5)
     const btns = document.querySelectorAll<HTMLButtonElement>('button[form="sel-form"][name="do"]');
     const sync = () => {
       const n = document.querySelectorAll('.sp-p__selbox:checked').length;
-      selN.textContent = n ? `${n}장 선택됨` : '사진을 골라 주세요';
+      selN.textContent = n ? `${n}장 선택됨` : '사진을 골라 주세요 · 60장까지';
       btns.forEach((b) => (b.disabled = n === 0));
     };
     document.addEventListener('change', (e) => {

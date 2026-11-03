@@ -75,7 +75,7 @@ const label = `${new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'lon
 const q = Astro.url.searchParams;
 const confirmDelete = q.get('confirm') === 'delete';
 const what = isVideo ? '영상' : '사진';
-const delText = '가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요.';
+const delText = '가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요. 스위피에는 원본이 없으니 폰에 원본이 있는지 먼저 확인해 주세요. 지운 만큼 저장 공간이 비어요.';
 const done = q.get('done');
 // 변경 내역(123, 사용자 "DB에는 넣어 두고 사진엔 비노출, 수정 진입 시 내역 보이도록"): 올림·고침마다 누가·무엇을. 옆 기능이라 못 받으면 칸만 뺀다
 const changes = await b.mediaChanges(a.pass, id).catch(() => null);
