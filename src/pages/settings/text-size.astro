@@ -11,7 +11,7 @@ Astro.response.headers.set('cache-control', 'private, no-store');
 const a = await loadParent(Astro.cookies);
 if ('redirect' in a) return Astro.redirect(a.redirect);
 const MODES: { value: TextSizeMode; label: string; hint?: string }[] = [
-  { value: 'relation', label: '관계에 맞춰', hint: '할머니·할아버지는 크게, 나머지는 기본' },
+  { value: 'relation', label: '관계에 맞춰', hint: "이름에 '할머니'·'할아버지'가 들어가면 크게, 나머지는 기본" },
   { value: 'base', label: '모두 기본' },
   { value: 'large', label: '모두 크게' },
   { value: 'xlarge', label: '모두 아주 크게' },

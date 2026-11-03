@@ -71,7 +71,7 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
       <label class="sp-p__rows-item sp-p__rows-item--check">
         <span class="sp-p__radio-text">
           <span class="sp-p__who-name">새 사진에 기본으로 포함</span>
-          <span class="sp-p__hint" id="include-note">사진 올릴 때 이 그룹이 미리 체크돼요</span>
+          <span class="sp-p__hint" id="include-note">켜 두면 사진을 올릴 때마다 이 그룹이 미리 체크돼요</span>
         </span>
         <input class="sp-p__checkbox" type="checkbox" name="include" value="1" form="g-form" checked={include} aria-describedby="include-note" />
       </label>
@@ -89,8 +89,8 @@ const doneText: Record<string, string> = { saved: '저장했어요.', password: 
       <form method="post" action="/settings/family">
         <button class="sp-p__rows-item sp-p__rows-item--link sp-p__rows-button" type="submit" name="do" value={`share:${g.id}`}>
           <span class="sp-p__radio-text">
-            <span class="sp-p__who-name">{g.name} 주소 카톡으로 보내기</span>
-            <span class="sp-p__hint">새로 들어오는 사람은 보낸 뒤 3일 안에</span>
+            <span class="sp-p__who-name">{g.name} 그룹 주소 보내기</span>
+            <span class="sp-p__hint">처음 부르는 가족에게 보내요. 보낸 뒤 3일 동안 새 이름으로 들어올 수 있어요</span>
           </span>
           <span class="sp-p__chev" aria-hidden="true">›</span>
         </button>
