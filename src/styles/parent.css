@@ -2143,6 +2143,10 @@
   -webkit-backdrop-filter: blur(8px) saturate(180%);
   backdrop-filter: blur(8px) saturate(180%);
   box-shadow: inset 0 1px 0 var(--glass-edge), 0 -8px 28px rgba(0, 0, 0, 0.1);
+  /* 안내가 길어 막대가 화면을 넘으면 위가 잘리지 않고 막대 안에서 밀리게 */
+  max-height: calc(100dvh - 4rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 @media (prefers-reduced-transparency: reduce) {
   .sp-p__savebar--glass {
@@ -2305,6 +2309,8 @@
     padding-top: 0;
     border-radius: 0;
     box-shadow: none;
+    max-height: none;
+    overflow: visible;
   }
   .sp-p.sp-p--wide .sp-p__uprow {
     margin-right: 0;
@@ -2318,6 +2324,8 @@
     padding-top: 0;
     border-radius: 0;
     box-shadow: none;
+    max-height: none;
+    overflow: visible;
   }
 }
 /* 끌어다 놓는 중(안쪽 글자에서 dragleave가 나지 않게) */
