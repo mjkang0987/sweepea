@@ -2024,3 +2024,12 @@
 .sp-a__day-mark {
   color: var(--pea-ink);
 }
+
+/* 아주 크게(147): 한마디 칸은 한 줄 전체, '보내기'는 그 아래(안내 글이 잘리지 않게) */
+.sp-size-xlarge .sp-say .sp-f__row {
+  flex-wrap: wrap;
+}
+.sp-size-xlarge .sp-say .sp-f__input,
+.sp-size-xlarge .sp-say .sp-f__btn {
+  flex: 1 1 100%;
+}

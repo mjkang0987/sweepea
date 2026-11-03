@@ -48,7 +48,8 @@
 .sp-a__card {
   pointer-events: auto;
   position: relative;
-  height: 22.5rem;
+  /* 글자가 커져도 사진 카드는 '크게' 크기에서 멈춤(아주 크게에서 첫 화면에 더 보이게, 147) */
+  height: min(22.5rem, 360px);
   display: flex;
   flex-direction: column;
   border-radius: 20px;
@@ -183,4 +184,9 @@
   100% {
     opacity: 0;
   }
+}
+
+/* 아주 크게(147): 안내 줄은 카드 폭 안에서 줄 바꿈(화면 밖으로 잘리지 않게) */
+.sp-size-xlarge .sp-a__pos {
+  margin-inline: 0;
 }
