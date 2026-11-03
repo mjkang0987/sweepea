@@ -49,6 +49,7 @@ const by = info.inviter_role === 'dad' ? '아빠' : '엄마';
 const taken = new Set(info.taken_roles ?? []);
 const want = taken.has('dad') ? 'mom' : taken.has('mom') ? 'dad' : info.inviter_role === 'dad' ? 'mom' : 'dad';
 const list = enabledProviders();
+import { docHref } from '../../lib/back';
 ---
 
 <Parent title={state === 'invite' ? `${kid} 앨범 함께 관리 · 스위피` : state === 'other' ? '이미 다른 앨범을 관리하고 있어요 · 스위피' : state === 'device' ? '이 계정으로는 함께할 수 없어요 · 스위피' : state === 'full' ? '엄마아빠가 이미 둘이에요 · 스위피' : '초대 링크가 지났어요 · 스위피'}>
@@ -107,7 +108,7 @@ const list = enabledProviders();
             )
           )
         }
-        <p class="sp-p__fine">시작하면 <a class="sp-p__fine-link" href="/terms">이용약관</a>과 <a class="sp-p__fine-link" href="/privacy">개인정보 처리방침</a>에 동의하게 돼요</p>
+        <p class="sp-p__fine">시작하면 <a class="sp-p__fine-link" href={docHref('/terms', Astro.url.pathname)}>이용약관</a>과 <a class="sp-p__fine-link" href={docHref('/privacy', Astro.url.pathname)}>개인정보 처리방침</a>에 동의하게 돼요</p>
       </form>
     )
   }
