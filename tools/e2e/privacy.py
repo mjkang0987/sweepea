@@ -12,7 +12,7 @@ with sync_playwright() as p:
     check(r.status==200 and pg.get_by_role('heading',level=1).inner_text()=='개인정보 처리방침','로그인 없이 열림')
     t=pg.content()
     check('pikaworks.help@gmail.com' in t and 'PIKAWORKS' in t and '시행일' in t and '강지우' in t and '010-7188-0987' in t,'운영자·보호책임자(이름·전화·이메일)·시행일')
-    check(all(k in t for k in ['Supabase','Cloudflare','위치','3일','7일','118','2048','3분']),'맡기는 곳·위치 지움·보관 기간·구제 기관·올리기 크기(141)')
+    check(all(k in t for k in ['Supabase','Cloudflare','위치','3일','7일','118','4032','3분']),'맡기는 곳·위치 지움·보관 기간·구제 기관·올리기 크기(141)')
     check(pg.get_by_role('heading',level=2).count()>=10,'항목 제목(10개 이상)')
     pg.screenshot(path='/home/user/sweepea/tools/shots/privacy.png',full_page=False)
     r=pg.goto(B+'/terms'); t2=pg.content()
