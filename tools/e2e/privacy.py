@@ -22,7 +22,15 @@ with sync_playwright() as p:
     pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
     pg.fill('#child','하린'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
-    pg.goto(B+'/settings'); pg.get_by_role('link',name='개인정보 처리방침').click(); pg.wait_for_url('**/privacy')
+    pg.goto(B+'/settings'); pg.get_by_role('link',name='개인정보 처리방침').click(); pg.wait_for_url('**/privacy**')
     check(True,'설정에서 처리방침으로')
+    # 150: 맨 위 '뒤로'는 들어온 화면으로, 바로 열면 첫 화면으로
+    check(pg.get_by_role('link',name='뒤로').get_attribute('href')=='/settings','처리방침 뒤로 → 설정')
+    pg.get_by_role('link',name='뒤로').click(); pg.wait_for_url('**/settings')
+    # 로그인한 채로는 /login이 앨범으로 넘어가서 새 창(로그인 전)으로
+    n=b.new_context(viewport={'width':390,'height':844}).new_page()
+    n.goto(B+'/login'); n.get_by_role('link',name='이용약관').click(); n.wait_for_url('**/terms**')
+    check(n.get_by_role('link',name='뒤로').get_attribute('href')=='/login','약관 뒤로 → 로그인')
+    n.goto(B+'/terms'); check(n.get_by_role('link',name='뒤로').get_attribute('href')=='/','바로 열면 뒤로 → 첫 화면')
     b.close()
 print('FAILS',FAILS)

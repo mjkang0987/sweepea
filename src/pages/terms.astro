@@ -2,6 +2,7 @@
 // 이용약관(139, 사용자 2026-11-02 "이용약관 추가해줘"). 로그인 없이 누구나 본다. 처리방침(/privacy)과 같은 글 모양.
 // 서비스가 실제로 하는 일(무료 5GB, 원본 보관 안 함, 탈퇴 3일 유예, 링크·비밀번호·보호자 승인)대로. 법률 검토 전 초안
 import Parent from '../layouts/Parent.astro';
+import { backHref, docHref } from '../lib/back';
 
 // 시행일: 바꿀 때 이 한 줄만
 const EFFECTIVE = '2026년 11월 2일';
@@ -9,6 +10,9 @@ const CONTACT = 'pikaworks.help@gmail.com';
 ---
 
 <Parent title="이용약관 · 스위피" description="스위피(PIKAWORKS) 서비스 이용약관입니다.">
+  <nav class="sp-p__nav" aria-label="뒤로">
+    <a class="sp-p__back" href={backHref(Astro.url)}>뒤로</a>
+  </nav>
   <article class="sp-doc" aria-labelledby="doc-title">
     <h1 class="sp-doc__title" id="doc-title">이용약관</h1>
     <p class="sp-doc__lead">이 약관은 PIKAWORKS(이하 '회사')가 운영하는 가족 사진 앨범 서비스 스위피(sweepea.co.kr, 이하 '서비스')를 이용하는 조건과 절차, 회사와 이용자의 권리·의무를 정합니다.</p>
@@ -82,6 +86,6 @@ const CONTACT = 'pikaworks.help@gmail.com';
     </ul>
 
     <p class="sp-doc__p sp-doc__date">시행일: {EFFECTIVE}</p>
-    <p class="sp-doc__p"><a class="sp-doc__link" href="/privacy">개인정보 처리방침</a> · <a class="sp-doc__link" href="/">스위피 첫 화면으로</a></p>
+    <p class="sp-doc__p"><a class="sp-doc__link" href={docHref('/privacy', '/terms')}>개인정보 처리방침</a> · <a class="sp-doc__link" href="/">스위피 첫 화면으로</a></p>
   </article>
 </Parent>
