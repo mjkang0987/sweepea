@@ -286,6 +286,19 @@ if (z !== 3 && z !== 5)
   {/* 위에 붙는 머리(디자인 ParentHomeBleed, 아이폰 사진 앱처럼 사진이 밑으로 흐리게 지나감). 아이를 고르면 수는 가족 전체라 숨김 */}
   <header class="sp-p__albumhead">
     <h1 class="sp-p__title sp-p__title--large">앨범</h1>
+    {/* 오른쪽 위(144, 사용자 "아이폰 느낌으로", 사진 앱 보관함처럼): 평소 '선택', 고르는 중엔 '수정'·닫기. 폰에서 위에 붙는 머리 안이라 내려도 보임.
+         늘 그려 두고(비면 숨김) 그 자리 크기 바꾸기 때 짝지어 갈아 끼운다 */}
+    <span class="sp-p__albumhead-act">
+      {!sel && !swipe && !cardView && items.length > 0 && <a class="sp-p__select" href={`/home?${kq}v=list&z=${z}&sel=1`}>선택</a>}
+      {sel && (
+        <>
+          <button class="sp-p__select sp-p__select--main" type="submit" form="sel-form" name="do" value="edit">수정</button>
+          <a class="sp-p__select sp-p__select--close" href={`/home?${kq}v=list&z=${z}`} aria-label="고르기 끝내기">
+            <svg class="sp-p__icon-line" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </a>
+        </>
+      )}
+    </span>
     {kidAges.length > 0 && (
       <p class:list={["sp-p__albumhead-kid", kidAges.length > 1 && "sp-p__albumhead-kid--many"]}>
         {/* 가운뎃점은 앞 항목 끝에 붙여 줄이 바뀌어도 '·'로 시작하지 않게, 화면 읽기는 쉼표로 */}
@@ -306,21 +319,25 @@ if (z !== 3 && z !== 5)
     ) : (
       <p class="sp-p__albumhead-sub">{[['사진', a.home.photo_count ?? 0], ['영상', a.home.video_count ?? 0]].filter(([, n]) => +n > 0).map(([w, n]) => `${w} ${n.toLocaleString('ko-KR')}`).join(' · ')}</p>
     )}
-    {/* 여러 장 고르기 막대(126, 사용자 "수정 버튼이 저 밑에 가 있으면 안 될 것 같아" → 위 '취소' 옆): 떠 있는 머리 안이라 내려도 따라옴 */}
-    {sel && (
-      <form class="sp-p__selbar" id="sel-form" method="get" action="/photos/edit">
-        {picked && <input type="hidden" name="k" value={picked.id} />}
-        {kind && <input type="hidden" name="t" value={kind} />}
-        {group && <input type="hidden" name="g" value={group.id} />}
-        <input type="hidden" name="z" value={String(z)} />
-        <p class="sp-p__selbar-n" id="sel-n" role="status">사진을 골라 주세요</p>
-        <button class="sp-p__selbar-btn sp-p__selbar-btn--danger" type="submit" name="do" value="delete">지우기</button>
-        <button class="sp-p__selbar-btn sp-p__selbar-btn--main" type="submit" name="do" value="edit">수정</button>
-        <a class="sp-p__selbar-btn" href={`/home?${kq}v=list&z=${z}`}>취소</a>
-        <p class="sp-p__selbar-help" id="sel-help">고칠 사진을 눌러 고르세요. {SEL_MAX}장까지 고를 수 있어요.</p>
-      </form>
-    )}
   </header>
+  {/* 여러 장 고르기(126·144): 폼은 숨은 값만, 버튼은 머리('수정')와 아래 떠 있는 막대('N장 선택됨'·지우기, 아이폰 사진 앱처럼 탭바 자리)에서 form으로 */}
+  {sel && (
+    <form id="sel-form" method="get" action="/photos/edit">
+      {picked && <input type="hidden" name="k" value={picked.id} />}
+      {kind && <input type="hidden" name="t" value={kind} />}
+      {group && <input type="hidden" name="g" value={group.id} />}
+      <input type="hidden" name="z" value={String(z)} />
+      <p class="sp-vh" id="sel-help">고칠 사진을 눌러 고르세요. {SEL_MAX}장까지 고를 수 있어요.</p>
+    </form>
+  )}
+  {sel && (
+    <div class="sp-p__selbar">
+      <p class="sp-p__selbar-n" id="sel-n" role="status">사진을 골라 주세요</p>
+      <button class="sp-p__selbar-del" type="submit" form="sel-form" name="do" value="delete" aria-label="고른 사진 지우기">
+        <svg class="sp-p__icon-line" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>
+      </button>
+    </div>
+  )}
   {
     join && (
       <div class="sp-layer">
@@ -421,8 +438,6 @@ if (z !== 3 && z !== 5)
             <a class="sp-p__seg-item" href={`/home?${kq}v=swipe`} aria-current={swipe ? 'page' : undefined}>넘겨 보기</a>
             <a class="sp-p__seg-item" href={`/home?${kq}v=list`} aria-current={swipe ? undefined : 'page'}>모아 보기</a>
           </nav>
-          {/* 여러 장 고르기(126, 디자인 ParentHomeSelect): 칸 보기에서만 */}
-          {!swipe && !cardView && items.length > 0 && <a class="sp-p__select" href={`/home?${kq}v=list&z=${z}&sel=1`}>선택</a>}
         </div>
       )
     )
@@ -611,10 +626,10 @@ if (z !== 3 && z !== 5)
   const selN = document.getElementById('sel-n');
   if (selForm && selN) {
     const MAX = 60;
-    const btns = selForm.querySelectorAll<HTMLButtonElement>('button[name="do"]');
+    const btns = document.querySelectorAll<HTMLButtonElement>('button[form="sel-form"][name="do"]');
     const sync = () => {
       const n = document.querySelectorAll('.sp-p__selbox:checked').length;
-      selN.textContent = n ? `${n}장 고름` : '사진을 골라 주세요';
+      selN.textContent = n ? `${n}장 선택됨` : '사진을 골라 주세요';
       btns.forEach((b) => (b.disabled = n === 0));
     };
     document.addEventListener('change', (e) => {
@@ -715,7 +730,7 @@ if (z !== 3 && z !== 5)
   }
   // 사진 크기 −/+: 페이지 전환 없이 그 자리에서(98e, 모아 보기만)
   // 거르기 알약 줄·'선택'이 든 보기 줄도 칸 단계(z)를 링크에 들고 있어 함께 바꾼다(132)
-  if (!swipe) zoomInPlace({ button: '.sp-p__zoom-btn', cell: '.sp-p__cell', head: '.sp-p__albumhead', also: ['.sp-p__zoom', '.sp-p__albumhead-sub', '.sp-p__chips', '.sp-p__viewrow'] });
+  if (!swipe) zoomInPlace({ button: '.sp-p__zoom-btn', cell: '.sp-p__cell', head: '.sp-p__albumhead', also: ['.sp-p__zoom', '.sp-p__albumhead-sub', '.sp-p__albumhead-act', '.sp-p__chips', '.sp-p__viewrow'] });
 
   // 가운데 레이어(들어오기 신청·백일/생일·저장 공간): 스크립트가 있으면 모달로 올려(Esc·초점 가두기) 닫기·나중에는 그 자리에서 닫고 다음 것을 띄운다.
   // 다른 화면으로 가는 버튼(확인하기·사진 올리기·저장 용량 보기)은 지금처럼 폼으로 이동. 스크립트 없으면 모두 폼
