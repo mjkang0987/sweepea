@@ -68,6 +68,20 @@ export function dayMark(birth: string, day: string): string | null {
   return DOL[years - 1] ?? `${years}돌`;
 }
 
+/** 오늘 또는 다음 기념일(아기 자세히 보기, 153): dayMark와 같은 규칙(50~1000일·돌). 날짜는 서울 YYYY-MM-DD, 열 돌까지 */
+export function nextMark(birth: string, today: string): { mark: string; day: string; inDays: number } | null {
+  const DAY = 86_400_000;
+  const b = Date.parse(birth), t = Date.parse(today);
+  const days = DAYS.map((n) => b + (n - 1) * DAY);
+  const [by, bm, bd] = birth.split('-').map(Number);
+  // shortcut: 2월 29일생 돌은 평년엔 dayMark처럼 건너뜀(그 해 2월 29일이 없으면 다음 해로 밀림), 필요하면 2월 28일로
+  const dols = DOL.map((_, i) => Date.UTC(by + i + 1, bm - 1, bd)).filter((ms) => new Date(ms).getUTCDate() === bd);
+  const next = [...days, ...dols].filter((ms) => ms >= t).sort((x, y) => x - y)[0];
+  if (next === undefined) return null;
+  const day = new Date(next).toISOString().slice(0, 10);
+  return { mark: dayMark(birth, day)!, day, inDays: Math.round((next - t) / DAY) };
+}
+
 /** 오늘이 기념일이면 레이어 제목 뒷부분("태어난 지 200일이에요", "첫돌이에요", "두 돌이에요"), 아니면 null */
 export function milestone(birth: string, today: string): string | null {
   const m = dayMark(birth, today);
