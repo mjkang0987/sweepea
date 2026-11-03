@@ -19,7 +19,8 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   if (/^[A-Za-z0-9]{8}$/.test(joinCode ?? '') && (joinRole === 'mom' || joinRole === 'dad')) {
     try {
       await getBackend().acceptParentInvite(pass, joinCode, joinRole);
-      return redirect('/home?joined=1', 302);
+      // 초대받아 들어온 엄빠는 약관 동의가 아직 없으니 /agree를 거쳐 '함께 관리해요' 안내로(152)
+      return redirect('/agree?joined=1', 302);
     } catch (e) {
       if (!(e instanceof BackendError) || e.status >= 500) throw e;
       return redirect(`/join/${joinCode}?e=${joinError(e)}`, 302);
