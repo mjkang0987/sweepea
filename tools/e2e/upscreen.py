@@ -26,10 +26,14 @@ with sync_playwright() as p:
     pg.get_by_text('올리기 기준 자세히').click(); rt=rules.inner_text()
     check(rules.locator('.sp-p__up-rules-list').is_visible() and all(k in rt for k in ['4032','위치','2GB','3분','200개','5GB']),'올리기 기준 펼침: 사진 4032·위치만 지움·영상 2GB·3분·200개·5GB')
     pg.set_input_files('#up-files',files); pg.wait_for_function("document.getElementById('up-title').textContent.includes('3장')",timeout=30000)
-    pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=30000)
-    size=pg.locator('#up-size').text_content(); check('MB' in size,'줄인 크기 표시: '+size)
-    # 카톡 대표 사진 고르기는 뺐다(112): 칸은 누르는 버튼이 아니라 그림, 이름은 'N번째 사진'
-    check(pg.locator('.sp-p__upgrid button').count()==0 and pg.get_by_role('img',name='2번째 사진').count()==1,'칸은 그림만(대표 고르기 없음)')
+    # 161: 보내기는 고르자마자 켜지고, 칸은 준비(줄이기)가 끝난 것부터 채워진다. 크기 줄은 없앰
+    check(not pg.locator('#up-actions button').first.is_disabled(),'고르자마자 보내기 켜짐')
+    pg.wait_for_function("!document.querySelector('.sp-p__upcell--wait')",timeout=30000)
+    check(pg.locator('#up-size').count()==0,'크기 줄 없음')
+    # 카톡 대표 사진 고르기는 뺐다(112): 칸 이름은 'N번째 사진', 칸 위 버튼은 빼기 ✕뿐
+    check(pg.locator('.sp-p__upgrid button').count()==3 and pg.locator('.sp-p__upgrid button.sp-p__upx').count()==3 and pg.get_by_role('img',name='2번째 사진').count()==1 and pg.get_by_role('button',name='2번째 사진 빼기').count()==1,'칸은 그림 + 빼기 ✕(대표 고르기 없음)')
+    # 아이·보여줄 그룹은 아래 막대 안
+    check(pg.locator('#up-actions').get_by_role('group',name='보여줄 그룹').count()==1 and pg.locator('#up-actions input[name=group]').count()>=1,'보여줄 그룹은 아래 막대 안')
     check(pg.locator('#up-cover-hint').count()==0,'대표 사진 안내 없음')
     pg.screenshot(path=D+'up-1.png')
     pg.get_by_role('button',name='올리고 카톡으로 보내기').click()

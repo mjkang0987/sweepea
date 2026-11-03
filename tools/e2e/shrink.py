@@ -1,4 +1,4 @@
-# 영상 폰에서 줄이기(80): 큰 영상은 1080p로 줄여 한 번에 올리고(진행률 %·진행 막대·화면 켜 두기 안내·원본 안내), 작은 영상과 줄이기를 못 하는 브라우저는 원본 그대로 (mock)
+# 영상 폰에서 줄이기(80 · 161): 큰 영상은 1080p로 줄여 한 번에 올리고(161부터 줄이는 진행은 올리는 중 레이어의 '지금 하는 일' 한 줄에 %·화면 켜 두기 안내), 작은 영상과 줄이기를 못 하는 브라우저는 원본 그대로 (mock)
 # 준비(없으면 만듦, ffmpeg 필요): 아이폰처럼 H.264+AAC·세로 회전 정보가 있는 2560x1440 20Mbps 6초 영상, 재생되는 130MB 영상(bigvideo.py와 같은 방법). 둘 폴더를 인자로 받음
 import os,sys,struct,json,subprocess,tempfile
 from playwright.sync_api import sync_playwright
@@ -29,9 +29,10 @@ def start(b,init=None):
     pg.goto(B+'/upload')
     return c,pg
 def pick(pg,files):
+    """고르고 바로 보내기 직전까지: 161부터 줄이는 진행은 레이어의 '지금 하는 일' 한 줄(#up-l-now)에만 보인다"""
     msgs=[]; pg.expose_function('note',lambda t: msgs.append(t))
-    pg.evaluate("""new MutationObserver(()=>note(document.getElementById('up-status').textContent+'|'+document.getElementById('up-shrink-hint').hidden+'|'+document.getElementById('up-size').textContent)).observe(document.getElementById('up-status'),{childList:true,characterData:true,subtree:true})""")
-    pg.set_input_files('#up-files',files); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=180000)
+    pg.evaluate("""new MutationObserver(()=>note(document.getElementById('up-l-now').textContent)).observe(document.getElementById('up-l-now'),{childList:true,characterData:true,subtree:true})""")
+    pg.set_input_files('#up-files',files)
     return msgs
 def send(pg,timeout=120000):
     """보내지 않고 올리기만 → 보낸 PUT 크기와 만든 사진 행(id·종류·가로세로)"""
@@ -49,19 +50,17 @@ with sync_playwright() as p:
     c,pg=start(b)
     check('스위피는 원본을 따로 보관하지 않으니' in pg.locator('.sp-p__up-note').inner_text(),'원본·줄임 안내가 보임')
     msgs=pick(pg,[QHD,D+'v.mp4',D+'u0.jpg'])
-    pct=[m.split('|')[0] for m in msgs if m.startswith('영상 줄이는 중… 1 / 3 · ')]
-    check(any(not t.endswith(' 0%') for t in pct) and all(t.endswith('0%') for t in pct),'영상 줄이는 중… 1 / 3 · N%, 10% 단위로만 읽어 줌 '+str(pct))
-    check(len(pct)==len(set(pct)),'같은 글을 거듭 읽어 주지 않음')
-    check(len(pct)>0 and all(m.split('|')[1]=='false' and m.split('|')[2]=='줄이는 중' for m in msgs if m.startswith('영상 줄이는 중… 1 / 3 · ')),'줄이는 동안 화면 켜 두기 안내·크기 칸 줄이는 중')
-    check(pg.locator('#up-progress').is_hidden() and pg.locator('#up-bar').is_hidden(),'다 줄이면 진행 막대 숨김')
-    check(pg.locator('#up-shrink-hint').is_hidden() and 'MB' in pg.locator('#up-size').inner_text(),'다 줄이면 안내 숨김·크기 보임 ('+pg.locator('#up-size').inner_text()+')')
+    check(pg.locator('#up-size').count()==0 and not pg.locator('#up-actions .sp-p__btn--text').is_disabled(),'고르자마자 보내기 켜짐(크기 줄 없음)')
     bars=[]; pg.expose_function('noteBar',lambda v: bars.append(v))
-    pg.evaluate("new MutationObserver(()=>{const w=document.getElementById('up-progress'),b=document.getElementById('up-bar');noteBar((w.hidden?'h':'v')+b.value)}).observe(document.getElementById('up-progress'),{attributes:true,subtree:true})")
-    n0=len(msgs)
+    pg.evaluate("new MutationObserver(()=>noteBar((document.getElementById('up-layer').open?'v':'h')+document.getElementById('up-bar').value)).observe(document.getElementById('up-layer'),{attributes:true,subtree:true,characterData:true,childList:true})")
+    # 줄이는 중에 바로 보내면 레이어가 그 영상 줄이기를 기다리며 진행을 보여 준다
     puts,rows=send(pg)
-    up=[m.split('|')[0] for m in msgs[n0:] if m.startswith('올리는 중…')]
-    check(up and all('%' not in u for u in up) and '올리는 중… 3 / 3' in up,'올릴 때는 분수만, 퍼센트 없음(한 번에 올리는 사진·줄인 영상) '+str(up))
-    check(any(x.startswith('v') and 0<int(x[1:])<100 for x in bars) and bars and bars[-1].startswith('h'),'올릴 때 진행 막대 보였다가 끝나면 숨김 '+str(bars[-3:]))
+    pct=[m for m in msgs if m.startswith('1번째 영상 줄이는 중 · ')]
+    check(any(not t.endswith(' 0%') for t in pct) and all(t.endswith('0%') for t in pct),'1번째 영상 줄이는 중 · N%, 10% 단위로만 '+str(pct))
+    check(len(pct)==len(set(pct)),'같은 글을 거듭 읽어 주지 않음')
+    up=[m for m in msgs if '올리는 중' in m]
+    check(up and all('%' not in u for u in up) and '3번째 사진 올리는 중' in up,'올릴 때는 퍼센트 없음(한 번에 올리는 사진·줄인 영상) '+str(up))
+    check(any(x.startswith('v') for x in bars) and bars and bars[-1].startswith('h'),'올리는 동안 레이어, 끝나면 닫힘 '+str(bars[-3:]))
     views=[s for s in puts if s[0]=='view']
     check(not any(s[0]=='multipart' for s in puts),'나눠 올리기 없이 한 번에')
     check(len(views)==3 and any(v[1]==os.path.getsize(D+'v.mp4') for v in views),'작은 영상은 원본 그대로 '+str([v[1] for v in views]))
@@ -83,9 +82,9 @@ with sync_playwright() as p:
     # 2) 줄이기를 못 하는 브라우저: 원본 그대로(큰 건 나눠 올리기)
     c,pg=start(b,'delete window.VideoEncoder; delete window.VideoDecoder;')
     msgs=pick(pg,[BIG])
-    sh=[m for m in msgs if '줄이는 중' in m]
-    check(len(sh)>0 and all('%' not in m.split('|')[0] and not m.startswith('영상') for m in sh),'줄이기를 못 하면 분수만(퍼센트·영상 줄이는 중 없음) '+str([m.split('|')[0] for m in sh]))
     puts,_=send(pg,300000)
+    sh=[m for m in msgs if '줄이는 중' in m]
+    check(all('%' not in m for m in sh),'줄이기를 못 하면 줄이는 중 퍼센트 없음 '+str(sh))
     check(len([s for s in puts if s[0]=='multipart'])==3,'원본 그대로 나눠 올리기(조각 3개)')
     c.close()
     # 3) 브라우저에 줄이기 기능은 있지만 H.264로 못 만드는 경우: 원본 그대로
