@@ -260,6 +260,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     addGroup: (pass, g) =>
       rpc<string>(pass, 'sp_add_group', { p_name: g.name, p_password: g.password, p_hint: g.hint, p_include_by_default: g.includeByDefault }),
     updateGroup: (pass, groupId, patch) => patchOne(pass, 'groups', groupId, patch),
+    agree: (pass, kind, version) => rpc<void>(pass, 'sp_agree', { p_kind: kind, p_version: version }),
     setGroupPassword: (pass, groupId, password, hint) => rpc<void>(pass, 'sp_set_group_password', { p_group_id: groupId, p_password: password, p_hint: hint }),
     resetGroupLinks: async (pass, groupId) => {
       await rpc<number>(pass, 'sp_reset_group_links', { p_group_id: groupId });
