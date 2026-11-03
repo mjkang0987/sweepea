@@ -222,7 +222,8 @@ const monthCards = !monthRows
   }
   <header class="sp-a__head">
     <div class="sp-a__head-text">
-      <h1 class="sp-f__title">{title}{total !== null && ` ${total}장`}</h1>
+      {/* 장 수는 앞 낱말과 붙여(줄 바뀔 때 '사진 12장'이 같이 내려가게, 147) */}
+      <h1 class="sp-f__title">{title}{total !== null && `\u00a0${total}장`}</h1>
       {latest && <p class="sp-f__lead">{latest}에 올라왔어요</p>}
     </div>
     <img class:list={["sp-a__kongi", headKid && "sp-kid"]} src={kidImage(headKid?.birth, todayIs)} width="64" height="64" alt="" />
