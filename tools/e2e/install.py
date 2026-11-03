@@ -28,7 +28,7 @@ with sync_playwright() as p:
     # 부모 쪽: 새 가족방에서 카톡으로 들어온 가족이 부탁 → 부모 최근 반응
     c=b.new_context(viewport={'width':390,'height':844}); pp=c.new_page()
     pp.goto(B+'/login'); pp.get_by_role('link',name='개발용으로 계속하기').click(); pp.wait_for_url('**/setup')
-    pp.fill('#child','서아'); pp.fill('#birth','2025-09-17'); pp.get_by_role('button',name='다음').click(); pp.wait_for_url('**/setup/password**')
+    pp.fill('#child','서아'); pp.fill('#birth','2025-09-17'); pp.check('input[name=agree_terms]'); pp.check('input[name=agree_privacy]'); pp.get_by_role('button',name='다음').click(); pp.wait_for_url('**/setup/password**')
     pp.fill('#pw','0917'); pp.get_by_role('button',name='시작하기').click(); pp.wait_for_url('**/home')
     pp.goto(B+'/upload'); pp.set_input_files('#up-files',[D+'u0.jpg']); pp.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=30000)
     pp.get_by_role('button',name='보내지 않고 올리기만').click(); pp.wait_for_url('**/home',timeout=30000)

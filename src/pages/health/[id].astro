@@ -7,6 +7,7 @@ import { kidImage, monthsOld } from '../../lib/age';
 import { BackendError, getBackend } from '../../lib/backend';
 import { HEALTH_ITEMS, splitSchedule, type HealthState, monthDay } from '../../lib/health';
 import { loadParent, seoulToday } from '../../lib/parent';
+import { CONSENT, hasAgreed } from '../../lib/consent';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
 const a = await loadParent(Astro.cookies);
@@ -18,8 +19,21 @@ const today = seoulToday();
 // 들어온 곳(알림 탭 다가오는 일정·설정 › 아이)으로 돌아가기. 저장 뒤에도 이어지게 주소에 남긴다
 const from = Astro.url.searchParams.get('from');
 const here = `/health/${kid.id}${from === 'alerts' || from === 'settings' ? `?from=${from}&` : '?'}`;
+// 건강 정보 동의(152): 완료 기록(민감정보)은 따로 동의한 엄빠만 남긴다. 일정 보기(생일로 계산)는 동의 없이도
+const okHealth = hasAgreed(a.home, 'health');
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
+  if (form.get('do') === 'agree') {
+    if (form.get('agree_health') !== '1') return Astro.redirect(`${here}done=need`, 303);
+    try {
+      await b.agree(a.pass, 'health', CONSENT.health);
+      return Astro.redirect(`${here}done=agreed`, 303);
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+      return Astro.redirect(`${here}done=error`, 303);
+    }
+  }
+  if (!okHealth) return Astro.redirect(`${here}done=need`, 303);
   const valid = new Set(HEALTH_ITEMS.map((i) => i.key));
   const shown = new Set(form.getAll('shown').map(String).filter((k) => valid.has(k)));
   const checked = new Set(form.getAll('done').map(String).filter((k) => shown.has(k)));
@@ -61,8 +75,26 @@ const back = from === 'alerts' ? { href: '/reactions', label: '알림', tab: 'al
   <p class="sp-p__lead">한 것을 체크하면 완료한 날이 기록돼요. 엄마아빠만 봐요.</p>
   {done === 'saved' && <Toast text="저장했어요." focus />}
   {done === 'error' && <Toast text="저장하지 못했어요. 다시 눌러 주세요." tone="error" focus />}
+  {done === 'agreed' && <Toast text="동의했어요. 이제 한 것을 체크할 수 있어요." focus />}
+  {
+    !okHealth && (
+      <form class="sp-p__card" method="post">
+        <input type="hidden" name="do" value="agree" />
+        <p class="sp-p__lead">한 접종·검진을 체크해 두려면 건강 정보 동의가 필요해요. 일정은 동의 없이도 볼 수 있어요.</p>
+        {done === 'need' && <p class="sp-p__error" role="alert">동의에 체크해 주세요.</p>}
+        <label class="sp-p__agree-row">
+          <input class="sp-p__checkbox" type="checkbox" name="agree_health" value="1" required />
+          <span class="sp-p__agree-text">[필수] 예방접종·검진 완료 기록(건강 정보)을 모으고 쓰는 데 동의해요</span>
+        </label>
+        <p class="sp-p__hint">기록은 엄마아빠만 봐요. 체크를 풀면 바로, 탈퇴하면 3일 뒤 지워져요. <a class="sp-p__fine-link" href="/privacy">개인정보 처리방침</a></p>
+        <button class="sp-p__btn" type="submit">동의하기</button>
+      </form>
+    )
+  }
   <form class="sp-p__form" method="post" data-autosave id="health-form">
     <input type="hidden" name="toggle" value="" />
+    {/* 동의 전엔 체크 칸을 모두 끈다(기본 fieldset disabled) */}
+    <fieldset class="sp-p__fieldset" disabled={!okHealth}>
     <section class="sp-p__section" aria-labelledby="sec-next">
       <h2 class="sp-p__section-title" id="sec-next">다가오는 일정</h2>
       {upcoming.length === 0 && <p class="sp-p__hint sp-p__empty-note">6개월 안에는 없어요.</p>}
@@ -130,7 +162,8 @@ const back = from === 'alerts' ? { href: '/reactions', label: '알림', tab: 'al
         </section>
       )
     }
-    <button class="sp-p__btn" type="submit" data-autosave-hide>저장</button>
+    </fieldset>
+    <button class="sp-p__btn" type="submit" data-autosave-hide disabled={!okHealth}>저장</button>
   </form>
   <p class="sp-p__hint">국가 권장 시기 기준이에요. 실제 접종 기록은 질병관리청 예방접종도우미에서 확인하세요.</p>
   <AutoSave />

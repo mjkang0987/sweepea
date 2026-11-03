@@ -2,6 +2,7 @@
 // 처음 설정 1/2: 아이. JS 없이 GET 폼으로 2단계에 넘긴다(값은 숨은 칸으로 이어감)
 import Parent from '../../layouts/Parent.astro';
 import { loadParent, seoulToday } from '../../lib/parent';
+import Agree from '../../components/Agree.astro';
 
 const a = await loadParent(Astro.cookies, { needFamily: false });
 if ('redirect' in a) return Astro.redirect(a.redirect);
@@ -19,7 +20,7 @@ const today = seoulToday();
     </header>
     {/* 엄마아빠가 각자 시작하면 앨범이 둘 생기고 초대 링크로도 못 합친다(115) */}
     <p class="sp-p__tip"><strong class="sp-p__tip-strong">앨범은 엄마·아빠 중 한 분만 만들어요.</strong> 이미 만들었다면 그분께 초대 링크를 받아 주세요.</p>
-    {e && <p class="sp-p__error" role="alert" id="setup-err">{e === 'name' ? '이름을 1~12자로 써 주세요.' : '생일을 골라 주세요.'}</p>}
+    {(e === 'name' || e === 'birth') && <p class="sp-p__error" role="alert" id="setup-err">{e === 'name' ? '이름을 1~12자로 써 주세요.' : '생일을 골라 주세요.'}</p>}
     <div class="sp-p__field">
       <label class="sp-p__label" for="child">이름</label>
       <input class="sp-p__input" id="child" name="child" type="text" required maxlength="12" autocomplete="off" value={q.get('child') ?? ''} aria-invalid={e === 'name' ? 'true' : undefined} aria-describedby={e === 'name' ? 'setup-err' : undefined} />
@@ -36,6 +37,7 @@ const today = seoulToday();
       </div>
       <p class="sp-p__hint">가족 화면에 "오늘 엄마가 올렸어요"처럼 보여요</p>
     </fieldset>
+    <Agree from="/setup" error={e === 'agree'} />
     <div class="sp-p__bottom sp-p__savebar">
       <button class="sp-p__btn" type="submit">다음</button>
     </div>

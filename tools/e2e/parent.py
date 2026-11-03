@@ -19,7 +19,7 @@ with sync_playwright() as p:
     pg.goto(B+'/setup')
     check('앨범은 엄마·아빠 중 한 분만 만들어요.' in pg.locator('.sp-p__tip').inner_text(),'처음 설정: 한 분만 만든다는 안내')
     pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_label('아빠').check(); shot('5')
-    pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','12'); pg.evaluate("document.querySelector('#pw').removeAttribute('pattern');document.querySelector('#pw').removeAttribute('required')")
     pg.get_by_role('button',name='시작하기').click(); pg.wait_for_load_state()
     check('숫자 4자리를 써 주세요' in pg.content(),'4자리 아니면 안내')

@@ -194,6 +194,8 @@ export type TextSizeMode = 'relation' | 'base' | 'large' | 'xlarge';
 
 export interface ParentHome {
   family_id: string | null;
+  /** 동의한 것 'kind:version'(152, 가족방이 없어도 옴) */
+  agreed?: string[];
   role?: 'mom' | 'dad';
   /** 내 캐릭터 */
   avatar?: Avatar;
@@ -349,6 +351,8 @@ export interface Backend {
   setHealthDone(pass: Pass, familyId: string, childId: string, add: string[], remove: string[], today: string): Promise<void>;
   /** 앨범에 접종·검진 일정 보기(아이 모두) */
   setShowHealth(pass: Pass, childIds: string[], on: boolean): Promise<void>;
+  /** 동의 기록(152): kind는 terms·health, version은 시행일. 같은 것 두 번은 그대로 */
+  agree(pass: Pass, kind: 'terms' | 'health', version: string): Promise<void>;
   /** 부모 최근 반응(최근 30일, 50개). 부모가 아니면 null */
   parentActivity(pass: Pass): Promise<{ seen_at: string; read_at: string; items: ActivityItem[] } | null>;
   /** 읽음 표시(목록을 읽은 시각까지만) */

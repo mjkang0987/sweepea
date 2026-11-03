@@ -21,7 +21,7 @@ if (Astro.request.method === 'POST') {
   if (pass && home && !home.family_id) {
     try {
       await b.acceptParentInvite(pass, code, role);
-      return Astro.redirect('/home?joined=1', 303);
+      return Astro.redirect('/agree?joined=1', 303);
     } catch (e) {
       if (!(e instanceof BackendError) || e.status >= 500) throw e;
       return Astro.redirect(`/join/${code}?e=${joinError(e)}`, 303);
@@ -108,7 +108,7 @@ import { docHref } from '../../lib/back';
             )
           )
         }
-        <p class="sp-p__fine">시작하면 <a class="sp-p__fine-link" href={docHref('/terms', Astro.url.pathname)}>이용약관</a>과 <a class="sp-p__fine-link" href={docHref('/privacy', Astro.url.pathname)}>개인정보 처리방침</a>에 동의하게 돼요</p>
+        <p class="sp-p__fine">처음 들어올 때 <a class="sp-p__fine-link" href={docHref('/terms', Astro.url.pathname)}>이용약관</a>과 <a class="sp-p__fine-link" href={docHref('/privacy', Astro.url.pathname)}>개인정보 처리방침</a> 동의를 받아요</p>
       </form>
     )
   }

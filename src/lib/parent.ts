@@ -3,6 +3,7 @@ import type { AstroCookies } from 'astro';
 import { PARENT_PROVIDERS, SWEEPEA_BACKEND } from 'astro:env/server';
 import { getBackend, type Pass, type ParentHome } from './backend';
 import { currentParent, PARENT } from './pass';
+import { hasAgreed } from './consent';
 
 export const PROVIDERS = {
   kakao: { label: '카카오로 계속하기', cls: 'sp-p__login--kakao' },
@@ -62,6 +63,8 @@ export async function loadParent(
   if (!pass) return { redirect: '/' };
   const home = await getBackend().parentHome(pass);
   if (opts.needFamily && !home.family_id) return { redirect: '/setup' };
+  // 가족방이 있는데 지금 약관에 동의 기록이 없으면(기존 가입자·초대받아 들어온 엄빠·약관 바뀜) 동의부터(152). 처음 설정은 1단계에서 받는다
+  if (home.family_id && !hasAgreed(home, 'terms')) return { redirect: '/agree' };
   // 탈퇴 유예 중이면 되살리기 화면만
   if (home.closing && !opts.allowClosing) return { redirect: '/restore' };
   if (!opts.needFamily && home.family_id) return { redirect: '/home' };

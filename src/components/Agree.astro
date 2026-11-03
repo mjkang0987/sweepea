@@ -1,0 +1,30 @@
+---
+// 약관 동의 칸(152): 처음 설정 1단계·/agree에서 같이 씀. 필수 둘, 기본 체크 칸(required)이라 안 누르면 브라우저가 막음
+import { docHref } from '../lib/back';
+interface Props {
+  /** '보기'를 눌렀다 돌아올 화면 */
+  from: string;
+  /** 서버가 동의 없이 왔다고 돌려보냈을 때 */
+  error?: boolean;
+}
+const { from, error } = Astro.props;
+---
+
+<fieldset class="sp-p__field sp-p__fieldset" aria-describedby={error ? 'agree-err' : undefined}>
+  <legend class="sp-p__label">약관 동의</legend>
+  {error && <p class="sp-p__error" role="alert" id="agree-err">필수 항목에 모두 동의해 주세요.</p>}
+  <div class="sp-p__agree">
+    <label class="sp-p__agree-row">
+      <input class="sp-p__checkbox" type="checkbox" name="agree_terms" value="1" required />
+      <span class="sp-p__agree-text">[필수] 이용약관에 동의해요</span>
+    </label>
+    <a class="sp-p__agree-link" href={docHref('/terms', from)}>보기<span class="sp-vh"> 이용약관</span></a>
+  </div>
+  <div class="sp-p__agree">
+    <label class="sp-p__agree-row">
+      <input class="sp-p__checkbox" type="checkbox" name="agree_privacy" value="1" required />
+      <span class="sp-p__agree-text">[필수] 개인정보 처리방침을 확인했고, 만 14세 이상이에요</span>
+    </label>
+    <a class="sp-p__agree-link" href={docHref('/privacy', from)}>보기<span class="sp-vh"> 개인정보 처리방침</span></a>
+  </div>
+</fieldset>

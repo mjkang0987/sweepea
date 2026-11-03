@@ -787,7 +787,7 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'N1', 'is_anonymous', true)::text, false);
 set role authenticated;
 select pg_temp.ok(public.sp_me() = '{"families": []}', 'sp_me 처음 기기');
-select pg_temp.ok(public.sp_parent_home() = '{"family_id": null}', '설정 전·기기 사용자는 가족방 없음');
+select pg_temp.ok(public.sp_parent_home() = '{"family_id": null, "agreed": []}', '설정 전·기기 사용자는 가족방 없음(동의도 없음)');
 reset role;
 
 -- ── 사진 저장하기 켜기: 자기 가족방 부모만
@@ -1229,3 +1229,28 @@ select pg_temp.ok(not exists (select 1 from auth.users where id = :'ao') and exi
 select pg_temp.ok((select count(*) = 1 from public.entry_failures where auth_user_id = :'an'), '7일 넘은 틀린 기록만 지움');
 select public.sp_purge_family(:'afam');
 select pg_temp.ok(not exists (select 1 from auth.users where id in (:'ax', :'ad')), '가족방을 지우면 엄빠·가족 기기 로그인 계정도 지움');
+
+-- ── 동의 기록(20261103000001): 본인 것만, sp_agree로만 쓰기, 첫 화면 묶음에 agreed
+select gen_random_uuid() as cu \gset
+select gen_random_uuid() as cv \gset
+insert into auth.users (id, is_anonymous) values (:'cu', false), (:'cv', false);
+select set_config('request.jwt.claims', json_build_object('sub', :'cu', 'is_anonymous', false)::text, false);
+set role authenticated;
+select pg_temp.ok(public.sp_parent_home() -> 'agreed' = '[]'::jsonb and public.sp_parent_home() ->> 'family_id' is null, '동의 전: 가족방 없어도 agreed 빈 목록');
+select public.sp_agree('terms', '2026-11-02');
+select public.sp_agree('terms', '2026-11-02');
+select pg_temp.ok(public.sp_parent_home() -> 'agreed' = '["terms:2026-11-02"]'::jsonb, '동의하면 agreed에(두 번 해도 하나)');
+select public.sp_create_family('dad', '테스트', '아이', '2025-01-01', '2222') as cfam \gset
+select public.sp_agree('health', '2026-11-02');
+select pg_temp.ok(public.sp_parent_home() @> '{"agreed": ["terms:2026-11-02", "health:2026-11-02"], "role": "dad"}', '가족방이 있어도 agreed가 붙음');
+do $$ begin perform public.sp_agree('other', '2026-11-02'); raise exception '모르는 종류가 들어감'; exception when check_violation then null; end $$;
+do $$ begin perform public.sp_agree('terms', 'v1'); raise exception '날짜가 아닌 버전이 들어감'; exception when check_violation then null; end $$;
+do $$ begin insert into public.consents (user_id, kind, version) values (auth.uid(), 'terms', '2027-01-01'); raise exception '직접 넣기가 됨'; exception when insufficient_privilege then null; end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :'cv', 'is_anonymous', false)::text, false);
+select pg_temp.ok((select count(*) = 0 from public.consents), '다른 사람 동의 기록은 안 보임');
+reset role;
+set role anon;
+do $$ begin perform public.sp_agree('terms', '2026-11-02'); raise exception '로그인 없이 동의 기록이 됨'; exception when insufficient_privilege then null; end $$;
+reset role;
+select public.sp_purge_family(:'cfam');
+select pg_temp.ok(not exists (select 1 from public.consents where user_id = :'cu'), '가족방·계정을 지우면 동의 기록도 지움');

@@ -14,7 +14,7 @@ with sync_playwright() as p:
     br=getattr(p,eng).launch()
     mom=br.new_context(viewport={'width':390,'height':844}).new_page()
     mom.goto(B+'/login'); mom.get_by_role('link',name='개발용으로 계속하기').click(); mom.wait_for_url('**/setup')
-    mom.fill('#child','하린'); mom.fill('#birth','2025-01-03'); mom.get_by_role('button',name='다음').click(); mom.wait_for_url('**/setup/password**')
+    mom.fill('#child','하린'); mom.fill('#birth','2025-01-03'); mom.check('input[name=agree_terms]'); mom.check('input[name=agree_privacy]'); mom.get_by_role('button',name='다음').click(); mom.wait_for_url('**/setup/password**')
     mom.fill('#pw','0917'); mom.get_by_role('button',name='시작하기').click(); mom.wait_for_url('**/home')
     # 먼저 한 장은 '올리기만'(링크 없음), 그다음 두 장은 링크 만들기
     up(mom,['u0.jpg']); mom.get_by_role('button',name='보내지 않고 올리기만').click(); mom.wait_for_url('**/home**',timeout=60000)

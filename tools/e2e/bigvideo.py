@@ -17,7 +17,7 @@ with sync_playwright() as p:
     # 영상 줄이기(80)를 못 하는 브라우저처럼: 원본 그대로 나눠 올리는 길을 본다
     pg.add_init_script('delete window.VideoEncoder; delete window.VideoDecoder;')
     pg.goto(B+'/login/dev'); pg.wait_for_url('**/setup')
-    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.goto(B+'/upload'); pg.set_input_files('#up-files',[BIG,D+'u0.jpg']); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=120000)
     check('올릴 수 없어요' not in pg.locator('#up-status').inner_text(),'130MB 영상도 고를 수 있음(전엔 100MB에서 빠짐)')

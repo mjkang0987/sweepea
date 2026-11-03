@@ -15,7 +15,7 @@ with sync_playwright() as p:
     c=b.new_context(viewport={'width':390,'height':844}); pg=c.new_page()
     def shot(n): pg.screenshot(path=O+n+'.png',full_page=True); shots.append(O+n+'.png')
     pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
-    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.fill('#hint','생일'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.get_by_role('link',name='설정').click(); pg.wait_for_url('**/settings')
     pg.get_by_role('link',name='가족').first.click(); pg.wait_for_url('**/settings/family')

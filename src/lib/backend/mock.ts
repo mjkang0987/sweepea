@@ -70,6 +70,8 @@ const reactedAt = new Map<string, number>();
 const seenAt = new Map<string, number>();
 // 부모: 세션(access) → 가족방·역할
 const parents = new Map<string, { familyId: string; role: 'mom' | 'dad'; since?: number; id?: string; avatar?: number | null }>();
+// 동의 기록(152): 엄빠 출입증마다 'kind:version'
+const consents = new Map<string, Set<string>>();
 // 엄빠 초대 링크(공동 관리자): 코드 → 가족방·만든 사람·만든 때·쓴 때
 const parentInvites: { code: string; familyId: string; by: string; at: number; usedAt?: number }[] = [];
 const familyParentsOf = (fam: string) => [...parents].filter(([, p]) => p.familyId === fam);
@@ -630,15 +632,21 @@ export function createMockBackend(): Backend {
     },
     async parentHome(pass): Promise<ParentHome> {
       const p = parents.get(pass.access);
-      if (!p) return { family_id: null };
+      const agreed = [...(consents.get(pass.access) ?? [])];
+      if (!p) return { family_id: null, agreed };
       const ready = media.filter((x) => x.family_id === p.familyId && x.status === 'ready');
       return {
         family_id: p.familyId, role: p.role, avatar: p.avatar ?? null, closing: isClosing(p.familyId), new_activity: activityOf(p.familyId).filter((x) => Date.parse(x.at) > (seenAt.get(pass.access) ?? 0)).length,
         waiting: members.filter((m) => m.status === 'pending' && groups.find((g) => g.id === m.groupId)?.familyId === p.familyId).length + [...devices.values()].filter((d) => d.familyId === p.familyId && d.status === 'pending').length, delete_after: isClosing(p.familyId) ? new Date(closingAt[p.familyId]).toISOString() : null, download_allowed: !!downloads[p.familyId],
         storage_used_bytes: (used[p.familyId] ?? 0) + MOCK_USED, photo_count: ready.filter((x) => x.kind === 'photo').length, video_count: ready.filter((x) => x.kind === 'video').length,
-        provider: null, text_size_mode: sizeModes[p.familyId] ?? 'relation',
+        provider: null, text_size_mode: sizeModes[p.familyId] ?? 'relation', agreed,
         children: kids.filter((k) => k.familyId === p.familyId).map(({ id, name, birth_date, show_health }) => ({ id, name, birth_date, show_health })),
       };
+    },
+    async agree(pass, kind, version) {
+      if (!pass.access.startsWith('parent-')) throw new BackendError('parent_login_required', 403, '42501');
+      if (!['terms', 'health'].includes(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(version)) throw new BackendError('bad_consent', 400, '23514');
+      consents.set(pass.access, (consents.get(pass.access) ?? new Set()).add(`${kind}:${version}`));
     },
     async createFamily(pass, f) {
       if (!pass.access.startsWith('parent-')) throw new BackendError('parent_login_required', 403, '42501');

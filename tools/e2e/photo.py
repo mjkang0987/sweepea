@@ -9,7 +9,7 @@ with sync_playwright() as p:
     c=b.new_context(viewport={'width':390,'height':844}); pg=c.new_page()
     def shot(n): pg.screenshot(path=D+'ph-'+n+'.png',full_page=True)
     pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
-    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.goto(B+'/settings/children/new'); pg.fill('#name','도윤'); pg.fill('#birth','2026-08-30'); pg.get_by_role('button',name='추가').click(); pg.wait_for_url('**done=added**')
     pg.goto(B+'/settings/family/groups/new'); pg.fill('#name','친가'); pg.fill('#pw','5678'); pg.get_by_label('새 사진에 기본으로 포함').uncheck(); pg.get_by_role('button',name='추가').click(); pg.wait_for_url('**done=added**')

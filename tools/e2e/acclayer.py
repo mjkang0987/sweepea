@@ -13,7 +13,7 @@ def check(c,msg):
 def parent(b,js=True):
     c=b.new_context(viewport={'width':390,'height':844}); pg=c.new_page()
     pg.goto(B+'/login/dev'); pg.wait_for_url('**/setup')
-    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     if not js:
         # 처음 설정 화면은 스크립트를 써서, 로그인한 쿠키를 스크립트 끈 창으로 옮긴다

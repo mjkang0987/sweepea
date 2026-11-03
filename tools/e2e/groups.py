@@ -9,7 +9,7 @@ with sync_playwright() as p:
     c=b.new_context(viewport={'width':390,'height':844}); pg=c.new_page()
     def shot(n): pg.screenshot(path=D+'g-'+n+'.png',full_page=True)
     pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
-    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.goto(B+'/settings/family'); pg.get_by_role('link',name='그룹 관리').click(); pg.wait_for_url('**/groups')
     check(pg.locator('.sp-p__row',has_text='가족').count()==1,'그룹 목록'); 
