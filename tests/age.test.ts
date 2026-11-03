@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ageLabel, agoLabel, birthLabel, dayMark, kidImage, kidStage, milestone, monthsOld, photoAge, remainingLabel, seenLabel } from '../src/lib/age.ts';
+import { ageLabel, agoLabel, birthLabel, dayMark, kidImage, kidStage, milestone, monthsOld, nextMark, photoAge, remainingLabel, seenLabel } from '../src/lib/age.ts';
 
 test('kidStage: 나이별 아기 그림 단계', () => {
   const b = '2025-01-01';
@@ -104,4 +104,15 @@ test('기념일 표시: 50일, 100~1000일 백 단위, 그다음은 돌만', () 
   assert.equal(dayMark('2024-01-03', '2026-01-03'), '두 돌');
   assert.equal(dayMark('2025-01-03', '2026-01-04'), null);
   assert.equal(milestone('2026-01-01', '2026-07-19'), '태어난 지 200일이에요');
+});
+
+test('nextMark: 오늘 또는 다음 기념일과 남은 날(153)', () => {
+  // 2025-09-17생: 400일 = 2026-10-21, 500일 = 2027-01-29, 첫돌 = 2026-09-17
+  assert.deepEqual(nextMark('2025-09-17', '2026-11-03'), { mark: '500일', day: '2027-01-29', inDays: 87 });
+  assert.deepEqual(nextMark('2025-09-17', '2026-10-21'), { mark: '400일', day: '2026-10-21', inDays: 0 });
+  assert.deepEqual(nextMark('2025-09-17', '2026-09-10'), { mark: '첫돌', day: '2026-09-17', inDays: 7 });
+  assert.deepEqual(nextMark('2025-09-17', '2025-09-17'), { mark: '50일', day: '2025-11-05', inDays: 49 });
+  // 1000일 뒤에는 돌만
+  assert.deepEqual(nextMark('2020-01-10', '2026-11-03'), { mark: '일곱 돌', day: '2027-01-10', inDays: 68 });
+  assert.equal(nextMark('2010-01-01', '2026-11-03'), null);
 });
