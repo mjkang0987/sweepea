@@ -88,7 +88,7 @@ def bars(label,days,a,b=None,la='',lb='',unit='회'):
     for i,x in enumerate(a):
         y=b[i] if b else 0
         tip=f'{ds[i]} · {la} {x}{unit} · {lb} {y}{unit}' if b else f'{ds[i]} · {x}{unit}'
-        cols+=f'<div title="{tip}" style="flex: 1; display: flex; flex-direction: column-reverse; gap: 2px; height: 100%;"><span style="height: {y/mx*100:.1f}%; border-radius: 3px; background: var(--label-2);"></span><span style="height: {x/mx*100:.1f}%; border-radius: 3px; background: var(--pea);"></span></div>'
+        cols+=f'<div title="{tip}" style="flex: 1; min-width: 12px; display: flex; flex-direction: column-reverse; gap: 2px; height: 100%;"><span style="height: {y/mx*100:.1f}%; border-radius: 3px; background: var(--label-2);"></span><span style="height: {x/mx*100:.1f}%; border-radius: 3px; background: var(--pea);"></span></div>'
     legend=''
     if b: legend=f'<p style="{SUB} display: flex; gap: 16px;"><span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; background: var(--pea);"></span>{la}</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; background: var(--label-2);"></span>{lb}</span></p>'
     hd=['날짜']+([la,lb] if b else ['수'])
@@ -96,10 +96,13 @@ def bars(label,days,a,b=None,la='',lb='',unit='회'):
     th=''.join(f'<th scope="col" style="{TD} text-align: {"left" if i==0 else "right"}; font-size: 13px; font-weight: 500; color: var(--label-2);">{h}</th>' for i,h in enumerate(hd))
     rows=''.join(f'<tr style="border-top: 1px solid var(--separator);"><th scope="row" style="{TD} text-align: left; font-weight: 400;">{ds[i]}</th><td style="{TD}">{x}{unit}</td>'+(f'<td style="{TD}">{b[i]}{unit}</td>' if b else '')+'</tr>' for i,x in reversed(list(enumerate(a))))
     table=f'<details style="font-size: 15px; line-height: 20px;"><summary style="display: inline-flex; align-items: center; min-height: 44px; color: var(--pea-ink); cursor: pointer;">숫자로 보기</summary><table style="width: 100%; border-collapse: collapse;"><caption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">{label}, 날짜별 숫자</caption><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></details>'
-    return f'''<figure style="margin: 0; display: flex; flex-direction: column; gap: 8px;"><div role="img" aria-label="{label}" style="display: flex; align-items: flex-end; gap: 4px; height: 120px;">{cols}</div><figcaption style="{SUB} display: flex; justify-content: space-between;"><span>{days[0]}</span><span>{days[1]}</span></figcaption>{legend}{table}</figure>'''
+    # 막대는 12px보다 가늘어지지 않고, 넘치면(90일 등) 좌우로 밀기. rtl로 처음부터 오늘(오른쪽 끝)이 보이게, 스크립트 없음
+    long=len(a)*16>760
+    hint=f'<p style="{SUB}">옆으로 밀면 지난 날짜가 보여요</p>' if long else ''
+    return f'''<figure style="margin: 0; display: flex; flex-direction: column; gap: 8px;"><figcaption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">{label}, {days[0]}부터 {days[1]}까지</figcaption><div tabindex="0" aria-label="{label}, 옆으로 밀기" style="overflow-x: auto; direction: rtl; border-radius: 4px;"><div style="direction: ltr; min-width: {len(a)*16}px; display: flex; flex-direction: column; gap: 8px;"><div role="img" aria-label="{label}" style="display: flex; align-items: flex-end; gap: 4px; height: 120px;">{cols}</div><div aria-hidden="true" style="{SUB} display: flex; justify-content: space-between;"><span>{days[0]}</span><span>{days[1]}</span></div></div></div>{hint}{legend}{table}</figure>'''
 
 PERIODS=['오늘','7일','30일','90일']
-RANGE={'7일':('2026-10-29','2026-11-04','10월 29일 ~ 11월 4일'),'30일':('2026-10-06','2026-11-04','10월 6일 ~ 11월 4일')}
+RANGE={'7일':('2026-10-29','2026-11-04','10월 29일 ~ 11월 4일'),'30일':('2026-10-06','2026-11-04','10월 6일 ~ 11월 4일'),'90일':('2026-08-07','2026-11-04','8월 7일 ~ 11월 4일')}
 def period(cur):
     # 기간은 주소 ?p=7d(직접 고르면 ?from=&to=)로, 스크립트 없이. 화면을 옮겨도 같은 기간을 링크에 달고 다님
     f,t,txt=RANGE[cur]
@@ -181,6 +184,8 @@ def families():
 
 UP=[0,12,0,0,24,3,0,0,8,0,41,0,6,0,0,15,0,2,0,0,33,0,0,9,0,0,18,4,0,11]
 VS=[3,5,2,4,6,5,3,2,5,4,8,3,4,5,2,6,4,3,2,4,9,5,3,6,4,3,7,5,4,6]
+# 상세 보드는 90일 고른 모습(좌우 밀기 보이기). 가족방이 10월 26일에 생겨 그 전은 0
+UP90=[0]*60+UP; VS90=[0]*60+VS
 PEOPLE=[('엄빠 1','엄빠','—','22회','오늘'),('엄빠 2','엄빠','—','9회','어제'),('가족 기기 1','그룹 1','승인','14회','오늘'),('가족 기기 2','그룹 1','승인','11회','오늘'),('가족 기기 3','그룹 1','승인','6회','11월 2일'),('가족 기기 4','그룹 2','승인','3회','10월 31일'),('가족 기기 5','그룹 2','승인','0회','10월 27일'),('가족 기기 6','그룹 2','승인 대기','1회','11월 2일')]
 
 def family():
@@ -188,8 +193,8 @@ def family():
     rows=''.join('<tr style="border-top: 1px solid var(--separator);">'+f'<th scope="row" style="padding: 0 12px; height: 48px; text-align: left; font-weight: 600;">{p[0]}</th><td style="padding: 0 12px;">{p[1]}</td><td style="padding: 0 12px; {"color: var(--danger); font-weight: 600;" if p[2]=="승인 대기" else ""}">{p[2]}</td>'+''.join(f'<td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;">{v}</td>' for v in p[3:])+'</tr>' for p in PEOPLE)
     people=f'<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 20px;"><caption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">사람별 방문, 이름 없이</caption><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div>'
     left=f'''{stats([('엄빠','2'),('가족','6','승인 5 · 대기 1'),('사진·영상','412','사진 398 · 영상 14'),('아이','2')],4)}
-{card('올린 사진·영상',bars('기간 안 날짜별 올린 사진·영상 수',('10월 6일','오늘'),UP,unit='개'))}
-{card('방문',bars('기간 안 날짜별 방문 수',('10월 6일','오늘'),VS))}
+{card('올린 사진·영상',bars('기간 안 날짜별 올린 사진·영상 수',('8월 7일','오늘'),UP90,unit='개'))}
+{card('방문',bars('기간 안 날짜별 방문 수',('8월 7일','오늘'),VS90))}
 {card('사람별 방문',people,'이름은 안 보여요. 번호는 들어온 순서예요')}'''
     right=f'''{card('저장 용량','<p style="margin: 0; font-size: 17px; line-height: 24px; font-weight: 700;"><span style="font-size: 22px;">3.1GB</span> / 5GB</p><meter class="sp-meter" min="0" max="5" low="4" high="4.5" optimum="1" value="3.1" style="width: 100%; height: 8px;">3.1GB / 5GB</meter>')}
 {card('그룹',kv([('그룹 1','4명'),('그룹 2','3명')]))}
@@ -197,13 +202,13 @@ def family():
 {card('함께 관리','<p style="margin: 0; font-size: 15px; line-height: 20px;">엄빠 둘 · 10월 28일부터</p>')}'''
     body=f'''<a href="OpsFamilies{{{{sfx}}}}.dc.html" style="display: inline-flex; align-items: center; gap: 2px; min-height: 44px; width: max-content; color: var(--pea-ink); text-decoration: none; font-size: 15px;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>가족방</a>
 <header style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;"><h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: -0.4px; font-variant-numeric: tabular-nums;">가족방 a3f9c2e1</h1><span style="display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; background: var(--pea-tint); color: var(--pea-deep); font-size: 13px; font-weight: 600;">정상</span><p style="flex-basis: 100%; margin: 0; font-size: 15px; line-height: 20px; color: var(--label-2);">10월 26일에 만듦 · 마지막 올림 오늘 · 사진·이름·한마디는 안 보여요</p></header>
-{period('30일')}
+{period('90일')}
 <div style="display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start;"><div style="display: flex; flex-direction: column; gap: 20px; min-width: 0;">{left}</div><div style="display: flex; flex-direction: column; gap: 20px;">{right}</div></div>'''
     return shell('가족방',body,True)
 
 BOARDS=[('OpsHome','운영 · 현황 (PC)',lambda:home(True),1440,1560),
         ('OpsFamilies','운영 · 가족방 목록 (PC)',families,1440,720),
-        ('OpsFamily','운영 · 가족방 상세 (PC)',family,1440,1560),
+        ('OpsFamily','운영 · 가족방 상세 (PC)',family,1440,1620),
         ('OpsHomeMobile','운영 · 현황 (휴대폰, 위 메뉴 한 단)',lambda:home(False),390,2500)]
 d=json.load(open('canvas.json')); b=d['boards']
 Y0=max(v['y']+v['h'] for k,v in b.items() if not k.startswith('Ops'))+520
