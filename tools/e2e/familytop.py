@@ -24,6 +24,7 @@ with sync_playwright() as p:
     g.goto(B+'/album?v=swipe')
     if g.locator('.sp-a__card').count()==0:
         check(g.locator('.sp-a__mine').get_by_role('link',name='글자 크기').count()==1,'사진 없을 때도 글자 크기 링크')
+    else: print('skip 사진 없을 때 검사(앞선 검사가 이 가족에 사진을 올려 둠)')
     dad,_=enter(b,'하린 아빠'); add(dad,'photo'); add(dad,'video')
     g.goto(B+'/album?v=swipe')
     check(g.get_by_role('navigation',name='사진 종류').count()==0,'넘겨 보기엔 사진 종류 줄 없음')
@@ -32,10 +33,11 @@ with sync_playwright() as p:
     check(order and g.locator('.sp-a__mine').count()==1,'넘겨 보기: 내 캐릭터·글자 크기는 사진 아래 하나')
     check(g.locator('.sp-a__mine').get_by_role('link',name='글자 크기').get_attribute('href')=='/me/text-size','글자 크기 링크 그대로')
     check(g.locator('.sp-a__mine').get_by_role('link',name='내 캐릭터').count()==1,'내 캐릭터 링크 그대로')
+    check(g.get_by_role('navigation',name='내 설정').count()==1,'내 설정 영역(화면 읽기 영역 목록)')
     # 옛 주소(넘겨 보기 + 영상만)는 걸러지지 않음(줄이 없으니)
     n_all=g.locator('.sp-a__slide').count()
     g.goto(B+'/album?v=swipe&t=video'); check(g.locator('.sp-a__slide').count()==n_all and n_all>=2,'넘겨 보기는 t를 무시하고 전체')
-    check(g.title().startswith('하린이 사진') or '사진' in g.title(),'넘겨 보기 제목은 사진(영상 아님): '+g.title())
+    check('영상' not in g.title(),'넘겨 보기 제목은 사진(영상 아님): '+g.title())
     # 모아 보기는 사진 종류 줄이 있고 거름
     g.goto(B+'/album?v=list'); n_list=g.locator('.sp-a__cell').count()
     check(g.get_by_role('navigation',name='사진 종류').count()==1,'모아 보기엔 사진 종류 줄')
