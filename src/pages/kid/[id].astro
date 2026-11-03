@@ -70,8 +70,11 @@ const AREAS: Area[] = ['마음·관계', '말', '생각', '몸'];
         kid.show_health && (
           <li>
             <a class="sp-p__row" href={`/health/${kid.id}?from=kid`}>
-              <span class="sp-p__row-label">접종·검진 일정</span>
-              <span class="sp-p__row-value">{health?.what ? (health.from ? `${health.what} · ${monthDay(health.from)}부터` : `${health.what} · 지금`) : '6개월 안에는 없어요'}</span>
+              {/* 다음 일정 이름이 길 수 있어 값은 제목 아래 줄로(오른쪽에 두면 제목이 한 글자씩 쪼개짐, 사용자 2026-11-03 "깨집니다") */}
+              <span class="sp-p__row-label">
+                접종·검진 일정
+                <span class="sp-p__hint sp-p__block">{health?.what ? (health.from ? `${health.what} · ${monthDay(health.from)}부터` : `${health.what} · 지금`) : '6개월 안에는 없어요'}</span>
+              </span>
               <span class="sp-p__chev" aria-hidden="true">›</span>
             </a>
           </li>
