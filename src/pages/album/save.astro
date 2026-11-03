@@ -63,6 +63,7 @@ const chosen = cards.filter((c) => picked.has(c.id));
         <header class="sp-s__head">
           <h1 class="sp-f__title">저장할 사진을 눌러 주세요</h1>
           <p class="sp-f__lead" role="status" data-count>고른 뒤 아래 버튼을 눌러 주세요</p>
+          {items.length >= 200 && <p class="sp-f__text">최근 사진 200장까지 보여요. 더 예전 사진은 사진을 크게 연 뒤 '저장'을 눌러 주세요.</p>}
         </header>
         <fieldset class="sp-s__pickset">
           <legend class="sp-vh">저장할 사진</legend>

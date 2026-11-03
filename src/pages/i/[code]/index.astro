@@ -103,11 +103,11 @@ const nameError = Astro.url.searchParams.get('e') === 'name' ? '이름을 1~12�
           {canWrite && (
             <div class="sp-f__group">
               <label class="sp-f__label" for="who-name">
-                이름이 없으면 직접 써 주세요
+                목록에 내 이름이 없을 때만 써 주세요
               </label>
               {showGroups && (
                 <fieldset class="sp-f__group">
-                  <legend class="sp-vh">어느 쪽 가족인가요</legend>
+                  <legend class="sp-f__label">어느 쪽 가족이세요?</legend>
                   <div class="sp-f__seg">
                     {groups.map((g, i) => (
                       <label class="sp-f__seg-item">
