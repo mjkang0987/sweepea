@@ -1,0 +1,60 @@
+---
+// 글자 크기(149, 사용자 "조부모 화면에 버튼 넣기"): 들어온 뒤에도 가족이 자기 화면 글자 크기를 바꾼다. 앨범 머리 '글자 크기'에서 온다.
+// 누구세요 화면과 같은 세 단계, 이 휴대폰에만(쿠키). 스크립트 없이 폼 POST → 같은 화면으로(PRG) + 토스트
+import Family from '../../layouts/Family.astro';
+import Toast from '../../components/Toast.astro';
+import { getBackend } from '../../lib/backend';
+import { currentPass, readTextSize, writeTextSize, type TextSize } from '../../lib/pass';
+import { isOpen } from '../../lib/families';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const pass = await currentPass(Astro.cookies);
+if (!pass) return Astro.redirect('/');
+const { families } = await getBackend().me(pass);
+if (!families.some(isOpen)) return Astro.redirect(families.length ? '/wait' : '/');
+const SIZES: TextSize[] = ['base', 'large', 'xlarge'];
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData().catch(() => null);
+  const picked = String(form?.get('size') ?? '') as TextSize;
+  if (!SIZES.includes(picked)) return Astro.redirect('/me/text-size?done=error', 303);
+  writeTextSize(Astro.cookies, picked);
+  return Astro.redirect('/me/text-size?done=saved', 303);
+}
+const size = readTextSize(Astro.cookies);
+const done = Astro.url.searchParams.get('done');
+const toast = done === 'saved' ? '글자 크기를 바꿨어요' : done === 'error' ? '크기를 골라 주세요' : null;
+---
+
+<Family title={done === 'error' ? '다시 골라 주세요 · 글자 크기' : '글자 크기'} bar>
+  {toast && <Toast text={toast} tone={done === 'error' ? 'error' : 'ok'} focus />}
+  <nav class="sp-s__bar" aria-label="뒤로">
+    <a class="sp-s__back" href="/album"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>앨범</a>
+  </nav>
+  <div class="sp-f__head">
+    <h1 class="sp-f__title">글자 크기</h1>
+    <p class="sp-f__lead">이 휴대폰 화면의 글자 크기를 바꿔요</p>
+  </div>
+  <form class="sp-f__form" method="post">
+    <fieldset class="sp-f__group">
+      <legend class="sp-f__legend">글자 크기</legend>
+      <div class="sp-f__seg">
+        <label class="sp-f__seg-item">
+          <input class="sp-f__seg-input" type="radio" name="size" value="base" checked={size === 'base'} />
+          <span class="sp-f__seg-text sp-f__size-base">기본</span>
+        </label>
+        <label class="sp-f__seg-item">
+          <input class="sp-f__seg-input" type="radio" name="size" value="large" checked={size === 'large'} />
+          <span class="sp-f__seg-text">크게</span>
+        </label>
+        <label class="sp-f__seg-item">
+          <input class="sp-f__seg-input" type="radio" name="size" value="xlarge" checked={size === 'xlarge'} />
+          <span class="sp-f__seg-text sp-f__size-xlarge">아주 크게</span>
+        </label>
+      </div>
+    </fieldset>
+    <p class="sp-f__text">고른 뒤 '저장'을 누르면 앨범과 사진 화면이 모두 그 크기로 보여요.</p>
+    <div class="sp-f__bottom sp-f__bottom--fixed">
+      <button class="sp-f__btn" type="submit">저장</button>
+    </div>
+  </form>
+</Family>
