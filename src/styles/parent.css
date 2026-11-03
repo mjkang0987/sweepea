@@ -1307,6 +1307,37 @@
   margin: 0;
   accent-color: var(--pea);
 }
+/* 약관 동의 줄(152): 체크 칸 + 글 + 오른쪽 '보기' */
+.sp-p__agree {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+}
+.sp-p__agree-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.sp-p__agree-text {
+  min-width: 0;
+}
+/* 글이 두 줄이어도 체크 칸은 같은 크기 */
+.sp-p__agree-row > .sp-p__checkbox {
+  flex: none;
+}
+.sp-p__agree-link {
+  flex: none;
+  min-height: 2.75rem;
+  padding: 0 var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  color: var(--pea-ink);
+  font-size: var(--subhead-size);
+}
 .sp-p__btn--kakao {
   background: var(--kakao);
   color: var(--kakao-ink);

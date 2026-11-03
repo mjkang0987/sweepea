@@ -40,6 +40,7 @@ const showGroups = groups.length > 1;
 // 고른 적 없으면 가족방 설정(관계에 맞춰면 이름을 고른 뒤에 정한다)
 const size = chosenTextSize(Astro.cookies) ?? (info && info.text_size_mode !== 'relation' ? info.text_size_mode : undefined);
 const nameError = Astro.url.searchParams.get('e') === 'name' ? '이름을 1~12자로 써 주세요.' : null;
+import { docHref } from '../../../lib/back';
 ---
 
 <Family title={notice ? NOTICES[notice].title : nameError ? '다시 써 주세요 · 누구세요?' : '누구세요?'} size={size}>
@@ -133,6 +134,8 @@ const nameError = Astro.url.searchParams.get('e') === 'name' ? '이름을 1~12�
             </div>
           )}
         </form>
+        {/* 가족 입장 안내(152): 이름·휴대폰 정보가 쓰인다는 것과 처리방침 */}
+        <p class="sp-f__text sp-f__fine">들어오면 부르는 이름과 이 휴대폰 정보가 <a class="sp-f__link" href={docHref('/privacy', Astro.url.pathname)}>개인정보 처리방침</a>에 따라 쓰여요.</p>
       </>
     )
   }

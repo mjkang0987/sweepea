@@ -34,6 +34,14 @@
   font-size: var(--senior-body-size);
   line-height: var(--senior-body-line);
 }
+/* 화면 아래 작은 안내(152 가족 입장 처리방침) */
+.sp-f__fine {
+  margin-top: var(--space-5);
+  color: var(--label-2);
+}
+.sp-f__link {
+  color: var(--pea-ink);
+}
 .sp-f__lead {
   color: var(--label-2);
 }
