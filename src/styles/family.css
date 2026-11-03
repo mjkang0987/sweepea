@@ -380,6 +380,17 @@
   font-weight: 600;
   text-decoration: none;
 }
+.sp-a__mine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+/* 아주 크게여도 두 알약이 한 줄에 들어가게 옆 여백만 조금 줄임(누르는 높이는 그대로) */
+.sp-a__mine > .sp-a__me {
+  margin-top: 0;
+  padding-inline: 1rem;
+}
 .sp-a__me {
   align-self: flex-start;
   gap: var(--space-2);

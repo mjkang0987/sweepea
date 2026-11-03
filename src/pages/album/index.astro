@@ -224,14 +224,18 @@ const monthCards = !monthRows
     <div class="sp-a__head-text">
       <h1 class="sp-f__title">{title}{total !== null && ` ${total}장`}</h1>
       {latest && <p class="sp-f__lead">{latest}에 올라왔어요</p>}
-      {meFam && (
-        <a class="sp-a__chip sp-a__me" href={`/me/avatar?f=${meFam.family_id}`}>
-          {meFam.avatar && <img class="sp-avatar sp-avatar--small" src={avatarSrc(meFam.avatar)} width="32" height="32" alt="" />}내 캐릭터
-        </a>
-      )}
     </div>
     <img class:list={["sp-a__kongi", headKid && "sp-kid"]} src={kidImage(headKid?.birth, todayIs)} width="64" height="64" alt="" />
   </header>
+  {/* 내 캐릭터·글자 크기(149): 가족이 들어온 뒤에도 자기 화면 글자를 바꿀 수 있게 같은 알약으로 나란히. 머리(제목·아기 그림) 아래 전체 폭이라 아주 크게여도 한 줄 */}
+  <div class="sp-a__mine">
+    {meFam && (
+      <a class="sp-a__chip sp-a__me" href={`/me/avatar?f=${meFam.family_id}`}>
+        {meFam.avatar && <img class="sp-avatar sp-avatar--small" src={avatarSrc(meFam.avatar)} width="32" height="32" alt="" />}내 캐릭터
+      </a>
+    )}
+    <a class="sp-a__chip sp-a__me" href="/me/text-size">글자 크기</a>
+  </div>
   {/* 오늘이 기념일이면(100일·200일…·첫돌·두 돌) 맨 위에 축하 안내 */}
   {todayEvents.map((e) => (
     <p class="sp-a__event">
