@@ -21,6 +21,10 @@ with sync_playwright() as p:
     pg.get_by_role('link',name='사진 추가').click(); pg.wait_for_url('**/upload')
     check(pg.get_by_role('button',name='올리고 카톡으로 보내기').is_disabled(),'고르기 전엔 올리기 버튼 꺼짐')
     check(not pg.locator('#up-done').is_visible(),'끝 카드는 처음엔 숨김')
+    # 141: 올리기 기준은 접힌 details, 누르면 사진·영상 기준이 보임
+    rules=pg.locator('#up-rules'); check(not rules.locator('.sp-p__up-rules-list').is_visible(),'올리기 기준은 처음엔 접힘')
+    pg.get_by_text('올리기 기준 자세히').click(); rt=rules.inner_text()
+    check(rules.locator('.sp-p__up-rules-list').is_visible() and all(k in rt for k in ['2048','2GB','3분','200개','5GB']),'올리기 기준 펼침: 사진 2048·영상 2GB·3분·200개·5GB')
     pg.set_input_files('#up-files',files); pg.wait_for_function("document.getElementById('up-title').textContent.includes('3장')",timeout=30000)
     pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=30000)
     size=pg.locator('#up-size').text_content(); check('MB' in size,'줄인 크기 표시: '+size)

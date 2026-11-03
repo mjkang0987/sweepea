@@ -67,7 +67,17 @@ const kid = callName(kids[0]?.name ?? '아이');
         <span class="sp-p__row-value" id="up-size">고르면 보여요</span>
       </p>
     </div>
-    <p class="sp-p__note sp-p__up-note">사진·영상은 앨범에서 보기 좋은 크기로 줄여서 올려요(영상은 1080p, 줄일 수 없으면 그대로). <strong class="sp-p__note-strong">스위피는 원본을 따로 보관하지 않으니 원본은 폰에서 지우지 마세요.</strong></p>
+    <p class="sp-p__note sp-p__up-note">사진·영상은 앨범에서 보기 좋은 크기로 줄여서 올려요. <strong class="sp-p__note-strong">스위피는 원본을 따로 보관하지 않으니 원본은 폰에서 지우지 마세요.</strong></p>
+    <!-- 숫자는 아래 스크립트의 MAX_ITEMS·VIDEO_MAX·SHRINK·SHRINK_MAX_SEC, 사진 2048·0.85와 같게(바꾸면 처리방침·약관도) -->
+    <details class="sp-p__up-rules" id="up-rules">
+      <summary class="sp-p__up-rules-title">올리기 기준 자세히</summary>
+      <ul class="sp-p__up-rules-list">
+        <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">사진</strong>: 긴 쪽 2048픽셀 JPEG로 줄여 저장해요. 이미 작은 사진은 그대로 둬요. 사진 파일 속 정보(찍은 장소·기종 등)는 지우고, 찍은 날짜는 앨범 정렬에만 써요.</li>
+        <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">영상</strong>: mp4·mov, 한 편 2GB까지예요. 길이 제한은 없어요. 3분 이하는 1080p로 줄여 올리고, 3분이 넘거나 폰이 줄이지 못하면 원본 그대로 올라가요(찍은 장소 정보만 지워요).</li>
+        <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">한 번에</strong>: 200개까지 고를 수 있어요.</li>
+        <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">저장 공간</strong>: 가족방마다 무료 5GB예요. 줄인 크기 기준으로 사진은 한 장에 1MB 안팎, 1080p 영상은 1분에 40MB쯤이에요. 다 차면 새로 올리기만 멈춰요.</li>
+      </ul>
+    </details>
 
     <div class="sp-p__toast sp-p__toast--error sp-p__toast--live" id="up-alert" role="alert"></div>
     <p class="sp-p__toast sp-p__toast--live" id="up-status" role="status"></p>
