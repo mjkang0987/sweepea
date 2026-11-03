@@ -32,7 +32,8 @@ if __name__ == '__main__':
     for i, (cx, cy) in enumerate(KIDS, 1):
         circle(src, cx, cy, R).save(f'public/kid/{i}.png', optimize=True)
     os.makedirs('public/avatar', exist_ok=True)
-    people = [(x + SHIFT.get(i, 0), y, 78) for i, (x, y) in enumerate(((x, y) for y in ROWS for x in COLS), 1)]
+    # 반지름 78은 원(눈 맞춤 SHIFT로 옆으로 옮긴 것 포함) 밖 배경이 가장자리에 회색 테두리로 들어감(사용자 2026-11-03 "몇 개 있네, 정리해줘") → 72(45개 모두 눈으로 확인)
+    people = [(x + SHIFT.get(i, 0), y, 72) for i, (x, y) in enumerate(((x, y) for y in ROWS for x in COLS), 1)]
     for i, (cx, cy, r) in enumerate(people, 1):
         # 가족 캐릭터는 고르기 화면에 45개가 한꺼번에 떠서 작게(96px WebP, 화면 40~48px의 2배)
         circle(src, cx, cy, r).resize((96, 96), Image.LANCZOS).save(f'public/avatar/{i}.webp', quality=88, method=6)
