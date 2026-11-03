@@ -25,7 +25,7 @@ with sync_playwright() as p:
     pg.screenshot(path=S+'GroupDetail.png')
     inc=pg.get_by_label('새 사진에 기본으로 포함'); was=inc.is_checked(); inc.click(); pg.wait_for_function("document.getElementById('as-live')?.textContent.trim().length>0"); check(pg.get_by_label('새 사진에 기본으로 포함').is_checked()!=was,'기본 포함 바로 저장')
     pg.fill('#name','외가'); pg.press('#name','Enter'); pg.wait_for_function("document.getElementById('as-live')?.textContent.trim().length>0"); check(pg.locator('.sp-p__nav-title').inner_text()=='외가','이름 바꾸고 Enter → 저장')
-    check(pg.get_by_role('button',name='외가 주소 카톡으로 보내기 새로 들어오는 사람은 보낸 뒤 3일 안에').count()==1,'주소 보내기 줄')
+    check(pg.get_by_role('button',name='외가 그룹 주소 보내기 처음 부르는 가족에게 보내요. 보낸 뒤 3일 동안 새 이름으로 들어올 수 있어요').count()==1,'주소 보내기 줄')
     # 스크립트 없이
     nj=b.new_context(viewport={'width':390,'height':844},java_script_enabled=False); nj.add_cookies(ctx.cookies()); q=nj.new_page()
     q.goto(B+'/settings/text-size'); check(q.get_by_role('button',name='저장').is_visible(),'스크립트 없음: 저장 버튼 보임')

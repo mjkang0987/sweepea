@@ -15,7 +15,7 @@ with sync_playwright() as p:
     pg.goto(B+'/settings/family/groups'); pg.locator('a[href^="/settings/family/groups/"]').filter(has_text='가족').first.click(); pg.wait_for_url('**/groups/*')
     url=pg.url; pg.evaluate('window.__same=1')
     # 주소 보내기: 이 화면에 링크 카드
-    pg.get_by_role('button',name='가족 주소 카톡으로 보내기').click(); pg.wait_for_selector('#link-url')
+    pg.get_by_role('button',name='가족 그룹 주소 보내기').click(); pg.wait_for_selector('#link-url')
     check(pg.evaluate('window.__same')==1 and pg.url==url,'주소 보내기: 페이지 이동 없이')
     check(pg.evaluate("document.activeElement.id")=='link-title','링크 카드 제목으로 초점')
     check(pg.evaluate("document.querySelector('.sp-p__rows').nextElementSibling.id")=='link','카드는 목록 바로 아래')
@@ -46,12 +46,12 @@ with sync_playwright() as p:
     check('누구세요' in n.title() or n.locator('#who-name').count()==1,'새 주소는 열림')
     # 실패: 오류 토스트
     pg.route('**/settings/family',lambda r: r.abort() if r.request.method=='POST' else r.continue_())
-    pg.get_by_role('button',name='외가 주소 카톡으로 보내기').click(); pg.wait_for_selector('.sp-toast--error')
+    pg.get_by_role('button',name='외가 그룹 주소 보내기').click(); pg.wait_for_selector('.sp-toast--error')
     check(pg.locator('#link-url').input_value()==new,'실패하면 오류 토스트, 카드 그대로')
     pg.unroute('**/settings/family')
     # 스크립트 없이: 설정 > 가족으로
     q=b.new_context(viewport={'width':390,'height':844},java_script_enabled=False,storage_state=c.storage_state()).new_page()
-    q.goto(url); q.wait_for_timeout(600); q.get_by_role('button',name='외가 주소 카톡으로 보내기').click(); q.wait_for_url('**/settings/family**')
+    q.goto(url); q.wait_for_timeout(600); q.get_by_role('button',name='외가 그룹 주소 보내기').click(); q.wait_for_url('**/settings/family**')
     check(q.locator('#link-url').count()==1,'스크립트 없으면 설정 > 가족에서 링크 카드')
     b.close()
 print('FAILS',FAILS)

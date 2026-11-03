@@ -28,7 +28,7 @@ with sync_playwright() as p:
     check(pg.get_by_role('heading',name='할머니댁').count()==1 and pg.get_by_label('새 사진에 기본으로 포함').is_checked(),'이름·기본 포함 저장'); shot('2')
     gid=pg.url.split('/groups/')[1].split('?')[0]
     # 링크 → 가족 입장 → 상세 구성원
-    pg.get_by_role('button',name='할머니댁 주소 카톡으로 보내기').click(); pg.wait_for_selector('#link-url')
+    pg.get_by_role('button',name='할머니댁 그룹 주소 보내기').click(); pg.wait_for_selector('#link-url')
     code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
     g=b.new_context(viewport={'width':390,'height':844}); gp=g.new_page(); gp.goto(B+'/i/'+code)
     gp.fill('#who-name','할머니'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/password**'); gp.fill('#pw','5678'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/wait')
