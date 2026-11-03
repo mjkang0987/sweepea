@@ -1384,6 +1384,17 @@
 - 결과(0.17.0, 캔버스 v208): 단위 검사에서 7세 이상이 1단계로 나오던 버그를 잡음. e2e entry·health·kidtabs·layers 통과, 리뷰 1회(작은 변경: 경계·시간대·CSS 우선순위 이상 없음). 그대로 둔 것: 가족 앨범 제목 옆 아기도 콩이처럼 톡 뜀(기획서 '움직임 있음', 움직임 줄이기면 멈춤), 백일·첫돌 레이어는 콩이(안내 레이어)
 - 다음(110): 가족 캐릭터 고르기(각자 자기 것만, 사용자 "각자만"). DB 칸 필요 → 운영 적용 전 확인
 
+### 159. 애플 로그인 (진행 중, 새 세션에서 이어서)
+- 요구(사용자 2026-11-03 "애플은 이미 개발자계정 있어"). 코드 변경 없음 예상: PROVIDERS에 apple 있음, PARENT_PROVIDERS에 apple만 더하면 버튼
+- 순서(Supabase 문서 auth-apple, 웹 OAuth 흐름):
+  1. App ID `kr.co.sweepea.app` + Sign In with Apple (사용자가 만들었는지 확인 안 됨, 나중 iOS 앱 ID로 그대로 씀)
+  2. Services ID `kr.co.sweepea.web` → Sign In with Apple Configure: Primary App ID 위, Domain `aemzbelwyyweugxuqgoh.supabase.co`, Return URL `https://aemzbelwyyweugxuqgoh.supabase.co/auth/v1/callback`
+  3. Keys에서 Sign in with Apple 키(.p8) 만들기 → Supabase 문서의 도구(크롬·파이어폭스)로 비밀값 생성(Team ID·Key ID·Services ID)
+  4. Supabase Apple 제공자: Client IDs 첫 칸 `kr.co.sweepea.web`, Secret Key 넣기
+  5. Cloudflare `PARENT_PROVIDERS`에 apple 추가 → 로그인 시험
+  6. 비밀값 6개월마다 새로 → 예약 알림 걸기
+- 사용자 안내는 한 단계씩, 짧게
+
 ### 158. fix/naver-userinfo — 네이버 로그인 실패 (완료 0.38.6~0.38.7, 운영 로그인 성공 07:51)
 - 요구(사용자 2026-11-03 "로그인실패")
 - 원인: 네이버까지는 성공(Supabase 기록에 네이버가 code를 돌려줌). 네이버 사용자 정보는 `{resultcode, message, response:{id,…}}`처럼 response 안에 감싸 오는데, Supabase 직접 설정(OAuth2) 제공자는 맨 위 칸(sub·email)만 읽고 속을 펴는 설정이 없음(supabase/auth custom_oauth.go applyAttributeMapping은 맨 위 이름만) → 사용자를 못 알아봐 실패
