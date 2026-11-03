@@ -24,7 +24,7 @@ with sync_playwright() as p:
     gp.goto(B+'/album'); gp.locator('.sp-a__slide').first.locator('.sp-a__slide-react .sp-r__btn').first.click(); gp.wait_for_load_state()
     gp.locator('.sp-a__card-link').first.click(); gp.wait_for_load_state(); gp.fill('#say-body','아이고 많이 컸네'); gp.get_by_role('button',name='보내기').click(); gp.wait_for_load_state()
     pg.goto(B+'/home'); check(pg.get_by_role('link',name='알림, 새 반응 2개').count()==1,'알림 탭 새 반응 2')
-    al=pg.locator('.sp-p__alert'); check(al.count()==1 and '큰이모가 가족 앨범에 들어오려고 해요' in al.inner_text() and al.get_attribute('href')=='/settings/family','승인 대기는 앨범 위 띠')
+    al=pg.locator('.sp-p__alert'); check(al.count()==1 and '큰이모가 가족 그룹에 들어오려고 해요' in al.inner_text() and al.get_attribute('href')=='/settings/family','승인 대기는 앨범 위 띠')
     pg.screenshot(path=D+'r-0.png')
     pg.get_by_role('link',name='알림, 새 반응 2개').click(); pg.wait_for_url('**/reactions')
     t=pg.locator('main').inner_text()

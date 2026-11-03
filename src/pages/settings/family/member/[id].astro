@@ -24,8 +24,8 @@ const canUpload = devices.length > 0 && devices.every((d) => d.can_upload);
 const lastSeen = devices.map((d) => d.last_seen_at).sort().at(-1);
 const done = Astro.url.searchParams.get('done');
 const doneText: Record<string, string> = {
-  'upload-on': '이제 사진을 올릴 수 있어요.',
-  'upload-off': '사진 올리기를 껐어요.',
+  'upload-on': '이제 모든 그룹 사진을 볼 수 있어요.',
+  'upload-off': '자기 그룹 사진만 보게 했어요.',
   gone: '들어와 있는 휴대폰이 없어요. 휴대폰으로 들어온 뒤에 켤 수 있어요.',
   renamed: '이름을 바꿨어요. 그분 휴대폰에도 이 이름으로 보여요.',
   // 목록에 안 보이는 예전 이름(거절·내보낸 분)도 같은 그룹에선 막혀서 '쓰고 있거나 예전에 쓴'(리뷰 2026-10-29)
@@ -66,8 +66,8 @@ const doneText: Record<string, string> = {
   <form class="sp-p__panel" method="post">
     <div class="sp-p__panel-row sp-p__panel-line">
       <span>
-        <span class="sp-p__who-name" id="up-label">사진 올리기 허용</span>
-        <span class="sp-p__hint sp-p__block" id="up-what">모든 그룹 사진을 보고 올릴 수 있어요. 설정과 승인은 못 해요.</span>
+        <span class="sp-p__who-name" id="up-label">모든 그룹 사진 보기</span>
+        <span class="sp-p__hint sp-p__block" id="up-what">켜면 외가·친가처럼 나눈 그룹과 상관없이 모든 사진을 봐요. 사진을 같이 올리고 관리하려면 설정 › 가족의 엄마·아빠 초대를 써 주세요.</span>
       </span>
       <button class="sp-p__switch" type="submit" name="do" value={`upload:${m.id}:${canUpload ? 'off' : 'on'}`} role="switch" aria-checked={canUpload ? 'true' : 'false'} aria-labelledby="up-label" aria-describedby="up-what up-note" disabled={devices.length === 0}></button>
     </div>

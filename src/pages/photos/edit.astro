@@ -102,7 +102,7 @@ const title = deleting ? `사진 ${n}장 지우기` : `사진 ${n}장 수정`;
         <input type="hidden" name="z" value={z} />
         {error && <p class="sp-p__error" role="alert">{error.text}</p>}
         <h2 class="sp-layer__title">사진 {n}장을 지울까요?</h2>
-        <p class="sp-p__lead">가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요.</p>
+        <p class="sp-p__lead">가족 화면에서도 바로 사라지고, 남긴 반응과 한마디도 같이 지워져요. 되돌릴 수 없어요. 스위피에는 원본이 없으니 폰에 원본이 있는지 먼저 확인해 주세요. 지운 만큼 저장 공간이 비어요.</p>
         <ul class="sp-p__multi-strip" role="list" aria-label="지울 사진">
           {rows.map((r) => (
             <li class="sp-p__multi-strip-item"><img class="sp-p__multi-thumb" src={r.src} alt={r.label} /></li>

@@ -21,10 +21,10 @@ with sync_playwright() as p:
     gp.fill('#who-name','서아 아빠'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/password**'); gp.fill('#pw','0917'); gp.get_by_role('button',name='들어가기').click(); gp.wait_for_url('**/wait')
     pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 서아 아빠').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
     pg.get_by_role('link',name='서아 아빠').click(); pg.wait_for_url('**/member/**')
-    sw=pg.get_by_role('switch',name='사진 올리기 허용'); check(sw.get_attribute('aria-checked')=='false','처음엔 올리기 꺼짐'); shot('1')
+    sw=pg.get_by_role('switch',name='모든 그룹 사진 보기'); check(sw.get_attribute('aria-checked')=='false','처음엔 올리기 꺼짐'); shot('1')
     fam=gp.evaluate("1") and None
     r=g.request.post(B+'/api/media',data={'familyId':pg.locator('#up-form').count() and '' or '00000000-0000-4000-8000-000000000000','kind':'photo','takenAt':'2026-10-20T10:00:00Z','takenAtSource':'exif'})
-    sw.click(); pg.wait_for_function("document.getElementById('mem-live')?.textContent.includes('올릴 수 있어요')"); check(pg.get_by_role('switch',name='사진 올리기 허용').get_attribute('aria-checked')=='true','올리기 켬')
+    sw.click(); pg.wait_for_function("document.getElementById('mem-live')?.textContent.includes('모든 그룹 사진을 볼 수 있어요')"); check(pg.get_by_role('switch',name='모든 그룹 사진 보기').get_attribute('aria-checked')=='true','올리기 켬')
     pg.goto(B+'/settings/family'); check(pg.locator('.sp-p__tag',has_text='올리기').count()==1,'가족 목록에 올리기 표시')
     # 사진 저장하기
     pg.goto(B+'/settings'); dsw=pg.get_by_role('switch',name='가족도 사진 저장하기'); check(dsw.get_attribute('aria-checked')=='false','저장하기 처음엔 꺼짐')

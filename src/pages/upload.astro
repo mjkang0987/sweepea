@@ -51,6 +51,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       }
       <fieldset class="sp-p__fieldset sp-p__panel-row">
         <legend class="sp-p__panel-label sp-p__panel-legend">보여줄 그룹</legend>
+        <p class="sp-p__hint sp-p__block">체크한 그룹 가족만 이 사진을 봐요. 나중에 사진 정보에서 바꿀 수 있어요.</p>
         <div class="sp-p__checks">
           {
             groups.map((g) => (
@@ -88,7 +89,8 @@ const kid = callName(kids[0]?.name ?? '아이');
 
     <div class="sp-p__bottom sp-p__savebar" id="up-actions">
       <button class="sp-p__btn sp-p__btn--kakao" type="submit" value="share" disabled>올리고 카톡으로 보내기</button>
-      <button class="sp-p__btn sp-p__btn--text" type="submit" value="only" disabled>보내지 않고 올리기만</button>
+      <button class="sp-p__btn sp-p__btn--text" type="submit" value="only" disabled aria-describedby="up-only-hint">보내지 않고 올리기만</button>
+      <p class="sp-p__hint sp-p__fine" id="up-only-hint">올리기만 해도 가족 앨범에는 바로 보여요. 카톡 알림만 안 가요.</p>
     </div>
     </div>
   </form>
@@ -606,9 +608,9 @@ const kid = callName(kids[0]?.name ?? '아이');
       const upTo = n ? `${n}장까지 올렸어요. ` : '';
       warn(
         err instanceof HttpError && err.status === 401
-          ? `로그인이 끝났어요. ${upTo}다시 로그인한 뒤 올려 주세요.`
+          ? `로그인이 풀렸어요. ${upTo}다시 로그인한 뒤 나머지를 올려 주세요.`
           : err instanceof HttpError && err.status === 507
-          ? `저장 용량 5GB가 다 찼어요. ${upTo}가족은 지금까지 올린 사진을 계속 볼 수 있어요.`
+          ? `저장 용량 5GB가 다 찼어요. ${upTo}가족은 지금까지 올린 사진을 계속 볼 수 있어요. 안 쓰는 사진·영상을 지우면 그만큼 다시 올릴 수 있어요(영상이 가장 많이 차지해요).`
           : `${err instanceof TypeError ? '인터넷 연결이 끊겼어요. ' : ''}${n ? `${upTo}다시 누르면 나머지를 이어서 올려요.` : '다시 누르면 처음부터 올려요.'}`,
       );
       // 안내를 넣은 뒤 포커스(화면 읽기가 알림과 버튼 이름을 섞어 읽지 않게)
@@ -635,7 +637,7 @@ const kid = callName(kids[0]?.name ?? '아이');
       done.hidden = false;
       $<HTMLInputElement>('up-link').value = url;
       $('up-done-title').focus();
-      const text = `${form.dataset.kid} 새 사진 ${ids.length}장이에요. 누르면 바로 볼 수 있어요.`;
+      const text = `${form.dataset.kid} 새 사진 ${ids.length}장이에요. 누르면 볼 수 있어요.`;
       const tell = (t: string) => ($('up-done-status').textContent = t);
       const copy = (what: string, ok: string) => copyText($<HTMLInputElement>('up-link'), what, tell, ok);
       $('up-share').addEventListener('click', () => {

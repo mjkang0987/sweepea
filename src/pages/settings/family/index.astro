@@ -159,7 +159,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
         <h2 class="sp-p__card-title" id="link-title" tabindex="-1">{linkGroup} 링크를 만들었어요</h2>
         <label class="sp-p__label" for="link-url">주소</label>
         <input class="sp-p__input" id="link-url" type="url" readonly value={link} />
-        <a class="sp-p__btn" href={smsHref(`${kid} 사진 보시라고 주소 보내요. 누르면 바로 볼 수 있어요.\n${link}`)}>문자로 보내기</a>
+        <a class="sp-p__btn" href={smsHref(`${kid} 사진 보시라고 주소 보내요. 누르면 볼 수 있어요. 처음 한 번은 가족 비밀번호 4자리를 물어요.\n${link}`)}>문자로 보내기</a>
         <button class="sp-p__btn sp-p__btn--quiet" type="button" data-copy="link-url" hidden>주소 복사</button>
         <p class="sp-p__hint">3일 안에는 새 이름으로도 들어올 수 있어요. 이미 등록된 이름은 언제든 들어와요.</p>
       </section>
@@ -176,7 +176,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
             <span class="sp-p__avatar" aria-hidden="true">{m.display_name.slice(0, 1)}</span>
             <div>
               <h3 class="sp-p__who-name" id={`pm-${m.id}`}>{m.display_name}</h3>
-              <p class="sp-p__hint">{s.groupName(m.group_id)} 링크로 직접 입력 · {when.format(new Date(m.created_at))}</p>
+              <p class="sp-p__hint">{s.groupName(m.group_id)} 그룹 링크로 새 이름을 써서 들어왔어요 · {when.format(new Date(m.created_at))}</p>
             </div>
           </div>
           <p class="sp-p__lead">승인 전에는 받은 사진만 볼 수 있어요. 3일 안에 승인하지 않으면 자동으로 취소돼요.</p>
@@ -198,7 +198,7 @@ const groupMembers = (gid: string) => admin.members.filter((m) => m.group_id ===
           return (
             <article class="sp-p__card" aria-labelledby={`pd-${d.id}`}>
               <h3 class="sp-p__who-name" id={`pd-${d.id}`}>{name} · 새 휴대폰</h3>
-              <p class="sp-p__hint">확인을 기다리는 새 휴대폰이에요 · {when.format(new Date(d.created_at))}</p>
+              <p class="sp-p__hint">비밀번호를 여러 번 틀려서 확인을 기다려요. 본인이 맞는지 전화로 확인한 뒤 승인해 주세요 · {when.format(new Date(d.created_at))}</p>
               <form class="sp-p__pair" method="post" action="/settings/family">
                 <button class="sp-p__btn sp-p__btn--danger" type="submit" name="do" value={`device:${d.id}:revoked`} {...askData(askRevoke(deviceName(d)))}>내 가족 아님<span class="sp-vh"> {name}</span></button>
                 <button class="sp-p__btn" type="submit" name="do" value={`device:${d.id}:active`}>승인<span class="sp-vh"> {name}</span></button>

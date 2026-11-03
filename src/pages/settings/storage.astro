@@ -23,5 +23,6 @@ const used = sizeLabel(usedBytes);
     <h2 class="sp-p__card-title" id="st-title"><span class="sp-p__big">{used}</span> / 5GB 사용</h2>
     <meter class="sp-p__meter" min="0" max="100" low="80" high="95" optimum="0" value={pct} aria-label={`5GB 중 ${pct}% 사용`}>{pct}%</meter>
     <p class="sp-p__lead">사진 {(h.photo_count ?? 0).toLocaleString('ko-KR')}장 · 영상 {(h.video_count ?? 0).toLocaleString('ko-KR')}개. 5GB가 차면 새로 올리기만 멈추고, 가족은 계속 볼 수 있어요.</p>
+    <p class="sp-p__hint">안 쓰는 사진·영상을 지우면 그만큼 다시 올릴 수 있어요. 영상이 가장 많이 차지해요.</p>
   </section>
 </Parent>
