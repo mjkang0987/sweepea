@@ -1,4 +1,4 @@
-// 사진·영상 파일 안의 촬영 시각을 읽고, JPEG의 위치·기기 정보를 뺀다(라이브러리 없이). JPEG·PNG는 앞부분(128KB 정도)이면 충분하고, HEIC은 Exif 항목 자리를 찾아 그 부분만 더 읽는다
+// 사진·영상 파일 안의 촬영 시각을 읽고, JPEG의 위치·기기 정보를 빼고, 위치를 뺀 사진 정보를 새 JPEG에 옮긴다(라이브러리 없이). JPEG·PNG는 앞부분(128KB 정도)이면 충분하고, HEIC은 Exif 항목 자리를 찾아 그 부분만 더 읽는다
 
 const HEAD = 128 * 1024;
 
@@ -14,6 +14,12 @@ export async function photoTakenAt(file: Blob): Promise<string | null> {
 export const plausible = (ms: number) => ms >= Date.UTC(2001, 0, 1) && ms <= Date.now() + 600_000;
 
 async function readPhoto(file: Blob): Promise<string | null> {
+  const x = await tiffOf(file);
+  return x ? readTiff(x.v, x.t, x.end) : null;
+}
+
+/** 사진 파일 안 EXIF(TIFF)의 자리: HEIC Exif 항목·PNG eXIf·JPEG APP1. 없으면 null */
+async function tiffOf(file: Blob): Promise<{ v: DataView; t: number; end: number } | null> {
   const buf = await file.slice(0, HEAD).arrayBuffer();
   const v = new DataView(buf);
   if (v.byteLength >= 12 && v.getUint32(4) === 0x66747970) {
@@ -24,19 +30,19 @@ async function readPhoto(file: Blob): Promise<string | null> {
     if (ex.byteLength < 8) return null;
     // Exif 항목: 앞 4바이트는 TIFF 머리까지 건너뛸 길이(보통 'Exif\0\0' 6바이트)
     const t = 4 + ex.getUint32(0);
-    return t + 8 <= ex.byteLength ? readTiff(ex, t, ex.byteLength) : null;
+    return t + 8 <= ex.byteLength ? { v: ex, t, end: ex.byteLength } : null;
   }
-  if (v.byteLength >= 8 && v.getUint32(0) === 0x89504e47 && v.getUint32(4) === 0x0d0a1a0a) return pngExif(v);
-  return exifTakenAt(buf);
+  if (v.byteLength >= 8 && v.getUint32(0) === 0x89504e47 && v.getUint32(4) === 0x0d0a1a0a) return pngTiff(v);
+  return jpegTiff(v);
 }
 
 /** PNG 'eXIf' 덩어리(내용이 바로 TIFF) */
-function pngExif(v: DataView): string | null {
+function pngTiff(v: DataView): { v: DataView; t: number; end: number } | null {
   let p = 8;
   while (p + 8 <= v.byteLength) {
     const len = v.getUint32(p);
     const type = v.getUint32(p + 4);
-    if (type === 0x65584966) return readTiff(v, p + 8, Math.min(v.byteLength, p + 8 + len));
+    if (type === 0x65584966) return { v, t: p + 8, end: Math.min(v.byteLength, p + 8 + len) };
     if (type === 0x49444154 || type === 0x49454e44) return null; // IDAT·IEND: 그림 시작·끝, eXIf는 그 앞에 온다
     p += 12 + len;
   }
@@ -168,21 +174,126 @@ export async function mp4CreatedAt(file: Blob): Promise<string | null> {
 
 /** DateTimeOriginal(+OffsetTimeOriginal)을 ISO 시각으로. 시간대가 없으면 한국 시간(+09:00)으로 본다. 없거나 깨졌으면 null */
 export function exifTakenAt(buf: ArrayBuffer): string | null {
-  const v = new DataView(buf);
+  const x = jpegTiff(new DataView(buf));
+  return x ? readTiff(x.v, x.t, x.end) : null;
+}
+
+/** JPEG APP1 'Exif\0\0' 안 TIFF 자리 */
+function jpegTiff(v: DataView): { v: DataView; t: number; end: number } | null {
   if (v.byteLength < 4 || v.getUint16(0) !== 0xffd8) return null;
   let p = 2;
   while (p + 4 <= v.byteLength) {
     const marker = v.getUint16(p);
     const len = v.getUint16(p + 2);
     if ((marker & 0xff00) !== 0xff00 || len < 2) return null;
-    // APP1 'Exif\0\0'
     if (marker === 0xffe1 && p + 10 <= v.byteLength && v.getUint32(p + 4) === 0x45786966 && v.getUint16(p + 8) === 0) {
-      return readTiff(v, p + 10, Math.min(v.byteLength, p + 2 + len));
+      return { v, t: p + 10, end: Math.min(v.byteLength, p + 2 + len) };
     }
     if (marker === 0xffda) return null; // 이미지 데이터 시작: EXIF 없음
     p += 2 + len;
   }
   return null;
+}
+
+// 옮겨 적는 정보(142, 사용자 "위치정보만 지우고 찍은날 정보는 두면"): 위치(GPS)·회전·작은 그림·제조사 메모(MakerNote)는 빼고 아래만.
+// 빼고 싶은 걸 고르는 대신 남길 것만 골라 적는다(모르는 태그에 위치가 숨어 있어도 따라가지 않게)
+const KEEP_IFD0 = [0x010f, 0x0110, 0x0131, 0x0132]; // 제조사·기종·소프트웨어·수정 시각
+const KEEP_EXIF = [
+  0x829a, 0x829d, 0x8827, 0x9003, 0x9004, 0x9010, 0x9011, 0x9012, 0x9204, 0x9209, 0x920a, 0x9290, 0x9291, 0x9292, 0xa405, 0xa433, 0xa434,
+]; // 노출·조리개·ISO·찍은 시각·시간대·노출 보정·플래시·초점 거리·렌즈
+const UNIT: Record<number, number> = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 9: 4, 10: 8 };
+type Entry = { tag: number; type: number; count: number; bytes: Uint8Array };
+
+/** 사진 파일의 정보 중 남길 것만 담은 JPEG APP1(EXIF) 덩어리. 정보가 없으면 null */
+export async function photoExif(file: Blob): Promise<Uint8Array | null> {
+  const x = await tiffOf(file);
+  if (!x) return null;
+  const { v, t, end } = x;
+  const le = v.getUint16(t) === 0x4949;
+  if (!le && v.getUint16(t) !== 0x4d4d) return null;
+  const pick = (ifd: number, keep: number[]): Entry[] => {
+    const out: Entry[] = [];
+    if (!(ifd >= 8) || t + ifd + 2 > end) return out;
+    const n = v.getUint16(t + ifd, le);
+    for (let i = 0; i < n && i < 512; i++) {
+      const e = t + ifd + 2 + i * 12;
+      if (e + 12 > end) break;
+      const tag = v.getUint16(e, le), type = v.getUint16(e + 2, le), count = v.getUint32(e + 4, le);
+      if (!keep.includes(tag) || !UNIT[type]) continue;
+      const size = count * UNIT[type];
+      if (size > 256) continue;
+      const at = size > 4 ? t + v.getUint32(e + 8, le) : e + 8;
+      if (at + size > end) continue;
+      out.push({ tag, type, count, bytes: new Uint8Array(v.buffer, v.byteOffset + at, size).slice() });
+    }
+    return out;
+  };
+  const ifd0 = v.getUint32(t + 4, le);
+  const top = pick(ifd0, KEEP_IFD0);
+  let exifAt = -1;
+  if (ifd0 >= 8 && t + ifd0 + 2 <= end) {
+    const n = v.getUint16(t + ifd0, le);
+    for (let i = 0; i < n; i++) {
+      const e = t + ifd0 + 2 + i * 12;
+      if (e + 12 > end) break;
+      if (v.getUint16(e, le) === 0x8769) exifAt = v.getUint32(e + 8, le);
+    }
+  }
+  const sub = exifAt > 0 ? pick(exifAt, KEEP_EXIF) : [];
+  if (!top.length && !sub.length) return null;
+  const tiff = writeTiff(le, top, sub);
+  const app1 = new Uint8Array(10 + tiff.length);
+  const w = new DataView(app1.buffer);
+  w.setUint16(0, 0xffe1);
+  w.setUint16(2, 8 + tiff.length);
+  app1.set([0x45, 0x78, 0x69, 0x66, 0, 0], 4);
+  app1.set(tiff, 10);
+  return app1;
+}
+
+/** IFD0(+Exif IFD 포인터)와 Exif IFD만 있는 TIFF. 값은 원래 바이트 순서 그대로 옮긴다 */
+function writeTiff(le: boolean, top: Entry[], sub: Entry[]): Uint8Array {
+  const ifdSize = (n: number) => 2 + n * 12 + 4;
+  const dataSize = (list: Entry[]) => list.reduce((a, x) => a + (x.bytes.length > 4 ? (x.bytes.length + 1) & ~1 : 0), 0);
+  const nTop = top.length + (sub.length ? 1 : 0);
+  const ifd0 = 8, data0 = ifd0 + ifdSize(nTop), exif = data0 + dataSize(top), data1 = exif + ifdSize(sub.length);
+  const out = new Uint8Array(data1 + dataSize(sub));
+  const w = new DataView(out.buffer);
+  w.setUint16(0, le ? 0x4949 : 0x4d4d);
+  w.setUint16(2, 42, le);
+  w.setUint32(4, ifd0, le);
+  const put = (at: number, list: Entry[], data: number, extra?: Entry) => {
+    const all = [...list, ...(extra ? [extra] : [])].sort((a, b) => a.tag - b.tag);
+    w.setUint16(at, all.length, le);
+    all.forEach((x, i) => {
+      const e = at + 2 + i * 12;
+      w.setUint16(e, x.tag, le);
+      w.setUint16(e + 2, x.type, le);
+      w.setUint32(e + 4, x.count, le);
+      if (x.bytes.length > 4) {
+        w.setUint32(e + 8, data, le);
+        out.set(x.bytes, data);
+        data += (x.bytes.length + 1) & ~1;
+      } else out.set(x.bytes, e + 8);
+    });
+    w.setUint32(at + 2 + all.length * 12, 0, le); // 다음 IFD 없음(작은 그림 IFD1 안 옮김)
+  };
+  const ptr = new Uint8Array(4);
+  new DataView(ptr.buffer).setUint32(0, exif, le);
+  put(ifd0, top, data0, sub.length ? { tag: 0x8769, type: 4, count: 1, bytes: ptr } : undefined);
+  if (sub.length) put(exif, sub, data1);
+  return out;
+}
+
+/** JPEG에 APP1을 넣는다(JFIF APP0이 있으면 그 뒤, 없으면 SOI 바로 뒤) */
+export function withExif(jpeg: Uint8Array, app1: Uint8Array): Uint8Array<ArrayBuffer> {
+  let p = 2;
+  if (jpeg[2] === 0xff && jpeg[3] === 0xe0) p = 4 + ((jpeg[4] << 8) | jpeg[5]);
+  const out = new Uint8Array(jpeg.length + app1.length);
+  out.set(jpeg.subarray(0, p));
+  out.set(app1, p);
+  out.set(jpeg.subarray(p), p + app1.length);
+  return out;
 }
 
 function readTiff(v: DataView, t: number, end: number): string | null {

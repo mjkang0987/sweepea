@@ -68,11 +68,11 @@ const kid = callName(kids[0]?.name ?? '아이');
       </p>
     </div>
     <p class="sp-p__note sp-p__up-note">사진·영상은 앨범에서 보기 좋은 크기로 줄여서 올려요. <strong class="sp-p__note-strong">스위피는 원본을 따로 보관하지 않으니 원본은 폰에서 지우지 마세요.</strong></p>
-    <!-- 숫자는 아래 스크립트의 MAX_ITEMS·VIDEO_MAX·SHRINK·SHRINK_MAX_SEC, 사진 2048·0.85와 같게(바꾸면 처리방침·약관도) -->
+    <!-- 숫자는 아래 스크립트의 MAX_ITEMS·VIDEO_MAX·SHRINK·SHRINK_MAX_SEC, PHOTO와 같게(바꾸면 처리방침·약관도) -->
     <details class="sp-p__up-rules" id="up-rules">
       <summary class="sp-p__up-rules-title">올리기 기준 자세히</summary>
       <ul class="sp-p__up-rules-list">
-        <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">사진</strong>: 긴 쪽 2048픽셀 JPEG로 줄여 저장해요. 이미 작은 사진은 그대로 둬요. 사진 파일 속 정보(찍은 장소·기종 등)는 지우고, 찍은 날짜는 앨범 정렬에만 써요.</li>
+        <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">사진</strong>: 해상도는 그대로(긴 쪽 최대 4032픽셀) 두고 용량만 줄인 JPEG로 저장해요. 찍은 날짜·기종 같은 사진 정보는 그대로 두고, 찍은 장소(위치)만 지워요.</li>
         <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">영상</strong>: mp4·mov, 한 편 2GB까지예요. 길이 제한은 없어요. 3분 이하는 1080p로 줄여 올리고, 3분이 넘거나 폰이 줄이지 못하면 원본 그대로 올라가요(찍은 장소 정보만 지워요).</li>
         <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">한 번에</strong>: 200개까지 고를 수 있어요.</li>
         <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">저장 공간</strong>: 가족방마다 무료 5GB예요. 줄인 크기 기준으로 사진은 한 장에 1MB 안팎, 1080p 영상은 1분에 40MB쯤이에요. 다 차면 새로 올리기만 멈춰요.</li>
@@ -110,7 +110,7 @@ const kid = callName(kids[0]?.name ?? '아이');
 </Parent>
 
 <script>
-  import { fitSize, mp4CreatedAt, photoTakenAt, plausible, stripJpeg } from '../lib/exif';
+  import { fitSize, mp4CreatedAt, photoExif, photoTakenAt, plausible, stripJpeg, withExif } from '../lib/exif';
   import { stripVideoLocation } from '../lib/videometa';
   import { copyText } from '../lib/copy';
 
@@ -142,6 +142,8 @@ const kid = callName(kids[0]?.name ?? '아이');
   // shortcut: 줄인 영상을 통째로 메모리에 두므로(아이폰은 탭이 꺼질 수 있음) 3분(약 110MB) 넘는 영상은 원본 그대로 나눠 올린다.
   // 긴 영상도 줄이려면 StreamTarget(fragmented)으로 만들면서 조각 올리기로 바로 흘려보낸다
   const SHRINK_MAX_SEC = 180;
+  // 사진(142, 패밀리앨범 기준: 2268×4032 원본 → 같은 해상도 648KB): 해상도는 그대로 두고 긴 쪽 4032까지(48MP는 아이폰 브라우저 캔버스 한도 때문에 줄임), JPEG 0.8
+  const PHOTO = { side: 4032, quality: 0.8 };
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
   const form = $<HTMLFormElement>('up-form');
   const input = $<HTMLInputElement>('up-files');
@@ -216,7 +218,7 @@ const kid = callName(kids[0]?.name ?? '아이');
   async function viewAndThumb(src: CanvasImageSource, w: number, h: number, viewMax: number) {
     let small: ImageBitmap | undefined;
     try {
-      const view = await draw(src, w, h, viewMax, 0.85);
+      const view = await draw(src, w, h, viewMax, PHOTO.quality);
       small = await createImageBitmap(view.blob);
       const thumb = await draw(small, small.width, small.height, 480, 0.8);
       return { view, thumb };
@@ -230,17 +232,19 @@ const kid = callName(kids[0]?.name ?? '아이');
     // 끌어다 놓기는 아무 파일이나 올 수 있다(종류를 모르는 파일은 열어 보고 판단)
     if (file.type && !file.type.startsWith('image/')) throw new Error('type');
     const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
-    const { view, thumb } = await viewAndThumb(bmp, bmp.width, bmp.height, 2048);
-    const small = Math.max(bmp.width, bmp.height) <= 2048;
+    const { view, thumb } = await viewAndThumb(bmp, bmp.width, bmp.height, PHOTO.side);
+    const small = Math.max(bmp.width, bmp.height) <= PHOTO.side;
     bmp.close();
-    const exif = await photoTakenAt(file).catch(() => null);
+    const [exif, info] = await Promise.all([photoTakenAt(file).catch(() => null), photoExif(file).catch(() => null)]);
     // 이미 작은 JPEG(카톡으로 받은 사진 등)는 다시 저장하면 화질만 깎이고 커지기도 한다 → 정보만 뺀 원본이 작거나 같으면 그대로
     const head = small ? new Uint8Array(await file.slice(0, 2).arrayBuffer()) : null;
     const jpeg = head?.[0] === 0xff && head[1] === 0xd8; // 앞 2바이트 FF D8(PNG·HEIC는 통째로 안 읽게)
     const kept = jpeg ? stripJpeg(await file.arrayBuffer()) : null;
     const useOriginal = kept !== null && kept.byteLength <= view.blob.size;
+    // 찍은 날·기종 등은 위치만 빼고 다시 넣는다(142): 가족이 저장해도 사진첩에 찍은 날로 들어가게
+    const body = useOriginal ? kept : new Uint8Array(await view.blob.arrayBuffer());
     return {
-      kind: 'photo', view: useOriginal ? new Blob([kept], { type: 'image/jpeg' }) : view.blob, thumb: thumb.blob, width: view.width, height: view.height,
+      kind: 'photo', view: new Blob([info ? withExif(body, info) : body], { type: 'image/jpeg' }), thumb: thumb.blob, width: view.width, height: view.height,
       takenAt: exif ?? new Date(file.lastModified).toISOString(), takenAtSource: exif ? 'exif' : 'file',
       url: URL.createObjectURL(thumb.blob),
     };

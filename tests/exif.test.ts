@@ -1,7 +1,7 @@
 // node --test (Node 24는 .ts를 그대로 실행)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { exifTakenAt, fitSize, mp4CreatedAt, photoTakenAt, stripJpeg } from '../src/lib/exif.ts';
+import { exifTakenAt, fitSize, mp4CreatedAt, photoExif, photoTakenAt, stripJpeg, withExif } from '../src/lib/exif.ts';
 
 /** EXIF가 든 최소 JPEG(빅/리틀 엔디언, 시간대 있음/없음) */
 function jpeg(date: string, opts: { le?: boolean; offset?: string } = {}): ArrayBuffer {
@@ -169,4 +169,62 @@ test('stripJpeg: Orientation이 LONG으로 적혀도 회전으로 봄', () => {
 test('stripJpeg: APP0은 JFIF만 남기고 JFXX(작은 그림)는 뺌', () => {
   const jfxx = seg(0xe0, [...ascii('JFXX'), 0, 0x10, 1, 2, 3]);
   assert.deepEqual(stripJpeg(buf(jfxx, pic)), new Uint8Array([0xff, 0xd8, ...pic]));
+});
+
+/** IFD0(제조사·기종·위치 포인터·Exif 포인터) + Exif IFD(찍은 시각·시간대·MakerNote) + GPS IFD가 든 JPEG(아이폰과 같은 모양) */
+function phoneJpeg(le: boolean): Uint8Array<ArrayBuffer> {
+  type E = [number, number, number, number[]];
+  const b16 = (n: number) => (le ? [n & 0xff, n >> 8] : [n >> 8, n & 0xff]);
+  const b32 = (n: number) => (le ? [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, n >>> 24] : [n >>> 24, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]);
+  const str = (s: string) => [...s, '\0'].map((c) => c.charCodeAt(0));
+  const out: number[] = [...(le ? [0x49, 0x49] : [0x4d, 0x4d]), ...b16(42), ...b32(8)];
+  // 세 IFD를 차례로: 크기를 먼저 계산
+  const size = (es: E[]) => 2 + es.length * 12 + 4 + es.reduce((a, e) => a + (e[3].length > 4 ? e[3].length : 0), 0);
+  const gps: E[] = [[0x0001, 2, 2, [0x4e, 0, 0, 0]], [0x0002, 5, 3, Array(24).fill(7)]];
+  const exif: E[] = [[0x9003, 2, 20, str('2026:11:02 18:22:00')], [0x9011, 2, 7, str('+09:00')], [0x927c, 7, 8, str('APPLEMN')]];
+  const ifd0Base: E[] = [[0x010f, 2, 6, str('Apple')], [0x0110, 2, 22, str('iPhone 15 Pro Max\0\0\0\0')]];
+  const ifd0Size = size(ifd0Base) + 24;
+  const exifAt = 8 + ifd0Size, gpsAt = exifAt + size(exif);
+  const ifd0: E[] = [...ifd0Base, [0x8769, 4, 1, b32(exifAt)], [0x8825, 4, 1, b32(gpsAt)]];
+  const write = (at: number, es: E[]) => {
+    let data = at + 2 + es.length * 12 + 4;
+    const head: number[] = [...b16(es.length)], tail: number[] = [];
+    for (const [tag, type, count, v] of es) {
+      head.push(...b16(tag), ...b16(type), ...b32(count));
+      if (v.length > 4) (head.push(...b32(data)), tail.push(...v), (data += v.length));
+      else head.push(...v, ...Array(4 - v.length).fill(0));
+    }
+    return [...head, ...b32(0), ...tail];
+  };
+  out.push(...write(8, ifd0), ...write(exifAt, exif), ...write(gpsAt, gps));
+  const app1 = [0x45, 0x78, 0x69, 0x66, 0, 0, ...out];
+  return new Uint8Array([0xff, 0xd8, 0xff, 0xe1, (app1.length + 2) >> 8, (app1.length + 2) & 0xff, ...app1, 0xff, 0xd9]);
+}
+const has = (hay: Uint8Array, needle: string) => new TextDecoder('latin1').decode(hay).includes(needle);
+
+test('photoExif: 찍은 시각·기종은 옮기고 위치(GPS)·MakerNote는 빼서 새 JPEG에 넣음(142)', async () => {
+  for (const le of [true, false]) {
+    const app1 = (await photoExif(new Blob([phoneJpeg(le)])))!;
+    assert.ok(app1, '정보 있음');
+    const fresh = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 4, 1, 2, 0xff, 0xda, 0, 2, 0xff, 0xd9]);
+    const out = withExif(fresh, app1);
+    assert.deepEqual([...out.subarray(0, 8)], [0xff, 0xd8, 0xff, 0xe0, 0, 4, 1, 2], 'JFIF 뒤에 넣음');
+    assert.equal(exifTakenAt(out.buffer), '2026-11-02T09:22:00.000Z', '찍은 시각 그대로');
+    assert.ok(has(out, 'Apple') && has(out, 'iPhone 15 Pro Max'), '기종 그대로');
+    assert.ok(!has(out, 'APPLEMN'), 'MakerNote 뺌');
+    const v = new DataView(out.buffer);
+    let gps = false;
+    for (let i = 0; i + 1 < out.length; i++) if (v.getUint16(i, true) === 0x8825 || v.getUint16(i, false) === 0x8825) gps = true;
+    assert.ok(!gps, '위치 포인터 없음');
+    assert.ok(![...out].join(',').includes(Array(24).fill(7).join(',')), '위치 값(위도) 없음');
+  }
+});
+
+test('photoExif: HEIC도 찍은 시각을 옮기고, 정보가 없으면 null', async () => {
+  const app1 = (await photoExif(new Blob([heic('2026:10:21 15:30:00')])))!;
+  const out = withExif(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), app1);
+  assert.deepEqual([...out.subarray(0, 4)], [0xff, 0xd8, 0xff, 0xe1], 'APP0 없으면 SOI 바로 뒤');
+  assert.equal(exifTakenAt(out.buffer), '2026-10-21T06:30:00.000Z');
+  assert.equal(await photoExif(new Blob([heic('2026:10:21 15:30:00', { noExif: true })])), null);
+  assert.equal(await photoExif(new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])])), null);
 });
