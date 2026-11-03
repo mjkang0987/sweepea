@@ -1,4 +1,4 @@
-# 162: 영상이 처음 열 때만 안 열리면(아이폰 사례) 저절로 한 번 더 해서 올라감, 두 번 다 안 되면 안내 (mock)
+# 162·163: 영상이 처음 열 때만 안 열리면(아이폰 사례) 저절로 한 번 더 해서 올라감, 두 번 다 안 되면 멈춘 단계까지 안내 (mock)
 import os
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D=os.path.dirname(os.path.abspath(__file__))+'/'
@@ -24,6 +24,8 @@ with sync_playwright() as p:
     check(pg.locator('.sp-p__cell').count()==1,'올라감')
     pg.close()
     pg=run(b,2)
-    check(pg.locator('.sp-p__upcell').count()==0 and 'v.mp4 · 열 수 없는 파일' in pg.locator('#up-alert').inner_text(),'두 번 다 안 되면 안내 '+pg.locator('#up-alert').inner_text())
+    al=pg.locator('#up-alert').inner_text()
+    import re
+    check(pg.locator('.sp-p__upcell').count()==0 and re.search(r'v\.mp4 · 열 수 없는 파일\(영상을 여는 중 오류(\([1-4]\))?, 다시 해도 같음\)',al),'두 번 다 안 되면 멈춘 단계·오류 번호까지 안내(163) '+al)
     b.close()
 print('FAILS',FAILS)
