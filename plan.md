@@ -1384,7 +1384,7 @@
 - 결과(0.17.0, 캔버스 v208): 단위 검사에서 7세 이상이 1단계로 나오던 버그를 잡음. e2e entry·health·kidtabs·layers 통과, 리뷰 1회(작은 변경: 경계·시간대·CSS 우선순위 이상 없음). 그대로 둔 것: 가족 앨범 제목 옆 아기도 콩이처럼 톡 뜀(기획서 '움직임 있음', 움직임 줄이기면 멈춤), 백일·첫돌 레이어는 콩이(안내 레이어)
 - 다음(110): 가족 캐릭터 고르기(각자 자기 것만, 사용자 "각자만"). DB 칸 필요 → 운영 적용 전 확인
 
-### 160. feature/family-top-slim — 조부모 앨범 위 버튼 줄 줄이기 (진행 중)
+### 160. feature/family-top-slim — 조부모 앨범 위 버튼 줄 줄이기 (완료, 0.39.0)
 - 요구(사용자 2026-11-03 웹 UX 점검 1번 "일단 할머니 할아버지꺼부터", 위치는 "앨범 맨 아래로"): 넘겨 보기에서 사진 위에 '내 캐릭터·글자 크기' / '넘겨·모아 보기' / '전체·사진·영상' 세 줄이 쌓여 사진이 화면 1/3쯤 내려가서 시작함
 - 원인: '내 캐릭터·글자 크기'(149)는 머리 아래 고정, '사진 종류'(117c)는 보기 방식과 상관없이 늘 보임. 디자인 보드 GrandHome에는 사진 종류 줄이 없음(앱만 다름)
 - 구현 방식
@@ -1395,6 +1395,9 @@
   - 디자인 보드: GrandHome·GrandHome-Light는 알약 줄을 아래로(v242). GrandList·GrandList-Light엔 원래 알약 줄이 없어(앱은 149부터 있었음) 머리 아래에 넣어 앱과 맞춤. Multi·Age·PC 보드는 그대로
 - 영향 파일: src/lib/album.ts(readQuery), src/pages/album/index.astro, 보드 4장, e2e familytop(새). family.css는 그대로(.sp-a__mine 위 여백 12px가 아래 자리에서도 맞음)
 - 예상 결과: 넘겨 보기에서 사진 위엔 머리 + 보기 방식 한 줄(약 70px 위로, 알약 줄과 사진 종류 줄이 빠짐). 모아 보기는 예전처럼 알약 + 보기 방식 + 사진 종류. 글자 크기·캐릭터는 두 보기 모두에서 닿음
+- 결과(0.39.0, 캔버스 v243): 리뷰 3회(1·2회 별도 검토, 3회 직접). 2회차: 넘겨 보기 맨 아래 줄은 카드가 계속 붙어 키보드 Tab으로는 멀다 → 줄을 이름 있는 영역(nav '내 설정')으로 해 화면 읽기 영역 목록에서 바로 가게(손가락 스크롤은 문제없음). astro check 0, 단위 60, e2e familytop(새)·entry·family·layers·famsize·avatar·rows·familyzoom·loadmore·save·views·vswipe·pview·react·comments·milestones·waitphotos 통과. 밝게·어둡게·크게·아주 크게 화면이 보드와 같음
+- 원래부터 깨져 있던 검사(dev에서도 같게 실패, 이번 범위 밖): subhead.py(get_attribute 시간 초과), savebar.py(check 시간 초과), pc.py('부모 앨범 6칸') — 화면이 바뀐 뒤 검사를 안 고친 것으로 보임
+- 맥에서 e2e 돌리기: tools/e2e를 임시 폴더로 통째 복사하고 /home/claude/sweepea·/home/user 경로를 바꿔 실행(검사끼리 import·그림 파일을 같은 폴더에서 찾음). familytop은 Harin001에 사진 2장을 남기므로 upload.py보다 뒤에
 
 ### 159. 애플 로그인 (진행 중, 새 세션에서 이어서)
 - 요구(사용자 2026-11-03 "애플은 이미 개발자계정 있어"). 코드 변경 없음 예상: PROVIDERS에 apple 있음, PARENT_PROVIDERS에 apple만 더하면 버튼
