@@ -865,11 +865,12 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--glass-tint);
-  color: var(--on-pea);
+  /* 145(사용자 "더하기 버튼도 글라스 디자인"): 탭 캡슐·고르기 막대와 같은 유리, '+'만 초록 */
+  background: var(--glass-nav);
+  color: var(--pea-ink);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 10px 28px rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator), 0 10px 28px rgba(0, 0, 0, 0.16);
 }
 @media (prefers-reduced-transparency: reduce) {
   .sp-p__tabs-pill {
@@ -881,7 +882,7 @@
     background: var(--bg);
   }
   .sp-p__tab-add {
-    background: var(--pea);
+    background: var(--fill);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -2797,25 +2798,30 @@
     margin-block: 0;
   }
 }
+/* 위 '선택'·'수정'·닫기(145, 사용자 "하단 버튼이랑 디자인 맞춰줘"): 아래 탭바와 같은 유리 캡슐, '수정'은 '+'와 같은 초록 유리 */
 .sp-p__select {
   flex: none;
   min-height: 2.75rem;
-  padding: 0 0.875rem;
+  padding: 0 1.125rem;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  border: 0;
   border-radius: 999px;
-  background: var(--fill);
-  color: var(--pea-ink);
+  background: var(--glass-nav);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator), 0 6px 18px rgba(0, 0, 0, 0.14);
+  color: var(--label);
+  font-family: inherit;
   font-size: var(--subhead-size);
   font-weight: 700;
   text-decoration: none;
-}
-.sp-p__select--main {
-  border: 0;
-  font-family: inherit;
   cursor: pointer;
-  background: var(--pea);
-  color: var(--on-pea);
+}
+/* '수정'도 같은 유리 캡슐(사용자 "수정 버튼도 디자인 맞춰줘"), 글자만 초록 */
+.sp-p__select--main {
+  color: var(--pea-ink);
 }
 .sp-p__select--main:disabled {
   opacity: 0.45;
@@ -2824,8 +2830,18 @@
 .sp-p__select--close {
   width: 2.75rem;
   padding: 0;
-  justify-content: center;
-  color: var(--label);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__select {
+    background: var(--fill);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (forced-colors: active) {
+  .sp-p__select {
+    border: 1px solid CanvasText;
+  }
 }
 .sp-p__icon-line {
   fill: none;
@@ -2864,7 +2880,7 @@
   outline: 3px solid var(--pea-ink);
   outline-offset: -3px;
 }
-/* 고르기 막대(144, 아이폰 사진 앱처럼): 탭바 자리에 떠 있는 유리 캡슐, 가운데 'N장 선택됨'·오른쪽 지우기 */
+/* 고르기 막대(144·145): 탭바(.sp-p__tabs)와 같은 자리·모양. 왼쪽 유리 캡슐 = 'N장 선택됨', 오른쪽 둥근 버튼 = 휴지통('+' 자리, 색은 다르게) */
 .sp-p__selbar {
   position: fixed;
   z-index: 3;
@@ -2873,40 +2889,40 @@
   bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
   max-width: 30rem;
   margin: 0 auto;
-  min-height: 3.75rem;
-  padding: 0.375rem 0.375rem 0.375rem 3.875rem;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+}
+.sp-p__selbar-n {
+  flex: 1;
+  min-width: 0;
+  min-height: 4rem;
+  margin: 0;
+  padding: 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
   background: var(--glass-nav);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
   box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator), 0 10px 28px rgba(0, 0, 0, 0.16);
-}
-@media (forced-colors: active) {
-  .sp-p__selbar {
-    border: 1px solid CanvasText;
-  }
-}
-.sp-p__selbar-n {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  text-align: center;
   font-size: var(--body-size);
   font-weight: 700;
 }
 .sp-p__selbar-del {
   flex: none;
-  width: 3rem;
-  height: 3rem;
+  width: 4rem;
+  height: 4rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 0;
   border-radius: 999px;
-  background: var(--fill);
+  background: var(--glass-nav);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 0.5px var(--separator), 0 10px 28px rgba(0, 0, 0, 0.16);
   color: var(--danger);
   cursor: pointer;
 }
@@ -2917,6 +2933,20 @@
 .sp-p__selbar-del:focus-visible {
   outline: 2px solid var(--pea-ink);
   outline-offset: 2px;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sp-p__selbar-n,
+  .sp-p__selbar-del {
+    background: var(--fill);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (forced-colors: active) {
+  .sp-p__selbar-n,
+  .sp-p__selbar-del {
+    border: 1px solid CanvasText;
+  }
 }
 /* 고르는 중엔 막대 아래로 마지막 줄이 가려지지 않게 */
 .sp-p:has(.sp-p__selbar) {

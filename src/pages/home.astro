@@ -332,9 +332,10 @@ if (z !== 3 && z !== 5)
   )}
   {sel && (
     <div class="sp-p__selbar">
+      {/* 145(사용자 "하단 왼쪽 메뉴 영역에 몇 장 선택인지, 오른쪽 업로드 버튼을 쓰레기통으로"): 탭바와 같은 자리·모양, 내용만 바뀜. 휴지통은 빨간 아이콘으로 '+'와 다르게 */}
       <p class="sp-p__selbar-n" id="sel-n" role="status">사진을 골라 주세요</p>
       <button class="sp-p__selbar-del" type="submit" form="sel-form" name="do" value="delete" aria-label="고른 사진 지우기">
-        <svg class="sp-p__icon-line" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>
+        <svg class="sp-p__icon-line" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>
       </button>
     </div>
   )}
