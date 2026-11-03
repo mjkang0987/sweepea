@@ -1951,6 +1951,22 @@
 .sp-p__up-note {
   margin-top: calc(-1 * var(--space-2));
 }
+/* 올리기 기준(네이티브 details, 기본 펼침 표시는 그대로) */
+.sp-p__up-rules {
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+}
+.sp-p__up-rules-title {
+  cursor: pointer;
+  padding-block: var(--space-2);
+}
+.sp-p__up-rules-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 .sp-p__note-strong {
   color: var(--label);
   font-weight: 600;
