@@ -780,7 +780,8 @@ if (z !== 3 && z !== 5)
       const body = new FormData(e.target as HTMLFormElement);
       body.append(btn.name, btn.value);
       // 바로 닫고 봤음은 뒤에서 적는다(keepalive: 곧바로 다른 화면으로 가도 끝까지 보냄). shortcut: 적기에 실패하면 다음에 열 때 다시 뜸(닫기라서 안내하지 않음)
-      fetch(location.pathname, { method: 'POST', body, credentials: 'same-origin', headers: { 'x-sp-inplace': '1' }, keepalive: true }).catch(() => {});
+      // keepalive 빼기(157, 사용자 "아빠가 관리하기 시작했다고 계속 뜨네"): 아이폰 사파리는 keepalive 요청 응답의 쿠키를 안 남기는 것으로 보여 '봤음'이 안 적혔음(재현은 크롬만, 원인 추정)
+      fetch(location.pathname, { method: 'POST', body, credentials: 'same-origin', headers: { 'x-sp-inplace': '1' } }).catch(() => {});
       box.close();
       wrap.remove();
       next();
