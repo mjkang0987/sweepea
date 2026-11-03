@@ -1350,7 +1350,8 @@
 @media (max-width: 63.98rem) {
   .sp-p__albumhead {
     position: sticky;
-    z-index: 2;
+    /* 칸의 체크 칸(.sp-p__selbox, 2)보다 위: 같으면 나중에 그린 체크 칸이 머리 위로 지나감(사용자 2026-11-03) */
+    z-index: 3;
     top: 0;
     /* .sp-p 위·옆 여백까지 덮어 사진이 머리 밑으로만 지나가게 */
     margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-5)) calc(-1 * var(--space-3));
@@ -2634,8 +2635,27 @@
 .sp-p__albumhead > .sp-p__title {
   grid-column: 1;
 }
-.sp-p__albumhead-sub {
+.sp-p__albumhead-row {
   grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.sp-p__albumhead-row > .sp-p__albumhead-sub {
+  flex: 1;
+  min-width: 0;
+}
+.sp-p__albumhead-act {
+  flex: none;
+  margin-left: auto;
+}
+.sp-p__albumhead-act:empty {
+  display: none;
+}
+/* 누르는 자리(44px)는 두고 줄 높이는 날짜 줄만큼(머리가 커지지 않게) */
+.sp-p__albumhead-act > .sp-p__select {
+  margin-block: -0.625rem;
 }
 .sp-p__albumhead-kid {
   grid-column: 2;
@@ -2661,7 +2681,7 @@
   justify-content: flex-start;
   text-align: left;
 }
-.sp-p__albumhead-kid--many ~ .sp-p__albumhead-sub {
+.sp-p__albumhead-kid--many ~ .sp-p__albumhead-row {
   grid-row: 3;
 }
 /* 기념일 표시(100일·첫돌·두 돌…, 사용자 "이벤트로"): '신규'와 같은 알약, 틸(원래 색). 5칸도 글자 그대로 */

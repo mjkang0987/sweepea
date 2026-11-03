@@ -299,13 +299,18 @@ if (z !== 3 && z !== 5)
     )}
     {/* 칸 단계는 화면 맨 위 사진의 찍은 날(3·5칸은 보이는 기간, 스크립트가 스크롤 따라 바꿈), 카드 단계는 사진·영상 수 */}
     {/* 늘 그려 두고 비면 숨김: 크기를 그 자리에서 바꿀 때 이 줄도 짝지어 갈아 끼운다(98e) */}
-    {!cardView && whenFirst ? (
-      <p class="sp-p__albumhead-sub" data-when={z === 3 || z === 5 ? 'range' : 'day'} data-year={today.slice(0, 4)}>{whenFirst}</p>
-    ) : picked || (a.home.photo_count ?? 0) + (a.home.video_count ?? 0) === 0 ? (
-      <p class="sp-p__albumhead-sub"></p>
-    ) : (
-      <p class="sp-p__albumhead-sub">{[['사진', a.home.photo_count ?? 0], ['영상', a.home.video_count ?? 0]].filter(([, n]) => +n > 0).map(([w, n]) => `${w} ${n.toLocaleString('ko-KR')}`).join(' · ')}</p>
-    )}
+    {/* 날짜 줄 + 오른쪽 '선택'(144, 사용자 "넘겨보기 모아보기랑 다른 줄로", "상단 고정이면 더 좋고"): 폰에서 위에 붙는 머리 안이라 내려도 보임.
+         '선택' 자리는 늘 그려 두고(비면 숨김) 그 자리 크기 바꾸기 때 짝지어 갈아 끼운다 */}
+    <div class="sp-p__albumhead-row">
+      {!cardView && whenFirst ? (
+        <p class="sp-p__albumhead-sub" data-when={z === 3 || z === 5 ? 'range' : 'day'} data-year={today.slice(0, 4)}>{whenFirst}</p>
+      ) : picked || (a.home.photo_count ?? 0) + (a.home.video_count ?? 0) === 0 ? (
+        <p class="sp-p__albumhead-sub"></p>
+      ) : (
+        <p class="sp-p__albumhead-sub">{[['사진', a.home.photo_count ?? 0], ['영상', a.home.video_count ?? 0]].filter(([, n]) => +n > 0).map(([w, n]) => `${w} ${n.toLocaleString('ko-KR')}`).join(' · ')}</p>
+      )}
+      <span class="sp-p__albumhead-act">{!sel && !swipe && !cardView && items.length > 0 && <a class="sp-p__select" href={`/home?${kq}v=list&z=${z}&sel=1`}>선택</a>}</span>
+    </div>
     {/* 여러 장 고르기 막대(126, 사용자 "수정 버튼이 저 밑에 가 있으면 안 될 것 같아" → 위 '취소' 옆): 떠 있는 머리 안이라 내려도 따라옴 */}
     {sel && (
       <form class="sp-p__selbar" id="sel-form" method="get" action="/photos/edit">
@@ -421,8 +426,6 @@ if (z !== 3 && z !== 5)
             <a class="sp-p__seg-item" href={`/home?${kq}v=swipe`} aria-current={swipe ? 'page' : undefined}>넘겨 보기</a>
             <a class="sp-p__seg-item" href={`/home?${kq}v=list`} aria-current={swipe ? undefined : 'page'}>모아 보기</a>
           </nav>
-          {/* 여러 장 고르기(126, 디자인 ParentHomeSelect): 칸 보기에서만 */}
-          {!swipe && !cardView && items.length > 0 && <a class="sp-p__select" href={`/home?${kq}v=list&z=${z}&sel=1`}>선택</a>}
         </div>
       )
     )
@@ -715,7 +718,7 @@ if (z !== 3 && z !== 5)
   }
   // 사진 크기 −/+: 페이지 전환 없이 그 자리에서(98e, 모아 보기만)
   // 거르기 알약 줄·'선택'이 든 보기 줄도 칸 단계(z)를 링크에 들고 있어 함께 바꾼다(132)
-  if (!swipe) zoomInPlace({ button: '.sp-p__zoom-btn', cell: '.sp-p__cell', head: '.sp-p__albumhead', also: ['.sp-p__zoom', '.sp-p__albumhead-sub', '.sp-p__chips', '.sp-p__viewrow'] });
+  if (!swipe) zoomInPlace({ button: '.sp-p__zoom-btn', cell: '.sp-p__cell', head: '.sp-p__albumhead', also: ['.sp-p__zoom', '.sp-p__albumhead-sub', '.sp-p__albumhead-act', '.sp-p__chips', '.sp-p__viewrow'] });
 
   // 가운데 레이어(들어오기 신청·백일/생일·저장 공간): 스크립트가 있으면 모달로 올려(Esc·초점 가두기) 닫기·나중에는 그 자리에서 닫고 다음 것을 띄운다.
   // 다른 화면으로 가는 버튼(확인하기·사진 올리기·저장 용량 보기)은 지금처럼 폼으로 이동. 스크립트 없으면 모두 폼
