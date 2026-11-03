@@ -9,6 +9,9 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   const code = url.searchParams.get('code');
   const verifier = cookies.get(PKCE_COOKIE)?.value;
   cookies.delete(PKCE_COOKIE, { path: '/auth' });
+  // 제공자·Supabase가 거절하면 이유(error_description)를 주소에 남겨 원인을 볼 수 있게(158)
+  const why = url.searchParams.get('error_description') ?? url.searchParams.get('error');
+  if (why) return redirect(`/login?e=1&why=${encodeURIComponent(why.slice(0, 200))}`, 302);
   if (!code || !verifier) return redirect('/login?e=1', 302);
   const pass = await getBackend().parentExchange(code, verifier);
   if (!pass) return redirect('/login?e=1', 302);
