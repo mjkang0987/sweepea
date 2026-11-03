@@ -1,4 +1,4 @@
-# 올리기 파일별 상태(83, 대기열 B): 고를 때 뺀 파일은 이름·이유를 빨간 안내(role=alert)에, 올리는 동안 칸에 올리는 중·올림, 실패하면 그 칸에 못 올림 + 빨간 안내, 다시 누르면 이어서 (mock)
+# 올리기 파일별 상태(83, 대기열 B · 161): 고를 때 뺀 파일은 이름·이유를 빨간 안내(role=alert)에, 올리는 동안 칸에 올리는 중·올림(✓), 실패하면 그 칸에 못 올림 + 빨간 안내 + 남은/올린 두 묶음, 다시 누르면 이어서 (mock)
 import os
 from playwright.sync_api import sync_playwright
 B='http://localhost:4321'; D=os.path.dirname(os.path.abspath(__file__))+'/'
@@ -14,8 +14,10 @@ def start(b):
     pg.goto(B+'/upload')
     return pg
 U0={'name':'u0.jpg','mimeType':'image/jpeg','buffer':open(D+'u0.jpg','rb').read()}
-ready="!document.querySelector('#up-actions button').disabled"
-tags="[...document.querySelectorAll('.sp-p__upcell')].map(c=>c.querySelector('.sp-p__uptag')?.textContent||'')"
+# 161부터 보내기는 고르자마자 켜지므로, 준비(줄이기)가 다 끝났는지는 빈 칸이 없어질 때로 본다
+ready="!document.querySelector('#up-actions button').disabled && !document.querySelector('.sp-p__upcell--wait')"
+# 칸 순서: 남은 묶음(#up-grid) → 올린 묶음(#up-grid-sent). 올린 칸은 ✓(글 대신)
+tags="[...document.querySelectorAll('#up-grid .sp-p__upcell, #up-grid-sent .sp-p__upcell')].map(c=>c.querySelector('.sp-p__upcheck')?'올림':(c.querySelector('.sp-p__uptag')?.textContent||''))"
 with sync_playwright() as p:
     b=p.chromium.launch()
     pg=start(b)
@@ -46,14 +48,15 @@ with sync_playwright() as p:
     pg.route('**/api/media/**',cut)
     pg.get_by_role('button',name='보내지 않고 올리기만').click()
     pg.wait_for_function("document.getElementById('up-alert').textContent!==''",timeout=60000)
-    check(pg.evaluate(tags)==['올림','못 올림',''],'첫 칸 올림·둘째 칸 못 올림·셋째는 표시 없음 '+str(pg.evaluate(tags)))
+    check(pg.evaluate(tags)==['못 올림','','올림'],'남은 묶음(둘째 못 올림·셋째 표시 없음) → 올린 묶음(첫 칸 ✓) '+str(pg.evaluate(tags)))
+    check(pg.locator('#up-left-title').inner_text()=='남은 사진 2장' and pg.locator('#up-sent-title').inner_text().startswith('이미 올린 사진 1장'),'두 묶음 제목')
     check(('올리는 중','','') in seen and ('올림','올리는 중','') in seen,'올리는 동안 올리는 중 → 올림 '+str(seen[:6]))
     check(al.inner_text()=='인터넷 연결이 끊겼어요. 1장까지 올렸어요. 다시 누르면 나머지를 이어서 올려요.','실패 안내 '+al.inner_text())
-    check(pg.locator('#up-status').inner_text()=='' and pg.locator('#up-progress').is_hidden(),'진행 글·막대는 치움')
-    lab=pg.locator('.sp-p__upimg').nth(1).get_attribute('alt')
+    check(pg.locator('#up-status').inner_text()=='' and not pg.locator('#up-layer').evaluate('d=>d.open'),'진행 레이어는 닫힘')
+    lab=pg.locator('#up-grid .sp-p__upcell').first.get_attribute('aria-label')
     check(lab=='2번째 사진, 못 올림','그림 이름에 상태 '+str(lab))
     check(pg.locator('.sp-p__uptag').first.get_attribute('aria-hidden')=='true','표시 글은 화면 읽기에서 숨김(이름에 있음)')
-    check(pg.evaluate("document.activeElement.textContent")=='보내지 않고 올리기만','실패하면 누른 버튼으로 포커스')
+    check(pg.evaluate("document.activeElement.textContent")=='나머지 2장 올리기만','실패하면 누른 버튼으로 포커스(글은 남은 장수로 바뀜)')
     pg.set_viewport_size({'width':320,'height':700})
     # '올리는 중'(가장 긴 글)도 붙여 보고, 칸 안에서 잘리지 않는지(넘치면 띄어쓰기에서 줄바꿈)
     r=pg.evaluate("(()=>{const li=document.querySelector('.sp-p__upcell');const t=document.createElement('span');t.className='sp-p__uptag';t.textContent='올리는 중';li.appendChild(t);const out=[...document.querySelectorAll('.sp-p__uptag')].map(x=>{const a=x.getBoundingClientRect(),c=x.parentElement.getBoundingClientRect();return [x.textContent,x.scrollWidth<=x.clientWidth&&a.right<=c.right+0.5]});t.remove();return out})()")
@@ -61,7 +64,7 @@ with sync_playwright() as p:
     pg.set_viewport_size({'width':390,'height':844})
     # 4) 다시 누르면 남은 것만 이어서 → 앨범
     pg.unroute('**/api/media/**')
-    pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=60000)
+    pg.locator('#up-actions .sp-p__btn--text').click(); pg.wait_for_url('**/home',timeout=60000)
     check(True,'다시 누르면 이어서 올리고 앨범으로')
     pg.close()
     # 5) 그룹을 안 고르면 빨간 안내
@@ -87,14 +90,14 @@ with sync_playwright() as p:
     pg.route('**/api/media/**',full)
     pg.get_by_role('button',name='보내지 않고 올리기만').click()
     pg.wait_for_function("document.getElementById('up-alert').textContent!==''",timeout=60000)
-    check(pg.evaluate(tags)==['올림','못 올림','못 올림'],'5GB 차면 남은 칸 모두 못 올림 '+str(pg.evaluate(tags)))
+    check(pg.evaluate(tags)==['못 올림','못 올림','올림'],'5GB 차면 남은 칸 모두 못 올림 '+str(pg.evaluate(tags)))
     check(pg.locator('#up-alert').inner_text().startswith('저장 용량 5GB가 다 찼어요. 1장까지'),'5GB 안내 '+pg.locator('#up-alert').inner_text())
     check('0장' not in pg.locator('#up-alert').inner_text(),'0장 문구 없음')
     seen2=[]; pg.expose_function('noteTags2',lambda t: seen2.append(tuple(t)))
     pg.evaluate("new MutationObserver(()=>noteTags2("+tags+")).observe(document.getElementById('up-grid'),{childList:true,subtree:true})")
     pg.unroute('**/api/media/**')
-    pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home',timeout=60000)
-    check(seen2 and seen2[0]==('올림','올리는 중','') ,'다시 누르면 못 올림을 지우고 이어서 '+str(seen2[:2]))
+    pg.locator('#up-actions .sp-p__btn--text').click(); pg.wait_for_url('**/home',timeout=60000)
+    check(seen2 and ('올림','올리는 중','') in seen2 and all('못 올림' not in t for t in seen2),'다시 누르면 못 올림을 지우고 이어서 '+str(seen2[:3]))
     pg.close()
     # 6) 200장 넘게 고르면 넘은 것도 안내
     pg=start(b)
