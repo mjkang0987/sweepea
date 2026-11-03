@@ -366,6 +366,28 @@ const kid = callName(kids[0]?.name ?? '아이');
     return mp4CreatedAt(file).catch(() => null);
   }
 
+  /** 영상이 어느 단계에서 안 열렸는지(163: 아이폰에서 처음만 안 되는 원인을 찾으려고 안내에 같이 보여 준다) */
+  class VideoError extends Error {
+    /** code: 브라우저가 알려 준 영상 오류 번호(1 중단·2 네트워크·3 디코드·4 지원 안 함) */
+    constructor(readonly step: 'open' | 'seek' | 'thumb' | 'strip', readonly timeout: boolean, readonly ms: number, readonly code?: number) {
+      super('video');
+    }
+    /** 같은 단계·같은 종류로 실패했는지(다시 해도 같음) */
+    same(o: VideoError) {
+      return o.step === this.step && o.timeout === this.timeout && o.code === this.code;
+    }
+    /** sec: 시간 초과일 때 앞에 붙는 말(두 번 다 시간 초과면 '20초·8초 안에') */
+    reason(sec = `${Math.round(this.ms / 1000)}초 안에`) {
+      const code = this.code ? `(${this.code})` : '';
+      return {
+        open: this.timeout ? `${sec} 영상을 못 엶` : `영상을 여는 중 오류${code}`,
+        seek: this.timeout ? `${sec} 첫 장면으로 못 넘김` : `첫 장면으로 넘기는 중 오류${code}`,
+        thumb: '미리보기 그림을 못 만듦',
+        // 이 단계에서 실제로 나는 실패는 파일 읽기(줄이기·찍은 날 읽기는 같은 실패를 조용히 넘김)
+        strip: '파일을 끝까지 못 읽음',
+      }[this.step];
+    }
+  }
   /** ms: 첫 장면 기다림(처음 20초, 저절로 다시 할 때는 8초 — 정말 깨진 파일이면 안내가 너무 늦지 않게) */
   async function video(file: File, progress: (p: number) => void, ms = 20_000): Promise<Item> {
     if (!VIDEO_TYPES.includes(file.type)) throw new Error('type');
@@ -376,17 +398,21 @@ const kid = callName(kids[0]?.name ?? '아이');
     // 첫 장면이 실제로 디코딩돼야 그릴 수 있다(아이폰은 metadata만으론 검은 화면)
     v.preload = 'auto';
     const src = URL.createObjectURL(file);
+    let step: VideoError['step'] = 'open';
     try {
       v.src = src;
       // 아이폰은 큰 .mov를 처음 열 때 첫 장면이 늦게 나와 8초로는 모자란다(162: 처음엔 실패, 다시 고르면 됨)
       await wait(v, 'loadeddata', ms);
+      step = 'seek';
       v.currentTime = Math.min(0.1, v.duration / 2 || 0);
       await wait(v, 'seeked', ms);
+      step = 'thumb';
       const { view: poster, thumb } = await viewAndThumb(v, v.videoWidth, v.videoHeight, 1280);
       const { duration, videoWidth, videoHeight } = v;
       // 줄이는 동안 영상 칸이 같은 영상을 따로 풀고 있지 않게 비운다(아이폰 메모리)
       release(v);
       const [small, taken] = await Promise.all([shrink(file, duration, progress), videoTakenAt(file)]);
+      step = 'strip';
       return {
         // 줄였든 원본이든 찍은 장소는 지우고 올린다(138 개인정보, 사진은 그리기·stripJpeg로 이미 지움)
         kind: 'video', view: await stripVideoLocation(small?.blob ?? file), poster: poster.blob, thumb: thumb.blob,
@@ -396,6 +422,9 @@ const kid = callName(kids[0]?.name ?? '아이');
         takenAt: taken ?? new Date(file.lastModified).toISOString(), takenAtSource: taken ? 'exif' : 'file',
         url: URL.createObjectURL(thumb.blob),
       };
+    } catch (err) {
+      // 영상 오류 번호는 칸을 비우기 전에 읽는다
+      throw new VideoError(step, err instanceof Error && err.message === 'timeout', ms, v.error?.code);
     } finally {
       // 실패해도 영상 칸을 비운다(다시 할 때 앞 칸이 디코더·메모리를 쥐고 있지 않게)
       release(v);
@@ -597,17 +626,31 @@ const kid = callName(kids[0]?.name ?? '아이');
         if (e.kind === 'video') keepAwake();
         try {
           const load = (ms?: number) => (e.kind === 'video' ? video(e.file, (p) => ((e.prog = p), onPrep?.(e)), ms) : photo(e.file));
+          let first: VideoError | undefined;
           try {
             e.item = await load();
           } catch (err) {
             // 영상이 열리지 않으면 한 번 더(처음엔 안 되고 다시 하면 되는 아이폰 사례, 162). 형식·크기 문제는 다시 해도 같으므로 그대로
-            if (e.kind !== 'video' || why(err) !== '열 수 없는 파일') throw err;
-            e.item = await load(8000);
+            if (!(err instanceof VideoError)) throw err;
+            first = err;
+            try {
+              e.item = await load(8000);
+            } catch (again) {
+              // 안내에 멈춘 단계를 붙인다(163, 두 번 다른 단계면 둘 다)
+              const f = first;
+              (again as Error & { detail?: string }).detail = !(again instanceof VideoError)
+                ? `처음: ${f.reason()}`
+                : again.same(f)
+                  ? `${f.reason(`${Math.round(f.ms / 1000)}초·${Math.round(again.ms / 1000)}초 안에`)}, 다시 해도 같음`
+                  : `처음: ${f.reason()} / 다시: ${again.reason()}`;
+              throw again;
+            }
           }
         } catch (err) {
           e.error = why(err);
+          const detail = (err as { detail?: string } | null)?.detail;
           if (!e.removed) {
-            skipped.push(`${e.file.name} · ${e.error}`);
+            skipped.push(`${e.file.name} · ${e.error}${detail ? `(${detail})` : ''}`);
             warn(`${skipped.length - (overN ? 1 : 0) + overN}개는 올릴 수 없어서 뺐어요.`, skipped);
           }
         }
