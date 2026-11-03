@@ -12,7 +12,7 @@ with sync_playwright() as p:
     if eng=='chromium': ctx.grant_permissions(['clipboard-read','clipboard-write'],origin=B)
     pg=ctx.new_page()
     pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
-    pg.fill('#child','하린'); pg.fill('#birth','2025-01-03'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','하린'); pg.fill('#birth','2025-01-03'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.goto(B+'/settings/family/groups'); pg.locator('.sp-p__row').first.click(); pg.wait_for_url('**/groups/*')
     pg.get_by_role('button',name='주소 다시 만들기 (예전 주소는 바로 막혀요)').click(); pg.wait_for_selector('#grp-ask[open]')

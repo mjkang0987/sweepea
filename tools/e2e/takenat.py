@@ -27,7 +27,7 @@ with sync_playwright() as p:
     b=p.chromium.launch()
     c=b.new_context(viewport={'width':390,'height':844}); pg=c.new_page()
     pg.goto(B+'/login/dev'); pg.wait_for_url('**/setup')
-    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.goto(B+'/upload')
     files=[JPG,PNG,MOV,MP4,D+'v.mp4',D+'u2.jpg']

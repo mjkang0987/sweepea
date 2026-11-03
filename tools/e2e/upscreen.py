@@ -16,7 +16,7 @@ with sync_playwright() as p:
     b=p.chromium.launch()
     c=b.new_context(viewport={'width':390,'height':844}); c.grant_permissions(['clipboard-read','clipboard-write']); pg=c.new_page()
     pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
-    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.get_by_role('link',name='사진 추가').click(); pg.wait_for_url('**/upload')
     check(pg.get_by_role('button',name='올리고 카톡으로 보내기').is_disabled(),'고르기 전엔 올리기 버튼 꺼짐')

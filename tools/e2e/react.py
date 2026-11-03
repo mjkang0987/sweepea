@@ -9,7 +9,7 @@ with sync_playwright() as p:
     b=p.chromium.launch()
     pp=b.new_context(viewport={'width':390,'height':844}).new_page()
     pp.goto(B+'/login'); pp.get_by_role('link',name='개발용으로 계속하기').click(); pp.wait_for_url('**/setup')
-    pp.fill('#child','하린'); pp.fill('#birth','2025-09-17'); pp.get_by_role('button',name='다음').click(); pp.wait_for_url('**/setup/password**')
+    pp.fill('#child','하린'); pp.fill('#birth','2025-09-17'); pp.check('input[name=agree_terms]'); pp.check('input[name=agree_privacy]'); pp.get_by_role('button',name='다음').click(); pp.wait_for_url('**/setup/password**')
     pp.fill('#pw','0917'); pp.get_by_role('button',name='시작하기').click(); pp.wait_for_url('**/home')
     pp.goto(B+'/upload')
     w=pp.locator('#up-pick').bounding_box()['width']

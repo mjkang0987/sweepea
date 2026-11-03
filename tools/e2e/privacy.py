@@ -20,7 +20,7 @@ with sync_playwright() as p:
     for path in ['/','/login']:
         pg.goto(B+path); check(pg.get_by_role('link',name='개인정보 처리방침').count()==1 and pg.get_by_role('link',name='이용약관').count()==1,f'{path} 에서 처리방침·이용약관 링크')
     pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
-    pg.fill('#child','하린'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','하린'); pg.fill('#birth','2025-09-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.goto(B+'/settings'); pg.get_by_role('link',name='개인정보 처리방침').click(); pg.wait_for_url('**/privacy**')
     check(True,'설정에서 처리방침으로')

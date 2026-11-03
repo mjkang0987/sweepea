@@ -21,7 +21,7 @@ with sync_playwright() as p:
     br=getattr(p,eng).launch()
     pg=br.new_context(viewport={'width':390,'height':844}).new_page()
     pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
-    pg.fill('#child','하린'); pg.fill('#birth',birth); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','하린'); pg.fill('#birth',birth); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.wait_for_timeout(500)
     check('태어난 지 100일이에요' in pg.content(),'엄빠 앨범: 오늘 100일 레이어')

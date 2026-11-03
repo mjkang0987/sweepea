@@ -11,7 +11,7 @@ with sync_playwright() as p:
     for w,h,cols in [(390,844,4),(1280,900,6)]:
         pg=b.new_page(viewport={'width':w,'height':h})
         pg.goto(B+'/login/dev'); pg.wait_for_url('**/setup')
-        pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+        pg.fill('#child','서아'); pg.fill('#birth','2025-09-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
         pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
         pg.goto(B+'/upload'); pg.set_input_files('#up-files',[D+'u0.jpg']*(cols+1)); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=60000)
         r=pg.evaluate("""(cols)=>{const c=[...document.querySelectorAll('.sp-p__upcell')].map(e=>e.getBoundingClientRect());

@@ -16,7 +16,7 @@ FILES=ns['FILES']
 with sync_playwright() as p:
     b=p.chromium.launch(); c=b.new_context(viewport={'width':390,'height':844}); pg=c.new_page()
     pg.goto(B+'/login/dev'); pg.wait_for_url('**/setup')
-    pg.fill('#child','서아'); pg.fill('#birth','2024-03-01'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','서아'); pg.fill('#birth','2024-03-01'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0301'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     for k in range(0,len(FILES),50):
         pg.goto(B+'/upload'); pg.set_input_files('#up-files',FILES[k:k+50]); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=300000)

@@ -18,7 +18,7 @@ with sync_playwright() as p:
     pas=signup()
     ctx.add_cookies([{'name':'sp_parent','value':base64.b64encode(json.dumps(pas,separators=(',',':')).encode()).decode(),'url':B}])
     pg.goto(B+'/home'); check('/setup' in pg.url,'새 부모는 처음 설정으로 ('+pg.url+')')
-    pg.fill('#child','하린'); pg.fill('#birth','2025-09-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','하린'); pg.fill('#birth','2025-09-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     check(pg.locator('h1',has_text='앨범').count()==1,'처음 설정 → 앨범')
     pg.goto(B+'/settings/children/new'); pg.fill('#name','도윤'); pg.fill('#birth','2023-03-02'); pg.get_by_role('button',name='추가').click(); pg.wait_for_load_state()

@@ -17,7 +17,7 @@ check(0x8825 in Image.open(f).getexif(),'올릴 사진에 위치가 들어 있�
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_context(viewport={'width':390,'height':844}).new_page()
     pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
-    pg.fill('#child','하린'); pg.fill('#birth','2025-01-17'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#child','하린'); pg.fill('#birth','2025-01-17'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
     pg.goto(B+'/upload'); pg.set_input_files('#up-files',[f]); pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=120000)
     pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home**',timeout=120000)

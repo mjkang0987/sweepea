@@ -12,12 +12,12 @@ def invite(pg):
     # 링크는 정해 둔 공개 주소(sweepea.co.kr)라 개발 서버 주소로 바꿔 연다
     pg.wait_for_selector('#pinvite-url'); return B+'/join/'+pg.locator('#pinvite-url').input_value().rsplit('/join/',1)[1]
 def join(br,url):
-    g=new(br); g.goto(url); g.get_by_role('button',name='개발용으로 계속하기').click(); g.wait_for_url('**/home**'); return g
+    g=new(br); g.goto(url); g.get_by_role('button',name='개발용으로 계속하기').click(); g.wait_for_url('**/agree**'); g.check('input[name=agree_terms]'); g.check('input[name=agree_privacy]'); g.get_by_role('button',name='동의하고 계속하기').click(); g.wait_for_url('**/home**'); return g
 with sync_playwright() as p:
     br=getattr(p,eng).launch()
     mom=new(br)
     mom.goto(B+'/login'); mom.get_by_role('link',name='개발용으로 계속하기').click(); mom.wait_for_url('**/setup')
-    mom.fill('#child','하린'); mom.fill('#birth','2025-09-17'); mom.get_by_role('button',name='다음').click(); mom.wait_for_url('**/setup/password**')
+    mom.fill('#child','하린'); mom.fill('#birth','2025-09-17'); mom.check('input[name=agree_terms]'); mom.check('input[name=agree_privacy]'); mom.get_by_role('button',name='다음').click(); mom.wait_for_url('**/setup/password**')
     mom.fill('#pw','0917'); mom.get_by_role('button',name='시작하기').click(); mom.wait_for_url('**/home')
     mom.goto(B+'/settings/family'); sec=mom.locator('#parents')
     check(sec.get_by_role('heading',name='엄마아빠 · 함께 관리').is_visible() and '엄마 (나)' in sec.inner_text(),'엄마아빠 칸에 나')
@@ -30,7 +30,10 @@ with sync_playwright() as p:
     check(g.locator('input[name=role][value=dad]').is_checked(),'엄마가 초대하면 아빠가 미리 골라짐')
     check(g.locator('input[name=role][value=mom]').is_disabled() and '이미 있어요' in g.content(),'이미 있는 엄마는 못 고름')
     g.screenshot(path=W+'/cp-join.png')
-    g.get_by_role('button',name='개발용으로 계속하기').click(); g.wait_for_url('**/home**')
+    g.get_by_role('button',name='개발용으로 계속하기').click(); g.wait_for_url('**/agree**')
+    # 152: 초대받아 들어온 엄빠는 약관 동의부터, 동의하면 '함께 관리해요' 안내로
+    check(g.get_by_role('button',name='동의하고 계속하기').count()==1,'초대받아 들어오면 약관 동의 화면')
+    g.check('input[name=agree_terms]'); g.check('input[name=agree_privacy]'); g.get_by_role('button',name='동의하고 계속하기').click(); g.wait_for_url('**/home**')
     check('함께 관리해요' in g.content(),'받으면 홈에 함께 관리 안내')
     g.goto(B+'/settings/family'); t=g.locator('#parents').inner_text()
     check('아빠 (나)' in t and '엄마' in t,'아빠 화면에도 엄마아빠 둘')
