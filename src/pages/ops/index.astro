@@ -23,11 +23,12 @@ const ago = (at: string) => {
 const checks = [
   ...s.checks.pending.map((c) => ({ id: c.family_id, title: '승인 대기 2일 넘음', meta: `${nf(c.n)}명 · ${ago(c.since)}` })),
   ...s.checks.full.map((c) => ({ id: c.family_id, title: '용량 80% 넘음', meta: `${sizeLabel(c.bytes)} / ${sizeLabel(c.quota)}` })),
+  ...s.checks.stuck.map((c) => ({ id: c.family_id, title: '올리다 멈춘 사진', meta: `${nf(c.n)}장 · ${ago(c.since)} 전부터` })),
   ...s.checks.quiet.map((c) => ({ id: c.family_id, title: '7일 동안 아무도 안 봄', meta: `마지막 방문 ${dayLabel(c.last, today)}` })),
   ...s.checks.closing.map((c) => ({ id: c.family_id, title: '탈퇴 예정', meta: `${dayLabel(seoulDate(c.at), today)} 지워짐` })),
 ];
 // 종류마다 50곳까지만 받는다(sp_ops_summary): 잘렸을 수 있으면 안내
-const cut = [s.checks.pending, s.checks.full, s.checks.quiet, s.checks.closing].some((l) => l.length >= 50);
+const cut = [s.checks.pending, s.checks.full, s.checks.stuck, s.checks.quiet, s.checks.closing].some((l) => l.length >= 50);
 const funnel = [
   ['링크로 들어온 방문', s.entry.link],
   ['비밀번호 화면까지', s.entry.link_pw],
@@ -35,6 +36,14 @@ const funnel = [
   ['승인', s.entry.approved],
 ] as const;
 const funnelMax = Math.max(1, ...funnel.map(([, n]) => n));
+const signup = [
+  ['가입', s.signup.accounts],
+  ['처음 설정 마침', s.signup.setup],
+  ['첫 사진 올림', s.signup.uploaded],
+  ['가족이 들어옴', s.signup.joined],
+] as const;
+const signupMax = Math.max(1, s.signup.accounts);
+const jobsLate = s.jobs.purge_late + s.jobs.r2_late + s.jobs.uploads_late;
 const providers = Object.entries(s.providers).reduce<Record<string, number>>((a, [k, n]) => {
   const name = PROVIDER_NAMES[k] ?? (k === 'email' ? '이메일' : k);
   a[name] = (a[name] ?? 0) + n;
@@ -52,7 +61,7 @@ const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 
   <section aria-labelledby="sp-o-now">
     <h2 class="sp-vh" id="sp-o-now">지금 전체</h2>
     <dl class="sp-o__stats sp-o__stats--5">
-      <div class="sp-o__stat"><dt class="sp-o__stat-label">가족방</dt><dd class="sp-o__stat-num">{nf(s.now.families)}</dd></div>
+      <div class="sp-o__stat"><dt class="sp-o__stat-label">가족방</dt><dd class="sp-o__stat-num">{nf(s.now.families)}</dd><dd class="sp-o__sub">유료 {nf(s.now.paid)}</dd></div>
       <div class="sp-o__stat"><dt class="sp-o__stat-label">엄빠</dt><dd class="sp-o__stat-num">{nf(s.now.parents)}</dd></div>
       <div class="sp-o__stat"><dt class="sp-o__stat-label">가족 기기</dt><dd class="sp-o__stat-num">{nf(s.now.devices)}</dd><dd class="sp-o__sub">승인 {nf(s.now.devices_active)} · 대기 {nf(s.now.devices_pending)}</dd></div>
       <div class="sp-o__stat"><dt class="sp-o__stat-label">사진·영상</dt><dd class="sp-o__stat-num">{nf(s.now.media)}</dd></div>
@@ -83,6 +92,24 @@ const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 
           )
         }
         {cut && <p class="sp-o__sub">종류마다 50곳까지 보여요. 나머지는 가족방 목록에서 정렬해 찾아 주세요.</p>}
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-jobs">
+        <div><h2 class="sp-p__card-title" id="sp-o-jobs">예약 정리 작업</h2><p class="sp-o__sub">하루 한 번 새벽 3시 17분 · 오래 남은 것</p></div>
+        {
+          jobsLate ? (
+            <>
+            <dl class="sp-o__kv">
+              <dt class="sp-o__kv-name">지울 기한 이틀 지난 가족방</dt><dd class:list={['sp-o__kv-val', s.jobs.purge_late && 'sp-o__warn']}>{nf(s.jobs.purge_late)}</dd>
+              <dt class="sp-o__kv-name">이틀 넘게 기다리는 사진 폴더(R2)</dt><dd class:list={['sp-o__kv-val', s.jobs.r2_late && 'sp-o__warn']}>{nf(s.jobs.r2_late)}</dd>
+              <dt class="sp-o__kv-name">사흘 넘게 올리다 멈춘 사진</dt><dd class:list={['sp-o__kv-val', s.jobs.uploads_late && 'sp-o__warn']}>{nf(s.jobs.uploads_late)}</dd>
+            </dl>
+            {(s.jobs.purge_late || s.jobs.uploads_late) ? <p class="sp-o__sub">정리 작업이 안 돌았을 수 있어요. Cloudflare Workers의 sweepea 예약 작업(Cron) 기록을 확인해 주세요.</p> : null}
+            {s.jobs.r2_late ? <p class="sp-o__sub">사진 폴더는 하루에 지우는 수가 정해져 있어서, 사진을 한꺼번에 많이 지우면 며칠에 나눠 지워요. 며칠째 줄지 않으면 Cron 기록을 확인해 주세요.</p> : null}
+            </>
+          ) : (
+            <p class="sp-o__sub">밀린 것 없어요.</p>
+          )
+        }
       </section>
       <section class="sp-p__card" aria-labelledby="sp-o-login">
         <div><h2 class="sp-p__card-title" id="sp-o-login">로그인 방법</h2><p class="sp-o__sub">엄빠 전체</p></div>
@@ -124,6 +151,16 @@ const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 
           <dt class="sp-o__kv-name">반응</dt><dd class="sp-o__kv-val">{nf(s.seen.reactions)} <span class="sp-o__prev">직전 {nf(s.seen.prev_reactions)}</span></dd>
           <dt class="sp-o__kv-name">한마디</dt><dd class="sp-o__kv-val">{nf(s.seen.comments)} <span class="sp-o__prev">직전 {nf(s.seen.prev_comments)}</span></dd>
         </dl>
+      </section>
+
+      <section class="sp-p__card" aria-labelledby="sp-o-signup">
+        <div><h2 class="sp-p__card-title" id="sp-o-signup">가입하고 멈춘 곳</h2><p class="sp-o__sub">이 기간에 가입한 엄빠 계정이 지금 어디까지 왔는지 · 초대받아 들어온 엄빠는 그 가족방 상태대로 세요</p></div>
+        <ol class="sp-o__funnel">
+          {signup.map(([name, n]) => (
+            <li class="sp-o__step"><span>{name}</span><span class="sp-o__step-bar" aria-hidden="true"><span class="sp-o__step-fill" style={`width: ${(n / signupMax) * 100}%`} /></span><span class="sp-o__kv-val">{nf(n)}</span></li>
+          ))}
+        </ol>
+        <p class="sp-o__sub">지금 가족방 없는 엄빠 계정 {nf(s.signup.no_family)}개(가입만 했거나 나간 계정) · <a class="sp-o__link" href={withPeriod('/ops/accounts', period)}>계정 목록</a></p>
       </section>
 
       <section class="sp-p__card" aria-labelledby="sp-o-entry">

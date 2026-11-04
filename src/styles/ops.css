@@ -630,3 +630,8 @@
 .sp-o .sp-p__card {
   padding: var(--space-5);
 }
+.sp-o__link {
+  color: var(--pea-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

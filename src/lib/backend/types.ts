@@ -441,7 +441,11 @@ export interface OpsDay {
   device: number;
 }
 export interface OpsSummary {
-  now: { families: number; parents: number; devices: number; devices_active: number; devices_pending: number; media: number; bytes: number };
+  now: { families: number; parents: number; devices: number; devices_active: number; devices_pending: number; media: number; bytes: number; paid: number };
+  /** 이 기간에 가입한 엄빠 계정이 지금 어디까지 왔나 + 지금 가족방 없는 계정 수 */
+  signup: { accounts: number; setup: number; uploaded: number; joined: number; no_family: number };
+  /** 예약 정리 작업이 밀린 것(이틀 넘게 남음) */
+  jobs: { purge_late: number; r2_late: number; uploads_late: number };
   visits: { people: number; people_parent: number; people_device: number; count: number; prev_people: number; prev_count: number; days: OpsDay[] };
   new: { families: number; prev_families: number; devices: number; prev_devices: number; media: number; prev_media: number };
   seen: { active: number; visited: number; reactions: number; prev_reactions: number; comments: number; prev_comments: number };
@@ -453,6 +457,7 @@ export interface OpsSummary {
     pending: { family_id: string; n: number; since: string }[];
     full: { family_id: string; bytes: number; quota: number }[];
     quiet: { family_id: string; last: string | null }[];
+    stuck: { family_id: string; n: number; since: string }[];
     closing: { family_id: string; at: string }[];
   };
 }
