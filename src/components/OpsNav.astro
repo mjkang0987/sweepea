@@ -1,7 +1,7 @@
 ---
 // 운영자 화면 메뉴(164). 넓은 화면은 왼쪽 옆 메뉴, 좁으면 위 한 줄(디자인 OpsHome·OpsHomeMobile). 고른 기간을 링크에 달고 다닌다
 interface Props {
-  current: 'home' | 'families' | 'accounts';
+  current: 'home' | 'families' | 'accounts' | 'media';
   /** 기간 주소 조각(periodQuery) */
   query: string;
 }
@@ -14,4 +14,5 @@ const href = (p: string) => (query ? `${p}?${query}` : p);
   <a class="sp-o__nav-item" href={href('/ops')} aria-current={current === 'home' ? 'page' : undefined}>현황</a>
   <a class="sp-o__nav-item" href={href('/ops/families')} aria-current={current === 'families' ? 'page' : undefined}>가족방</a>
   <a class="sp-o__nav-item" href={href('/ops/accounts')} aria-current={current === 'accounts' ? 'page' : undefined}>계정</a>
+  <a class="sp-o__nav-item" href={href('/ops/media')} aria-current={current === 'media' ? 'page' : undefined}>사진</a>
 </nav>

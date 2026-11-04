@@ -64,7 +64,7 @@ const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 
       <div class="sp-o__stat"><dt class="sp-o__stat-label">가족방</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href={withPeriod('/ops/families', period)}>{nf(s.now.families)}</a></dd><dd class="sp-o__sub">유료 {nf(s.now.paid)}</dd></div>
       <div class="sp-o__stat"><dt class="sp-o__stat-label">엄빠</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href={withPeriod('/ops/accounts', period)}>{nf(s.now.parents)}</a></dd></div>
       <div class="sp-o__stat"><dt class="sp-o__stat-label">가족 기기</dt><dd class="sp-o__stat-num">{nf(s.now.devices)}</dd><dd class="sp-o__sub">승인 {nf(s.now.devices_active)} · 대기 {nf(s.now.devices_pending)}</dd></div>
-      <div class="sp-o__stat"><dt class="sp-o__stat-label">사진·영상</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href={withPeriod('/ops/families', period, 'sort=media')}>{nf(s.now.media)}</a></dd></div>
+      <div class="sp-o__stat"><dt class="sp-o__stat-label">사진·영상</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href={withPeriod('/ops/media', period)}>{nf(s.now.media)}</a></dd></div>
       <div class="sp-o__stat"><dt class="sp-o__stat-label">저장 용량</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href={withPeriod('/ops/families', period, 'sort=bytes')}>{sizeLabel(s.now.bytes)}</a></dd></div>
     </dl>
   </section>

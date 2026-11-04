@@ -1320,6 +1320,28 @@ select pg_temp.ok((:'odet'::jsonb -> 'devices' -> 0 ->> 'group')::int = 1, '상�
 select pg_temp.ok((select count(*) = 1 from jsonb_array_elements(:'oacc'::jsonb -> 'rows') r where r ->> 'id' = :'op' and r ->> 'family_id' = :'ofam' and (r ->> 'visits')::int = 2 and r ->> 'provider' = 'kakao'), '계정 목록: 엄빠 계정·가족방·방문');
 select pg_temp.ok(not exists (select 1 from jsonb_array_elements(:'oacc'::jsonb -> 'rows') r where r ->> 'id' in (:'od', :'oo')), '계정 목록에 익명(가족 기기) 계정 없음');
 select pg_temp.ok(not (:'oacc'::jsonb::text ~ '운영|email\"\:'), '계정 목록에 이름·이메일 없음');
+-- 173: 올린 사진·영상 목록 — 정보만(파일 주소 없음), 엄빠·가족 기기는 막힘, 가족방 거르기
+select set_config('request.jwt.claims', json_build_object('sub', :'op', 'is_anonymous', false)::text, false);
+set role authenticated;
+do $$ begin perform public.sp_ops_media(current_date, current_date, null, 0); raise exception '엄빠가 운영 사진 목록을 봄'; exception when insufficient_privilege then null; end $$;
+reset role;
+set role anon;
+do $$ begin perform public.sp_ops_media(current_date, current_date, null, 0); raise exception '로그인 없이 운영 사진 목록'; exception when insufficient_privilege then null; end $$;
+reset role;
+select set_config('request.jwt.claims', '', false);
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status, bytes, object_key, view_key, thumb_key) values (:'ofam', :'op', 'photo', now(), 'exif', 'ready', 1234, 'k-obj-secret', 'k-view-secret', 'k-thumb-secret') returning id as omd \gset
+insert into public.media (family_id, uploaded_by_member, kind, taken_at, taken_at_source, status, bytes) values (:'ofam', :'omem', 'video', now(), 'exif', 'ready', 99) returning id as omd2 \gset
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values (:'ofam', :'op', 'photo', now(), 'exif', 'deleted') returning id as omd3 \gset
+set role service_role;
+select public.sp_ops_media(public.sp_seoul_today() - 6, public.sp_seoul_today(), null, 0) as omed \gset
+select public.sp_ops_media(public.sp_seoul_today() - 6, public.sp_seoul_today(), gen_random_uuid(), 0) as omed0 \gset
+reset role;
+select pg_temp.ok((select count(*) = 1 from jsonb_array_elements(:'omed'::jsonb -> 'rows') r where r ->> 'id' = :'omd' and r ->> 'by_role' = 'mom' and (r ->> 'bytes')::int = 1234 and r ->> 'kind' = 'photo'), '사진 목록: 올린 엄마·크기·종류');
+select pg_temp.ok(not (:'omed'::jsonb::text ~ 'secret|_key'), '사진 목록에 파일 주소 없음');
+select pg_temp.ok((select count(*) = 1 from jsonb_array_elements(:'omed'::jsonb -> 'rows') r where r ->> 'id' = :'omd2' and r ->> 'by_name' = '할머니' and r ->> 'by_role' is null), '사진 목록: 가족 기기가 올린 건 구성원 이름');
+select pg_temp.ok(not exists (select 1 from jsonb_array_elements(:'omed'::jsonb -> 'rows') r where r ->> 'id' = :'omd3'), '사진 목록: 지운 사진은 빠짐');
+select pg_temp.ok((:'omed0'::jsonb ->> 'total')::int = 0, '사진 목록: 다른 가족방으로 거르면 0');
+delete from public.media where id in (:'omd', :'omd2', :'omd3');
 -- 171: 가족방별 묶음 — 같은 가족방 엄빠(엄마 먼저)가 붙어 나오고, 가족방 없는 계정은 맨 뒤. 가족방 없는 계정이 가장 최근에 가입해도 뒤
 select gen_random_uuid() as oq \gset
 select gen_random_uuid() as on1 \gset
