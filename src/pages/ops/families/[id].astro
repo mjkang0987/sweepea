@@ -5,7 +5,7 @@ import OpsBars from '../../../components/OpsBars.astro';
 import OpsPeriod from '../../../components/OpsPeriod.astro';
 import { getBackend } from '../../../lib/backend';
 import { sizeLabel } from '../../../lib/familyAdmin';
-import { dayLabel, nf, parsePeriod, periodQuery, shortId, withPeriod } from '../../../lib/ops';
+import { dayLabel, nf, parsePeriod, periodQuery, shortId, VISITS_SINCE, withPeriod } from '../../../lib/ops';
 import { opsGate } from '../../../lib/opsgate';
 import { seoulDate, seoulToday } from '../../../lib/parent';
 
@@ -48,7 +48,7 @@ const people = [
         <OpsBars label="기간 안 날짜별 올린 사진·영상 수" names={['올림']} unit="개" today={today} rows={f.uploads.map((d) => ({ day: d.day, v: [d.n] }))} />
       </section>
       <section class="sp-p__card" aria-labelledby="sp-o-vis">
-        <h2 class="sp-p__card-title" id="sp-o-vis">방문</h2>
+        <div><h2 class="sp-p__card-title" id="sp-o-vis">방문</h2>{period.from < VISITS_SINCE && <p class="sp-o__sub">방문 기록은 {dayLabel(VISITS_SINCE, today)}부터예요</p>}</div>
         <OpsBars label="기간 안 날짜별 방문 수" names={['가족', '엄빠']} unit="회" today={today} rows={f.visits.map((d) => ({ day: d.day, v: [d.device, d.parent] }))} />
       </section>
       <section class="sp-p__card" aria-labelledby="sp-o-people">

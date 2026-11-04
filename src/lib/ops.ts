@@ -102,6 +102,9 @@ export function visitTarget(method: string, path: string): { kind: 'link'; code:
   return { kind: 'user' };
 }
 
+/** 방문 기록을 쌓기 시작한 날(0.41.0 배포). 이보다 앞 날짜가 들어간 기간은 안내 */
+export const VISITS_SINCE = '2026-11-04';
+
 /** 숫자 1,234 */
 export const nf = (n: number) => n.toLocaleString('ko-KR');
 /** 가족방 번호 앞 8자리(이름 대신) */
