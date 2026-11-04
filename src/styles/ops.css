@@ -381,6 +381,8 @@
   gap: var(--space-2);
 }
 .sp-o__bars {
+  /* 위 2rem은 말풍선 자리(가장 높은 막대 위에도 뜨게) */
+  margin-top: 2rem;
   height: 7.5rem;
   display: flex;
   align-items: flex-end;
@@ -416,6 +418,25 @@
 }
 .sp-o__bar:hover .sp-o__tip {
   display: block;
+}
+/* 스크립트가 있으면 막대 바로 위 말풍선 하나(.sp-o__float)로 */
+.sp-o__chart--js .sp-o__bar:hover .sp-o__tip {
+  display: none;
+}
+.sp-o__float {
+  position: absolute;
+  z-index: 2;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--label);
+  color: var(--bg);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.sp-o__float[hidden] {
+  display: none;
 }
 .sp-o__bar-a,
 .sp-o__bar-b {

@@ -5,7 +5,7 @@ import OpsBars from '../../components/OpsBars.astro';
 import OpsPeriod from '../../components/OpsPeriod.astro';
 import { getBackend } from '../../lib/backend';
 import { sizeLabel } from '../../lib/familyAdmin';
-import { dayLabel, nf, parsePeriod, periodQuery, shortId, withPeriod } from '../../lib/ops';
+import { dayLabel, nf, parsePeriod, periodQuery, shortId, VISITS_SINCE, withPeriod } from '../../lib/ops';
 import { opsGate } from '../../lib/opsgate';
 import { PROVIDER_NAMES, seoulDate, seoulToday } from '../../lib/parent';
 
@@ -36,7 +36,7 @@ const funnel = [
 ] as const;
 const funnelMax = Math.max(1, ...funnel.map(([, n]) => n));
 const providers = Object.entries(s.providers).reduce<Record<string, number>>((a, [k, n]) => {
-  const name = PROVIDER_NAMES[k] ?? k;
+  const name = PROVIDER_NAMES[k] ?? (k === 'email' ? '이메일' : k);
   a[name] = (a[name] ?? 0) + n;
   return a;
 }, {});
@@ -97,7 +97,7 @@ const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 
     </div>
     <div class="sp-o__col sp-o__col--main">
       <section class="sp-p__card" aria-labelledby="sp-o-visits">
-        <div><h2 class="sp-p__card-title" id="sp-o-visits">방문</h2><p class="sp-o__sub">30분 안에 이어서 연 건 한 번으로 세요</p></div>
+        <div><h2 class="sp-p__card-title" id="sp-o-visits">방문</h2><p class="sp-o__sub">30분 안에 이어서 연 건 한 번으로 세요{period.from < VISITS_SINCE && ` · 방문 기록은 ${dayLabel(VISITS_SINCE, today)}부터예요`}</p></div>
         <dl class="sp-o__stats sp-o__stats--3 sp-o__stats--in">
           <div class="sp-o__stat"><dt class="sp-o__stat-label">방문한 사람</dt><dd class="sp-o__stat-num">{nf(s.visits.people)}</dd><dd class="sp-o__stat-prev">직전 {nf(s.visits.prev_people)}</dd><dd class="sp-o__sub">엄빠 {nf(s.visits.people_parent)} · 가족 {nf(s.visits.people_device)}</dd></div>
           <div class="sp-o__stat"><dt class="sp-o__stat-label">방문</dt><dd class="sp-o__stat-num">{nf(s.visits.count)}회</dd><dd class="sp-o__stat-prev">직전 {nf(s.visits.prev_count)}회</dd></div>

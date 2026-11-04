@@ -1,8 +1,9 @@
 ---
 // 운영자 화면 막대 그래프(164): 하루 한 막대(두 값이면 위 가족·아래 엄빠 쌓기, 엄빠는 속 빈 막대라 색 없이도 구분).
-// 마우스를 올리면 그날 칸이 회색으로 바뀌고 숫자 말풍선이 바로 뜸(CSS만, title은 1초 늦고 0인 날은 올릴 데가 안 보여서),
-// 아래 접힌 '숫자로 보기' 표(휴대폰·키보드·화면 읽기). 12px보다 안 가늘어지고 넘치면 좌우로 밀기,
-// rtl로 처음부터 오늘(오른쪽 끝)이 보이게 — 스크립트 없음
+// 마우스를 올리면(휴대폰은 누르면) 그날 칸이 회색이 되고 그 막대 바로 위에 숫자 말풍선(사용자 2026-11-04 '막대 바로 위').
+// 양 끝·밀어 둔 상태에서 안 잘리게 작은 스크립트가 자리를 잡고, 스크립트가 없으면 그래프 위 빈 줄에 CSS 말풍선.
+// 아래 접힌 '숫자로 보기' 표(키보드·화면 읽기). 12px보다 안 가늘어지고 넘치면 좌우로 밀기,
+// rtl로 처음부터 오늘(오른쪽 끝)이 보이게
 import { dayLabel, nf } from '../lib/ops';
 
 interface Props {
@@ -40,6 +41,7 @@ const long = minWidth > 760;
       <div class="sp-o__chart-ends" aria-hidden="true"><span>{dayLabel(rows[0]?.day ?? null, today)}</span><span>{dayLabel(rows.at(-1)?.day ?? null, today)}</span></div>
     </div>
   </div>
+  <span class="sp-o__float" aria-hidden="true" hidden></span>
   {long && <p class="sp-o__sub">옆으로 밀면 지난 날짜가 보여요</p>}
   {
     names.length > 1 && (
@@ -60,3 +62,35 @@ const long = minWidth > 760;
     </table>
   </details>
 </figure>
+
+<script>
+  // 말풍선 자리: 막대 가운데 위, 그래프 칸(밀기 칸이 보이는 폭) 안으로 좌우를 맞춘다
+  for (const fig of document.querySelectorAll<HTMLElement>('.sp-o__chart')) {
+    const tip = fig.querySelector<HTMLElement>('.sp-o__float');
+    const box = fig.querySelector<HTMLElement>('.sp-o__chart-scroll');
+    if (!tip || !box) continue;
+    fig.classList.add('sp-o__chart--js');
+    const hide = () => (tip.hidden = true);
+    const show = (bar: HTMLElement) => {
+      tip.textContent = bar.querySelector('.sp-o__tip')?.textContent ?? '';
+      tip.hidden = false;
+      const f = fig.getBoundingClientRect(), v = box.getBoundingClientRect(), b = bar.getBoundingClientRect();
+      // 쌓은 막대의 맨 위(0인 날은 바닥)
+      const top = Math.min(...[...bar.querySelectorAll<HTMLElement>('.sp-o__bar-a, .sp-o__bar-b')].map((x) => x.getBoundingClientRect().top), b.bottom);
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      const left = Math.max(Math.min(Math.max(b.left + b.width / 2 - w / 2, v.left), v.right - w), v.left);
+      tip.style.left = `${left - f.left}px`;
+      tip.style.top = `${Math.max(0, top - f.top - h - 6)}px`;
+    };
+    for (const bar of fig.querySelectorAll<HTMLElement>('.sp-o__bar')) {
+      bar.addEventListener('pointerenter', () => show(bar));
+      bar.addEventListener('pointerleave', (e) => e.pointerType !== 'touch' && hide());
+      bar.addEventListener('click', () => show(bar));
+    }
+    box.addEventListener('scroll', hide, { passive: true });
+  }
+  // 휴대폰에서 누른 말풍선은 막대 밖을 누르면, 키보드는 Escape로 닫는다(WCAG 1.4.13)
+  const hideAll = () => document.querySelectorAll<HTMLElement>('.sp-o__float').forEach((t) => (t.hidden = true));
+  document.addEventListener('pointerdown', (e) => !(e.target as Element).closest?.('.sp-o__bar') && hideAll());
+  document.addEventListener('keydown', (e) => e.key === 'Escape' && hideAll());
+</script>
