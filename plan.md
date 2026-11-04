@@ -1427,6 +1427,13 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 176. feature/ops-media-families — 운영 사진을 가족방별 요약 → 눌러서 사진 (완료, 0.47.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 30일 가족방 1곳 bc4aaeea 사진 384·영상 6·멈춤 0, 서버만)
+- 요구(사용자 2026-11-04): "사진은 그냥 다 보이는 거여? 가족방별로 묶어 주면 안 되나" → 두 안 중 **가족방 요약 표 → 눌러서 사진** 고름(계정처럼 머리줄 아래 안은 안 고름)
+- `/ops/media` 처음 화면: 가족방마다 한 줄(가족방·사진 수·영상 수·크기·마지막 올림·멈춤 수), 최근에 올린 가족방부터 50곳씩(쪽 번호 '곳'), 줄 어디를 눌러도 `?f=그 가족방`(기간·거르기 유지) → 지금까지의 사진·영상 목록(가족방 칸은 뺌). 거르기(종류·상태·올린 사람)는 요약 숫자에도 똑같이
+- DB `20261104000007_ops_media_families.sql`: sp_ops_media_families(새 함수, service_role만). **운영 적용을 웹보다 먼저**, 적용 전 사용자 확인. 처리방침은 그대로(이미 적은 정보의 합계)
+- 영향 파일: 마이그레이션, src/lib/backend/{types,supabase,mock}.ts, src/pages/ops/media.astro, supabase/tests/rls.sql, tools/e2e/ops.py
+- 검사: DB(사진·영상 수·크기·영상만 거르기·줄 합 = 전체·서버만), e2e 77(요약 한 줄 → 그 가족방 목록), 단위 67, astro check 0, 1280·390
+
 ### 175. fix/ops-pager-numbers — 쪽 넘기기를 쪽 번호로 (완료, 0.46.1)
 - 요구(사용자 2026-11-04): "페이징 넘버링으로는 안 될까"
 - OpsPager: ‹ 1 … 5 [6] 7 … 20 › (첫·끝·지금 앞뒤 1쪽, 사이는 …), 아래 '251–300 / 987개'. 지금 쪽은 진한 칸 + aria-current=page, 번호마다 'n쪽' 이름, 끝을 넘은 쪽 주소면 이전은 마지막 쪽. 쪽 번호 계산은 src/lib/ops.ts pageList(단위 검사)

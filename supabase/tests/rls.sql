@@ -1366,6 +1366,15 @@ select pg_temp.ok(not has_function_privilege('authenticated', 'public.sp_ops_fam
   and not has_function_privilege('anon', 'public.sp_ops_accounts(date,date,text,int,jsonb)', 'execute')
   and not has_function_privilege('authenticated', 'public.sp_ops_media(date,date,uuid,int,jsonb)', 'execute')
   and has_function_privilege('service_role', 'public.sp_ops_media(date,date,uuid,int,jsonb)', 'execute'), '거르기 판도 서버만');
+-- 176: 가족방별 사진 요약
+set role service_role;
+select public.sp_ops_media_families(public.sp_seoul_today() - 6, public.sp_seoul_today(), 0, '{}') as omf \gset
+select public.sp_ops_media_families(public.sp_seoul_today() - 6, public.sp_seoul_today(), 0, '{"kind": "video"}') as omfv \gset
+reset role;
+select pg_temp.ok((select (r ->> 'photos')::int >= 2 and (r ->> 'videos')::int >= 1 and (r ->> 'bytes')::int >= 1234 + 99 from jsonb_array_elements(:'omf'::jsonb -> 'rows') r where r ->> 'family_id' = :'ofam'), '사진 요약: 가족방 한 줄에 사진·영상 수·크기');
+select pg_temp.ok((select (r ->> 'photos')::int = 0 and (r ->> 'videos')::int >= 1 from jsonb_array_elements(:'omfv'::jsonb -> 'rows') r where r ->> 'family_id' = :'ofam'), '사진 요약 거르기: 영상만 세기');
+select pg_temp.ok((:'omf'::jsonb ->> 'items')::int = (select sum((r ->> 'photos')::int + (r ->> 'videos')::int) from jsonb_array_elements(:'omf'::jsonb -> 'rows') r), '사진 요약: 줄 합 = 전체 수');
+select pg_temp.ok(not has_function_privilege('authenticated', 'public.sp_ops_media_families(date,date,int,jsonb)', 'execute') and has_function_privilege('service_role', 'public.sp_ops_media_families(date,date,int,jsonb)', 'execute'), '사진 요약: 서버만');
 delete from public.media where id in (:'omd', :'omd2', :'omd3', :'omd4');
 -- 171: 가족방별 묶음 — 같은 가족방 엄빠(엄마 먼저)가 붙어 나오고, 가족방 없는 계정은 맨 뒤. 가족방 없는 계정이 가장 최근에 가입해도 뒤
 select gen_random_uuid() as oq \gset

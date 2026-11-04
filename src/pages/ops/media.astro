@@ -1,6 +1,6 @@
 ---
-// 운영 올린 사진·영상 목록(173, 사용자 2026-11-04 "사진 업로드된 거 리스트" → '정보만'). 사진 자체는 안 보여 준다(처리방침).
-// 고른 기간에 올린 것, 최근 순 50개씩. ?f=<가족방>이면 그 가족방만(가족방 상세 사진·영상 숫자에서 옴)
+// 운영 올린 사진·영상(173·176). 사진 자체는 안 보여 준다(처리방침).
+// 처음엔 가족방마다 한 줄 요약(최근에 올린 곳부터 50곳씩, 줄을 누르면 그 가족방), ?f=<가족방>이면 그 가족방 사진·영상 최근 순 50개씩
 import Ops from '../../layouts/Ops.astro';
 import OpsFilter from '../../components/OpsFilter.astro';
 import OpsPager from '../../components/OpsPager.astro';
@@ -21,24 +21,33 @@ const family = fq && UUID.test(fq) ? fq : null;
 const badFamily = !!fq && !family;
 const offset = parseOffset(Astro.url.searchParams);
 const filter = parseFilter(Astro.url.searchParams, OPS_FILTERS.media);
-const list = await getBackend().opsMedia(period.from, period.to, family, offset, filter);
+const backend = getBackend();
+const list = family ? await backend.opsMedia(period.from, period.to, family, offset, filter) : null;
+const sum = family ? null : await backend.opsMediaFamilies(period.from, period.to, offset, filter);
 const ROLE = { mom: '엄마', dad: '아빠' } as const;
 // 사진 한 장은 대개 1MB 아래라 MB로만 쓰면 0MB가 됨
 const size = (b: number) => (b === 0 ? '0KB' : b < 1024 ** 2 ? `${Math.max(1, Math.round(b / 1024))}KB` : sizeLabel(b));
 const time = (at: string) => new Date(at).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false });
-const shape = (r: (typeof list.rows)[number]) =>
+const shape = (r: NonNullable<typeof list>['rows'][number]) =>
   [r.width && r.height ? `${r.width}×${r.height}` : null, r.duration_sec != null ? `${Math.round(Number(r.duration_sec))}초` : null].filter(Boolean).join(' · ') || '—';
 const famKeep: Record<string, string> = family ? { f: family } : {};
 const keep = { ...famKeep, ...filter };
+const filtered = Object.keys(filter).length > 0;
+const day = (at: string) => `${dayLabel(seoulDate(at), today)} ${time(at)}`;
 ---
 
 <Ops title="사진" current="media" query={periodQuery(period)}>
   <header class="sp-o__head">
     <h1 class="sp-o__title">올린 사진·영상</h1>
-    <p class="sp-o__lead">
-      {family ? <>가족방 <a class="sp-o__link" href={withPeriod(`/ops/families/${family}`, period)}>{shortId(family)}</a> · </> : null}
-      고른 기간에 올린 것{Object.keys(filter).length > 0 && '(거른 결과)'} {nf(list.total)}개(다 올라감 {nf(list.ready)} · 올리는 중·멈춤 {nf(list.total - list.ready)}) · {size(list.bytes)}
-    </p>
+    {
+      list ? (
+        <p class="sp-o__lead">
+          가족방 <a class="sp-o__link" href={withPeriod(`/ops/families/${family}`, period)}>{shortId(family!)}</a> · 고른 기간에 올린 것{filtered && '(거른 결과)'} {nf(list.total)}개(다 올라감 {nf(list.ready)} · 올리는 중·멈춤 {nf(list.total - list.ready)}) · {size(list.bytes)}
+        </p>
+      ) : (
+        <p class="sp-o__lead">고른 기간에 올린 것{filtered && '(거른 결과)'} {nf(sum!.items)}개 · 가족방 {nf(sum!.total)}곳 · {size(sum!.bytes)} · 줄을 누르면 그 가족방 사진·영상</p>
+      )
+    }
     <p class="sp-o__sub">사진은 안 보이고 정보만 보여요. 현황·상세의 사진·영상 숫자는 전체 기간 다 올라간 것이라 이 목록 수와 다를 수 있어요.</p>
     {badFamily && <p class="sp-o__sub sp-o__warn" role="status">가족방 번호가 맞지 않아 모든 가족방을 보여 줘요.</p>}
     {family && <a class="sp-o__back" href={withKeep('/ops/media', period, filter)}>모든 가족방 보기</a>}
@@ -46,14 +55,47 @@ const keep = { ...famKeep, ...filter };
   <OpsPeriod period={period} path="/ops/media" keep={keep} />
   <OpsFilter path="/ops/media" period={period} spec={OPS_FILTERS.media} value={filter} keep={famKeep} />
   {
-    list.rows.length ? (
+    sum ? (
+      sum.rows.length ? (
+        <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="가족방별 사진·영상, 옆으로 밀기">
+          <table class="sp-o__table">
+            <caption class="sp-vh">가족방별 올린 사진·영상, 최근에 올린 가족방부터. 줄을 누르면 그 가족방 목록</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="sp-o__cell sp-o__cell--head">가족방</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">사진</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">영상</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">크기</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">마지막 올림</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">멈춤</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sum.rows.map((r) => (
+                <tr class="sp-o__tr sp-o__tr--link">
+                  <th scope="row" class="sp-o__cell sp-o__cell--row"><a class="sp-o__id" href={withKeep('/ops/media', period, { ...filter, f: r.family_id })}>{shortId(r.family_id)}</a></th>
+                  <td class="sp-o__cell sp-o__num">{nf(r.photos)}</td>
+                  <td class="sp-o__cell sp-o__num">{nf(r.videos)}</td>
+                  <td class="sp-o__cell sp-o__num">{size(r.bytes)}</td>
+                  <td class="sp-o__cell sp-o__num">{day(r.last)}</td>
+                  <td class="sp-o__cell sp-o__num">{r.stuck ? <span class="sp-o__warn">{nf(r.stuck)}</span> : '0'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : sum.total ? (
+        <p class="sp-o__sub">이 쪽에는 없어요. <a class="sp-o__id" href={withKeep('/ops/media', period, keep)}>첫 쪽으로</a></p>
+      ) : (
+        <p class="sp-o__sub">{filtered ? '거른 조건에 맞는 사진·영상이 없어요.' : '이 기간에 올린 사진·영상이 없어요.'}</p>
+      )
+    ) : list!.rows.length ? (
       <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="올린 사진·영상 목록, 옆으로 밀기">
         <table class="sp-o__table">
-          <caption class="sp-vh">올린 사진·영상, 최근 순. 사진 자체는 없음</caption>
+          <caption class="sp-vh">가족방 {shortId(family!)} 올린 사진·영상, 최근 순. 사진 자체는 없음</caption>
           <thead>
             <tr>
               <th scope="col" class="sp-o__cell sp-o__cell--head">올린 때</th>
-              <th scope="col" class="sp-o__cell sp-o__cell--head">가족방</th>
               <th scope="col" class="sp-o__cell sp-o__cell--head">종류</th>
               <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">크기</th>
               <th scope="col" class="sp-o__cell sp-o__cell--head">가로×세로 · 길이</th>
@@ -62,10 +104,9 @@ const keep = { ...famKeep, ...filter };
             </tr>
           </thead>
           <tbody>
-            {list.rows.map((r) => (
+            {list!.rows.map((r) => (
               <tr class="sp-o__tr">
-                <th scope="row" class="sp-o__cell sp-o__cell--row">{dayLabel(seoulDate(r.created_at), today)} {time(r.created_at)}</th>
-                <td class="sp-o__cell"><a class="sp-o__id" href={withPeriod(`/ops/families/${r.family_id}`, period)}>{shortId(r.family_id)}</a></td>
+                <th scope="row" class="sp-o__cell sp-o__cell--row">{day(r.created_at)}</th>
                 <td class="sp-o__cell">{r.kind === 'video' ? '영상' : '사진'}</td>
                 <td class="sp-o__cell sp-o__num">{r.status === 'ready' ? size(r.bytes) : '—'}</td>
                 <td class="sp-o__cell sp-o__mono">{shape(r)}</td>
@@ -76,11 +117,11 @@ const keep = { ...famKeep, ...filter };
           </tbody>
         </table>
       </div>
-    ) : list.total ? (
+    ) : list!.total ? (
       <p class="sp-o__sub">이 쪽에는 없어요. <a class="sp-o__id" href={withKeep('/ops/media', period, keep)}>첫 쪽으로</a></p>
     ) : (
-      <p class="sp-o__sub">{Object.keys(filter).length ? '거른 조건에 맞는 사진·영상이 없어요.' : '이 기간에 올린 사진·영상이 없어요.'}</p>
+      <p class="sp-o__sub">{filtered ? '거른 조건에 맞는 사진·영상이 없어요.' : '이 기간에 이 가족방이 올린 사진·영상이 없어요.'}</p>
     )
   }
-  <OpsPager path="/ops/media" period={period} keep={keep} offset={offset} shown={list.rows.length} total={list.total} unit="개" />
+  <OpsPager path="/ops/media" period={period} keep={keep} offset={offset} shown={list ? list.rows.length : sum!.rows.length} total={list ? list.total : sum!.total} unit={list ? '개' : '곳'} />
 </Ops>
