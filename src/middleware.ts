@@ -36,7 +36,13 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     return new Response(null, { status: 503, headers: { 'cache-control': 'no-store' } });
   }
   let res = await next();
-  const visit = countVisit(ctx, res);
+  // 방문 세기가 어떻게 실패해도 화면은 그대로
+  let visit: string | null = null;
+  try {
+    visit = countVisit(ctx, res);
+  } catch (e) {
+    console.error('방문 세기 실패', e instanceof Error ? e.message : e);
+  }
   // 검색에는 대표 첫 화면만: 가족 링크·앨범·사진·설정은 색인하지 않게(robots.txt로 막으면 카톡 미리보기도 막힐 수 있어 머리로)
   const robots: [string, string][] = ctx.url.pathname === '/' ? [] : [['x-robots-tag', 'noindex, nofollow']];
   const add = () => {

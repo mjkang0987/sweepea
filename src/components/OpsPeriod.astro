@@ -1,6 +1,7 @@
 ---
+import { seoulToday } from '../lib/parent';
 // 운영자 화면 기간 줄(164): 오늘·7일·30일·90일 링크 + 직접 고르기(GET 폼, 스크립트 없음). 모양은 엄빠 세그먼트(.sp-p__seg) 그대로
-import { PERIODS, type Period } from '../lib/ops';
+import { addDays, MAX_DAYS, PERIODS, type Period } from '../lib/ops';
 
 interface Props {
   period: Period;
@@ -10,6 +11,8 @@ interface Props {
   keep?: Record<string, string>;
 }
 const { period, path, keep = {} } = Astro.props;
+const today = period.key === 'custom' ? seoulToday() : period.to;
+const min = addDays(today, 1 - MAX_DAYS * 3);
 const label = (d: string) => {
   const [, m, day] = d.split('-').map(Number);
   return `${m}월 ${day}일`;
@@ -28,10 +31,11 @@ const link = (k: string) => {
   </nav>
   <form class="sp-o__period-form" method="get" action={path}>
     {Object.entries(keep).map(([k, v]) => <input type="hidden" name={k} value={v} />)}
-    <label class="sp-o__date"><span class="sp-vh">시작</span><input class="sp-o__date-input" type="date" name="from" value={period.from} required /></label>
+    <label class="sp-o__date"><span class="sp-vh">시작</span><input class="sp-o__date-input" type="date" name="from" value={period.from} min={min} max={today} required /></label>
     <span class="sp-o__date-sep" aria-hidden="true">~</span>
-    <label class="sp-o__date"><span class="sp-vh">끝</span><input class="sp-o__date-input" type="date" name="to" value={period.to} required /></label>
+    <label class="sp-o__date"><span class="sp-vh">끝</span><input class="sp-o__date-input" type="date" name="to" value={period.to} min={min} max={today} required /></label>
     <button class="sp-o__date-go" type="submit">보기</button>
   </form>
+  {period.fixed && <p class="sp-o__period-note sp-o__warn" role="status">고른 기간을 쓸 수 없어서 7일로 보여 줘요. 오늘까지, 400일 안으로 골라 주세요.</p>}
   <p class="sp-o__sub sp-o__period-note">{label(period.from)}{period.days > 1 && ` ~ ${label(period.to)}`} · '직전'은 바로 앞 같은 길이 기간</p>
 </section>

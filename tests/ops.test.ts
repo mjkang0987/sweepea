@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inList, isBot, parsePeriod, verifyAccessJwt, visitTarget, withPeriod, type AccessJwk } from '../src/lib/ops.ts';
+import { inList, isBot, jwtKid, parsePeriod, verifyAccessJwt, visitTarget, withPeriod, type AccessJwk } from '../src/lib/ops.ts';
 
 const today = '2026-11-04';
 const q = (s: string) => new URLSearchParams(s);
@@ -16,6 +16,15 @@ test('parsePeriod: 미리 정한 기간·직접 고르기·틀린 값은 7일', 
   assert.equal(parsePeriod(q('from=2026-02-30&to=2026-03-01'), today).key, '7d'); // 없는 날
   assert.equal(parsePeriod(q('from=2025-01-01&to=2026-11-04'), today).key, '7d'); // 400일 넘음
   assert.equal(parsePeriod(q("from=2026-10-01'&to=2026-10-02"), today).key, '7d');
+  assert.equal(parsePeriod(q('from=2026-11-05&to=2026-11-06'), today).fixed, true); // 틀린 기간은 안내
+  assert.equal(parsePeriod(q('p=1y'), today).fixed, true);
+  assert.equal(parsePeriod(q('p=30d'), today).fixed, undefined);
+  assert.equal(parsePeriod(q(''), today).fixed, undefined);
+});
+
+test('jwtKid: 머리의 열쇠 번호, 깨진 값은 undefined', () => {
+  assert.equal(jwtKid(`${Buffer.from('{"alg":"RS256","kid":"k9"}').toString('base64url')}.e30.x`), 'k9');
+  assert.equal(jwtKid('깨짐'), undefined);
 });
 
 test('withPeriod: 기본 7일은 주소에 안 붙음', () => {

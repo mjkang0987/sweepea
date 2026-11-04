@@ -4,12 +4,13 @@ import type { AstroCookies } from 'astro';
 import { OPS_ACCESS_AUD, OPS_ACCESS_TEAM, OPS_USER_IDS, SWEEPEA_BACKEND } from 'astro:env/server';
 import { getBackend } from './backend';
 import { currentParent } from './pass';
-import { inList, verifyAccessJwt, type AccessJwk } from './ops';
+import { inList, jwtKid, verifyAccessJwt, type AccessJwk } from './ops';
 
 let jwks: { keys: AccessJwk[]; at: number } | undefined;
-async function accessKeys(team: string): Promise<AccessJwk[]> {
-  // 열쇠는 Cloudflare가 가끔 바꾼다: 한 시간 기억
-  if (jwks && Date.now() - jwks.at < 3600_000) return jwks.keys;
+/** 열쇠는 Cloudflare가 가끔 바꾼다: 한 시간 기억. 도장의 kid가 기억한 열쇠에 없으면 1분에 한 번까지 다시 받는다 */
+async function accessKeys(team: string, kid: string | undefined): Promise<AccessJwk[]> {
+  const fresh = jwks && Date.now() - jwks.at < 3600_000 && (jwks.keys.some((k) => k.kid === kid) || Date.now() - jwks.at < 60_000);
+  if (fresh) return jwks!.keys;
   const res = await fetch(`https://${team}/cdn-cgi/access/certs`, { signal: AbortSignal.timeout(5000) });
   if (!res.ok) throw new Error(`access certs ${res.status}`);
   jwks = { keys: ((await res.json()) as { keys: AccessJwk[] }).keys, at: Date.now() };
@@ -22,11 +23,18 @@ export async function opsGate(request: Request, cookies: AstroCookies): Promise<
   if (!OPS_USER_IDS) return null;
   if (!devSkipAccess()) {
     if (!OPS_ACCESS_TEAM || !OPS_ACCESS_AUD) return null;
-    const ok = await verifyAccessJwt(request.headers.get('cf-access-jwt-assertion'), { team: OPS_ACCESS_TEAM, aud: OPS_ACCESS_AUD, keys: await accessKeys(OPS_ACCESS_TEAM) }).catch(() => false);
-    if (!ok) return null;
+    const token = request.headers.get('cf-access-jwt-assertion');
+    if (!token) return null;
+    // 열쇠 받기 실패도 404로(500이면 이 화면이 있다는 게 드러난다)
+    try {
+      const keys = await accessKeys(OPS_ACCESS_TEAM, jwtKid(token));
+      if (!(await verifyAccessJwt(token, { team: OPS_ACCESS_TEAM, aud: OPS_ACCESS_AUD, keys }))) return null;
+    } catch {
+      return null;
+    }
   }
   const pass = await currentParent(cookies).catch(() => null);
   if (!pass) return null;
-  const userId = await getBackend().userId(pass);
+  const userId = await getBackend().userId(pass).catch(() => null);
   return inList(OPS_USER_IDS, userId) ? { userId: userId! } : null;
 }

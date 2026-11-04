@@ -1310,5 +1310,25 @@ select pg_temp.ok(not (:'olist'::jsonb::text ~ '할머니|운영|아이|OpsCode1
 select pg_temp.ok(not (:'odet'::jsonb::text ~ '할머니|운영|아이|OpsCode1|3333'), '상세에 이름·코드·비밀번호 없음');
 select pg_temp.ok((:'odet'::jsonb -> 'devices' -> 0 ->> 'visits')::int = 1 and (:'odet'::jsonb -> 'parents' -> 0 ->> 'visits')::int = 2 and (:'odet'::jsonb -> 'entry' ->> 'link')::int = 1, '상세: 사람별 방문·링크 방문');
 select pg_temp.ok((:'odet'::jsonb -> 'devices' -> 0 ->> 'group')::int = 1, '상세: 그룹은 순서 번호');
+-- 새 이름으로 들어와 기다리는 기기(기기 active + 구성원 pending)는 '대기', 기한 지난 대기는 어디에도 안 셈
+select gen_random_uuid() as ow \gset
+select gen_random_uuid() as ox \gset
+insert into auth.users (id, is_anonymous) values (:'ow', true), (:'ox', true);
+insert into public.members (family_id, group_id, display_name, status, pending_until, created_at) values (:'ofam', :'ogrp', '큰이모', 'pending', now() + interval '1 day', now() - interval '3 days') returning id as owm \gset
+insert into public.members (family_id, group_id, display_name, status, pending_until, created_at) values (:'ofam', :'ogrp', '작은이모', 'pending', now() - interval '1 hour', now() - interval '4 days') returning id as oxm \gset
+insert into public.devices (auth_user_id, family_id, member_id, status) values (:'ow', :'ofam', :'owm', 'active'), (:'ox', :'ofam', :'oxm', 'active');
+set role service_role;
+select public.sp_ops_families(public.sp_seoul_today() - 6, public.sp_seoul_today(), 'created', 0) as olist2 \gset
+select public.sp_ops_family(:'ofam', public.sp_seoul_today() - 6, public.sp_seoul_today()) as odet2 \gset
+select public.sp_ops_summary(public.sp_seoul_today() - 6, public.sp_seoul_today()) as osum2 \gset
+reset role;
+select pg_temp.ok((select (r ->> 'active')::int = 1 and (r ->> 'pending')::int = 1 from jsonb_array_elements(:'olist2'::jsonb -> 'rows') r where r ->> 'id' = :'ofam'), '목록: 승인 1(할머니)·대기 1(큰이모), 기한 지난 작은이모는 빠짐');
+select pg_temp.ok(jsonb_array_length(:'odet2'::jsonb -> 'devices') = 2 and (:'odet2'::jsonb -> 'devices' -> 1 ->> 'status') = 'pending', '상세: 큰이모 기기는 대기, 작은이모 기기는 없음');
+select pg_temp.ok((select count(*) = 1 from jsonb_array_elements(:'osum2'::jsonb -> 'checks' -> 'pending') c where c ->> 'family_id' = :'ofam' and (c ->> 'n')::int = 1), '살펴볼 것: 기한 안 대기만(2일 넘은 큰이모)');
+select pg_temp.ok((:'osum2'::jsonb -> 'entry' ->> 'requested')::int - (:'osum2'::jsonb -> 'entry' ->> 'approved')::int >= 2, '들어오기 신청 중 대기·기한 지남은 승인에 안 셈(다른 검사 가족방도 섞여 2 이상)');
+-- 엄빠가 나가면 그 가족방의 엄빠 방문 기록을 지운다
+update public.parents set removed_at = now() where user_id = :'op';
+select pg_temp.ok(not exists (select 1 from public.visits where kind = 'parent' and visitor = :'op'), '나간 엄빠의 방문 기록은 지움');
+select pg_temp.ok(exists (select 1 from public.visits where kind = 'device' and family_id = :'ofam'), '가족 기기 방문 기록은 그대로');
 select public.sp_purge_family(:'ofam');
 select pg_temp.ok(not exists (select 1 from public.visits where family_id = :'ofam'), '가족방을 지우면 방문 기록도 지움');

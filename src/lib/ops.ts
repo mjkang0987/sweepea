@@ -4,6 +4,8 @@ export const PERIODS = { today: '오늘', '7d': '7일', '30d': '30일', '90d': '
 export type PeriodKey = keyof typeof PERIODS | 'custom';
 export interface Period {
   key: PeriodKey;
+  /** 직접 고른 기간이 틀려서(거꾸로·미래·400일 넘음) 기본으로 보여 줌 */
+  fixed?: boolean;
   /** 서울 날짜 YYYY-MM-DD, 끝 포함 */
   from: string;
   to: string;
@@ -27,7 +29,8 @@ export function parsePeriod(q: URLSearchParams, today: string): Period {
   }
   const p = q.get('p');
   const key = p && p in DAYS ? (p as keyof typeof PERIODS) : '7d';
-  return { key, from: addDays(today, 1 - DAYS[key]), to: today, days: DAYS[key] };
+  const fixed = from !== null || to !== null || (p !== null && !(p in DAYS));
+  return { key, from: addDays(today, 1 - DAYS[key]), to: today, days: DAYS[key], ...(fixed && { fixed }) };
 }
 
 /** 링크에 달고 다닐 기간 주소 조각(기본 7일이면 빈 값) */
@@ -42,6 +45,15 @@ export const withPeriod = (path: string, p: Period, extra = '') => {
 
 const b64urlBytes = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
 const b64urlJson = (s: string) => JSON.parse(new TextDecoder().decode(b64urlBytes(s)));
+
+/** 도장 머리의 열쇠 번호(열쇠를 다시 받을지 정할 때만, 확인은 verifyAccessJwt) */
+export function jwtKid(token: string): string | undefined {
+  try {
+    return (b64urlJson(token.split('.')[0]) as { kid?: string }).kid;
+  } catch {
+    return undefined;
+  }
+}
 
 export interface AccessJwk {
   kid: string;

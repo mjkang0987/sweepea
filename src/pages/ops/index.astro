@@ -99,7 +99,7 @@ const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 
             <li class="sp-o__step"><span>{name}</span><span class="sp-o__step-bar" aria-hidden="true"><span class="sp-o__step-fill" style={`width: ${(n / funnelMax) * 100}%`} /></span><span class="sp-o__kv-val">{nf(n)}</span></li>
           ))}
         </ol>
-        <p class="sp-o__sub">비밀번호 틀림 {nf(s.entry.failures)}번 · 승인 대기 기한 지남 {nf(s.entry.expired)}명</p>
+        <p class="sp-o__sub">비밀번호 틀림 {nf(s.entry.failures)}번(틀린 기록은 7일만 남아요) · 승인 대기 기한 지남 {nf(s.entry.expired)}명</p>
       </section>
 
       <section class="sp-p__card" aria-labelledby="sp-o-help">

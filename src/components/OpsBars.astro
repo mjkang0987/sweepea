@@ -16,12 +16,14 @@ const { label, names, rows, unit, today } = Astro.props;
 const max = Math.max(1, ...rows.map((r) => r.v.reduce((a, b) => a + b, 0)));
 const tip = (r: { day: string; v: number[] }) => [dayLabel(r.day, today), ...r.v.map((x, i) => (names.length > 1 ? `${names[i]} ${nf(x)}${unit}` : `${nf(x)}${unit}`))].join(' · ');
 const minWidth = rows.length * 16;
+// 휴대폰 폭(약 20막대)을 넘으면 밀 수 있는 칸이라 Tab으로 갈 수 있게, 넓은 화면 폭도 넘으면 안내
+const scroll = minWidth > 320;
 const long = minWidth > 760;
 ---
 
 <figure class="sp-o__chart">
   <figcaption class="sp-vh">{label}, {dayLabel(rows[0]?.day ?? null, today)}부터 {dayLabel(rows.at(-1)?.day ?? null, today)}까지</figcaption>
-  <div class="sp-o__chart-scroll" tabindex={long ? 0 : undefined} role={long ? 'region' : undefined} aria-label={long ? `${label}, 옆으로 밀기` : undefined}>
+  <div class="sp-o__chart-scroll" tabindex={scroll ? 0 : undefined} role={scroll ? 'region' : undefined} aria-label={scroll ? `${label}, 옆으로 밀기` : undefined}>
     <div class="sp-o__chart-inner" style={`min-width: ${minWidth}px`}>
       <div class="sp-o__bars" role="img" aria-label={label}>
         {

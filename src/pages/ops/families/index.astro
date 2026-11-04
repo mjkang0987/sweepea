@@ -29,7 +29,7 @@ const cols: { name: string; sort?: OpsSort; num?: boolean }[] = [
   { name: '마지막 방문', sort: 'last_visit', num: true },
   { name: '상태' },
 ];
-const sortName = cols.find((c) => c.sort === sort)?.name ?? '만든 날';
+const ORDER: Record<OpsSort, string> = { created: '최근에 만든 순', media: '사진·영상 많은 순', bytes: '용량 큰 순', visits: '방문 많은 순', last_visit: '최근 방문 순' };
 const next = offset + list.rows.length < list.total ? withPeriod('/ops/families', period, [sort !== 'created' && `sort=${sort}`, `o=${offset + 50}`].filter(Boolean).join('&')) : null;
 ---
 
@@ -43,7 +43,7 @@ const next = offset + list.rows.length < list.total ? withPeriod('/ops/families'
     list.rows.length ? (
       <div class="sp-o__table-wrap">
         <table class="sp-o__table">
-          <caption class="sp-vh">가족방 목록, {sortName} 많은 순. 방문은 고른 기간</caption>
+          <caption class="sp-vh">가족방 목록, {ORDER[sort]}. 방문은 고른 기간</caption>
           <thead>
             <tr>
               <th scope="col" class="sp-o__cell sp-o__cell--head">가족방</th>

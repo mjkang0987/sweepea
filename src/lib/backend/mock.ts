@@ -90,6 +90,11 @@ const addVisit = (fam: string, kind: string, who: string) => {
   visits.set(k, (visits.get(k) ?? 0) + 1);
 };
 const visitRows = () => [...visits].map(([k, n]) => { const [fam, kind, who, day] = k.split('|'); return { fam, kind, who, day, n }; });
+const devState = (d: Device): 'active' | 'pending' | null => {
+  const m = members.find((x) => x.id === d.memberId);
+  if (d.status === 'active' && (!m || m.status === 'active')) return 'active';
+  return d.status === 'pending' || (d.status === 'active' && m?.status === 'pending') ? 'pending' : null;
+};
 const allFamilies = () => [...new Set([...groups.map((g) => g.familyId), ...[...parents.values()].map((p) => p.familyId)])];
 const daysOf = (from: string, to: string) => {
   const out: string[] = [];
@@ -724,7 +729,7 @@ export function createMockBackend(): Backend {
         return {
           id: fam, created_at: bornAt(groups.find((g) => g.familyId === fam) ?? {}), bytes: used[fam] ?? 0, quota: 5 * 1024 ** 3,
           delete_after: closingAt[fam] ? new Date(closingAt[fam]).toISOString() : null,
-          parents: familyParentsOf(fam).length, active: ds.filter((d) => d.status === 'active').length, pending: ds.filter((d) => d.status === 'pending').length,
+          parents: familyParentsOf(fam).length, active: ds.filter((d) => devState(d) === 'active').length, pending: ds.filter((d) => devState(d) === 'pending').length,
           media: ms.length, visits: vs.filter((r) => r.day >= from && r.day <= to).reduce((a, r) => a + r.n, 0),
           last_upload: ms.map((x) => x.created_at).sort().at(-1) ?? null, last_visit: vs.map((r) => r.day).sort().at(-1) ?? null,
         };
@@ -737,7 +742,7 @@ export function createMockBackend(): Backend {
       const row = (await this.opsFamilies(from, to, 'created', 0)).rows.find((r) => r.id === id);
       if (!row) return null;
       const gs = groups.filter((g) => g.familyId === id);
-      const ds = [...devices.values()].filter((d) => d.familyId === id && d.status !== 'revoked');
+      const ds = [...devices.values()].filter((d) => d.familyId === id && devState(d));
       const vs = visitRows().filter((r) => r.fam === id);
       const visitsOf = (who: string) => ({ visits: vs.filter((r) => r.who === who && r.day >= from && r.day <= to).reduce((a, r) => a + r.n, 0), last: vs.filter((r) => r.who === who).map((r) => r.day).sort().at(-1) ?? null });
       const ms = media.filter((x) => x.family_id === id && x.status === 'ready');
@@ -747,7 +752,7 @@ export function createMockBackend(): Backend {
         last_upload: row.last_upload, shares: shares.filter((x) => !x.revoked && x.groupIds.some((g) => gs.some((y) => y.id === g))).length,
         groups: gs.map((g, i) => ({ no: i + 1, members: members.filter((m) => m.groupId === g.id && m.status !== 'rejected').length })),
         parents: familyParentsOf(id).map(([who, p], i) => ({ no: i + 1, since: new Date(p.since ?? 0).toISOString(), ...visitsOf(who) })),
-        devices: ds.map((d, i) => ({ no: i + 1, status: d.status as 'active' | 'pending', group: gs.findIndex((g) => g.id === members.find((m) => m.id === d.memberId)?.groupId) + 1 || null, ...visitsOf(d.id) })),
+        devices: ds.map((d, i) => ({ no: i + 1, status: devState(d)!, group: gs.findIndex((g) => g.id === members.find((m) => m.id === d.memberId)?.groupId) + 1 || null, ...visitsOf(d.id) })),
         uploads: daysOf(from, to).map((day) => ({ day, n: ms.filter((x) => seoulDay(Date.parse(x.created_at ?? '')) === day).length })),
         visits: daysOf(from, to).map((day) => ({ day, parent: vs.filter((r) => r.day === day && r.kind === 'parent').reduce((a, r) => a + r.n, 0), device: vs.filter((r) => r.day === day && r.kind === 'device').reduce((a, r) => a + r.n, 0) })),
         entry: { link: vs.filter((r) => r.kind === 'link' && r.day >= from && r.day <= to).reduce((a, r) => a + r.n, 0), failures: 0 },

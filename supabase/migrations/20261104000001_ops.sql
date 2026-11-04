@@ -56,6 +56,20 @@ create function public.sp_ops_quota(p_plan text) returns bigint
 language sql immutable set search_path = ''
 as $$ select case when p_plan = 'free' then 5368709120 else null end $$;
 
+-- 가족 기기의 실제 상태. 새 이름으로 들어온 기기는 승인 전에도 devices.status가 active이고 구성원이 pending이라(sp_enter),
+-- 승인 = 기기 active + 구성원 active, 대기 = 기기 pending(구성원 없이 기다림) 또는 구성원 pending이고 기한 전(엄빠 첫 화면 waiting과 같은 뜻).
+-- 기한 지난 대기·내 가족 아님·내보냄은 null(어디에도 안 셈)
+create function public.sp_ops_devices() returns table (id uuid, family_id uuid, created_at timestamptz, st text)
+language sql stable security definer set search_path = ''
+as $$
+  select d.id, d.family_id, d.created_at,
+    case
+      when d.status = 'active' and m.status = 'active' then 'active'
+      when d.status = 'pending' or (d.status = 'active' and m.status = 'pending' and m.pending_until > now()) then 'pending'
+    end
+  from public.devices d left join public.members m on m.id = d.member_id
+$$;
+
 -- 현황: 지금 전체 + 고른 기간(서울 날짜, 끝 포함) + 바로 앞 같은 길이 기간
 create function public.sp_ops_summary(p_from date, p_to date) returns jsonb
 language plpgsql stable security definer set search_path = ''
@@ -70,16 +84,16 @@ declare
   v jsonb;
 begin
   if p_from > p_to or v_len > 400 then raise exception 'bad_range' using errcode = '22023'; end if;
-  with vis as (
+  with dv as (select * from public.sp_ops_devices()), vis as (
     select * from public.visits where day between v_pf and p_to
   ), cur as (select * from vis where day >= p_from), prev as (select * from vis where day < p_from)
   select jsonb_build_object(
     'now', jsonb_build_object(
       'families', (select count(*) from public.families),
       'parents', (select count(*) from public.parents where family_id is not null and removed_at is null),
-      'devices', (select count(*) from public.devices where status in ('active', 'pending')),
-      'devices_active', (select count(*) from public.devices where status = 'active'),
-      'devices_pending', (select count(*) from public.devices where status = 'pending'),
+      'devices', (select count(*) from dv where st is not null),
+      'devices_active', (select count(*) from dv where st = 'active'),
+      'devices_pending', (select count(*) from dv where st = 'pending'),
       'media', (select count(*) from public.media where status = 'ready'),
       'bytes', (select coalesce(sum(storage_used_bytes), 0) from public.families)
     ),
@@ -98,14 +112,14 @@ begin
     'new', jsonb_build_object(
       'families', (select count(*) from public.families where created_at >= lo and created_at < hi),
       'prev_families', (select count(*) from public.families where created_at >= plo and created_at < lo),
-      'devices', (select count(*) from public.devices where status = 'active' and created_at >= lo and created_at < hi),
-      'prev_devices', (select count(*) from public.devices where status = 'active' and created_at >= plo and created_at < lo),
+      'devices', (select count(*) from dv where st = 'active' and created_at >= lo and created_at < hi),
+      'prev_devices', (select count(*) from dv where st = 'active' and created_at >= plo and created_at < lo),
       'media', (select count(*) from public.media where status = 'ready' and created_at >= lo and created_at < hi),
       'prev_media', (select count(*) from public.media where status = 'ready' and created_at >= plo and created_at < lo)
     ),
     'seen', jsonb_build_object(
-      'active', (select count(*) from public.devices where status = 'active'),
-      'visited', (select count(distinct d.id) from public.devices d join cur on cur.kind = 'device' and cur.visitor = d.id where d.status = 'active'),
+      'active', (select count(*) from dv where st = 'active'),
+      'visited', (select count(distinct dv.id) from dv join cur on cur.kind = 'device' and cur.visitor = dv.id where dv.st = 'active'),
       'reactions', (select count(*) from public.reactions where created_at >= lo and created_at < hi),
       'prev_reactions', (select count(*) from public.reactions where created_at >= plo and created_at < lo),
       'comments', (select count(*) from public.comments where deleted_at is null and created_at >= lo and created_at < hi),
@@ -115,7 +129,7 @@ begin
       'link', (select coalesce(sum(count), 0) from cur where kind = 'link'),
       'link_pw', (select coalesce(sum(count), 0) from cur where kind = 'link_pw'),
       'requested', (select count(*) from public.devices where created_at >= lo and created_at < hi),
-      'approved', (select count(*) from public.devices where status = 'active' and created_at >= lo and created_at < hi),
+      'approved', (select count(*) from dv where st = 'active' and created_at >= lo and created_at < hi),
       'failures', (select count(*) from public.entry_failures where at >= lo and at < hi),
       'expired', (select count(*) from public.members where status = 'pending' and pending_until >= lo and pending_until < least(hi, now()))
     ),
@@ -128,14 +142,15 @@ begin
     'checks', jsonb_build_object(
       'pending', (select coalesce(jsonb_agg(jsonb_build_object('family_id', family_id, 'n', n, 'since', since) order by since), '[]') from (
           select family_id, count(*) as n, min(created_at) as since from public.members
-          where status = 'pending' and created_at < now() - interval '2 days' group by family_id) t),
+          where status = 'pending' and pending_until > now() and created_at < now() - interval '2 days' group by family_id) t),
       'full', (select coalesce(jsonb_agg(jsonb_build_object('family_id', id, 'bytes', storage_used_bytes, 'quota', public.sp_ops_quota(plan)) order by storage_used_bytes desc), '[]')
           from public.families where storage_used_bytes >= 0.8 * public.sp_ops_quota(plan)),
-      'quiet', (select coalesce(jsonb_agg(jsonb_build_object('family_id', f.id, 'last', (select max(day) from public.visits v where v.family_id = f.id and v.kind = 'device'))), '[]')
+      'quiet', (select coalesce(jsonb_agg(jsonb_build_object('family_id', q.id, 'last', q.last) order by q.last nulls first, q.id), '[]') from (
+          select f.id, (select max(day) from public.visits v where v.family_id = f.id and v.kind = 'device') as last
           from public.families f
           where f.delete_after is null and f.created_at < now() - interval '7 days'
-            and exists (select 1 from public.devices d where d.family_id = f.id and d.status = 'active')
-            and not exists (select 1 from public.visits v where v.family_id = f.id and v.kind = 'device' and v.day > public.sp_seoul_today() - 7)),
+            and exists (select 1 from dv where dv.family_id = f.id and dv.st = 'active')
+            and not exists (select 1 from public.visits v where v.family_id = f.id and v.kind = 'device' and v.day > public.sp_seoul_today() - 7)) q),
       'closing', (select coalesce(jsonb_agg(jsonb_build_object('family_id', id, 'at', delete_after) order by delete_after), '[]')
           from public.families where delete_after is not null)
     )
@@ -147,16 +162,17 @@ end $$;
 create function public.sp_ops_families(p_from date, p_to date, p_sort text, p_offset int) returns jsonb
 language sql stable security definer set search_path = ''
 as $$
-  with f as (
+  with dv as (select * from public.sp_ops_devices()), f as (
     select f.id, f.created_at, f.storage_used_bytes as bytes, f.delete_after, f.plan,
       (select count(*) from public.parents p where p.family_id = f.id and p.removed_at is null) as parents,
-      (select count(*) from public.devices d where d.family_id = f.id and d.status = 'active') as active,
-      (select count(*) from public.devices d where d.family_id = f.id and d.status = 'pending') as pending,
+      (select count(*) from dv where dv.family_id = f.id and dv.st = 'active') as active,
+      (select count(*) from dv where dv.family_id = f.id and dv.st = 'pending') as pending,
       (select count(*) from public.media m where m.family_id = f.id and m.status = 'ready') as media,
       (select coalesce(sum(v.count), 0) from public.visits v where v.family_id = f.id and v.kind in ('parent', 'device') and v.day between p_from and p_to) as visits,
       (select max(m.created_at) from public.media m where m.family_id = f.id and m.status = 'ready') as last_upload,
       (select max(v.day) from public.visits v where v.family_id = f.id and v.kind in ('parent', 'device')) as last_visit
     from public.families f
+    where p_from <= p_to and p_to - p_from < 400
   )
   , o as (
     select *, row_number() over (order by
@@ -193,11 +209,11 @@ as $$
     'devices', (select coalesce(jsonb_agg(jsonb_build_object('no', d.no, 'status', d.status, 'group', d.gno,
           'visits', (select coalesce(sum(v.count), 0) from public.visits v where v.family_id = f.id and v.kind = 'device' and v.visitor = d.id and v.day between p_from and p_to),
           'last', (select max(v.day) from public.visits v where v.family_id = f.id and v.kind = 'device' and v.visitor = d.id)) order by d.no), '[]')
-        from (select d.id, d.status, row_number() over (order by d.created_at) as no,
+        from (select d.id, dv.st as status, row_number() over (order by d.created_at) as no,
             (select g.no from (select id, row_number() over (order by sort_order, created_at) as no from public.groups where family_id = f.id) g
               where g.id = coalesce(m.group_id, d.requested_group_id)) as gno
-          from public.devices d left join public.members m on m.id = d.member_id
-          where d.family_id = f.id and d.status in ('active', 'pending')) d),
+          from public.devices d join public.sp_ops_devices() dv on dv.id = d.id left join public.members m on m.id = d.member_id
+          where d.family_id = f.id and dv.st is not null) d),
     'uploads', (select jsonb_agg(jsonb_build_object('day', g.d, 'n',
           (select count(*) from public.media m where m.family_id = f.id and m.status = 'ready'
             and (m.created_at at time zone 'Asia/Seoul')::date = g.d)) order by g.d)
@@ -214,5 +230,27 @@ as $$
   from public.families f where f.id = p_id and p_from <= p_to and p_to - p_from < 400
 $$;
 
+revoke all on function public.sp_seoul_today(), public.sp_ops_quota(text) from public, anon, authenticated;
+grant execute on function public.sp_seoul_today(), public.sp_ops_quota(text) to authenticated, service_role;
+revoke all on function public.sp_ops_devices() from public, anon, authenticated;
+grant execute on function public.sp_ops_devices() to service_role;
 revoke all on function public.sp_ops_summary(date, date), public.sp_ops_families(date, date, text, int), public.sp_ops_family(uuid, date, date) from public, anon, authenticated;
 grant execute on function public.sp_ops_summary(date, date), public.sp_ops_families(date, date, text, int), public.sp_ops_family(uuid, date, date) to service_role;
+
+-- 엄빠가 나가거나(removed_at) 다른 가족방으로 옮기거나 지워지면, 예전 가족방에 남은 그 엄빠 방문 기록을 지운다(처리방침 3항)
+create function public.sp_visits_parent_gone() returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if tg_op = 'DELETE' then
+    delete from public.visits where kind = 'parent' and visitor = old.user_id;
+    return old;
+  end if;
+  if old.family_id is not null and (new.removed_at is not null or new.family_id is distinct from old.family_id) then
+    delete from public.visits where kind = 'parent' and visitor = old.user_id and family_id = old.family_id;
+  end if;
+  return new;
+end $$;
+revoke all on function public.sp_visits_parent_gone() from public, anon, authenticated;
+create trigger parents_visits_gone after update of removed_at, family_id or delete on public.parents
+  for each row execute function public.sp_visits_parent_gone();
