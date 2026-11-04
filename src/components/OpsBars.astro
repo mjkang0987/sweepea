@@ -28,9 +28,9 @@ const long = minWidth > 760;
     <div class="sp-o__chart-inner" style={`min-width: ${minWidth}px`}>
       <div class="sp-o__bars" role="img" aria-label={label}>
         {
-          rows.map((r, i) => (
+          rows.map((r) => (
             <div class="sp-o__bar">
-              <span class:list={['sp-o__tip', i >= rows.length / 2 && 'sp-o__tip--end']} aria-hidden="true">{tip(r)}</span>
+              <span class="sp-o__tip" aria-hidden="true">{tip(r)}</span>
               {names.length > 1 && <span class="sp-o__bar-b" style={`height: ${((r.v[1] ?? 0) / max) * 100}%`} />}
               <span class="sp-o__bar-a" style={`height: ${((r.v[0] ?? 0) / max) * 100}%`} />
             </div>
