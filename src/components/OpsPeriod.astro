@@ -36,6 +36,6 @@ const link = (k: string) => {
     <label class="sp-o__date"><span class="sp-vh">끝</span><input class="sp-o__date-input" type="date" name="to" value={period.to} min={min} max={today} required /></label>
     <button class="sp-o__date-go" type="submit">보기</button>
   </form>
-  {period.fixed && <p class="sp-o__period-note sp-o__warn" role="status">고른 기간을 쓸 수 없어서 7일로 보여 줘요. 오늘까지, 400일 안으로 골라 주세요.</p>}
+  {period.fixed && <p class="sp-o__period-note sp-o__warn" role="status">고른 기간을 쓸 수 없어서 7일로 보여 줘요. 시작이 끝보다 앞이고, 오늘까지, 400일 안으로 골라 주세요.</p>}
   <p class="sp-o__sub sp-o__period-note">{label(period.from)}{period.days > 1 && ` ~ ${label(period.to)}`} · '직전'은 바로 앞 같은 길이 기간</p>
 </section>

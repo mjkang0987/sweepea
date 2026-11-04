@@ -41,7 +41,7 @@ const next = offset + list.rows.length < list.total ? withPeriod('/ops/families'
   <OpsPeriod period={period} path="/ops/families" keep={sort === 'created' ? {} : { sort }} />
   {
     list.rows.length ? (
-      <div class="sp-o__table-wrap">
+      <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="가족방 목록, 옆으로 밀기">
         <table class="sp-o__table">
           <caption class="sp-vh">가족방 목록, {ORDER[sort]}. 방문은 고른 기간</caption>
           <thead>

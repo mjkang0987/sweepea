@@ -61,7 +61,38 @@ const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 
   <OpsPeriod period={period} path="/ops" />
 
   <div class="sp-o__cols">
-    <div class="sp-o__col">
+    <div class="sp-o__col sp-o__first">
+      <section class="sp-p__card" aria-labelledby="sp-o-check">
+        <div><h2 class="sp-p__card-title" id="sp-o-check">살펴볼 것</h2><p class="sp-o__sub">지금 기준</p></div>
+        {
+          checks.length ? (
+            <ul class="sp-o__list">
+              {checks.map((c) => (
+                <li>
+                  <a class="sp-o__row" href={fam(c.id)}>
+                    <span class="sp-o__row-text">{c.title}<span class="sp-o__row-meta">가족방 {shortId(c.id)} · {c.meta}</span></span>
+                    <svg class="sp-o__chev" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p class="sp-o__sub">지금은 살펴볼 게 없어요.</p>
+          )
+        }
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-login">
+        <div><h2 class="sp-p__card-title" id="sp-o-login">로그인 방법</h2><p class="sp-o__sub">엄빠 전체</p></div>
+        {
+          Object.keys(providers).length ? (
+            <dl class="sp-o__kv">{Object.entries(providers).sort((a, b) => b[1] - a[1]).map(([k, n]) => (<><dt class="sp-o__kv-name">{k}</dt><dd class="sp-o__kv-val">{nf(n)}</dd></>))}</dl>
+          ) : (
+            <p class="sp-o__sub">아직 없어요.</p>
+          )
+        }
+      </section>
+    </div>
+    <div class="sp-o__col sp-o__col--main">
       <section class="sp-p__card" aria-labelledby="sp-o-visits">
         <div><h2 class="sp-p__card-title" id="sp-o-visits">방문</h2><p class="sp-o__sub">30분 안에 이어서 연 건 한 번으로 세요</p></div>
         <dl class="sp-o__stats sp-o__stats--3 sp-o__stats--in">
@@ -108,36 +139,5 @@ const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 
       </section>
     </div>
 
-    <div class="sp-o__col sp-o__first">
-      <section class="sp-p__card" aria-labelledby="sp-o-check">
-        <div><h2 class="sp-p__card-title" id="sp-o-check">살펴볼 것</h2><p class="sp-o__sub">지금 기준</p></div>
-        {
-          checks.length ? (
-            <ul class="sp-o__list">
-              {checks.map((c) => (
-                <li>
-                  <a class="sp-o__row" href={fam(c.id)}>
-                    <span class="sp-o__row-text">{c.title}<span class="sp-o__row-meta">가족방 {shortId(c.id)} · {c.meta}</span></span>
-                    <svg class="sp-o__chev" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p class="sp-o__sub">지금은 살펴볼 게 없어요.</p>
-          )
-        }
-      </section>
-      <section class="sp-p__card" aria-labelledby="sp-o-login">
-        <div><h2 class="sp-p__card-title" id="sp-o-login">로그인 방법</h2><p class="sp-o__sub">엄빠 전체</p></div>
-        {
-          Object.keys(providers).length ? (
-            <dl class="sp-o__kv">{Object.entries(providers).sort((a, b) => b[1] - a[1]).map(([k, n]) => (<><dt class="sp-o__kv-name">{k}</dt><dd class="sp-o__kv-val">{nf(n)}</dd></>))}</dl>
-          ) : (
-            <p class="sp-o__sub">아직 없어요.</p>
-          )
-        }
-      </section>
-    </div>
   </div>
 </Ops>

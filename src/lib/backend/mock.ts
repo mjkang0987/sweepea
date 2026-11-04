@@ -697,7 +697,7 @@ export function createMockBackend(): Backend {
     async noteVisit(pass) {
       const p = parents.get(pass.access);
       if (p) addVisit(p.familyId, 'parent', pass.access);
-      for (const [k, d] of devices) if (k.startsWith(`${pass.access}|`) && d.status !== 'revoked') addVisit(d.familyId, 'device', d.id);
+      for (const [k, d] of devices) if (k.startsWith(`${pass.access}|`) && devState(d)) addVisit(d.familyId, 'device', d.id);
     },
     async noteLinkVisit(code, step) {
       const sh = shares.find((x) => x.code === code && !x.revoked);
