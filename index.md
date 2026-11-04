@@ -4,8 +4,9 @@
 
 ## 현재 상태
 
-- 버전 0.47.0(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 저장소 마이그레이션 36개 모두 적용(2026-11-04 ops_media_families까지, 운영 기록 36줄. `media_changes`는 운영 기록에 내용 없는 줄 + `media_changes_body` — plan 123), 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
+- 버전 0.48.0(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 저장소 마이그레이션 36개 모두 적용(2026-11-04 ops_media_families까지, 운영 기록 36줄. `media_changes`는 운영 기록에 내용 없는 줄 + `media_changes_body` — plan 123), 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
 - 운영자 화면(0.41.0, plan 164): `/ops` 현황·`/ops/families` 목록·`/ops/families/<id>` 상세. 문 세 겹 — Cloudflare Access 도장을 서버가 직접 확인(workers.dev 뒷문 막기, src/lib/ops.ts verifyAccessJwt) + 엄빠 로그인 + 비밀 값 `OPS_USER_IDS`(셋 다 없으면 404, src/lib/opsgate.ts). 비밀 값 `OPS_ACCESS_TEAM`(예: 팀.cloudflareaccess.com)·`OPS_ACCESS_AUD`. 숫자만(가족방은 번호 앞 8자리, 사람은 '가족 기기 3'), 기간 줄(오늘·7·30·90일·직접, 직전 같은 길이와 비교), 막대 바로 위 말풍선(운영 화면만 작은 스크립트, 없으면 CSS 말풍선, 0.41.2)·숫자로 보기·좌우 밀기, 목록은 줄 전체가 상세 링크(0.41.1). DB 함수 sp_ops_*는 service_role만, 기기 승인 판정은 sp_ops_devices(기기 active + 구성원 active)
+- 앱용 사진 주소 API(0.48.0, plan 177): `POST /api/app/media-urls`, Authorization: Bearer <Supabase 출입증> + { ids }(1~100) → 볼 수 있는 사진만 서명 주소(절대 주소). iOS·안드로이드 앱 엄빠 홈이 씀. 쿠키 안 씀, 8KB 넘는 본문 413
 - 운영 사진 가족방별 요약(0.47.0, plan 176): /ops/media 처음은 가족방마다 한 줄(사진·영상·크기·마지막 올림·멈춤) → 줄 누르면 ?f= 그 가족방 목록, DB sp_ops_media_families(000007)
 - 운영 목록 거르기·쪽 넘기기(0.46.0, plan 174): 공용 OpsFilter(네이티브 select GET)·OpsPager(쪽 번호 ‹ 1 … 5 [6] 7 … 20 ›, 0.46.1 plan 175), 가족방(요금제·상태)·계정(로그인 방식·가족방)·사진(종류·상태·올린 사람), 값은 src/lib/ops.ts OPS_FILTERS, DB 세 함수 p_filter 판(000006, 옛 4인자 판은 남음 — 정리는 사용자 확인 후)
 - 운영 사진 목록(0.45.0, plan 173): /ops/media(메뉴 '사진') 올린 사진·영상 정보만(올린 때·가족방·종류·크기·가로세로·길이·올린 사람·상태), 사진 자체·파일 주소 없음, ?f=가족방, DB sp_ops_media(000005), 처리방침 운영자 항목에 더함

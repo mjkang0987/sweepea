@@ -1427,14 +1427,14 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
-### 177. feature/app-media-urls — 앱용 사진 주소 받기 API (93 ②, 앱 3-1 엄빠 홈에 필요)
+### 177. feature/app-media-urls — 앱용 사진 주소 받기 API (완료, 0.48.0 — 운영 배포 2026-11-05 사용자 "Deploy it")
 - 요구(사용자 2026-11-05 "3단계 엄빠 홈"): iOS·안드로이드 앱이 사진을 보려면 서명된 파일 주소(/m/…)가 필요한데 서명 비밀은 서버에만 있다
 - 구현: `POST /api/app/media-urls`, `Authorization: Bearer <Supabase 출입증>`(엄빠·가족 익명 둘 다), 본문 `{ ids }`(사진 id 1~100개) → `{ urls: { <id>: { view, thumb, poster } } }`(절대 주소, 서명은 웹과 같은 signedMediaUrl). 볼 수 있는 사진만: 그 출입증으로 media를 읽어 DB 권한(RLS)이 거른다. 못 보는·없는 id는 빠짐. 쿠키는 안 씀(앱 전용 입구)
 - 백엔드: MediaQuery에 `ids`(여러 장) 더함 — supabase `id=in.(…)`, mock 같은 거르기
 - 영향 파일: `src/pages/api/app/media-urls.ts`(새), `src/lib/backend/{types,supabase,mock}.ts`
 - 예상 결과: 출입증 없음 401, 형식 틀림 400, 만료 출입증 401, 볼 수 있는 사진만 주소. 타입·단위·빌드 통과
 - 범위 밖: 앱용 다른 API(올리기·공유는 3단계 뒤 조각에서)
-- 결과(2026-11-05, 브랜치만 — 운영 배포는 사용자 확인 뒤): 개발 서버(mock) 검사 tools/e2e/appurls.py 8개 통과(출입증 없음 401·형식 400·볼 수 있는 사진만·겹친 id 한 번·절대 주소·주소로 그림 열림). 리뷰(따로): 막을 것 없음 — anon 키로는 사진 0장(media 읽기는 authenticated만), id는 UUID만이라 in.() 끼워 넣기 없음, 키 칸은 사용자가 못 바꿈. 고침: 토큰 글자 아닌 값이 500 → 401, 8KB 넘는 본문 413
+- 결과(2026-11-05): 개발 서버(mock) 검사 tools/e2e/appurls.py 8개 통과(출입증 없음 401·형식 400·볼 수 있는 사진만·겹친 id 한 번·절대 주소·주소로 그림 열림). 리뷰(따로): 막을 것 없음 — anon 키로는 사진 0장(media 읽기는 authenticated만), id는 UUID만이라 in.() 끼워 넣기 없음, 키 칸은 사용자가 못 바꿈. 고침: 토큰 글자 아닌 값이 500 → 401, 8KB 넘는 본문 413
 
 ### 176. feature/ops-media-families — 운영 사진을 가족방별 요약 → 눌러서 사진 (완료, 0.47.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 30일 가족방 1곳 bc4aaeea 사진 384·영상 6·멈춤 0, 서버만)
 - 요구(사용자 2026-11-04): "사진은 그냥 다 보이는 거여? 가족방별로 묶어 주면 안 되나" → 두 안 중 **가족방 요약 표 → 눌러서 사진** 고름(계정처럼 머리줄 아래 안은 안 고름)
