@@ -1427,7 +1427,7 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
-### 176. feature/ops-media-families — 운영 사진을 가족방별 요약 → 눌러서 사진 (진행 중)
+### 176. feature/ops-media-families — 운영 사진을 가족방별 요약 → 눌러서 사진 (완료, 0.47.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 30일 가족방 1곳 bc4aaeea 사진 384·영상 6·멈춤 0, 서버만)
 - 요구(사용자 2026-11-04): "사진은 그냥 다 보이는 거여? 가족방별로 묶어 주면 안 되나" → 두 안 중 **가족방 요약 표 → 눌러서 사진** 고름(계정처럼 머리줄 아래 안은 안 고름)
 - `/ops/media` 처음 화면: 가족방마다 한 줄(가족방·사진 수·영상 수·크기·마지막 올림·멈춤 수), 최근에 올린 가족방부터 50곳씩(쪽 번호 '곳'), 줄 어디를 눌러도 `?f=그 가족방`(기간·거르기 유지) → 지금까지의 사진·영상 목록(가족방 칸은 뺌). 거르기(종류·상태·올린 사람)는 요약 숫자에도 똑같이
 - DB `20261104000007_ops_media_families.sql`: sp_ops_media_families(새 함수, service_role만). **운영 적용을 웹보다 먼저**, 적용 전 사용자 확인. 처리방침은 그대로(이미 적은 정보의 합계)
