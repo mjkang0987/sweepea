@@ -1320,6 +1320,20 @@ select pg_temp.ok((:'odet'::jsonb -> 'devices' -> 0 ->> 'group')::int = 1, '상�
 select pg_temp.ok((select count(*) = 1 from jsonb_array_elements(:'oacc'::jsonb -> 'rows') r where r ->> 'id' = :'op' and r ->> 'family_id' = :'ofam' and (r ->> 'visits')::int = 2 and r ->> 'provider' = 'kakao'), '계정 목록: 엄빠 계정·가족방·방문');
 select pg_temp.ok(not exists (select 1 from jsonb_array_elements(:'oacc'::jsonb -> 'rows') r where r ->> 'id' in (:'od', :'oo')), '계정 목록에 익명(가족 기기) 계정 없음');
 select pg_temp.ok(not (:'oacc'::jsonb::text ~ '운영|email\"\:'), '계정 목록에 이름·이메일 없음');
+-- 171: 가족방별 묶음 — 같은 가족방 엄빠(엄마 먼저)가 붙어 나오고, 가족방 없는 계정은 맨 뒤. 가족방 없는 계정이 가장 최근에 가입해도 뒤
+select gen_random_uuid() as oq \gset
+select gen_random_uuid() as on1 \gset
+insert into auth.users (id, is_anonymous, raw_app_meta_data, created_at) values (:'oq', false, '{"provider": "kakao"}', now() - interval '1 day'), (:'on1', false, '{"provider": "kakao"}', now() + interval '1 minute');
+insert into public.parents (user_id, family_id, role, display_name) values (:'oq', :'ofam', 'dad', '운영아빠');
+set role service_role;
+select public.sp_ops_accounts(public.sp_seoul_today() - 6, public.sp_seoul_today(), 'created', 0) as ogrp1 \gset
+reset role;
+select pg_temp.ok((select array_agg(r ->> 'id' order by n) from jsonb_array_elements(:'ogrp1'::jsonb -> 'rows') with ordinality t(r, n) where r ->> 'family_id' = :'ofam') = array[:'op', :'oq']::text[], '계정 묶음: 같은 가족방 엄마·아빠 순');
+select pg_temp.ok((select max(n) filter (where r ->> 'family_id' is not null) < min(n) filter (where r ->> 'family_id' is null) from jsonb_array_elements(:'ogrp1'::jsonb -> 'rows') with ordinality t(r, n)), '계정 묶음: 가족방 없는 계정은 맨 뒤(가장 최근 가입이어도)');
+select pg_temp.ok((select (n2 - n1) = 1 from (select min(n) filter (where r ->> 'id' = :'op') as n1, min(n) filter (where r ->> 'id' = :'oq') as n2 from jsonb_array_elements(:'ogrp1'::jsonb -> 'rows') with ordinality t(r, n)) x), '계정 묶음: 같은 가족방은 붙어 나옴');
+select pg_temp.ok((:'ogrp1'::jsonb ->> 'groups')::int < (:'ogrp1'::jsonb ->> 'total')::int, '계정 묶음 수 < 계정 수(엄빠 둘인 가족방)');
+delete from public.parents where user_id = :'oq';
+delete from auth.users where id in (:'oq', :'on1');
 -- 새 이름으로 들어와 기다리는 기기(기기 active + 구성원 pending)는 '대기', 기한 지난 대기는 어디에도 안 셈
 select gen_random_uuid() as ow \gset
 select gen_random_uuid() as ox \gset

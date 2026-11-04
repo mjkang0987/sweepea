@@ -635,3 +635,18 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+/* 계정 목록 가족방 묶음 머리줄(171) */
+.sp-o__cell.sp-o__group {
+  /* --fill 위 틸 링크는 4.5:1이 안 돼서 바탕은 --bg로 */
+  background: var(--bg);
+  font-weight: 600;
+}
+.sp-o__group .sp-o__id {
+  min-height: 2.75rem;
+}
+.sp-o__group-meta {
+  margin-left: var(--space-3);
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+  font-weight: 400;
+}

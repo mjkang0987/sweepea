@@ -1427,6 +1427,14 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 171. feature/ops-accounts-group — 운영 계정 목록을 가족방별로 묶기 (진행 중)
+- 요구(사용자 2026-11-04): "계정 앨범별로 묶어야 할 것 같은데.. 대시보드에서" → 두 안 중 '계정 목록을 가족방별로' 고름(가족방 목록에 엄빠 칸 더하기 안은 안 고름)
+- 화면 `/ops/accounts`: 가족방 묶음마다 머리줄(가족방 번호 → 상세 링크 · 엄빠 N명 · 방문 합) 아래 그 가족방 엄빠(엄마 먼저). 가족방 없는 계정은 맨 뒤 '가족방 없음' 한 묶음. '가족방' 칸은 머리줄로 옮겨 뺌, '역할'을 계정 바로 옆으로. 표는 묶음마다 tbody + th scope=rowgroup
+- 정렬·쪽: 묶음 단위(가입·마지막 로그인·마지막 방문은 묶음 안 가장 최근, 방문은 합), 50묶음씩('다음 가족방 50곳'). 가족방 없는 계정은 하나씩 한 묶음으로 세서 맨 뒤
+- DB `20261104000004_ops_accounts_group.sql`: sp_ops_accounts create or replace(받는 값 + groups, 같은 이름·권한, DROP 없음). **운영 적용을 웹보다 먼저**, 적용 전 사용자 확인
+- 영향 파일: 마이그레이션, src/lib/backend/{types,mock}.ts, src/pages/ops/accounts.astro, src/styles/ops.css(.sp-o__group — 바탕은 --bg, --fill 위 틸 링크는 4.5:1 미달), supabase/tests/rls.sql, tools/e2e/ops.py
+- 검사: DB(같은 가족방 엄마·아빠 순으로 붙어 나옴, 가족방 없는 계정은 가장 최근 가입이어도 맨 뒤, 묶음 수 < 계정 수), e2e ops.py 60개(머리줄·역할), 단위 65, astro check 0, 1280·390 화면
+
 ### 170. fix/e2e-one-account — 실제 DB 검사는 테스트 계정 하나만 (완료, 0.43.1)
 - 요구(사용자 2026-11-04): "테스트 계정 하나만 썼으면 좋겠는데" → "응, 고쳐줘". 원인: tools/e2e/real.py·prod.py가 돌 때마다 이메일 계정을 새로 가입(qa+시각@…, 비밀번호도 매번 무작위·저장 안 함) → 10-26에 하린·도윤 가족방 3곳이 남음(169에서 지움)
 - 고침: real.py는 prod.py와 주소·파일 이름만 달라서 지움(같은 일은 `B=` 주소로). prod.py는 `.dev.vars.supabase`(git 제외)의 **E2E_EMAIL·E2E_PASSWORD 한 계정만** 씀
