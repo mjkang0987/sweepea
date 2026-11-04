@@ -1,0 +1,85 @@
+---
+// 운영자 계정 목록(167, 사용자 2026-11-04 "계정 리스트도 보게 + 가족방 연결"): 엄빠 계정만(가족 기기 익명 계정 제외), 번호만.
+// 가족방 칸을 누르면 그 가족방 상세. 가족방 없음 = 처음 설정 전이거나 나간 계정
+import Ops from '../../layouts/Ops.astro';
+import OpsPeriod from '../../components/OpsPeriod.astro';
+import { getBackend, type OpsAccountSort } from '../../lib/backend';
+import { dayLabel, nf, parsePeriod, periodQuery, shortId, withPeriod } from '../../lib/ops';
+import { opsGate } from '../../lib/opsgate';
+import { PROVIDER_NAMES, seoulDate, seoulToday } from '../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+if (!(await opsGate(Astro.request, Astro.cookies))) return Astro.rewrite('/404');
+const today = seoulToday();
+const period = parsePeriod(Astro.url.searchParams, today);
+const SORTS: OpsAccountSort[] = ['created', 'last_sign_in', 'visits', 'last_visit'];
+const q = Astro.url.searchParams.get('sort');
+const sort: OpsAccountSort = SORTS.includes(q as OpsAccountSort) ? (q as OpsAccountSort) : 'created';
+const offset = Math.max(0, Math.min(1_000_000, Number.parseInt(Astro.url.searchParams.get('o') ?? '0', 10) || 0));
+const list = await getBackend().opsAccounts(period.from, period.to, sort, offset);
+const sortHref = (k: OpsAccountSort) => withPeriod('/ops/accounts', period, k === 'created' ? '' : `sort=${k}`);
+const ORDER: Record<OpsAccountSort, string> = { created: '최근 가입 순', last_sign_in: '최근 로그인 순', visits: '방문 많은 순', last_visit: '최근 방문 순' };
+const ROLE = { mom: '엄마', dad: '아빠' } as const;
+const day = (at: string | null) => (at ? dayLabel(seoulDate(at), today) : '없음');
+const cols: { name: string; sort?: OpsAccountSort; num?: boolean }[] = [
+  { name: '로그인' },
+  { name: '가입', sort: 'created', num: true },
+  { name: '마지막 로그인', sort: 'last_sign_in', num: true },
+  { name: '역할' },
+  { name: '가족방' },
+  { name: '방문', sort: 'visits', num: true },
+  { name: '마지막 방문', sort: 'last_visit', num: true },
+];
+const next = offset + list.rows.length < list.total ? withPeriod('/ops/accounts', period, [sort !== 'created' && `sort=${sort}`, `o=${offset + 50}`].filter(Boolean).join('&')) : null;
+---
+
+<Ops title="계정" current="accounts" query={periodQuery(period)}>
+  <header class="sp-o__head">
+    <h1 class="sp-o__title">계정</h1>
+    <p class="sp-o__lead">엄빠 계정 {nf(list.total)}개 · 번호 앞 8자리로 보여요(가족 기기는 가족방 상세에서)</p>
+  </header>
+  <OpsPeriod period={period} path="/ops/accounts" keep={sort === 'created' ? {} : { sort }} />
+  {
+    list.rows.length ? (
+      <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="계정 목록, 옆으로 밀기">
+        <table class="sp-o__table">
+          <caption class="sp-vh">엄빠 계정 목록, {ORDER[sort]}. 방문은 고른 기간</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">계정</th>
+              {cols.map((c) => (
+                <th scope="col" class:list={['sp-o__cell sp-o__cell--head', c.num && 'sp-o__num']} aria-sort={c.sort === sort ? 'descending' : undefined}>
+                  {c.sort ? (
+                    <a class="sp-o__sort" href={sortHref(c.sort)} aria-current={c.sort === sort ? 'true' : undefined}>
+                      {c.name}
+                      {c.sort === sort && <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>}
+                    </a>
+                  ) : (
+                    c.name
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {list.rows.map((r) => (
+              <tr class="sp-o__tr">
+                <th scope="row" class="sp-o__cell sp-o__cell--row sp-o__mono">{shortId(r.id)}</th>
+                <td class="sp-o__cell">{PROVIDER_NAMES[r.provider] ?? (r.provider === 'email' ? '이메일' : r.provider)}</td>
+                <td class="sp-o__cell sp-o__num">{day(r.created_at)}</td>
+                <td class="sp-o__cell sp-o__num">{day(r.last_sign_in)}</td>
+                <td class="sp-o__cell">{r.role ? ROLE[r.role] : '—'}</td>
+                <td class="sp-o__cell">{r.family_id ? <a class="sp-o__id" href={withPeriod(`/ops/families/${r.family_id}`, period)}>{shortId(r.family_id)}</a> : <span class="sp-o__mono">없음</span>}</td>
+                <td class="sp-o__cell sp-o__num">{nf(r.visits)}</td>
+                <td class="sp-o__cell sp-o__num">{dayLabel(r.last_visit, today)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <p class="sp-o__sub">아직 계정이 없어요.</p>
+    )
+  }
+  {next && <a class="sp-o__more" href={next}>다음 50개</a>}
+</Ops>

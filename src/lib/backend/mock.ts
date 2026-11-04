@@ -738,6 +738,17 @@ export function createMockBackend(): Backend {
       rows.sort((a, b) => String(b[by[sort]] ?? '').localeCompare(String(a[by[sort]] ?? ''), 'en', { numeric: true }));
       return { total: rows.length, rows: rows.slice(offset, offset + 50) };
     },
+    async opsAccounts(from, to, sort, offset) {
+      const vs = visitRows().filter((r) => r.kind === 'parent');
+      const rows = [...parents].map(([id, p]) => ({
+        id, provider: 'kakao', created_at: new Date(p.since ?? 0).toISOString(), last_sign_in: new Date(p.since ?? 0).toISOString(), family_id: p.familyId, role: p.role,
+        visits: vs.filter((r) => r.who === id && r.day >= from && r.day <= to).reduce((a, r) => a + r.n, 0),
+        last_visit: vs.filter((r) => r.who === id).map((r) => r.day).sort().at(-1) ?? null,
+      }));
+      const by = { created: 'created_at', last_sign_in: 'last_sign_in', visits: 'visits', last_visit: 'last_visit' } as const;
+      rows.sort((a, b) => String(b[by[sort]] ?? '').localeCompare(String(a[by[sort]] ?? ''), 'en', { numeric: true }));
+      return { total: rows.length, rows: rows.slice(offset, offset + 50) };
+    },
     async opsFamily(id, from, to) {
       const row = (await this.opsFamilies(from, to, 'created', 0)).rows.find((r) => r.id === id);
       if (!row) return null;
@@ -748,11 +759,16 @@ export function createMockBackend(): Backend {
       const ms = media.filter((x) => x.family_id === id && x.status === 'ready');
       return {
         id, created_at: row.created_at, delete_after: row.delete_after, bytes: row.bytes, quota: row.quota,
-        children: kids.filter((k) => k.familyId === id).length, photos: ms.filter((x) => x.kind === 'photo').length, videos: ms.filter((x) => x.kind === 'video').length,
+        plan: 'free', download_allowed: !!downloads[id], groups_enabled: gs.length > 1, text_size_mode: sizeModes[id] ?? 'relation',
+        children: kids.filter((k) => k.familyId === id).map((k) => ({ name: k.name, birth_date: k.birth_date, show_health: k.show_health })), photos: ms.filter((x) => x.kind === 'photo').length, videos: ms.filter((x) => x.kind === 'video').length,
         last_upload: row.last_upload, shares: shares.filter((x) => !x.revoked && x.groupIds.some((g) => gs.some((y) => y.id === g))).length,
-        groups: gs.map((g, i) => ({ no: i + 1, members: members.filter((m) => m.groupId === g.id && m.status !== 'rejected').length })),
-        parents: familyParentsOf(id).map(([who, p], i) => ({ no: i + 1, since: new Date(p.since ?? 0).toISOString(), ...visitsOf(who) })),
-        devices: ds.map((d, i) => ({ no: i + 1, status: devState(d)!, group: gs.findIndex((g) => g.id === members.find((m) => m.id === d.memberId)?.groupId) + 1 || null, ...visitsOf(d.id) })),
+        groups: gs.map((g, i) => ({ no: i + 1, name: g.name, include_by_default: !g.exclude, members: members.filter((m) => m.groupId === g.id && m.status !== 'rejected').length })),
+        parents: familyParentsOf(id).map(([who, p], i) => ({ no: i + 1, id: who, role: p.role, name: p.role === 'dad' ? '아빠' : '엄마', provider: 'kakao', since: new Date(p.since ?? 0).toISOString(), ...visitsOf(who) })),
+        devices: ds.map((d, i) => {
+          const m = members.find((x) => x.id === d.memberId);
+          const gi = gs.findIndex((g) => g.id === m?.groupId);
+          return { no: i + 1, status: devState(d)!, group: gi + 1 || null, group_name: gs[gi]?.name ?? null, name: m?.name ?? d.requestedName ?? null, can_upload: !!d.canUpload, ...visitsOf(d.id) };
+        }),
         uploads: daysOf(from, to).map((day) => ({ day, n: ms.filter((x) => seoulDay(Date.parse(x.created_at ?? '')) === day).length })),
         visits: daysOf(from, to).map((day) => ({ day, parent: vs.filter((r) => r.day === day && r.kind === 'parent').reduce((a, r) => a + r.n, 0), device: vs.filter((r) => r.day === day && r.kind === 'device').reduce((a, r) => a + r.n, 0) })),
         entry: { link: vs.filter((r) => r.kind === 'link' && r.day >= from && r.day <= to).reduce((a, r) => a + r.n, 0), failures: 0 },

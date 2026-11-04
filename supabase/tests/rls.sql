@@ -1279,6 +1279,7 @@ do $$ begin perform public.sp_ops_summary(current_date, current_date); raise exc
 do $$ begin perform public.sp_ops_families(current_date, current_date, 'created', 0); raise exception '엄빠가 가족방 목록을 봄'; exception when insufficient_privilege then null; end $$;
 do $$ begin perform public.sp_ops_family(gen_random_uuid(), current_date, current_date); raise exception '엄빠가 가족방 상세를 봄'; exception when insufficient_privilege then null; end $$;
 do $$ begin perform public.sp_note_link_visit('OpsCode1', 'link'); raise exception '엄빠가 링크 방문을 씀'; exception when insufficient_privilege then null; end $$;
+do $$ begin perform public.sp_ops_accounts(current_date, current_date, 'created', 0); raise exception '엄빠가 계정 목록을 봄'; exception when insufficient_privilege then null; end $$;
 select set_config('request.jwt.claims', json_build_object('sub', :'od', 'is_anonymous', true)::text, false);
 select public.sp_note_visit();
 do $$ begin perform public.sp_ops_summary(current_date, current_date); raise exception '가족 기기가 운영 현황을 봄'; exception when insufficient_privilege then null; end $$;
@@ -1297,6 +1298,7 @@ select public.sp_note_link_visit('없는코드', 'link');
 select public.sp_ops_summary(public.sp_seoul_today() - 6, public.sp_seoul_today()) as osum \gset
 select public.sp_ops_families(public.sp_seoul_today() - 6, public.sp_seoul_today(), 'visits', 0) as olist \gset
 select public.sp_ops_family(:'ofam', public.sp_seoul_today() - 6, public.sp_seoul_today()) as odet \gset
+select public.sp_ops_accounts(public.sp_seoul_today() - 6, public.sp_seoul_today(), 'visits', 0) as oacc \gset
 reset role;
 select pg_temp.ok((select count from public.visits where family_id = :'ofam' and kind = 'parent') = 2, '엄빠 방문 두 번은 한 줄 2회');
 select pg_temp.ok((select count from public.visits where family_id = :'ofam' and kind = 'device' and visitor = :'odev') = 1, '기기 방문은 기기 번호로');
@@ -1307,9 +1309,14 @@ select pg_temp.ok((:'osum'::jsonb -> 'providers' ->> 'kakao')::int >= 1, '현황
 select pg_temp.ok((:'osum'::jsonb -> 'visits' -> 'days' -> 6 ->> 'day') = public.sp_seoul_today()::text, '현황: 막대 마지막 날은 오늘(날짜만)');
 select pg_temp.ok((:'olist'::jsonb -> 'rows' -> 0 ->> 'id') = :'ofam' and (:'olist'::jsonb -> 'rows' -> 0 ->> 'visits')::int = 3, '목록: 방문 많은 순 첫 줄');
 select pg_temp.ok(not (:'olist'::jsonb::text ~ '할머니|운영|아이|OpsCode1'), '목록에 이름·코드 없음');
-select pg_temp.ok(not (:'odet'::jsonb::text ~ '할머니|운영|아이|OpsCode1|3333'), '상세에 이름·코드·비밀번호 없음');
+select pg_temp.ok(not (:'odet'::jsonb::text ~ 'OpsCode1|3333|password'), '상세에 공유 코드·그룹 비밀번호 없음');
+select pg_temp.ok(:'odet'::jsonb -> 'children' -> 0 ->> 'name' = '아이' and :'odet'::jsonb -> 'devices' -> 0 ->> 'name' = '할머니' and :'odet'::jsonb -> 'parents' -> 0 ->> 'name' = '운영' and :'odet'::jsonb -> 'parents' -> 0 ->> 'provider' = 'kakao', '상세: 지금 설정된 아이·구성원·엄빠 이름(167)');
+select pg_temp.ok(:'odet'::jsonb ->> 'text_size_mode' = 'relation' and :'odet'::jsonb -> 'groups' -> 0 ->> 'name' is not null, '상세: 설정값·그룹 이름');
 select pg_temp.ok((:'odet'::jsonb -> 'devices' -> 0 ->> 'visits')::int = 1 and (:'odet'::jsonb -> 'parents' -> 0 ->> 'visits')::int = 2 and (:'odet'::jsonb -> 'entry' ->> 'link')::int = 1, '상세: 사람별 방문·링크 방문');
 select pg_temp.ok((:'odet'::jsonb -> 'devices' -> 0 ->> 'group')::int = 1, '상세: 그룹은 순서 번호');
+select pg_temp.ok((select count(*) = 1 from jsonb_array_elements(:'oacc'::jsonb -> 'rows') r where r ->> 'id' = :'op' and r ->> 'family_id' = :'ofam' and (r ->> 'visits')::int = 2 and r ->> 'provider' = 'kakao'), '계정 목록: 엄빠 계정·가족방·방문');
+select pg_temp.ok(not exists (select 1 from jsonb_array_elements(:'oacc'::jsonb -> 'rows') r where r ->> 'id' in (:'od', :'oo')), '계정 목록에 익명(가족 기기) 계정 없음');
+select pg_temp.ok(not (:'oacc'::jsonb::text ~ '운영|email\"\:'), '계정 목록에 이름·이메일 없음');
 -- 새 이름으로 들어와 기다리는 기기(기기 active + 구성원 pending)는 '대기', 기한 지난 대기는 어디에도 안 셈
 select gen_random_uuid() as ow \gset
 select gen_random_uuid() as ox \gset
