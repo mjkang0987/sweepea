@@ -763,7 +763,7 @@ export function createMockBackend(): Backend {
         children: kids.filter((k) => k.familyId === id).map((k) => ({ name: k.name, birth_date: k.birth_date, show_health: k.show_health })), photos: ms.filter((x) => x.kind === 'photo').length, videos: ms.filter((x) => x.kind === 'video').length,
         last_upload: row.last_upload, shares: shares.filter((x) => !x.revoked && x.groupIds.some((g) => gs.some((y) => y.id === g))).length,
         groups: gs.map((g, i) => ({ no: i + 1, name: g.name, include_by_default: !g.exclude, members: members.filter((m) => m.groupId === g.id && m.status !== 'rejected').length })),
-        parents: familyParentsOf(id).map(([who, p], i) => ({ no: i + 1, id: who, role: p.role, name: p.role === 'dad' ? '아빠' : '엄마', provider: 'kakao', since: new Date(p.since ?? 0).toISOString(), ...visitsOf(who) })),
+        parents: familyParentsOf(id).map(([who, p], i) => ({ no: i + 1, id: who, role: p.role, name: p.role === 'dad' ? '하린 아빠' : '하린 엄마', provider: 'kakao', since: new Date(p.since ?? 0).toISOString(), ...visitsOf(who) })),
         devices: ds.map((d, i) => {
           const m = members.find((x) => x.id === d.memberId);
           const gi = gs.findIndex((g) => g.id === m?.groupId);

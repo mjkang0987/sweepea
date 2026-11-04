@@ -1265,6 +1265,7 @@ set role authenticated;
 select public.sp_create_family('mom', '운영', '아이', '2025-01-01', '3333') as ofam \gset
 reset role;
 select id as ogrp from public.groups where family_id = :'ofam' \gset
+update public.groups set password_hint = '운영힌트' where id = :'ogrp';
 insert into public.members (family_id, group_id, display_name) values (:'ofam', :'ogrp', '할머니') returning id as omem \gset
 insert into public.devices (auth_user_id, family_id, member_id, status) values (:'od', :'ofam', :'omem', 'active') returning id as odev \gset
 insert into public.shares (family_id, code) values (:'ofam', 'OpsCode1');
@@ -1310,6 +1311,8 @@ select pg_temp.ok((:'osum'::jsonb -> 'visits' -> 'days' -> 6 ->> 'day') = public
 select pg_temp.ok((:'olist'::jsonb -> 'rows' -> 0 ->> 'id') = :'ofam' and (:'olist'::jsonb -> 'rows' -> 0 ->> 'visits')::int = 3, '목록: 방문 많은 순 첫 줄');
 select pg_temp.ok(not (:'olist'::jsonb::text ~ '할머니|운영|아이|OpsCode1'), '목록에 이름·코드 없음');
 select pg_temp.ok(not (:'odet'::jsonb::text ~ 'OpsCode1|3333|password'), '상세에 공유 코드·그룹 비밀번호 없음');
+select pg_temp.ok(not exists (select 1 from public.groups g where g.family_id = :'ofam' and g.password_hint is not null and position(g.password_hint in :'odet'::jsonb::text) > 0), '상세에 그룹 비밀번호 힌트 없음');
+select pg_temp.ok(not (:'odet'::jsonb::text ~ '운영힌트'), '상세에 힌트 글자 없음');
 select pg_temp.ok(:'odet'::jsonb -> 'children' -> 0 ->> 'name' = '아이' and :'odet'::jsonb -> 'devices' -> 0 ->> 'name' = '할머니' and :'odet'::jsonb -> 'parents' -> 0 ->> 'name' = '운영' and :'odet'::jsonb -> 'parents' -> 0 ->> 'provider' = 'kakao', '상세: 지금 설정된 아이·구성원·엄빠 이름(167)');
 select pg_temp.ok(:'odet'::jsonb ->> 'text_size_mode' = 'relation' and :'odet'::jsonb -> 'groups' -> 0 ->> 'name' is not null, '상세: 설정값·그룹 이름');
 select pg_temp.ok((:'odet'::jsonb -> 'devices' -> 0 ->> 'visits')::int = 1 and (:'odet'::jsonb -> 'parents' -> 0 ->> 'visits')::int = 2 and (:'odet'::jsonb -> 'entry' ->> 'link')::int = 1, '상세: 사람별 방문·링크 방문');
@@ -1344,6 +1347,13 @@ select pg_temp.ok(exists (select 1 from public.visits v join public.devices d on
 -- 엄빠가 나가면 그 가족방의 엄빠 방문 기록을 지운다
 update public.parents set removed_at = now() where user_id = :'op';
 select pg_temp.ok(not exists (select 1 from public.visits where kind = 'parent' and visitor = :'op'), '나간 엄빠의 방문 기록은 지움');
+update auth.users set deleted_at = now() where id = :'ow';
+update auth.users set is_anonymous = false where id = :'ow';
+set role service_role;
+select public.sp_ops_accounts(public.sp_seoul_today() - 6, public.sp_seoul_today(), 'created', 0) as oacc2 \gset
+reset role;
+select pg_temp.ok((select r ->> 'family_id' is null and r ->> 'role' is null from jsonb_array_elements(:'oacc2'::jsonb -> 'rows') r where r ->> 'id' = :'op'), '계정 목록: 나간 엄빠는 가족방·역할 없음');
+select pg_temp.ok(not exists (select 1 from jsonb_array_elements(:'oacc2'::jsonb -> 'rows') r where r ->> 'id' = :'ow'), '계정 목록: 지운(deleted_at) 계정은 빠짐');
 select pg_temp.ok(exists (select 1 from public.visits where kind = 'device' and family_id = :'ofam'), '가족 기기 방문 기록은 그대로');
 select public.sp_purge_family(:'ofam');
 select pg_temp.ok(not exists (select 1 from public.visits where family_id = :'ofam'), '가족방을 지우면 방문 기록도 지움');

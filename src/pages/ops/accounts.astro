@@ -22,7 +22,7 @@ const ORDER: Record<OpsAccountSort, string> = { created: '최근 가입 순', la
 const ROLE = { mom: '엄마', dad: '아빠' } as const;
 const day = (at: string | null) => (at ? dayLabel(seoulDate(at), today) : '없음');
 const cols: { name: string; sort?: OpsAccountSort; num?: boolean }[] = [
-  { name: '로그인' },
+  { name: '로그인 방식' },
   { name: '가입', sort: 'created', num: true },
   { name: '마지막 로그인', sort: 'last_sign_in', num: true },
   { name: '역할' },
@@ -77,6 +77,8 @@ const next = offset + list.rows.length < list.total ? withPeriod('/ops/accounts'
           </tbody>
         </table>
       </div>
+    ) : list.total ? (
+      <p class="sp-o__sub">이 쪽에는 계정이 없어요. <a class="sp-o__id" href={withPeriod('/ops/accounts', period, sort === 'created' ? '' : `sort=${sort}`)}>첫 쪽으로</a></p>
     ) : (
       <p class="sp-o__sub">아직 계정이 없어요.</p>
     )
