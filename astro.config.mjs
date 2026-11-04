@@ -24,6 +24,10 @@ export default defineConfig({
       PARENT_PROVIDERS: envField.string({ context: 'server', access: 'secret', optional: true }),
       // 문자·카톡으로 보내는 공유 주소의 앞부분. 예: https://sweepea.co.kr
       SITE_ORIGIN: envField.string({ context: 'server', access: 'public', optional: true, url: true }),
+      // 운영자 화면(164): 들어갈 수 있는 엄빠 사용자 id(쉼표로), Cloudflare Access 팀 주소(예: pikaworks.cloudflareaccess.com)·앱 AUD. 셋 다 있어야 열림
+      OPS_USER_IDS: envField.string({ context: 'server', access: 'secret', optional: true }),
+      OPS_ACCESS_TEAM: envField.string({ context: 'server', access: 'secret', optional: true }),
+      OPS_ACCESS_AUD: envField.string({ context: 'server', access: 'secret', optional: true }),
       // mock: 개발·검사용 메모리 백엔드(운영 빌드에선 멈춤)
       SWEEPEA_BACKEND: envField.enum({ context: 'server', access: 'secret', values: ['supabase', 'mock'], default: 'supabase' }),
       // mock 전용: 저장 공간 레이어 확인용으로 사용량을 미리 더함(바이트)
