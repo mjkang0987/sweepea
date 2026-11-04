@@ -1,0 +1,41 @@
+---
+import { seoulToday } from '../lib/parent';
+// 운영자 화면 기간 줄(164): 오늘·7일·30일·90일 링크 + 직접 고르기(GET 폼, 스크립트 없음). 모양은 엄빠 세그먼트(.sp-p__seg) 그대로
+import { addDays, MAX_DAYS, PERIODS, type Period } from '../lib/ops';
+
+interface Props {
+  period: Period;
+  /** 이 화면 주소(기간만 바꿔 다시 연다) */
+  path: string;
+  /** 기간과 같이 달고 다닐 것(목록 정렬 등) */
+  keep?: Record<string, string>;
+}
+const { period, path, keep = {} } = Astro.props;
+const today = period.key === 'custom' ? seoulToday() : period.to;
+const min = addDays(today, 1 - MAX_DAYS * 3);
+const label = (d: string) => {
+  const [, m, day] = d.split('-').map(Number);
+  return `${m}월 ${day}일`;
+};
+const link = (k: string) => {
+  const q = new URLSearchParams(keep);
+  if (k !== '7d') q.set('p', k);
+  return q.size ? `${path}?${q}` : path;
+};
+---
+
+<section class="sp-o__period" aria-labelledby="sp-o-period">
+  <h2 class="sp-vh" id="sp-o-period">기간</h2>
+  <nav class="sp-p__seg sp-o__period-seg" aria-label="기간 고르기">
+    {Object.entries(PERIODS).map(([k, name]) => <a class="sp-p__seg-item" href={link(k)} aria-current={period.key === k ? 'page' : undefined}>{name}</a>)}
+  </nav>
+  <form class="sp-o__period-form" method="get" action={path}>
+    {Object.entries(keep).map(([k, v]) => <input type="hidden" name={k} value={v} />)}
+    <label class="sp-o__date"><span class="sp-vh">시작</span><input class="sp-o__date-input" type="date" name="from" value={period.from} min={min} max={today} required /></label>
+    <span class="sp-o__date-sep" aria-hidden="true">~</span>
+    <label class="sp-o__date"><span class="sp-vh">끝</span><input class="sp-o__date-input" type="date" name="to" value={period.to} min={min} max={today} required /></label>
+    <button class="sp-o__date-go" type="submit">보기</button>
+  </form>
+  {period.fixed && <p class="sp-o__period-note sp-o__warn" role="status">고른 기간을 쓸 수 없어서 7일로 보여 줘요. 시작이 끝보다 앞이고, 오늘까지, 400일 안으로 골라 주세요.</p>}
+  <p class="sp-o__sub sp-o__period-note">{label(period.from)}{period.days > 1 && ` ~ ${label(period.to)}`} · '직전'은 바로 앞 같은 길이 기간</p>
+</section>

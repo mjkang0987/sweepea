@@ -339,6 +339,17 @@ export interface Backend {
   /** R2 정리 대기열(폴더 접두사) 오래된 것부터 */
   r2CleanupTake(limit: number): Promise<string[]>;
   r2CleanupDone(prefix: string): Promise<void>;
+  /** 로그인한 사용자 id를 인증 서버에 물어 확인(토큰을 믿지 않고). 끊긴 토큰이면 null. 운영자 명단 확인용 */
+  userId(pass: Pass): Promise<string | null>;
+  /** 방문 한 번(164): 엄빠면 자기 가족방, 기기면 들어간 가족방마다. 30분 거름은 서버 쿠키가 한다 */
+  noteVisit(pass: Pass): Promise<void>;
+  /** 가족 링크를 연 것(service_role, 입장 전이라 사용자가 없음) */
+  noteLinkVisit(code: string, step: 'link' | 'link_pw'): Promise<void>;
+  /** 운영자 화면(service_role). 날짜는 서울 YYYY-MM-DD, 끝 포함 */
+  opsSummary(from: string, to: string): Promise<OpsSummary>;
+  opsFamilies(from: string, to: string, sort: OpsSort, offset: number): Promise<OpsFamilyList>;
+  /** 없는 가족방이면 null */
+  opsFamily(id: string, from: string, to: string): Promise<OpsFamily | null>;
   /** 가족 기기: 그 가족방에서 내 캐릭터(승인된 구성원만, 아니면 BackendError 403) */
   setMemberAvatar(pass: Pass, familyId: string, avatar: Avatar): Promise<void>;
   /** 엄빠: 내 캐릭터 */
@@ -419,4 +430,65 @@ export interface ParentInviteInfo {
   inviter_role?: 'mom' | 'dad';
   /** 이미 있는 엄빠 역할(같은 역할은 못 고름) */
   taken_roles?: ('mom' | 'dad')[];
+}
+
+/** 운영자 화면(164). 이름·사진 키·한마디 내용은 없다(DB 함수가 숫자·날짜·번호만 돌려줌) */
+export interface OpsDay {
+  day: string;
+  parent: number;
+  device: number;
+}
+export interface OpsSummary {
+  now: { families: number; parents: number; devices: number; devices_active: number; devices_pending: number; media: number; bytes: number };
+  visits: { people: number; people_parent: number; people_device: number; count: number; prev_people: number; prev_count: number; days: OpsDay[] };
+  new: { families: number; prev_families: number; devices: number; prev_devices: number; media: number; prev_media: number };
+  seen: { active: number; visited: number; reactions: number; prev_reactions: number; comments: number; prev_comments: number };
+  entry: { link: number; link_pw: number; requested: number; approved: number; failures: number; expired: number };
+  install_help: number;
+  /** 로그인 제공자 → 엄빠 수(kakao·custom:naver·google·apple) */
+  providers: Record<string, number>;
+  checks: {
+    pending: { family_id: string; n: number; since: string }[];
+    full: { family_id: string; bytes: number; quota: number }[];
+    quiet: { family_id: string; last: string | null }[];
+    closing: { family_id: string; at: string }[];
+  };
+}
+export type OpsSort = 'created' | 'media' | 'bytes' | 'visits' | 'last_visit';
+export interface OpsFamilyRow {
+  id: string;
+  created_at: string;
+  bytes: number;
+  /** 무료 한도(바이트), 유료면 null */
+  quota: number | null;
+  delete_after: string | null;
+  parents: number;
+  active: number;
+  pending: number;
+  media: number;
+  visits: number;
+  last_upload: string | null;
+  last_visit: string | null;
+}
+export interface OpsFamilyList {
+  total: number;
+  rows: OpsFamilyRow[];
+}
+export interface OpsFamily {
+  id: string;
+  created_at: string;
+  delete_after: string | null;
+  bytes: number;
+  quota: number | null;
+  children: number;
+  photos: number;
+  videos: number;
+  last_upload: string | null;
+  shares: number;
+  groups: { no: number; members: number }[];
+  parents: { no: number; since: string; visits: number; last: string | null }[];
+  devices: { no: number; status: 'active' | 'pending'; group: number | null; visits: number; last: string | null }[];
+  uploads: { day: string; n: number }[];
+  visits: OpsDay[];
+  entry: { link: number; failures: number };
 }

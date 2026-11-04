@@ -1,7 +1,7 @@
 // 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
 // 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
-import type { ActivityItem, Backend, EnterResult, EntryInfo, EntryMe, MediaItem, MediaQuery, Me, MeFamily, ParentHome, ParentInviteInfo, Pass, ReactionCount, ReactionKind, TextSizeMode } from './types';
+import type { ActivityItem, Backend, OpsDay, OpsFamilyRow, EnterResult, EntryInfo, EntryMe, MediaItem, MediaQuery, Me, MeFamily, ParentHome, ParentInviteInfo, Pass, ReactionCount, ReactionKind, TextSizeMode } from './types';
 import { BackendError } from './supabase';
 import { SWEEPEA_MOCK_USED_BYTES } from 'astro:env/server';
 
@@ -82,6 +82,25 @@ const used: Record<string, number> = {};
 const comments: { id: string; mediaId: string; memberId: string; at: number; body: string; deleted?: boolean }[] = [];
 // 보신 기록: `사진|구성원` (넣은 순서 = 처음 본 순)
 const views = new Set<string>();
+// 방문(164): '가족방|종류|누구|서울 날짜' → 횟수
+const visits = new Map<string, number>();
+const seoulDay = (t: number = Date.now()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(t));
+const addVisit = (fam: string, kind: string, who: string) => {
+  const k = `${fam}|${kind}|${who}|${seoulDay()}`;
+  visits.set(k, (visits.get(k) ?? 0) + 1);
+};
+const visitRows = () => [...visits].map(([k, n]) => { const [fam, kind, who, day] = k.split('|'); return { fam, kind, who, day, n }; });
+const devState = (d: Device): 'active' | 'pending' | null => {
+  const m = members.find((x) => x.id === d.memberId);
+  if (d.status === 'active' && (!m || m.status === 'active')) return 'active';
+  return d.status === 'pending' || (d.status === 'active' && m?.status === 'pending') ? 'pending' : null;
+};
+const allFamilies = () => [...new Set([...groups.map((g) => g.familyId), ...[...parents.values()].map((p) => p.familyId)])];
+const daysOf = (from: string, to: string) => {
+  const out: string[] = [];
+  for (let t = Date.parse(`${from}T00:00:00Z`); t <= Date.parse(`${to}T00:00:00Z`); t += 86400_000) out.push(new Date(t).toISOString().slice(0, 10));
+  return out;
+};
 // 엄빠가 본 사진(DB parent_views 흉내): '사진|계정'. 가족 '본 사람' 목록과 섞이지 않게 따로
 const parentViews = new Set<string>();
 // 사진 변경 기록(123): 누가는 쓸 때 이름으로(목 전용 단순화), 그룹·아이는 id로 두고 읽을 때 지금 이름
@@ -673,6 +692,72 @@ export function createMockBackend(): Backend {
     cleanupAuth: async () => 0,
     r2CleanupTake: async () => [],
     r2CleanupDone: async () => {},
+    // 운영(164): mock 상태에서 대강 센다(실제 규칙은 DB 검사가 맡는다). mock 엄빠 사용자 id = 출입증 문자열
+    userId: async (pass) => (pass.access.startsWith('parent-') ? pass.access : null),
+    async noteVisit(pass) {
+      const p = parents.get(pass.access);
+      if (p) addVisit(p.familyId, 'parent', pass.access);
+      for (const [k, d] of devices) if (k.startsWith(`${pass.access}|`) && devState(d)) addVisit(d.familyId, 'device', d.id);
+    },
+    async noteLinkVisit(code, step) {
+      const sh = shares.find((x) => x.code === code && !x.revoked);
+      if (sh) addVisit(familyOf(sh), step, code);
+    },
+    async opsSummary(from, to) {
+      const rows = visitRows().filter((r) => r.day >= from && r.day <= to);
+      const people = (k: string[]) => new Set(rows.filter((r) => k.includes(r.kind)).map((r) => r.who)).size;
+      const sum = (k: string[], rs = rows) => rs.filter((r) => k.includes(r.kind)).reduce((a, r) => a + r.n, 0);
+      const days: OpsDay[] = daysOf(from, to).map((day) => ({ day, parent: sum(['parent'], rows.filter((r) => r.day === day)), device: sum(['device'], rows.filter((r) => r.day === day)) }));
+      const devs = [...devices.values()];
+      const fams = allFamilies();
+      return {
+        now: { families: fams.length, parents: parents.size, devices: devs.filter((d) => d.status !== 'revoked').length, devices_active: devs.filter((d) => d.status === 'active').length, devices_pending: devs.filter((d) => d.status === 'pending').length, media: media.filter((x) => x.status === 'ready').length, bytes: fams.reduce((a, f) => a + (used[f] ?? 0), 0) + MOCK_USED },
+        visits: { people: people(['parent', 'device']), people_parent: people(['parent']), people_device: people(['device']), count: sum(['parent', 'device']), prev_people: 0, prev_count: 0, days },
+        new: { families: 0, prev_families: 0, devices: 0, prev_devices: 0, media: media.filter((x) => x.status === 'ready').length, prev_media: 0 },
+        seen: { active: devs.filter((d) => d.status === 'active').length, visited: new Set(rows.filter((r) => r.kind === 'device').map((r) => r.who)).size, reactions: reactions.size, prev_reactions: 0, comments: comments.filter((c) => !c.deleted).length, prev_comments: 0 },
+        entry: { link: sum(['link']), link_pw: sum(['link_pw']), requested: devs.length, approved: devs.filter((d) => d.status === 'active').length, failures: 0, expired: 0 },
+        install_help: members.filter((m) => m.helpAt).length,
+        providers: (parents.size ? { kakao: parents.size } : {}) as Record<string, number>,
+        checks: { pending: [], full: [], quiet: [], closing: Object.entries(closingAt).map(([family_id, at]) => ({ family_id, at: new Date(at).toISOString() })) },
+      };
+    },
+    async opsFamilies(from, to, sort, offset) {
+      const rows: OpsFamilyRow[] = allFamilies().map((fam) => {
+        const ds = [...devices.values()].filter((d) => d.familyId === fam);
+        const ms = media.filter((x) => x.family_id === fam && x.status === 'ready');
+        const vs = visitRows().filter((r) => r.fam === fam && (r.kind === 'parent' || r.kind === 'device'));
+        return {
+          id: fam, created_at: bornAt(groups.find((g) => g.familyId === fam) ?? {}), bytes: used[fam] ?? 0, quota: 5 * 1024 ** 3,
+          delete_after: closingAt[fam] ? new Date(closingAt[fam]).toISOString() : null,
+          parents: familyParentsOf(fam).length, active: ds.filter((d) => devState(d) === 'active').length, pending: ds.filter((d) => devState(d) === 'pending').length,
+          media: ms.length, visits: vs.filter((r) => r.day >= from && r.day <= to).reduce((a, r) => a + r.n, 0),
+          last_upload: ms.map((x) => x.created_at).sort().at(-1) ?? null, last_visit: vs.map((r) => r.day).sort().at(-1) ?? null,
+        };
+      });
+      const by = { media: 'media', bytes: 'bytes', visits: 'visits', last_visit: 'last_visit', created: 'created_at' } as const;
+      rows.sort((a, b) => String(b[by[sort]] ?? '').localeCompare(String(a[by[sort]] ?? ''), 'en', { numeric: true }));
+      return { total: rows.length, rows: rows.slice(offset, offset + 50) };
+    },
+    async opsFamily(id, from, to) {
+      const row = (await this.opsFamilies(from, to, 'created', 0)).rows.find((r) => r.id === id);
+      if (!row) return null;
+      const gs = groups.filter((g) => g.familyId === id);
+      const ds = [...devices.values()].filter((d) => d.familyId === id && devState(d));
+      const vs = visitRows().filter((r) => r.fam === id);
+      const visitsOf = (who: string) => ({ visits: vs.filter((r) => r.who === who && r.day >= from && r.day <= to).reduce((a, r) => a + r.n, 0), last: vs.filter((r) => r.who === who).map((r) => r.day).sort().at(-1) ?? null });
+      const ms = media.filter((x) => x.family_id === id && x.status === 'ready');
+      return {
+        id, created_at: row.created_at, delete_after: row.delete_after, bytes: row.bytes, quota: row.quota,
+        children: kids.filter((k) => k.familyId === id).length, photos: ms.filter((x) => x.kind === 'photo').length, videos: ms.filter((x) => x.kind === 'video').length,
+        last_upload: row.last_upload, shares: shares.filter((x) => !x.revoked && x.groupIds.some((g) => gs.some((y) => y.id === g))).length,
+        groups: gs.map((g, i) => ({ no: i + 1, members: members.filter((m) => m.groupId === g.id && m.status !== 'rejected').length })),
+        parents: familyParentsOf(id).map(([who, p], i) => ({ no: i + 1, since: new Date(p.since ?? 0).toISOString(), ...visitsOf(who) })),
+        devices: ds.map((d, i) => ({ no: i + 1, status: devState(d)!, group: gs.findIndex((g) => g.id === members.find((m) => m.id === d.memberId)?.groupId) + 1 || null, ...visitsOf(d.id) })),
+        uploads: daysOf(from, to).map((day) => ({ day, n: ms.filter((x) => seoulDay(Date.parse(x.created_at ?? '')) === day).length })),
+        visits: daysOf(from, to).map((day) => ({ day, parent: vs.filter((r) => r.day === day && r.kind === 'parent').reduce((a, r) => a + r.n, 0), device: vs.filter((r) => r.day === day && r.kind === 'device').reduce((a, r) => a + r.n, 0) })),
+        entry: { link: vs.filter((r) => r.kind === 'link' && r.day >= from && r.day <= to).reduce((a, r) => a + r.n, 0), failures: 0 },
+      };
+    },
     async setMemberAvatar(pass, familyId, avatar) {
       const d = deviceOf(pass, familyId);
       const m = members.find((x) => x.id === d?.memberId && x.status === 'active');

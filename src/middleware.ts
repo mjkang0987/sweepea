@@ -1,7 +1,9 @@
 // 모든 화면 응답에 공통 보안 헤더. 이미 정한 헤더(사진 전달 /m의 sandbox CSP 등)는 덮지 않는다
 import { defineMiddleware } from 'astro:middleware';
 import { PARENT, PASS } from './lib/pass';
-import { passStale } from './lib/passcheck';
+import { parsePass, passStale, REFRESH_EARLY } from './lib/passcheck';
+import { getBackend } from './lib/backend';
+import { isBot, visitTarget } from './lib/ops';
 
 const HEADERS: [string, string][] = [
   ['x-content-type-options', 'nosniff'],
@@ -13,6 +15,11 @@ const HEADERS: [string, string][] = [
   ['permissions-policy', 'camera=(), microphone=(), geolocation=(), payment=()'],
 ];
 if (import.meta.env.PROD) HEADERS.push(['strict-transport-security', 'max-age=31536000']);
+
+// 방문 세기(164): 30분 넘게 쉬었다 다시 연 것만 한 번. 쿠키가 있으면 안 세고, 셀 화면을 열 때마다 30분을 다시 채운다.
+// 링크 단계(누구세요·비밀번호)와 앨범·엄빠 화면은 쿠키를 따로: 같이 쓰면 링크를 열고 30분 안에 들어간 다음 단계가 안 세진다
+const VISIT = { user: 'sp_v', link: 'sp_vl', link_pw: 'sp_vp' } as const;
+const visitCookie = (name: string) => `${name}=1; Max-Age=1800; Path=/; HttpOnly; SameSite=Lax${import.meta.env.PROD ? '; Secure' : ''}`;
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
   // www로 들어오면 같은 경로로 대표 주소에(가족 링크·로그인 쿠키가 주소에 묶이므로 하나로). 308: 폼 POST도 그대로 간다
@@ -29,9 +36,19 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     return new Response(null, { status: 503, headers: { 'cache-control': 'no-store' } });
   }
   let res = await next();
+  // 방문 세기가 어떻게 실패해도 화면은 그대로
+  let visit: string | null = null;
+  try {
+    visit = countVisit(ctx, res);
+  } catch (e) {
+    console.error('방문 세기 실패', e instanceof Error ? e.message : e);
+  }
   // 검색에는 대표 첫 화면만: 가족 링크·앨범·사진·설정은 색인하지 않게(robots.txt로 막으면 카톡 미리보기도 막힐 수 있어 머리로)
   const robots: [string, string][] = ctx.url.pathname === '/' ? [] : [['x-robots-tag', 'noindex, nofollow']];
-  const add = () => { for (const [k, v] of [...HEADERS, ...robots]) if (!res.headers.has(k)) res.headers.set(k, v); };
+  const add = () => {
+    for (const [k, v] of [...HEADERS, ...robots]) if (!res.headers.has(k)) res.headers.set(k, v);
+    if (visit) res.headers.append('set-cookie', visitCookie(visit));
+  };
   try {
     add();
   } catch {
@@ -41,3 +58,26 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   }
   return res;
 });
+
+type Ctx = Parameters<Parameters<typeof defineMiddleware>[0]>[0];
+/** 방문으로 셀 화면이면 기록을 응답 뒤로 맡기고(waitUntil) 새로 쓸 쿠키 이름. 기록 실패는 화면에 영향 없음 */
+function countVisit(ctx: Ctx, res: Response): string | null {
+  const target = visitTarget(ctx.request.method, ctx.url.pathname);
+  if (!target || res.status !== 200 || !res.headers.get('content-type')?.includes('text/html')) return null;
+  if (isBot(ctx.request.headers.get('user-agent')) || /prefetch/i.test(ctx.request.headers.get('sec-purpose') ?? '')) return null;
+  const cookie = VISIT[target.kind === 'link' ? target.step : 'user'];
+  if (ctx.cookies.get(cookie)?.value) return cookie;
+  let job: Promise<unknown>;
+  if (target.kind === 'link') job = getBackend().noteLinkVisit(target.code, target.step);
+  else {
+    // 갱신할 때가 된 출입증은 이번엔 안 센다(쿠키도 안 써서 다음 화면에서 셈)
+    const now = Date.now() / 1000;
+    const passes = [PARENT, PASS].map((n) => parsePass(ctx.cookies.get(n)?.value)).filter((p) => p && p.expiresAt - REFRESH_EARLY > now);
+    if (!passes.length) return null;
+    job = Promise.all(passes.map((p) => getBackend().noteVisit(p!)));
+  }
+  const done = job.catch((e) => console.error('방문 기록 실패', e instanceof Error ? e.message : e));
+  const cf = (ctx.locals as { cfContext?: { waitUntil(p: Promise<unknown>): void } }).cfContext;
+  if (cf) cf.waitUntil(done);
+  return cookie;
+}

@@ -4,7 +4,9 @@
 
 ## 현재 상태
 
-- 버전 0.40.2(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 저장소 마이그레이션 28개 적용(2026-11-03 consents까지. 운영 기록엔 내용 없는 `media_changes` 한 줄 + 실제 내용 `media_changes_body`가 있어 27줄 — plan 123), 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
+- 버전 0.41.0(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 저장소 마이그레이션 28개 적용(2026-11-03 consents까지. 운영 기록엔 내용 없는 `media_changes` 한 줄 + 실제 내용 `media_changes_body`가 있어 27줄 — plan 123), 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
+- 운영자 화면(0.41.0, plan 164): `/ops` 현황·`/ops/families` 목록·`/ops/families/<id>` 상세. 문 세 겹 — Cloudflare Access 도장을 서버가 직접 확인(workers.dev 뒷문 막기, src/lib/ops.ts verifyAccessJwt) + 엄빠 로그인 + 비밀 값 `OPS_USER_IDS`(셋 다 없으면 404, src/lib/opsgate.ts). 비밀 값 `OPS_ACCESS_TEAM`(예: 팀.cloudflareaccess.com)·`OPS_ACCESS_AUD`. 숫자만(가족방은 번호 앞 8자리, 사람은 '가족 기기 3'), 기간 줄(오늘·7·30·90일·직접, 직전 같은 길이와 비교), 막대 말풍선·숫자로 보기·좌우 밀기. DB 함수 sp_ops_*는 service_role만, 기기 승인 판정은 sp_ops_devices(기기 active + 구성원 active)
+- 방문 기록(0.41.0, plan 164): 미들웨어가 30분 쿠키(sp_v 앨범·엄빠 화면, sp_vl 가족 링크, sp_vp 비밀번호 화면)가 없을 때만 응답 뒤(waitUntil) 기록. 표 `visits`(가족방·종류·누구·서울 날짜·횟수, 주소·IP·기기 정보 없음), 봇·미리 받기 제외, 가족방이 지워지면 같이, 나간 엄빠 기록은 트리거로 지움. 처리방침 2026-11-04에 반영
 - 화면 반응 속도(0.4.11~): 크게 보기의 반응·한마디·지우기는 스크립트가 있으면 페이지 이동 없이 아래 판만 갈아 끼움(반응은 누르는 즉시 표시). 페이지 이동은 겹쳐 넘어감(`@view-transition`). 설정 › 가족(0.4.17~)도 승인·거절·내 가족 아님·링크 만들기를 그 자리에서(확인은 모달 레이어), 사진 정보 수정 저장(0.4.18~)도 그 자리에서 '저장했어요' 토스트, 홈 가운데 레이어(0.4.19~)는 모달로 뜨고 닫기·나중에는 그 자리에서(한 번에 하나씩 이어서), 가족 한 명(0.4.20~)은 올리기 허용 스위치 그 자리에서·내보내기 확인 레이어, 바로 저장 화면들(0.4.21~, 공용 `AutoSave`: 설정 스위치·글자 크기·아이 접종 보기·그룹)도 그 자리에서 + 토스트, 그룹 주소 보내기·다시 만들기(0.4.22~)는 그룹 화면에 링크 카드·확인 레이어, 접종은 체크하면 바로 저장(0.4.23~), 입력 화면 저장 버튼은 탭바 위 막대 고정(`.sp-p__savebar`, Parent `savebar`). 나머지 화면은 아직 폼 → 페이지 이동(다음 작업).
 - 안내: 결과는 아래에서 떴다 사라지는 토스트(`src/components/Toast.astro`, 아이콘 없이 글자만, CSS는 base.css로 엄빠·가족 공통, 엄빠 탭 화면은 탭바 위). 한마디 시트가 열려 있으면 시트 위쪽 바깥에 뜸. 확인은 가운데 레이어(`.sp-layer`, 스크립트로 여는 건 `dialog.sp-layer__modal`) — 사진 지우기가 첫 번째.
 - 사진 올리기 API(`/api/media`, Worker가 R2에 직접 저장)와 사진 전달(`/m/<키>`, 서명된 주소 — 3시간 단위·만료 3~6시간, plan 135, src/lib/mediattl.ts) 완료. 100MB 넘는 영상 원본은 `/api/media/<id>/multipart`로 50MB씩 나눠 올림(0.4.24~, 한 편 2GB). 완료 때도 무료 5GB 한도(마이그레이션 17, 운영 적용은 사용자 확인 뒤).
@@ -104,6 +106,8 @@ src/lib/album.ts        앨범 쿼리 읽기·링크, 쪽 불러오기(PAGE 60·
 src/lib/more.ts         목록 화면 브라우저 공통: 다음 쪽 이어 붙이기(autoMore, 넘겨 보기는 swipeMore)·닫고 돌아온 자리(keepSpot)·엇갈린 배열 다시 계산(relayout)
 src/lib/masonry.ts      엇갈린 배열 자리 계산(ratioOf·masonry), 부모 홈·가족 모아 보기 2줄 공용
 src/components/        Viewer(크게 보기, 가족·엄빠 공통. 반응·한마디·지우기는 스크립트가 있으면 페이지 이동 없이 판만 갈아 끼움)·ReactRow(반응 알약·수)·SayForm(한마디)·Toast(안내)·Notice
+src/lib/ops.ts          운영자 화면 순수 함수(기간·Access 도장·방문으로 셀 요청), opsgate.ts 운영 문
+src/pages/ops/          운영자 화면(현황·가족방 목록·상세), 뼈대 src/layouts/Ops.astro, 부품 OpsNav·OpsPeriod·OpsBars, 스타일 src/styles/ops.css(.sp-o*)
 src/lib/parent.ts       부모 로그인 제공자·PKCE·부모 화면 진입(loadParent)
 src/layouts/Parent.astro 부모 화면 뼈대(아래 탭), 스타일 src/styles/parent.css(.sp-p*)
 src/lib/age.ts          생후 개월·생일·백일/돌/생일 당일·남은 시간·지난 시간 표시(단위 검사)
