@@ -347,13 +347,14 @@ export interface Backend {
   noteLinkVisit(code: string, step: 'link' | 'link_pw'): Promise<void>;
   /** 운영자 화면(service_role). 날짜는 서울 YYYY-MM-DD, 끝 포함 */
   opsSummary(from: string, to: string): Promise<OpsSummary>;
-  opsFamilies(from: string, to: string, sort: OpsSort, offset: number): Promise<OpsFamilyList>;
+  /** filter: 아는 값만(lib/ops OPS_FILTERS) */
+  opsFamilies(from: string, to: string, sort: OpsSort, offset: number, filter: Record<string, string>): Promise<OpsFamilyList>;
   /** 없는 가족방이면 null */
   opsFamily(id: string, from: string, to: string): Promise<OpsFamily | null>;
   /** 엄빠 계정 목록(익명 기기 계정 제외, 가족방별로 묶어 50묶음씩) */
-  opsAccounts(from: string, to: string, sort: OpsAccountSort, offset: number): Promise<OpsAccountList>;
+  opsAccounts(from: string, to: string, sort: OpsAccountSort, offset: number, filter: Record<string, string>): Promise<OpsAccountList>;
   /** 고른 기간에 올린 사진·영상 정보(파일 주소 없음, 최근 순 50개씩). family가 있으면 그 가족방만 */
-  opsMedia(from: string, to: string, family: string | null, offset: number): Promise<OpsMediaList>;
+  opsMedia(from: string, to: string, family: string | null, offset: number, filter: Record<string, string>): Promise<OpsMediaList>;
   /** 가족 기기: 그 가족방에서 내 캐릭터(승인된 구성원만, 아니면 BackendError 403) */
   setMemberAvatar(pass: Pass, familyId: string, avatar: Avatar): Promise<void>;
   /** 엄빠: 내 캐릭터 */

@@ -2,9 +2,11 @@
 // 운영자 계정 목록(167, 사용자 2026-11-04 "계정 리스트도 보게 + 가족방 연결"): 엄빠 계정만(가족 기기 익명 계정 제외), 번호만.
 // 가족방별로 묶어 보여 줌(171): 묶음 머리줄(가족방 번호 → 상세) 아래 그 가족방 엄빠. 가족방 없음 = 처음 설정 전이거나 나간 계정, 맨 뒤
 import Ops from '../../layouts/Ops.astro';
+import OpsFilter from '../../components/OpsFilter.astro';
+import OpsPager from '../../components/OpsPager.astro';
 import OpsPeriod from '../../components/OpsPeriod.astro';
 import { getBackend, type OpsAccountSort } from '../../lib/backend';
-import { dayLabel, nf, parsePeriod, periodQuery, shortId, withPeriod } from '../../lib/ops';
+import { dayLabel, nf, OPS_FILTERS, parseFilter, parseOffset, parsePeriod, periodQuery, shortId, withKeep, withPeriod } from '../../lib/ops';
 import { opsGate } from '../../lib/opsgate';
 import { PROVIDER_NAMES, seoulDate, seoulToday } from '../../lib/parent';
 
@@ -15,9 +17,12 @@ const period = parsePeriod(Astro.url.searchParams, today);
 const SORTS: OpsAccountSort[] = ['created', 'last_sign_in', 'visits', 'last_visit'];
 const q = Astro.url.searchParams.get('sort');
 const sort: OpsAccountSort = SORTS.includes(q as OpsAccountSort) ? (q as OpsAccountSort) : 'created';
-const offset = Math.max(0, Math.min(1_000_000, Number.parseInt(Astro.url.searchParams.get('o') ?? '0', 10) || 0));
-const list = await getBackend().opsAccounts(period.from, period.to, sort, offset);
-const sortHref = (k: OpsAccountSort) => withPeriod('/ops/accounts', period, k === 'created' ? '' : `sort=${k}`);
+const offset = parseOffset(Astro.url.searchParams);
+const filter = parseFilter(Astro.url.searchParams, OPS_FILTERS.accounts);
+const list = await getBackend().opsAccounts(period.from, period.to, sort, offset, filter);
+const sortKeep: Record<string, string> = sort === 'created' ? {} : { sort };
+const keep = { ...sortKeep, ...filter };
+const sortHref = (k: OpsAccountSort) => withKeep('/ops/accounts', period, { ...filter, sort: k === 'created' ? '' : k });
 const ORDER: Record<OpsAccountSort, string> = { created: '최근 가입 순', last_sign_in: '최근 로그인 순', visits: '방문 많은 순', last_visit: '최근 방문 순' };
 const ROLE = { mom: '엄마', dad: '아빠' } as const;
 const day = (at: string | null) => (at ? dayLabel(seoulDate(at), today) : '없음');
@@ -37,15 +42,15 @@ const groups = list.rows.reduce<{ family: string | null; rows: typeof list.rows 
   return a;
 }, []);
 const shownGroups = new Set(list.rows.map((r) => r.family_id ?? r.id)).size;
-const next = offset + shownGroups < list.groups ? withPeriod('/ops/accounts', period, [sort !== 'created' && `sort=${sort}`, `o=${offset + 50}`].filter(Boolean).join('&')) : null;
 ---
 
 <Ops title="계정" current="accounts" query={periodQuery(period)}>
   <header class="sp-o__head">
     <h1 class="sp-o__title">계정</h1>
-    <p class="sp-o__lead">엄빠 계정 {nf(list.total)}개 · 가족방별로 묶어서, 번호 앞 8자리로 보여요(가족 기기는 가족방 상세에서)</p>
+    <p class="sp-o__lead">엄빠 계정 {nf(list.total)}개{Object.keys(filter).length > 0 && ' (거른 결과)'} · 가족방별로 묶어서, 번호 앞 8자리로 보여요(가족 기기는 가족방 상세에서)</p>
   </header>
-  <OpsPeriod period={period} path="/ops/accounts" keep={sort === 'created' ? {} : { sort }} />
+  <OpsPeriod period={period} path="/ops/accounts" keep={keep} />
+  <OpsFilter path="/ops/accounts" period={period} spec={OPS_FILTERS.accounts} value={filter} keep={sortKeep} />
   {
     list.rows.length ? (
       <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="계정 목록, 옆으로 밀기">
@@ -96,10 +101,10 @@ const next = offset + shownGroups < list.groups ? withPeriod('/ops/accounts', pe
         </table>
       </div>
     ) : list.total ? (
-      <p class="sp-o__sub">이 쪽에는 계정이 없어요. <a class="sp-o__id" href={withPeriod('/ops/accounts', period, sort === 'created' ? '' : `sort=${sort}`)}>첫 쪽으로</a></p>
+      <p class="sp-o__sub">이 쪽에는 계정이 없어요. <a class="sp-o__id" href={withKeep('/ops/accounts', period, keep)}>첫 쪽으로</a></p>
     ) : (
-      <p class="sp-o__sub">아직 계정이 없어요.</p>
+      <p class="sp-o__sub">{Object.keys(filter).length ? '거른 조건에 맞는 계정이 없어요.' : '아직 계정이 없어요.'}</p>
     )
   }
-  {next && <a class="sp-o__more" href={next}>다음 가족방 50곳</a>}
+  <OpsPager path="/ops/accounts" period={period} keep={keep} offset={offset} shown={shownGroups} total={list.groups} unit="묶음" />
 </Ops>

@@ -1,10 +1,12 @@
 ---
 // 운영자 가족방 목록(164, 디자인 OpsFamilies): 50곳씩, 머리 링크로 정렬(많은/최근 순). 이름 대신 번호 앞 8자리
 import Ops from '../../../layouts/Ops.astro';
+import OpsFilter from '../../../components/OpsFilter.astro';
+import OpsPager from '../../../components/OpsPager.astro';
 import OpsPeriod from '../../../components/OpsPeriod.astro';
 import { getBackend, type OpsSort } from '../../../lib/backend';
 import { sizeLabel } from '../../../lib/familyAdmin';
-import { dayLabel, nf, parsePeriod, periodQuery, shortId, withPeriod } from '../../../lib/ops';
+import { dayLabel, nf, OPS_FILTERS, parseFilter, parseOffset, parsePeriod, periodQuery, shortId, withKeep, withPeriod } from '../../../lib/ops';
 import { opsGate } from '../../../lib/opsgate';
 import { seoulDate, seoulToday } from '../../../lib/parent';
 
@@ -15,9 +17,12 @@ const period = parsePeriod(Astro.url.searchParams, today);
 const SORTS: OpsSort[] = ['created', 'media', 'bytes', 'visits', 'last_visit'];
 const q = Astro.url.searchParams.get('sort');
 const sort: OpsSort = SORTS.includes(q as OpsSort) ? (q as OpsSort) : 'created';
-const offset = Math.max(0, Math.min(1_000_000, Number.parseInt(Astro.url.searchParams.get('o') ?? '0', 10) || 0));
-const list = await getBackend().opsFamilies(period.from, period.to, sort, offset);
-const sortHref = (k: OpsSort) => withPeriod('/ops/families', period, k === 'created' ? '' : `sort=${k}`);
+const offset = parseOffset(Astro.url.searchParams);
+const filter = parseFilter(Astro.url.searchParams, OPS_FILTERS.families);
+const list = await getBackend().opsFamilies(period.from, period.to, sort, offset, filter);
+const sortKeep: Record<string, string> = sort === 'created' ? {} : { sort };
+const keep = { ...sortKeep, ...filter };
+const sortHref = (k: OpsSort) => withKeep('/ops/families', period, { ...filter, sort: k === 'created' ? '' : k });
 const cols: { name: string; sort?: OpsSort; num?: boolean }[] = [
   { name: '만든 날', sort: 'created', num: true },
   { name: '엄빠', num: true },
@@ -30,15 +35,15 @@ const cols: { name: string; sort?: OpsSort; num?: boolean }[] = [
   { name: '상태' },
 ];
 const ORDER: Record<OpsSort, string> = { created: '최근에 만든 순', media: '사진·영상 많은 순', bytes: '용량 큰 순', visits: '방문 많은 순', last_visit: '최근 방문 순' };
-const next = offset + list.rows.length < list.total ? withPeriod('/ops/families', period, [sort !== 'created' && `sort=${sort}`, `o=${offset + 50}`].filter(Boolean).join('&')) : null;
 ---
 
 <Ops title="가족방" current="families" query={periodQuery(period)}>
   <header class="sp-o__head">
     <h1 class="sp-o__title">가족방</h1>
-    <p class="sp-o__lead">{nf(list.total)}곳 · 이름 대신 번호 앞 8자리로 보여요</p>
+    <p class="sp-o__lead">{nf(list.total)}곳{Object.keys(filter).length > 0 && ' (거른 결과)'} · 이름 대신 번호 앞 8자리로 보여요</p>
   </header>
-  <OpsPeriod period={period} path="/ops/families" keep={sort === 'created' ? {} : { sort }} />
+  <OpsPeriod period={period} path="/ops/families" keep={keep} />
+  <OpsFilter path="/ops/families" period={period} spec={OPS_FILTERS.families} value={filter} keep={sortKeep} />
   {
     list.rows.length ? (
       <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="가족방 목록, 옆으로 밀기">
@@ -80,10 +85,10 @@ const next = offset + list.rows.length < list.total ? withPeriod('/ops/families'
         </table>
       </div>
     ) : list.total ? (
-      <p class="sp-o__sub">이 쪽에는 가족방이 없어요. <a class="sp-o__id" href={withPeriod('/ops/families', period, sort === 'created' ? '' : `sort=${sort}`)}>첫 쪽으로</a></p>
+      <p class="sp-o__sub">이 쪽에는 가족방이 없어요. <a class="sp-o__id" href={withKeep('/ops/families', period, keep)}>첫 쪽으로</a></p>
     ) : (
-      <p class="sp-o__sub">아직 가족방이 없어요.</p>
+      <p class="sp-o__sub">{Object.keys(filter).length ? '거른 조건에 맞는 가족방이 없어요.' : '아직 가족방이 없어요.'}</p>
     )
   }
-  {next && <a class="sp-o__more" href={next}>다음 50곳</a>}
+  <OpsPager path="/ops/families" period={period} keep={keep} offset={offset} shown={list.rows.length} total={list.total} unit="곳" />
 </Ops>

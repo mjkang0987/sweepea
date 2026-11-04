@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inList, isBot, jwtKid, parsePeriod, verifyAccessJwt, visitTarget, withPeriod, type AccessJwk } from '../src/lib/ops.ts';
+import { inList, isBot, jwtKid, OPS_FILTERS, parseFilter, parseOffset, parsePeriod, verifyAccessJwt, visitTarget, withKeep, withPeriod, type AccessJwk } from '../src/lib/ops.ts';
 
 const today = '2026-11-04';
 const q = (s: string) => new URLSearchParams(s);
@@ -31,6 +31,19 @@ test('withPeriod: 기본 7일은 주소에 안 붙음', () => {
   assert.equal(withPeriod('/ops', parsePeriod(q(''), today)), '/ops');
   assert.equal(withPeriod('/ops', parsePeriod(q('p=30d'), today), 'sort=media'), '/ops?p=30d&sort=media');
   assert.equal(withPeriod('/ops/families', parsePeriod(q('from=2026-10-01&to=2026-10-02'), today)), '/ops/families?from=2026-10-01&to=2026-10-02');
+});
+
+test('parseFilter·parseOffset·withKeep: 아는 값만, 빈 값은 주소에서 빠짐', () => {
+  assert.deepEqual(parseFilter(q('kind=video&status=bogus&by=parent&x=1'), OPS_FILTERS.media), { kind: 'video', by: 'parent' });
+  assert.deepEqual(parseFilter(q('provider=custom:naver&fam=no'), OPS_FILTERS.accounts), { provider: 'custom:naver', fam: 'no' });
+  assert.deepEqual(parseFilter(q('plan=__proto__&state=toString'), OPS_FILTERS.families), {});
+  assert.equal(parseOffset(q('o=-5')), 0);
+  assert.equal(parseOffset(q('o=abc')), 0);
+  assert.equal(parseOffset(q('o=9999999999')), 1_000_000);
+  const p7 = parsePeriod(q(''), today);
+  assert.equal(withKeep('/ops/media', p7, { kind: 'photo', o: '', sort: '' }), '/ops/media?kind=photo');
+  assert.equal(withKeep('/ops/media', parsePeriod(q('p=30d'), today), { f: 'x', o: '50' }), '/ops/media?p=30d&f=x&o=50');
+  assert.equal(withKeep('/ops/media', p7, {}), '/ops/media');
 });
 
 test('inList·isBot·visitTarget', () => {
