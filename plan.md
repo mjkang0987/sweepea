@@ -1427,7 +1427,7 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
-### 174. feature/ops-filters — 운영 목록 거르기 + 쪽 넘기기 공용 (진행 중)
+### 174. feature/ops-filters — 운영 목록 거르기 + 쪽 넘기기 공용 (완료, 0.46.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 30일 사진 384·영상 6, 엄빠 390 + 가족 기기 0 = 전체 390, 서버만)
 - 요구(사용자 2026-11-04): "리스트 나오면 필터 좀" → 어느 목록이냐 묻자 "다 넣어 주고, 페이징 필요한 부분 페이징 공통 디자인 만들어서 적용"(새 공용 컴포넌트 만들기 요청 = 승인)
 - 새 공용 컴포넌트 2개(사용자 요청): **OpsFilter**(네이티브 select + '거르기' 버튼 GET 폼, 기간·정렬·가족방은 숨은 칸, 거르면 첫 쪽, '거르기 지우기'), **OpsPager**(이전 50 · 51–100 / 전체 · 다음 50, 없는 쪽 버튼은 자리만, nav '쪽 넘기기'). 예전 '다음 50개' 링크를 대신함
 - 거르기: 가족방 = 요금제(무료/유료)·상태(승인 대기 있음/용량 80% 넘음/탈퇴 예정), 계정 = 로그인 방식(카카오/네이버/구글/애플/이메일)·가족방(있음/없음), 사진 = 종류·상태(올림/올리는 중·멈춤)·올린 사람(엄빠/가족 기기). 값 목록은 src/lib/ops.ts OPS_FILTERS 한 곳, 주소의 모르는 값은 무시(Object.hasOwn — __proto__ 같은 것도)
