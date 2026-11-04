@@ -386,12 +386,40 @@
   gap: 4px;
 }
 .sp-o__bar {
+  position: relative;
   flex: 1;
   min-width: 12px;
   height: 100%;
   display: flex;
   flex-direction: column-reverse;
   gap: 2px;
+  border-radius: 3px;
+}
+.sp-o__bar:hover {
+  background: var(--fill);
+}
+/* 말풍선: 그래프 칸 안 위쪽(밀기 칸이 위아래도 잘라서 밖으로 안 냄), 오른쪽 절반 막대는 오른쪽에 맞춤 */
+.sp-o__tip {
+  display: none;
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--label);
+  color: var(--bg);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.sp-o__tip--end {
+  left: auto;
+  right: 0;
+}
+.sp-o__bar:hover .sp-o__tip {
+  display: block;
 }
 .sp-o__bar-a,
 .sp-o__bar-b {
@@ -476,6 +504,19 @@
 }
 .sp-o__tr {
   border-top: 1px solid var(--separator);
+}
+/* 가족방 목록: 줄 어디를 눌러도 상세로(번호 링크를 줄 전체로 늘림), 올리면 줄이 회색 */
+.sp-o__tr--link {
+  position: relative;
+}
+.sp-o__tr--link:hover,
+.sp-o__tr--link:focus-within {
+  background: var(--fill);
+}
+.sp-o__tr--link .sp-o__id::after {
+  content: '';
+  position: absolute;
+  inset: 0;
 }
 .sp-o__table--small .sp-o__cell {
   height: 2.25rem;
