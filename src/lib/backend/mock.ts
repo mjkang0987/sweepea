@@ -711,14 +711,16 @@ export function createMockBackend(): Backend {
       const devs = [...devices.values()];
       const fams = allFamilies();
       return {
-        now: { families: fams.length, parents: parents.size, devices: devs.filter((d) => d.status !== 'revoked').length, devices_active: devs.filter((d) => d.status === 'active').length, devices_pending: devs.filter((d) => d.status === 'pending').length, media: media.filter((x) => x.status === 'ready').length, bytes: fams.reduce((a, f) => a + (used[f] ?? 0), 0) + MOCK_USED },
+        now: { families: fams.length, parents: parents.size, devices: devs.filter((d) => d.status !== 'revoked').length, devices_active: devs.filter((d) => d.status === 'active').length, devices_pending: devs.filter((d) => d.status === 'pending').length, media: media.filter((x) => x.status === 'ready').length, bytes: fams.reduce((a, f) => a + (used[f] ?? 0), 0) + MOCK_USED, paid: 0 },
+        signup: { accounts: parents.size, setup: parents.size, uploaded: [...parents.values()].filter((p) => media.some((x) => x.family_id === p.familyId && x.status === 'ready')).length, joined: [...parents.values()].filter((p) => media.some((x) => x.family_id === p.familyId && x.status === 'ready') && devs.some((d) => d.familyId === p.familyId && d.status === 'active')).length, no_family: 0 },
+        jobs: { purge_late: 0, r2_late: 0, uploads_late: 0 },
         visits: { people: people(['parent', 'device']), people_parent: people(['parent']), people_device: people(['device']), count: sum(['parent', 'device']), prev_people: 0, prev_count: 0, days },
         new: { families: 0, prev_families: 0, devices: 0, prev_devices: 0, media: media.filter((x) => x.status === 'ready').length, prev_media: 0 },
         seen: { active: devs.filter((d) => d.status === 'active').length, visited: new Set(rows.filter((r) => r.kind === 'device').map((r) => r.who)).size, reactions: reactions.size, prev_reactions: 0, comments: comments.filter((c) => !c.deleted).length, prev_comments: 0 },
         entry: { link: sum(['link']), link_pw: sum(['link_pw']), requested: devs.length, approved: devs.filter((d) => d.status === 'active').length, failures: 0, expired: 0 },
         install_help: members.filter((m) => m.helpAt).length,
         providers: (parents.size ? { kakao: parents.size } : {}) as Record<string, number>,
-        checks: { pending: [], full: [], quiet: [], closing: Object.entries(closingAt).map(([family_id, at]) => ({ family_id, at: new Date(at).toISOString() })) },
+        checks: { pending: [], full: [], quiet: [], stuck: [], closing: Object.entries(closingAt).map(([family_id, at]) => ({ family_id, at: new Date(at).toISOString() })) },
       };
     },
     async opsFamilies(from, to, sort, offset) {

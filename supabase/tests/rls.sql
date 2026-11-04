@@ -1336,6 +1336,24 @@ select pg_temp.ok((select (r ->> 'active')::int = 1 and (r ->> 'pending')::int =
 select pg_temp.ok(jsonb_array_length(:'odet2'::jsonb -> 'devices') = 2 and (select count(*) = 1 from jsonb_array_elements(:'odet2'::jsonb -> 'devices') d where d ->> 'status' = 'pending'), '상세: 큰이모 기기는 대기, 작은이모 기기는 없음');
 select pg_temp.ok((select count(*) = 1 from jsonb_array_elements(:'osum2'::jsonb -> 'checks' -> 'pending') c where c ->> 'family_id' = :'ofam' and (c ->> 'n')::int = 1), '살펴볼 것: 기한 안 대기만(2일 넘은 큰이모)');
 select pg_temp.ok((:'osum2'::jsonb -> 'entry' ->> 'requested')::int > (:'osum2'::jsonb -> 'entry' ->> 'approved')::int, '승인은 신청보다 적음(대기·기한 지남은 승인에 안 셈)');
+-- 169: 가입하고 멈춘 곳·올리다 멈춘 사진·정리 작업 밀림
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, created_at) values (:'ofam', :'op', 'photo', now(), 'exif', now() - interval '2 hours');
+insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, created_at) values (:'ofam', :'op', 'photo', now(), 'exif', now() - interval '4 days');
+insert into public.r2_cleanup (prefix, queued_at) values (gen_random_uuid()::text || '/', now() - interval '3 days') returning prefix as or2 \gset
+set role service_role;
+select public.sp_ops_summary(public.sp_seoul_today() - 6, public.sp_seoul_today()) as osum3 \gset
+reset role;
+select pg_temp.ok((:'osum3'::jsonb -> 'signup' ->> 'accounts')::int >= 1 and (:'osum3'::jsonb -> 'signup' ->> 'setup')::int >= 1
+  and (:'osum3'::jsonb -> 'signup' ->> 'setup')::int <= (:'osum3'::jsonb -> 'signup' ->> 'accounts')::int
+  and (:'osum3'::jsonb -> 'signup' ->> 'uploaded')::int <= (:'osum3'::jsonb -> 'signup' ->> 'setup')::int
+  and (:'osum3'::jsonb -> 'signup' ->> 'joined')::int <= (:'osum3'::jsonb -> 'signup' ->> 'uploaded')::int, '현황: 가입하고 멈춘 곳(가입 ≥ 설정 ≥ 첫 사진 ≥ 가족 들어옴)');
+select pg_temp.ok((:'osum3'::jsonb -> 'signup' ->> 'no_family')::int >= 1, '현황: 지금 가족방 없는 엄빠 계정(가족방 없는 사용자)');
+select pg_temp.ok((:'osum3'::jsonb -> 'signup')::text !~ '[0-9a-f]{8}-[0-9a-f]{4}', '가입 흐름엔 숫자만(계정 번호 없음)');
+select pg_temp.ok((select (c ->> 'n')::int = 2 from jsonb_array_elements(:'osum3'::jsonb -> 'checks' -> 'stuck') c where c ->> 'family_id' = :'ofam'), '살펴볼 것: 1시간 넘게 올리다 멈춘 사진 2장');
+select pg_temp.ok((:'osum3'::jsonb -> 'jobs' ->> 'uploads_late')::int >= 1 and (:'osum3'::jsonb -> 'jobs' ->> 'r2_late')::int >= 1 and (:'osum3'::jsonb -> 'jobs' ->> 'purge_late')::int = 0, '정리 작업 밀림: 이틀 넘은 올리기·R2 대기');
+select pg_temp.ok((:'osum3'::jsonb -> 'now' ->> 'paid')::int = 0, '현황: 유료 가족방 수');
+delete from public.media where family_id = :'ofam' and status = 'uploading';
+delete from public.r2_cleanup where prefix = :'or2';
 select set_config('request.jwt.claims', json_build_object('sub', :'ox', 'is_anonymous', true)::text, false);
 set role authenticated;
 select public.sp_note_visit();

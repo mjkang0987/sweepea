@@ -69,7 +69,7 @@ with sync_playwright() as p:
     last.click(); pg.locator('h1').click(); check(not tip.is_visible(), '막대 밖을 누르면 닫힘')
     pg.get_by_text('숫자로 보기').first.click()
     check(pg.locator('.sp-o__numbers[open] tbody tr').count() == 7, '숫자로 보기 표 7줄')
-    steps = pg.locator('.sp-o__step .sp-o__kv-val').all_inner_texts()
+    steps = pg.locator('section', has=pg.get_by_role('heading', name='들어오다 멈춘 곳')).locator('.sp-o__step .sp-o__kv-val').all_inner_texts()
     check(steps[:2] == ['1', '1'], f'링크 방문·비밀번호 화면 각각 1(봇 빼고) {steps}')
     pg.screenshot(path=OUT + 'ops-1-home.png', full_page=True)
     # 기간: 30일 → 막대 30개, 다른 화면으로 가도 기간 유지
@@ -133,6 +133,15 @@ with sync_playwright() as p:
     pg.goto(B + '/ops/accounts')
     rows = pg.locator('tbody .sp-o__tr')
     check(rows.count() == 1 and '엄마' in rows.first.inner_text() or '아빠' in rows.first.inner_text(), '처음 설정한 엄빠 계정이 목록에(역할 표시)')
+    # 169: 가입하고 멈춘 곳(처음 설정한 엄빠 1 → 가입·설정 1), 예약 정리 작업, 가족방 유료 수
+    pg.goto(B + '/ops')
+    sg = pg.locator('section', has=pg.get_by_role('heading', name='가입하고 멈춘 곳'))
+    steps = [x.inner_text() for x in sg.locator('.sp-o__step .sp-o__kv-val').all()]
+    check(len(steps) == 4 and steps[0] == steps[1] and int(steps[0]) >= 1, f'가입하고 멈춘 곳: 가입·처음 설정 {steps}')
+    check(sg.get_by_role('link', name='계정 목록').count() == 1, '가입하고 멈춘 곳 → 계정 목록 링크')
+    check(pg.get_by_role('heading', name='예약 정리 작업').is_visible() and '밀린 것 없어요' in pg.locator('main').inner_text(), '예약 정리 작업: 밀린 것 없음')
+    check('유료 0' in pg.locator('main').inner_text(), '가족방 칸에 유료 수')
+    pg.goto(B + '/ops/accounts')
     check('도담' not in pg.locator('main').inner_text(), '계정 목록엔 아이 이름도 없음')
     rows.first.locator('.sp-o__id').click(); pg.wait_for_url('**/ops/families/**')
     check('도담' in pg.locator('main').inner_text(), '가족방 칸을 누르면 그 가족방 상세(아이 이름 보임)')
