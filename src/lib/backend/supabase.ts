@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { ActivityItem, AdminDevice, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaChange, MediaComment, MediaItem, MediaMonth, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
+import type { ActivityItem, AdminDevice, OpsFamily, OpsFamilyList, OpsSummary, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaChange, MediaComment, MediaItem, MediaMonth, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -142,6 +142,19 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     cleanupAuth: () => serviceRpc<number>('sp_cleanup_auth', {}),
     r2CleanupTake: (limit) => serviceRpc<string[]>('sp_r2_cleanup_take', { p_limit: limit }),
     r2CleanupDone: (prefix) => serviceRpc<void>('sp_r2_cleanup_done', { p_prefix: prefix }),
+    async userId(pass) {
+      try {
+        return (await call<{ id: string }>('/auth/v1/user', { method: 'GET', token: pass.access })).id ?? null;
+      } catch (e) {
+        if (e instanceof BackendError && (e.status === 401 || e.status === 403)) return null;
+        throw e;
+      }
+    },
+    noteVisit: (pass) => rpc<void>(pass, 'sp_note_visit', {}),
+    noteLinkVisit: (code, step) => serviceRpc<void>('sp_note_link_visit', { p_code: code, p_step: step }),
+    opsSummary: (from, to) => serviceRpc<OpsSummary>('sp_ops_summary', { p_from: from, p_to: to }),
+    opsFamilies: (from, to, sort, offset) => serviceRpc<OpsFamilyList>('sp_ops_families', { p_from: from, p_to: to, p_sort: sort, p_offset: offset }),
+    opsFamily: (id, from, to) => serviceRpc<OpsFamily | null>('sp_ops_family', { p_id: id, p_from: from, p_to: to }),
     async listMedia(pass, opts = {}) {
       const q = mediaQuery(opts);
       q.set('select', `${MEDIA_COLS}${opts.childId ? ',media_children!inner(child_id)' : ''}${opts.groupId ? ',media_groups!inner(group_id)' : ''}`);
