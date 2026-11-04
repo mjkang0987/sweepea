@@ -1332,6 +1332,7 @@ select set_config('request.jwt.claims', '', false);
 insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status, bytes, object_key, view_key, thumb_key) values (:'ofam', :'op', 'photo', now(), 'exif', 'ready', 1234, 'k-obj-secret', 'k-view-secret', 'k-thumb-secret') returning id as omd \gset
 insert into public.media (family_id, uploaded_by_member, kind, taken_at, taken_at_source, status, bytes) values (:'ofam', :'omem', 'video', now(), 'exif', 'ready', 99) returning id as omd2 \gset
 insert into public.media (family_id, uploaded_by_parent, kind, taken_at, taken_at_source, status) values (:'ofam', :'op', 'photo', now(), 'exif', 'deleted') returning id as omd3 \gset
+insert into public.media (family_id, kind, taken_at, taken_at_source, status, bytes) values (:'ofam', 'photo', now(), 'exif', 'ready', 5) returning id as omd4 \gset
 set role service_role;
 select public.sp_ops_media(public.sp_seoul_today() - 6, public.sp_seoul_today(), null, 0) as omed \gset
 select public.sp_ops_media(public.sp_seoul_today() - 6, public.sp_seoul_today(), gen_random_uuid(), 0) as omed0 \gset
@@ -1345,6 +1346,8 @@ select pg_temp.ok((:'omed0'::jsonb ->> 'total')::int = 0, '사진 목록: 다른
 set role service_role;
 select public.sp_ops_media(public.sp_seoul_today() - 6, public.sp_seoul_today(), null, 0, '{"kind": "video"}') as omv \gset
 select public.sp_ops_media(public.sp_seoul_today() - 6, public.sp_seoul_today(), null, 0, '{"by": "parent"}') as omp \gset
+select public.sp_ops_media(public.sp_seoul_today() - 6, public.sp_seoul_today(), null, 0, '{"by": "device"}') as omdv \gset
+select public.sp_ops_media(public.sp_seoul_today() - 6, public.sp_seoul_today(), null, 0, '{}') as omall \gset
 select public.sp_ops_families(public.sp_seoul_today() - 6, public.sp_seoul_today(), 'created', 0, '{"plan": "paid"}') as ofp \gset
 select public.sp_ops_families(public.sp_seoul_today() - 6, public.sp_seoul_today(), 'created', 0, '{"plan": "free", "state": "closing"}') as ofc \gset
 select public.sp_ops_families(public.sp_seoul_today() - 6, public.sp_seoul_today(), 'created', 0, '{}') as ofa \gset
@@ -1358,11 +1361,12 @@ select pg_temp.ok(not exists (select 1 from jsonb_array_elements(:'ofc'::jsonb -
 select pg_temp.ok((:'ofa'::jsonb ->> 'total')::int = (select count(*) from public.families), '가족방 거르기 없음 = 전체');
 select pg_temp.ok(exists (select 1 from jsonb_array_elements(:'oak'::jsonb -> 'rows') r where r ->> 'id' = :'op') and not exists (select 1 from jsonb_array_elements(:'oak'::jsonb -> 'rows') r where r ->> 'family_id' is null), '계정 거르기: 카카오·가족방 있음');
 select pg_temp.ok(not exists (select 1 from jsonb_array_elements(:'oae'::jsonb -> 'rows') r where r ->> 'provider' <> 'email'), '계정 거르기: 이메일만');
+select pg_temp.ok((:'omp'::jsonb ->> 'total')::int + (:'omdv'::jsonb ->> 'total')::int = (:'omall'::jsonb ->> 'total')::int and exists (select 1 from jsonb_array_elements(:'omdv'::jsonb -> 'rows') r where r ->> 'id' = :'omd4'), '사진 거르기: 엄빠 + 가족 기기(올린 사람 지워진 것 포함) = 전체');
 select pg_temp.ok(not has_function_privilege('authenticated', 'public.sp_ops_families(date,date,text,int,jsonb)', 'execute')
   and not has_function_privilege('anon', 'public.sp_ops_accounts(date,date,text,int,jsonb)', 'execute')
   and not has_function_privilege('authenticated', 'public.sp_ops_media(date,date,uuid,int,jsonb)', 'execute')
   and has_function_privilege('service_role', 'public.sp_ops_media(date,date,uuid,int,jsonb)', 'execute'), '거르기 판도 서버만');
-delete from public.media where id in (:'omd', :'omd2', :'omd3');
+delete from public.media where id in (:'omd', :'omd2', :'omd3', :'omd4');
 -- 171: 가족방별 묶음 — 같은 가족방 엄빠(엄마 먼저)가 붙어 나오고, 가족방 없는 계정은 맨 뒤. 가족방 없는 계정이 가장 최근에 가입해도 뒤
 select gen_random_uuid() as oq \gset
 select gen_random_uuid() as on1 \gset

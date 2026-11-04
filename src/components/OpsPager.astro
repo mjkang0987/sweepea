@@ -17,7 +17,8 @@ interface Props {
 const { path, period, keep, offset, shown, total, unit } = Astro.props;
 const SIZE = 50;
 const at = (o: number) => withKeep(path, period, { ...keep, o: o > 0 ? String(o) : '' });
-const prev = offset > 0 ? at(Math.max(0, offset - SIZE)) : null;
+// 끝을 넘은 쪽(주소로 o를 크게)에서 이전은 마지막 쪽으로
+const prev = offset > 0 ? at(offset >= total ? Math.max(0, Math.floor((total - 1) / SIZE) * SIZE) : Math.max(0, offset - SIZE)) : null;
 const next = offset + shown < total ? at(offset + SIZE) : null;
 ---
 

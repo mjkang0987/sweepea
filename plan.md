@@ -1434,6 +1434,7 @@
 - 정렬·기간·거르기·가족방(f)이 서로 링크에 달려 다님(withKeep)
 - DB `20261104000006_ops_filters.sql`: 세 함수에 p_filter jsonb 받는 판 추가(같은 이름 + 받는 값 하나, 옛 판은 남고 웹은 새 판만 부름, DROP 없음, service_role만). **운영 적용을 웹보다 먼저**, 적용 전 사용자 확인
 - 영향 파일: 마이그레이션, src/lib/ops.ts, src/lib/backend/{types,supabase,mock}.ts, src/components/{OpsFilter,OpsPager}.astro(새), src/pages/ops/{media,accounts}.astro, src/pages/ops/families/index.astro, src/styles/ops.css, supabase/tests/rls.sql, tests/ops.test.ts, tools/e2e/ops.py
+- 리뷰 1회 반영: 올린 사람 거르기 '가족 기기'는 엄빠가 아닌 것 전부(올린 사람이 지워진 사진 포함, '가족 기기·알 수 없음') → 엄빠 + 가족 기기 = 전체, 끝을 넘은 쪽의 '이전'은 마지막 쪽으로, 로그인 방식 글자 표와 같게(Google·Apple), 안 쓰는 .sp-o__more 지우고 거르기 칸은 날짜 칸 규칙 같이 씀. 옛 4개 인자 함수 3개는 운영 적용 뒤 정리 대상(DROP은 사용자 확인 후)
 - 검사: DB(영상만·엄빠만·유료 없음·탈퇴 예정만·전체·카카오+가족방·이메일만·서버만), 단위 66(아는 값만·쪽 값 자르기·주소), e2e 76(고르고 거르기·기간 유지·지우기·모르는 값·정렬 유지·이전 쪽 링크), 1280·390 넘침 없음, astro check 0
 
 ### 173. feature/ops-media — 운영 올린 사진·영상 목록(정보만) (완료, 0.45.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 30일 390개·파일 주소 없음·service_role만)

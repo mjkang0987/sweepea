@@ -3,7 +3,7 @@
 -- 값은 웹이 아는 것만 넘긴다(가족방·계정의 모르는 값은 안 거름, 사진 종류·상태는 같은 값만). 서버(service_role)만
 --   가족방: plan = free|paid(요금제 free가 아닌 것), state = pending(승인 대기 있음)|full(용량 80% 넘음)|closing(탈퇴 예정)
 --   계정: provider = kakao|custom:naver|google|apple|email, fam = yes|no(지금 가족방 있음/없음)
---   사진: kind = photo|video, status = ready|uploading, by = parent|device
+--   사진: kind = photo|video, status = ready|uploading, by = parent|device(엄빠가 아닌 것 — 올린 사람이 지워진 것 포함)
 
 create function public.sp_ops_families(p_from date, p_to date, p_sort text, p_offset int, p_filter jsonb) returns jsonb
 language sql stable security definer set search_path = ''
@@ -95,7 +95,8 @@ as $$
       and p_from <= p_to and p_to - p_from < 400
       and (p_filter ->> 'kind' is null or x.kind = p_filter ->> 'kind')
       and (p_filter ->> 'status' is null or x.status = p_filter ->> 'status')
-      and case p_filter ->> 'by' when 'parent' then x.uploaded_by_parent is not null when 'device' then x.uploaded_by_member is not null else true end
+      -- 올린 사람이 지워져(엄빠 나감·구성원 지움) 둘 다 비면 가족 기기 쪽에 넣는다 → 엄빠 + 가족 기기 = 전체
+      and case p_filter ->> 'by' when 'parent' then x.uploaded_by_parent is not null when 'device' then x.uploaded_by_parent is null else true end
   )
   select jsonb_build_object(
     'total', (select count(*) from m),

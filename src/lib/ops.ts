@@ -54,13 +54,13 @@ export const OPS_FILTERS = {
     state: { label: '상태', options: { pending: '승인 대기 있음', full: '용량 80% 넘음', closing: '탈퇴 예정' } },
   },
   accounts: {
-    provider: { label: '로그인 방식', options: { kakao: '카카오', 'custom:naver': '네이버', google: '구글', apple: '애플', email: '이메일' } },
+    provider: { label: '로그인 방식', options: { kakao: '카카오', 'custom:naver': '네이버', google: 'Google', apple: 'Apple', email: '이메일' } },
     fam: { label: '가족방', options: { yes: '있음', no: '없음' } },
   },
   media: {
     kind: { label: '종류', options: { photo: '사진', video: '영상' } },
     status: { label: '상태', options: { ready: '올림', uploading: '올리는 중·멈춤' } },
-    by: { label: '올린 사람', options: { parent: '엄빠', device: '가족 기기' } },
+    by: { label: '올린 사람', options: { parent: '엄빠', device: '가족 기기·알 수 없음' } },
   },
 } satisfies Record<string, FilterSpec>;
 /** 주소에서 아는 거르기 값만 */
