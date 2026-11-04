@@ -143,6 +143,12 @@ with sync_playwright() as p:
     check(sg.get_by_role('link', name='계정 목록').count() == 1, '가입하고 멈춘 곳 → 계정 목록 링크')
     check(pg.get_by_role('heading', name='예약 정리 작업').is_visible() and '밀린 것 없어요' in pg.locator('main').inner_text(), '예약 정리 작업: 밀린 것 없음')
     check('유료 0' in pg.locator('main').inner_text(), '가족방 칸에 유료 수')
+    # 172: 숫자 카드 숫자 → 목록(가족방·계정·사진 많은 순·용량 큰 순), 카드 어디를 눌러도
+    hrefs = pg.locator('.sp-o__stats--5 .sp-o__num-link').evaluate_all('els => els.map(e => e.getAttribute("href"))')
+    check(hrefs == ['/ops/families', '/ops/accounts', '/ops/families?sort=media', '/ops/families?sort=bytes'], f'현황 숫자 링크 {hrefs}')
+    box = pg.locator('.sp-o__stats--5 .sp-o__stat').first.bounding_box()
+    pg.mouse.click(box['x'] + box['width'] - 10, box['y'] + box['height'] - 10); pg.wait_for_url('**/ops/families')
+    check(True, '숫자 카드 빈 곳을 눌러도 목록으로')
     pg.goto(B + '/ops/accounts')
     check('도담' not in pg.locator('main').inner_text(), '계정 목록엔 아이 이름도 없음')
     rows.first.locator('.sp-o__id').click(); pg.wait_for_url('**/ops/families/**')

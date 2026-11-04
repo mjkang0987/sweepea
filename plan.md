@@ -1427,6 +1427,14 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 172. fix/ops-num-links — 운영 숫자 카드 누르면 그 목록으로 (완료, 0.44.1)
+- 요구(사용자 2026-11-04): "숫자 누르면 링크 연결되게"
+- 현황: 가족방 → 가족방 목록, 엄빠 → 계정 목록, 사진·영상 → 가족방 목록 사진 많은 순, 저장 용량 → 용량 큰 순(고른 기간 유지). 가족 기기는 따로 목록이 없어 그대로
+- 가족방 상세: 엄빠·아이 → 엄빠·아이 칸, 가족 기기 → 가족·방문 칸, 사진·영상 → 올린 사진·영상 칸(#제목)
+- 숫자에 밑줄(색만으로 구분 안 함), 카드 어디를 눌러도(링크를 카드 전체로 늘림), 올리면 카드가 회색. 제목으로 갈 때 위 여백(scroll-margin)
+- 영향 파일: src/pages/ops/index.astro, src/pages/ops/families/[id].astro, src/styles/ops.css, tools/e2e/ops.py
+- 검사: e2e ops.py 62개(현황 숫자 링크 4개·카드 빈 곳 눌러도 이동), 상세 링크 4개·칸 이동 확인, astro check 0
+
 ### 171. feature/ops-accounts-group — 운영 계정 목록을 가족방별로 묶기 (완료, 0.44.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 가족방 1·엄마→아빠 순, 권한 service_role만)
 - 요구(사용자 2026-11-04): "계정 앨범별로 묶어야 할 것 같은데.. 대시보드에서" → 두 안 중 '계정 목록을 가족방별로' 고름(가족방 목록에 엄빠 칸 더하기 안은 안 고름)
 - 화면 `/ops/accounts`: 가족방 묶음마다 머리줄(가족방 번호 → 상세 링크 · 엄빠 N명 · 방문 합) 아래 그 가족방 엄빠(엄마 먼저). 가족방 없는 계정은 맨 뒤 '가족방 없음' 한 묶음. '가족방' 칸은 머리줄로 옮겨 뺌, '역할'을 계정 바로 옆으로. 표는 묶음마다 tbody + th scope=rowgroup
