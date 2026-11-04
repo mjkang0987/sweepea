@@ -63,7 +63,7 @@ const next = offset + list.rows.length < list.total ? withPeriod('/ops/families'
           </thead>
           <tbody>
             {list.rows.map((r) => (
-              <tr class="sp-o__tr">
+              <tr class="sp-o__tr sp-o__tr--link">
                 <th scope="row" class="sp-o__cell sp-o__cell--row"><a class="sp-o__id" href={withPeriod(`/ops/families/${r.id}`, period)}>{shortId(r.id)}</a></th>
                 <td class="sp-o__cell sp-o__num">{dayLabel(seoulDate(r.created_at), today)}</td>
                 <td class="sp-o__cell sp-o__num">{nf(r.parents)}</td>

@@ -1,6 +1,7 @@
 ---
 // 운영자 화면 막대 그래프(164): 하루 한 막대(두 값이면 위 가족·아래 엄빠 쌓기, 엄빠는 속 빈 막대라 색 없이도 구분).
-// 막대마다 title 말풍선(마우스), 아래 접힌 '숫자로 보기' 표(휴대폰·키보드·화면 읽기). 12px보다 안 가늘어지고 넘치면 좌우로 밀기,
+// 마우스를 올리면 그날 칸이 회색으로 바뀌고 숫자 말풍선이 바로 뜸(CSS만, title은 1초 늦고 0인 날은 올릴 데가 안 보여서),
+// 아래 접힌 '숫자로 보기' 표(휴대폰·키보드·화면 읽기). 12px보다 안 가늘어지고 넘치면 좌우로 밀기,
 // rtl로 처음부터 오늘(오른쪽 끝)이 보이게 — 스크립트 없음
 import { dayLabel, nf } from '../lib/ops';
 
@@ -28,7 +29,8 @@ const long = minWidth > 760;
       <div class="sp-o__bars" role="img" aria-label={label}>
         {
           rows.map((r) => (
-            <div class="sp-o__bar" title={tip(r)}>
+            <div class="sp-o__bar">
+              <span class="sp-o__tip" aria-hidden="true">{tip(r)}</span>
               {names.length > 1 && <span class="sp-o__bar-b" style={`height: ${((r.v[1] ?? 0) / max) * 100}%`} />}
               <span class="sp-o__bar-a" style={`height: ${((r.v[0] ?? 0) / max) * 100}%`} />
             </div>
