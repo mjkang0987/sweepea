@@ -152,8 +152,12 @@ with sync_playwright() as p:
     check(pg.get_by_role('heading', name='올린 사진·영상', level=1).is_visible(), '사진 목록 열림')
     check(pg.locator('main img, main video, main picture').count() == 0, '사진 목록에 사진·영상 자체는 없음')
     mrows = pg.locator('tbody .sp-o__tr')
-    check(mrows.count() == 1 and '엄마' in mrows.first.inner_text() and '올림' in mrows.first.inner_text() and '사진' in mrows.first.inner_text(), '사진 목록: 엄마가 올린 사진 한 줄(올림)')
-    fam = mrows.first.locator('.sp-o__id').get_attribute('href').split('/')[-1].split('?')[0]
+    # 176: 처음엔 가족방마다 한 줄 요약 → 줄을 누르면 그 가족방 사진·영상
+    check(mrows.count() == 1 and mrows.first.locator('td').first.inner_text() == '1', '사진 요약: 가족방 한 줄(사진 1)')
+    mrows.first.locator('.sp-o__id').click(); pg.wait_for_url('**/ops/media?*f=*')
+    fam = pg.url.split('f=')[1].split('&')[0]
+    frows = pg.locator('tbody .sp-o__tr')
+    check(frows.count() == 1 and '엄마' in frows.first.inner_text() and '올림' in frows.first.inner_text() and '사진' in frows.first.inner_text(), '사진 요약 줄 → 그 가족방 사진(엄마·올림)')
     pg.goto(B + '/ops/families/' + fam); pg.locator('.sp-o__num-link[href*="/ops/media"]').click(); pg.wait_for_url('**/ops/media?*f=*')
     check(pg.get_by_role('link', name='모든 가족방 보기').count() == 1 and pg.locator('tbody .sp-o__tr').count() == 1, '가족방 상세 사진 숫자 → 그 가족방 사진 목록')
     pg.goto(B + '/ops/media?f=abc'); check('가족방 번호가 맞지 않아' in pg.locator('main').inner_text(), '틀린 가족방 번호는 안내')

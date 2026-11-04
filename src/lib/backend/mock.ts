@@ -1,7 +1,7 @@
 // 개발·검사용 메모리 백엔드. 서버 프로세스가 살아 있는 동안만 기억한다.
 // 실제 규칙(그룹 경보, 승인 대기 3일 등)은 DB가 강제하고, 여기선 화면 흐름 확인에 필요한 만큼만 흉내 낸다.
 // 운영에서는 index.ts가 이 구현을 쓰지 못하게 막는다.
-import type { ActivityItem, Backend, OpsDay, OpsFamilyRow, EnterResult, EntryInfo, EntryMe, MediaItem, MediaQuery, Me, MeFamily, ParentHome, ParentInviteInfo, Pass, ReactionCount, ReactionKind, TextSizeMode } from './types';
+import type { ActivityItem, Backend, OpsDay, OpsFamilyRow, OpsMedia, EnterResult, EntryInfo, EntryMe, MediaItem, MediaQuery, Me, MeFamily, ParentHome, ParentInviteInfo, Pass, ReactionCount, ReactionKind, TextSizeMode } from './types';
 import { BackendError } from './supabase';
 import { SWEEPEA_MOCK_USED_BYTES } from 'astro:env/server';
 
@@ -741,6 +741,19 @@ export function createMockBackend(): Backend {
       const by = { media: 'media', bytes: 'bytes', visits: 'visits', last_visit: 'last_visit', created: 'created_at' } as const;
       rows.sort((a, b) => String(b[by[sort]] ?? '').localeCompare(String(a[by[sort]] ?? ''), 'en', { numeric: true }));
       return { total: rows.length, rows: rows.slice(offset, offset + 50) };
+    },
+    async opsMediaFamilies(from, to, offset, filter = {}) {
+      const all: OpsMedia[] = [];
+      for (let o = 0; ; o += 50) {
+        const page = await this.opsMedia(from, to, null, o, filter);
+        all.push(...page.rows);
+        if (o + 50 >= page.total) break;
+      }
+      const fams = [...new Set(all.map((r) => r.family_id))].map((family_id) => {
+        const rs = all.filter((r) => r.family_id === family_id);
+        return { family_id, photos: rs.filter((r) => r.kind === 'photo').length, videos: rs.filter((r) => r.kind === 'video').length, bytes: rs.filter((r) => r.status === 'ready').reduce((a, r) => a + r.bytes, 0), last: rs[0].created_at, stuck: rs.filter((r) => r.status === 'uploading' && Date.now() - Date.parse(r.created_at) > 3600_000).length };
+      });
+      return { total: fams.length, items: all.length, bytes: fams.reduce((a, f) => a + f.bytes, 0), rows: fams.slice(offset, offset + 50) };
     },
     async opsMedia(from, to, family, offset, filter = {}) {
       const ms = media

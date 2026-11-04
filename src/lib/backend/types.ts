@@ -355,6 +355,8 @@ export interface Backend {
   opsAccounts(from: string, to: string, sort: OpsAccountSort, offset: number, filter: Record<string, string>): Promise<OpsAccountList>;
   /** 고른 기간에 올린 사진·영상 정보(파일 주소 없음, 최근 순 50개씩). family가 있으면 그 가족방만 */
   opsMedia(from: string, to: string, family: string | null, offset: number, filter: Record<string, string>): Promise<OpsMediaList>;
+  /** 고른 기간 사진·영상을 가족방마다 한 줄로(최근에 올린 가족방부터 50곳씩) */
+  opsMediaFamilies(from: string, to: string, offset: number, filter: Record<string, string>): Promise<OpsMediaFamilyList>;
   /** 가족 기기: 그 가족방에서 내 캐릭터(승인된 구성원만, 아니면 BackendError 403) */
   setMemberAvatar(pass: Pass, familyId: string, avatar: Avatar): Promise<void>;
   /** 엄빠: 내 캐릭터 */
@@ -534,6 +536,24 @@ export interface OpsMedia {
   /** 엄빠가 올렸으면 역할, 가족 기기면 구성원 이름 */
   by_role: 'mom' | 'dad' | null;
   by_name: string | null;
+}
+export interface OpsMediaFamily {
+  family_id: string;
+  photos: number;
+  videos: number;
+  /** 다 올라간 것 크기 합 */
+  bytes: number;
+  last: string;
+  /** 1시간 넘게 올리는 중(멈춤) */
+  stuck: number;
+}
+export interface OpsMediaFamilyList {
+  /** 가족방 수 */
+  total: number;
+  /** 사진·영상 수 */
+  items: number;
+  bytes: number;
+  rows: OpsMediaFamily[];
 }
 export interface OpsMediaList {
   total: number;

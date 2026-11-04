@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { ActivityItem, AdminDevice, OpsAccountList, OpsMediaList, OpsFamily, OpsFamilyList, OpsSummary, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaChange, MediaComment, MediaItem, MediaMonth, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
+import type { ActivityItem, AdminDevice, OpsAccountList, OpsMediaFamilyList, OpsMediaList, OpsFamily, OpsFamilyList, OpsSummary, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaChange, MediaComment, MediaItem, MediaMonth, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -156,6 +156,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     opsFamilies: (from, to, sort, offset, filter) => serviceRpc<OpsFamilyList>('sp_ops_families', { p_from: from, p_to: to, p_sort: sort, p_offset: offset, p_filter: filter }),
     opsFamily: (id, from, to) => serviceRpc<OpsFamily | null>('sp_ops_family', { p_id: id, p_from: from, p_to: to }),
     opsAccounts: (from, to, sort, offset, filter) => serviceRpc<OpsAccountList>('sp_ops_accounts', { p_from: from, p_to: to, p_sort: sort, p_offset: offset, p_filter: filter }),
+    opsMediaFamilies: (from, to, offset, filter) => serviceRpc<OpsMediaFamilyList>('sp_ops_media_families', { p_from: from, p_to: to, p_offset: offset, p_filter: filter }),
     opsMedia: (from, to, family, offset, filter) => serviceRpc<OpsMediaList>('sp_ops_media', { p_from: from, p_to: to, p_family: family, p_offset: offset, p_filter: filter }),
     async listMedia(pass, opts = {}) {
       const q = mediaQuery(opts);
