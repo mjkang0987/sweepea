@@ -88,9 +88,9 @@ def bars(label,days,a,b=None,la='',lb='',unit='회'):
     for i,x in enumerate(a):
         y=b[i] if b else 0
         tip=f'{ds[i]} · {la} {x}{unit} · {lb} {y}{unit}' if b else f'{ds[i]} · {x}{unit}'
-        cols+=f'<div title="{tip}" style="flex: 1; min-width: 12px; display: flex; flex-direction: column-reverse; gap: 2px; height: 100%;"><span style="height: {y/mx*100:.1f}%; border-radius: 3px; background: var(--label-2);"></span><span style="height: {x/mx*100:.1f}%; border-radius: 3px; background: var(--pea);"></span></div>'
+        cols+=f'<div title="{tip}" style="flex: 1; min-width: 12px; display: flex; flex-direction: column-reverse; gap: 2px; height: 100%;"><span style="height: {y/mx*100:.1f}%; border-radius: 3px; box-shadow: inset 0 0 0 2px var(--label-2);"></span><span style="height: {x/mx*100:.1f}%; border-radius: 3px; background: var(--pea);"></span></div>'
     legend=''
-    if b: legend=f'<p style="{SUB} display: flex; gap: 16px;"><span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; background: var(--pea);"></span>{la}</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; background: var(--label-2);"></span>{lb}</span></p>'
+    if b: legend=f'<p style="{SUB} display: flex; gap: 16px;"><span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; background: var(--pea);"></span>{la}</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 2px var(--label-2);"></span>{lb}</span></p>'
     hd=['날짜']+([la,lb] if b else ['수'])
     TD='padding: 0 8px; height: 36px; text-align: right; font-variant-numeric: tabular-nums;'
     th=''.join(f'<th scope="col" style="{TD} text-align: {"left" if i==0 else "right"}; font-size: 13px; font-weight: 500; color: var(--label-2);">{h}</th>' for i,h in enumerate(hd))
@@ -140,10 +140,10 @@ def home(side):
     now=stats([('가족방','12'),('엄빠','18'),('가족 기기','41','승인 36 · 대기 5'),('사진·영상','3,210'),('저장 용량','21.4GB')],5 if side else 2)
     # 고른 기간(7일)
     left=f'''{card('방문',stats([('방문한 사람',PS('47','41'),'엄빠 16 · 가족 31'),('방문',PS('312회','276회')),('하루 평균','45회')],3)+bars('기간 안 날짜별 방문 수',('10월 29일','오늘'),VIS_A[-7:],VIS_B[-7:],'가족','엄빠'),'30분 안에 이어서 연 건 한 번으로 세요')}
-{card('새로 생긴 것',kv([('새 가족방',PREV('2','1')),('새로 들어온 가족',PREV('5','3')),('올린 사진·영상',PREV('214','188'))]))}
-{card('가족이 실제로 보는지',f'<p style="margin: 0; {NUM}">74%</p><meter class="sp-meter" min="0" max="100" value="74" style="width: 100%; height: 10px;">74%</meter>'+kv([('사진을 본 가족 기기','27 / 36'),('반응',PREV('88','71')),('한마디',PREV('17','12'))]),'승인된 가족 기기 중 이 기간에 사진을 본 비율')}
-{card('들어오다 멈춘 곳',funnel([('링크로 처음 방문',21),('이름 고름',14),('들어오기 신청',8),('승인',7)])+f'<p style="{SUB}">비밀번호 틀림 3번 · 승인 대기 기한 지남 1명</p>')}
-{card('홈 화면에 두기 부탁',kv([('부탁','6'),('그 뒤 홈 화면에서 연 가족','4')]))}'''
+{card('새로 생긴 것',kv([('새 가족방',PREV('2','1')),('새로 들어온 가족 기기',PREV('5','3')),('올린 사진·영상',PREV('214','188'))]))}
+{card('가족이 실제로 보는지',f'<p style="margin: 0; {NUM}">74%</p><meter class="sp-meter" min="0" max="100" value="74" style="width: 100%; height: 10px;">74%</meter>'+kv([('들어와 본 가족 기기','27 / 36'),('반응',PREV('88','71')),('한마디',PREV('17','12'))]),'승인된 가족 기기 중 이 기간에 들어와 본 비율')}
+{card('들어오다 멈춘 곳',funnel([('링크로 들어온 방문',21),('비밀번호 화면까지',14),('들어오기 신청',8),('승인',7)])+f'<p style="{SUB}">비밀번호 틀림 3번(틀린 기록은 7일만 남아요) · 승인 대기 기한 지남 1명</p>')}
+{card('홈 화면에 두기 부탁',kv([('부탁','6')]))}'''
     right=f'''{card('살펴볼 것',checks,'지금 기준')}
 {card('로그인 방법',kv([('카카오','11'),('네이버','4'),('구글','3')]),'엄빠 전체')}'''
     body=head('현황','11월 4일 오후 3:20 기준')
@@ -175,7 +175,7 @@ def families():
         for i,v in enumerate(r[1:9],1):
             tds+=f'<td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;">{v}</td>'
         st=r[9]
-        badge=f'<span style="display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: 999px; font-size: 13px; font-weight: 600; {"background: var(--fill); color: var(--danger);" if st!="정상" else "background: var(--pea-tint); color: var(--pea-deep);"}">{st}</span>'
+        badge=f'<span style="display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: 999px; font-size: 13px; font-weight: 600; {"background: var(--bg); box-shadow: inset 0 0 0 1px var(--separator); color: var(--danger);" if st!="정상" else "background: var(--pea-tint); color: var(--pea-deep);"}">{st}</span>'
         tds+=f'<td style="padding: 0 12px;">{badge}</td>'
         rows+=f'<tr style="border-top: 1px solid var(--separator);">{tds}</tr>'
     table=f'<div style="overflow-x: auto; border-radius: 16px; background: var(--surface);"><table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 20px;"><caption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">가족방 목록, 만든 날 최신순, 방문은 고른 기간</caption><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div>'
@@ -192,13 +192,13 @@ def family():
     th=''.join(f'<th scope="col" style="padding: 0 12px; height: 44px; text-align: {"left" if i<3 else "right"}; font-size: 13px; font-weight: 500; color: var(--label-2); white-space: nowrap;">{c}</th>' for i,c in enumerate(['누구','그룹','상태','방문','마지막 방문']))
     rows=''.join('<tr style="border-top: 1px solid var(--separator);">'+f'<th scope="row" style="padding: 0 12px; height: 48px; text-align: left; font-weight: 600;">{p[0]}</th><td style="padding: 0 12px;">{p[1]}</td><td style="padding: 0 12px; {"color: var(--danger); font-weight: 600;" if p[2]=="승인 대기" else ""}">{p[2]}</td>'+''.join(f'<td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;">{v}</td>' for v in p[3:])+'</tr>' for p in PEOPLE)
     people=f'<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 20px;"><caption style="position: absolute; width: 1px; height: 1px; overflow: hidden;">사람별 방문, 이름 없이</caption><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div>'
-    left=f'''{stats([('엄빠','2'),('가족','6','승인 5 · 대기 1'),('사진·영상','412','사진 398 · 영상 14'),('아이','2')],4)}
+    left=f'''{stats([('엄빠','2'),('가족 기기','6','승인 5 · 대기 1'),('사진·영상','412','사진 398 · 영상 14'),('아이','2')],4)}
 {card('올린 사진·영상',bars('기간 안 날짜별 올린 사진·영상 수',('8월 7일','오늘'),UP90,unit='개'))}
 {card('방문',bars('기간 안 날짜별 방문 수',('8월 7일','오늘'),VS90))}
 {card('사람별 방문',people,'이름은 안 보여요. 번호는 들어온 순서예요')}'''
     right=f'''{card('저장 용량','<p style="margin: 0; font-size: 17px; line-height: 24px; font-weight: 700;"><span style="font-size: 22px;">3.1GB</span> / 5GB</p><meter class="sp-meter" min="0" max="5" low="4" high="4.5" optimum="1" value="3.1" style="width: 100%; height: 8px;">3.1GB / 5GB</meter>')}
 {card('그룹',kv([('그룹 1','4명'),('그룹 2','3명')]))}
-{card('들어오기',kv([('공유 링크','3개'),('링크로 처음 방문','9'),('비밀번호 틀림','2번')]),'링크 수는 지금, 나머지는 고른 기간')}
+{card('들어오기',kv([('공유 링크','3개'),('링크로 들어온 방문','9'),('비밀번호 틀림(최근 7일만 남음)','2번')]),'링크 수는 지금, 나머지는 고른 기간')}
 {card('함께 관리','<p style="margin: 0; font-size: 15px; line-height: 20px;">엄빠 둘 · 10월 28일부터</p>')}'''
     body=f'''<a href="OpsFamilies{{{{sfx}}}}.dc.html" style="display: inline-flex; align-items: center; gap: 2px; min-height: 44px; width: max-content; color: var(--pea-ink); text-decoration: none; font-size: 15px;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>가족방</a>
 <header style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;"><h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: -0.4px; font-variant-numeric: tabular-nums;">가족방 a3f9c2e1</h1><span style="display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; background: var(--pea-tint); color: var(--pea-deep); font-size: 13px; font-weight: 600;">정상</span><p style="flex-basis: 100%; margin: 0; font-size: 15px; line-height: 20px; color: var(--label-2);">10월 26일에 만듦 · 마지막 올림 오늘 · 사진·이름·한마디는 안 보여요</p></header>
