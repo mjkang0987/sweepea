@@ -1,5 +1,12 @@
 /* 운영자 화면(.sp-o, 164). 디자인 OpsHome·OpsFamilies·OpsFamily·OpsHomeMobile. 스위피 토큰 그대로, 콩이·유리 없이 차분하게 */
 .sp-o {
+  /* 넓은 화면에서 오래 보는 표·숫자라 엄빠·가족 화면보다 글자 단계를 한 칸씩 올림(168) */
+  --subhead-size: var(--body-size);
+  --subhead-line: var(--body-line);
+  --footnote-size: 0.9375rem;
+  --footnote-line: 1.25rem;
+  --headline-size: 1.25rem;
+  --headline-line: 1.625rem;
   box-sizing: border-box;
   min-height: 100vh;
   display: flex;
@@ -193,8 +200,8 @@
 }
 .sp-o__stat-num {
   margin: 2px 0 0;
-  font-size: 1.75rem;
-  line-height: 2.125rem;
+  font-size: 2.125rem;
+  line-height: 2.5rem;
   font-weight: 700;
   letter-spacing: -0.4px;
   font-variant-numeric: tabular-nums;
@@ -216,7 +223,7 @@
   line-height: var(--subhead-line);
 }
 .sp-o__kv-name {
-  color: var(--label-2);
+  color: var(--label);
 }
 .sp-o__kv-val {
   margin: 0;
@@ -230,8 +237,8 @@
 }
 .sp-o__big {
   margin: 0;
-  font-size: 1.75rem;
-  line-height: 2.125rem;
+  font-size: 2.125rem;
+  line-height: 2.5rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -247,7 +254,7 @@
 }
 .sp-o__step {
   display: grid;
-  grid-template-columns: 9.5rem 1fr 3rem;
+  grid-template-columns: 11rem 1fr 3rem;
   align-items: center;
   gap: var(--space-3);
   font-size: var(--subhead-size);
@@ -343,6 +350,12 @@
   font: inherit;
   font-size: var(--subhead-size);
 }
+/* 휴대폰 폭에선 날짜 칸이 좁아 글자를 한 단계 낮춤(안 그러면 연도가 잘림) */
+@media (max-width: 30rem) {
+  .sp-o__date-input {
+    font-size: var(--footnote-size);
+  }
+}
 .sp-o__date-sep {
   color: var(--label-2);
 }
@@ -383,7 +396,7 @@
 .sp-o__bars {
   /* 위 2rem은 말풍선 자리(가장 높은 막대 위에도 뜨게) */
   margin-top: 2rem;
-  height: 7.5rem;
+  height: 10rem;
   display: flex;
   align-items: flex-end;
   gap: 4px;
@@ -611,4 +624,9 @@
 .sp-o__kv--set {
   /* 이름은 한 줄, 긴 값이 꺾임 */
   grid-template-columns: max-content minmax(0, 1fr);
+}
+
+/* 카드(엄빠 화면 .sp-p__card)는 운영 화면에서만 안쪽 여백을 넓게 */
+.sp-o .sp-p__card {
+  padding: var(--space-5);
 }
