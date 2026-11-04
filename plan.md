@@ -1427,7 +1427,7 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
-### 171. feature/ops-accounts-group — 운영 계정 목록을 가족방별로 묶기 (진행 중)
+### 171. feature/ops-accounts-group — 운영 계정 목록을 가족방별로 묶기 (완료, 0.44.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 가족방 1·엄마→아빠 순, 권한 service_role만)
 - 요구(사용자 2026-11-04): "계정 앨범별로 묶어야 할 것 같은데.. 대시보드에서" → 두 안 중 '계정 목록을 가족방별로' 고름(가족방 목록에 엄빠 칸 더하기 안은 안 고름)
 - 화면 `/ops/accounts`: 가족방 묶음마다 머리줄(가족방 번호 → 상세 링크 · 엄빠 N명 · 방문 합) 아래 그 가족방 엄빠(엄마 먼저). 가족방 없는 계정은 맨 뒤 '가족방 없음' 한 묶음. '가족방' 칸은 머리줄로 옮겨 뺌, '역할'을 계정 바로 옆으로. 표는 묶음마다 tbody + th scope=rowgroup
 - 정렬·쪽: 묶음 단위(가입·마지막 로그인·마지막 방문은 묶음 안 가장 최근, 방문은 합), 50묶음씩('다음 가족방 50곳'). 가족방 없는 계정은 하나씩 한 묶음으로 세서 맨 뒤
