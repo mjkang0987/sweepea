@@ -677,3 +677,69 @@
   /* 숫자 카드에서 #칸으로 갈 때 제목이 화면 끝에 붙지 않게 */
   scroll-margin-top: var(--space-5);
 }
+/* 목록 거르기 줄·쪽 넘기기(174, OpsFilter·OpsPager) */
+.sp-o__filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.sp-o__filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 8rem;
+}
+.sp-o__filter-label {
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+}
+.sp-o__select {
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  padding: 0 0.625rem;
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--label);
+  font: inherit;
+  font-size: var(--subhead-size);
+}
+.sp-o__filter-clear {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--pea-ink);
+  font-size: var(--subhead-size);
+}
+.sp-o__pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.sp-o__pager-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--label);
+  font-size: var(--subhead-size);
+  font-weight: 600;
+  text-decoration: none;
+}
+.sp-o__pager-btn--off {
+  visibility: hidden;
+}
+.sp-o__pager-at {
+  margin: 0;
+  min-width: 8rem;
+  text-align: center;
+  color: var(--label-2);
+  font-size: var(--subhead-size);
+  font-variant-numeric: tabular-nums;
+}

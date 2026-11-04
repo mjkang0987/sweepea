@@ -1,0 +1,32 @@
+---
+// 운영 목록 쪽 넘기기(174, 세 목록 공용): 이전 · 지금 몇 번째 / 전체 · 다음. 50개(묶음)씩
+import { nf, withKeep, type Period } from '../lib/ops';
+
+interface Props {
+  path: string;
+  period: Period;
+  /** 정렬·거르기·가족방 등 달고 다닐 값 */
+  keep: Record<string, string>;
+  offset: number;
+  /** 이 쪽에 보인 수(계정은 묶음 수) */
+  shown: number;
+  total: number;
+  /** 세는 말: 개·곳 */
+  unit: string;
+}
+const { path, period, keep, offset, shown, total, unit } = Astro.props;
+const SIZE = 50;
+const at = (o: number) => withKeep(path, period, { ...keep, o: o > 0 ? String(o) : '' });
+const prev = offset > 0 ? at(Math.max(0, offset - SIZE)) : null;
+const next = offset + shown < total ? at(offset + SIZE) : null;
+---
+
+{
+  (prev || next) && (
+    <nav class="sp-o__pager" aria-label="쪽 넘기기">
+      {prev ? <a class="sp-o__pager-btn" href={prev} rel="prev">이전 {SIZE}{unit}</a> : <span class="sp-o__pager-btn sp-o__pager-btn--off" aria-hidden="true">이전 {SIZE}{unit}</span>}
+      <p class="sp-o__pager-at">{shown ? `${nf(offset + 1)}–${nf(offset + shown)}` : '0'} / {nf(total)}{unit}</p>
+      {next ? <a class="sp-o__pager-btn" href={next} rel="next">다음 {SIZE}{unit}</a> : <span class="sp-o__pager-btn sp-o__pager-btn--off" aria-hidden="true">다음 {SIZE}{unit}</span>}
+    </nav>
+  )
+}

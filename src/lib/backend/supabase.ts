@@ -153,10 +153,10 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     noteVisit: (pass) => rpc<void>(pass, 'sp_note_visit', {}),
     noteLinkVisit: (code, step) => serviceRpc<void>('sp_note_link_visit', { p_code: code, p_step: step }),
     opsSummary: (from, to) => serviceRpc<OpsSummary>('sp_ops_summary', { p_from: from, p_to: to }),
-    opsFamilies: (from, to, sort, offset) => serviceRpc<OpsFamilyList>('sp_ops_families', { p_from: from, p_to: to, p_sort: sort, p_offset: offset }),
+    opsFamilies: (from, to, sort, offset, filter) => serviceRpc<OpsFamilyList>('sp_ops_families', { p_from: from, p_to: to, p_sort: sort, p_offset: offset, p_filter: filter }),
     opsFamily: (id, from, to) => serviceRpc<OpsFamily | null>('sp_ops_family', { p_id: id, p_from: from, p_to: to }),
-    opsAccounts: (from, to, sort, offset) => serviceRpc<OpsAccountList>('sp_ops_accounts', { p_from: from, p_to: to, p_sort: sort, p_offset: offset }),
-    opsMedia: (from, to, family, offset) => serviceRpc<OpsMediaList>('sp_ops_media', { p_from: from, p_to: to, p_family: family, p_offset: offset }),
+    opsAccounts: (from, to, sort, offset, filter) => serviceRpc<OpsAccountList>('sp_ops_accounts', { p_from: from, p_to: to, p_sort: sort, p_offset: offset, p_filter: filter }),
+    opsMedia: (from, to, family, offset, filter) => serviceRpc<OpsMediaList>('sp_ops_media', { p_from: from, p_to: to, p_family: family, p_offset: offset, p_filter: filter }),
     async listMedia(pass, opts = {}) {
       const q = mediaQuery(opts);
       q.set('select', `${MEDIA_COLS}${opts.childId ? ',media_children!inner(child_id)' : ''}${opts.groupId ? ',media_groups!inner(group_id)' : ''}`);

@@ -723,8 +723,8 @@ export function createMockBackend(): Backend {
         checks: { pending: [], full: [], quiet: [], stuck: [], closing: Object.entries(closingAt).map(([family_id, at]) => ({ family_id, at: new Date(at).toISOString() })) },
       };
     },
-    async opsFamilies(from, to, sort, offset) {
-      const rows: OpsFamilyRow[] = allFamilies().map((fam) => {
+    async opsFamilies(from, to, sort, offset, filter = {}) {
+      const all: OpsFamilyRow[] = allFamilies().map((fam) => {
         const ds = [...devices.values()].filter((d) => d.familyId === fam);
         const ms = media.filter((x) => x.family_id === fam && x.status === 'ready');
         const vs = visitRows().filter((r) => r.fam === fam && (r.kind === 'parent' || r.kind === 'device'));
@@ -736,13 +736,15 @@ export function createMockBackend(): Backend {
           last_upload: ms.map((x) => x.created_at).sort().at(-1) ?? null, last_visit: vs.map((r) => r.day).sort().at(-1) ?? null,
         };
       });
+      // 모의 가족방은 모두 무료
+      const rows = all.filter((r) => filter.plan !== 'paid' && (filter.state !== 'pending' || r.pending > 0) && (filter.state !== 'full' || r.bytes >= 0.8 * (r.quota ?? Infinity)) && (filter.state !== 'closing' || !!r.delete_after));
       const by = { media: 'media', bytes: 'bytes', visits: 'visits', last_visit: 'last_visit', created: 'created_at' } as const;
       rows.sort((a, b) => String(b[by[sort]] ?? '').localeCompare(String(a[by[sort]] ?? ''), 'en', { numeric: true }));
       return { total: rows.length, rows: rows.slice(offset, offset + 50) };
     },
-    async opsMedia(from, to, family, offset) {
+    async opsMedia(from, to, family, offset, filter = {}) {
       const ms = media
-        .filter((x) => (!family || x.family_id === family) && x.created_at && seoulDay(Date.parse(x.created_at)) >= from && seoulDay(Date.parse(x.created_at)) <= to)
+        .filter((x) => (!family || x.family_id === family) && (!filter.kind || x.kind === filter.kind) && (!filter.status || x.status === filter.status) && (!filter.by || (filter.by === 'parent') === parents.has(x.uploader)) && x.created_at && seoulDay(Date.parse(x.created_at)) >= from && seoulDay(Date.parse(x.created_at)) <= to)
         .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
       const rows = ms.slice(offset, offset + 50).map((x) => {
         const p = parents.get(x.uploader);
@@ -751,9 +753,9 @@ export function createMockBackend(): Backend {
       });
       return { total: ms.length, ready: ms.filter((x) => x.status === 'ready').length, bytes: ms.filter((x) => x.status === 'ready').reduce((a, x) => a + x.bytes, 0), rows };
     },
-    async opsAccounts(from, to, sort, offset) {
+    async opsAccounts(from, to, sort, offset, filter = {}) {
       const vs = visitRows().filter((r) => r.kind === 'parent');
-      const rows = [...parents].map(([id, p]) => ({
+      const rows = [...parents].filter(() => filter.fam !== 'no' && (!filter.provider || filter.provider === 'kakao')).map(([id, p]) => ({
         id, provider: 'kakao', created_at: new Date(p.since ?? 0).toISOString(), last_sign_in: new Date(p.since ?? 0).toISOString(), family_id: p.familyId, role: p.role,
         visits: vs.filter((r) => r.who === id && r.day >= from && r.day <= to).reduce((a, r) => a + r.n, 0),
         last_visit: vs.filter((r) => r.who === id).map((r) => r.day).sort().at(-1) ?? null,
@@ -767,7 +769,7 @@ export function createMockBackend(): Backend {
       return { total: rows.length, groups: keys.length, rows: grouped.filter((r) => page.has(r.family_id)) };
     },
     async opsFamily(id, from, to) {
-      const row = (await this.opsFamilies(from, to, 'created', 0)).rows.find((r) => r.id === id);
+      const row = (await this.opsFamilies(from, to, 'created', 0, {})).rows.find((r) => r.id === id);
       if (!row) return null;
       const gs = groups.filter((g) => g.familyId === id);
       const ds = [...devices.values()].filter((d) => d.familyId === id && devState(d));

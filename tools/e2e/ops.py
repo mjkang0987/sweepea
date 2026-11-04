@@ -157,6 +157,18 @@ with sync_playwright() as p:
     pg.goto(B + '/ops/families/' + fam); pg.locator('.sp-o__num-link[href*="/ops/media"]').click(); pg.wait_for_url('**/ops/media?*f=*')
     check(pg.get_by_role('link', name='모든 가족방 보기').count() == 1 and pg.locator('tbody .sp-o__tr').count() == 1, '가족방 상세 사진 숫자 → 그 가족방 사진 목록')
     pg.goto(B + '/ops/media?f=abc'); check('가족방 번호가 맞지 않아' in pg.locator('main').inner_text(), '틀린 가족방 번호는 안내')
+    # 174: 거르기(네이티브 select, GET)·쪽 넘기기
+    pg.goto(B + '/ops/media?p=30d'); pg.select_option('select[name=kind]', 'video'); pg.get_by_role('button', name='거르기').click(); pg.wait_for_url('**kind=video**')
+    check('p=30d' in pg.url and pg.locator('tbody .sp-o__tr').count() == 0 and '거른 조건에 맞는' in pg.locator('main').inner_text(), f'사진 거르기: 영상만(기간 유지) {pg.url}')
+    check(pg.locator('select[name=kind]').input_value() == 'video' and pg.get_by_role('link', name='거르기 지우기').count() == 1, '거른 값이 칸에 남고 지우기 링크')
+    pg.get_by_role('link', name='거르기 지우기').click(); pg.wait_for_load_state(); check('kind=' not in pg.url and pg.locator('tbody .sp-o__tr').count() == 1, '거르기 지우기 → 다시 전체')
+    pg.goto(B + '/ops/media?kind=photo&by=parent&status=ready'); check(pg.locator('tbody .sp-o__tr').count() == 1, '사진 거르기: 사진·엄빠·올림')
+    pg.goto(B + '/ops/media?kind=bogus'); check(pg.locator('select[name=kind]').input_value() == '' and pg.locator('tbody .sp-o__tr').count() == 1, '모르는 거르기 값은 무시')
+    pg.goto(B + '/ops/families?state=closing'); check('거른 조건에 맞는 가족방이 없어요' in pg.locator('main').inner_text(), '가족방 거르기: 탈퇴 예정 없음')
+    pg.goto(B + '/ops/families?sort=media&plan=free'); check(pg.locator('tbody .sp-o__tr').count() >= 1 and pg.locator('input[type=hidden][name=sort]').count() >= 1, '가족방 거르기: 무료, 정렬 유지')
+    pg.goto(B + '/ops/accounts?fam=no'); check('거른 조건에 맞는 계정이 없어요' in pg.locator('main').inner_text(), '계정 거르기: 가족방 없음')
+    pg.goto(B + '/ops/media?kind=photo&o=50'); pager = pg.get_by_role('navigation', name='쪽 넘기기')
+    check(pager.count() == 1 and pager.get_by_role('link', name='이전 50개').get_attribute('href') == '/ops/media?kind=photo', '쪽 넘기기: 이전은 거르기 유지·첫 쪽')
     pg.goto(B + '/ops')
     # 172: 숫자 카드 숫자 → 목록(가족방·계정·사진 목록·용량 큰 순), 카드 어디를 눌러도
     hrefs = pg.locator('.sp-o__stats--5 .sp-o__num-link').evaluate_all('els => els.map(e => e.getAttribute("href"))')

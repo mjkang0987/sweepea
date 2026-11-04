@@ -42,6 +42,32 @@ export const withPeriod = (path: string, p: Period, extra = '') => {
   const q = [periodQuery(p), extra].filter(Boolean).join('&');
   return q ? `${path}?${q}` : path;
 };
+/** 기간 + 달고 다닐 값(정렬·거르기·가족방)으로 주소. 빈 값은 뺀다 */
+export const withKeep = (path: string, p: Period, keep: Record<string, string>) =>
+  withPeriod(path, p, new URLSearchParams(Object.entries(keep).filter(([, v]) => v)).toString());
+
+/** 목록 거르기(174): 이름 → 칸 이름과 고를 값(값 → 보이는 말). 주소 값은 이 값만 받는다 */
+export type FilterSpec = Record<string, { label: string; options: Record<string, string> }>;
+export const OPS_FILTERS = {
+  families: {
+    plan: { label: '요금제', options: { free: '무료', paid: '유료' } },
+    state: { label: '상태', options: { pending: '승인 대기 있음', full: '용량 80% 넘음', closing: '탈퇴 예정' } },
+  },
+  accounts: {
+    provider: { label: '로그인 방식', options: { kakao: '카카오', 'custom:naver': '네이버', google: '구글', apple: '애플', email: '이메일' } },
+    fam: { label: '가족방', options: { yes: '있음', no: '없음' } },
+  },
+  media: {
+    kind: { label: '종류', options: { photo: '사진', video: '영상' } },
+    status: { label: '상태', options: { ready: '올림', uploading: '올리는 중·멈춤' } },
+    by: { label: '올린 사람', options: { parent: '엄빠', device: '가족 기기' } },
+  },
+} satisfies Record<string, FilterSpec>;
+/** 주소에서 아는 거르기 값만 */
+export const parseFilter = (q: URLSearchParams, spec: FilterSpec): Record<string, string> =>
+  Object.fromEntries(Object.keys(spec).flatMap((k) => (Object.hasOwn(spec[k].options, q.get(k) ?? '') ? [[k, q.get(k)!]] : [])));
+/** 쪽 넘김 o 값(0 ~ 100만) */
+export const parseOffset = (q: URLSearchParams) => Math.max(0, Math.min(1_000_000, Number.parseInt(q.get('o') ?? '0', 10) || 0));
 
 const b64urlBytes = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
 const b64urlJson = (s: string) => JSON.parse(new TextDecoder().decode(b64urlBytes(s)));
