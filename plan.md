@@ -2,7 +2,7 @@
 
 현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
 
-## 새 세션 인계 (2026-11-04 정리, dev 0.41.0)
+## 새 세션 인계 (2026-11-04 정리, dev 0.41.1)
 
 새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(160~163이 최근). 시작할 때 `git pull origin dev` 먼저(다른 곳에서 작업된 적 있음 — 11-03에 맥 사본이 0.14.5에 멈춰 있었음)
 
@@ -1426,6 +1426,11 @@
   - 운영 DB 적용(2026-11-04, 사용자 "둘 다 해"), 권한 확인(sp_ops_*는 service_role만)
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
+
+### 165. fix/ops-hover — 운영 목록 줄 전체 링크·막대 말풍선 바로 (완료, 0.41.1)
+- 요구(사용자 2026-11-04): "자세히 정보 볼려면 링크 같은 거 안 걸려 있고, hover도 하나도 안 나오네" → 원인: 목록은 번호 글자만 링크(줄 hover 없음), 막대는 title 말풍선이라 1초 늦고 0인 날은 올릴 데가 안 보임
+- 고침: 목록 줄 어디를 눌러도 상세(번호 링크를 줄 전체로 늘림, 올리면 칸마다 회색 — WebKit 줄 배경 1px 틈 피함), 막대는 올리면 그날 칸 회색 + CSS 말풍선(그래프 figure 오른쪽 위 고정 자리 — 밀어 둔 30·90일에서도 안 잘림, 리뷰 1회). 휴대폰 탭은 기존대로 '숫자로 보기' 표. 줄 링크라 목록 글자 끌어 복사는 안 됨(받아들임)
+- 검사: e2e ops.py(말풍선 바로·칸 안·밀어 둔 상태, 줄 hover 회색·가운데 칸 눌러 상세), 보드는 안 바꿈(말풍선 모양은 보드에 없던 것)
 
 ### 163. fix/video-open-reason — 영상이 안 열리면 멈춘 단계를 안내에 (완료, 0.40.2 — 실기기에서 다시 생기면 안내 줄로 원인 찾기)
 - 요구(사용자 2026-11-04 "원인은?" → 원인을 확실히 아는 방법 1번 "1 추가"): '열 수 없는 파일'은 어느 단계 실패든 같은 글이라 원인을 모름
