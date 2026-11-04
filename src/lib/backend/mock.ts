@@ -749,7 +749,11 @@ export function createMockBackend(): Backend {
       }));
       const by = { created: 'created_at', last_sign_in: 'last_sign_in', visits: 'visits', last_visit: 'last_visit' } as const;
       rows.sort((a, b) => String(b[by[sort]] ?? '').localeCompare(String(a[by[sort]] ?? ''), 'en', { numeric: true }));
-      return { total: rows.length, rows: rows.slice(offset, offset + 50) };
+      // 가족방별로 묶음(처음 나온 순서 유지, 엄마 먼저). 모의 엄빠는 모두 가족방이 있다
+      const keys = [...new Set(rows.map((r) => r.family_id))];
+      const grouped = keys.flatMap((k) => rows.filter((r) => r.family_id === k).sort((a, b) => (a.role === 'mom' ? 0 : 1) - (b.role === 'mom' ? 0 : 1)));
+      const page = new Set(keys.slice(offset, offset + 50));
+      return { total: rows.length, groups: keys.length, rows: grouped.filter((r) => page.has(r.family_id)) };
     },
     async opsFamily(id, from, to) {
       const row = (await this.opsFamilies(from, to, 'created', 0)).rows.find((r) => r.id === id);

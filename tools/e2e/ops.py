@@ -132,7 +132,9 @@ with sync_playwright() as p:
     c2.close()
     pg.goto(B + '/ops/accounts')
     rows = pg.locator('tbody .sp-o__tr')
-    check(rows.count() == 1 and '엄마' in rows.first.inner_text() or '아빠' in rows.first.inner_text(), '처음 설정한 엄빠 계정이 목록에(역할 표시)')
+    # 171: 가족방 묶음 머리줄(가족방 번호 링크·엄빠 수) 아래 그 계정
+    check(rows.count() == 2 and '엄빠 1명' in rows.first.inner_text() and rows.first.locator('th[scope=rowgroup] .sp-o__id').count() == 1, '계정 목록: 가족방 묶음 머리줄')
+    check('엄마' in rows.nth(1).inner_text() or '아빠' in rows.nth(1).inner_text(), '처음 설정한 엄빠 계정이 목록에(역할 표시)')
     # 169: 가입하고 멈춘 곳(처음 설정한 엄빠 1 → 가입·설정 1), 예약 정리 작업, 가족방 유료 수
     pg.goto(B + '/ops')
     sg = pg.locator('section', has=pg.get_by_role('heading', name='가입하고 멈춘 곳'))

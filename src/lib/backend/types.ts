@@ -350,7 +350,7 @@ export interface Backend {
   opsFamilies(from: string, to: string, sort: OpsSort, offset: number): Promise<OpsFamilyList>;
   /** 없는 가족방이면 null */
   opsFamily(id: string, from: string, to: string): Promise<OpsFamily | null>;
-  /** 엄빠 계정 목록(익명 기기 계정 제외, 50개씩) */
+  /** 엄빠 계정 목록(익명 기기 계정 제외, 가족방별로 묶어 50묶음씩) */
   opsAccounts(from: string, to: string, sort: OpsAccountSort, offset: number): Promise<OpsAccountList>;
   /** 가족 기기: 그 가족방에서 내 캐릭터(승인된 구성원만, 아니면 BackendError 403) */
   setMemberAvatar(pass: Pass, familyId: string, avatar: Avatar): Promise<void>;
@@ -518,5 +518,8 @@ export interface OpsAccount {
 }
 export interface OpsAccountList {
   total: number;
+  /** 묶음(가족방, 가족방 없는 계정은 하나씩) 수. 쪽은 50묶음씩 */
+  groups: number;
+  /** 같은 가족방 엄빠가 붙어서(엄마 먼저), 가족방 없는 계정은 맨 뒤 */
   rows: OpsAccount[];
 }
