@@ -1254,3 +1254,61 @@ do $$ begin perform public.sp_agree('terms', '2026-11-02'); raise exception '로
 reset role;
 select public.sp_purge_family(:'cfam');
 select pg_temp.ok(not exists (select 1 from public.consents where user_id = :'cu'), '가족방·계정을 지우면 동의 기록도 지움');
+
+-- ── 운영자 화면(20261104000001): 방문 기록은 본인 것만 세고, 운영 숫자는 서버(service_role)만
+select gen_random_uuid() as op \gset
+select gen_random_uuid() as od \gset
+select gen_random_uuid() as oo \gset
+insert into auth.users (id, is_anonymous, raw_app_meta_data) values (:'op', false, '{"provider": "kakao"}'), (:'od', true, null), (:'oo', true, null);
+select set_config('request.jwt.claims', json_build_object('sub', :'op', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_create_family('mom', '운영', '아이', '2025-01-01', '3333') as ofam \gset
+reset role;
+select id as ogrp from public.groups where family_id = :'ofam' \gset
+insert into public.members (family_id, group_id, display_name) values (:'ofam', :'ogrp', '할머니') returning id as omem \gset
+insert into public.devices (auth_user_id, family_id, member_id, status) values (:'od', :'ofam', :'omem', 'active') returning id as odev \gset
+insert into public.shares (family_id, code) values (:'ofam', 'OpsCode1');
+-- 엄빠 두 번, 기기 한 번
+select set_config('request.jwt.claims', json_build_object('sub', :'op', 'is_anonymous', false)::text, false);
+set role authenticated;
+select public.sp_note_visit();
+select public.sp_note_visit();
+do $$ begin perform 1 from public.visits; raise exception '방문 기록이 읽힘'; exception when insufficient_privilege then null; end $$;
+do $$ begin insert into public.visits (family_id, kind, visitor, day) values (gen_random_uuid(), 'parent', auth.uid(), current_date); raise exception '방문 기록을 직접 씀'; exception when insufficient_privilege then null; end $$;
+do $$ begin perform public.sp_ops_summary(current_date, current_date); raise exception '엄빠가 운영 현황을 봄'; exception when insufficient_privilege then null; end $$;
+do $$ begin perform public.sp_ops_families(current_date, current_date, 'created', 0); raise exception '엄빠가 가족방 목록을 봄'; exception when insufficient_privilege then null; end $$;
+do $$ begin perform public.sp_ops_family(gen_random_uuid(), current_date, current_date); raise exception '엄빠가 가족방 상세를 봄'; exception when insufficient_privilege then null; end $$;
+do $$ begin perform public.sp_note_link_visit('OpsCode1', 'link'); raise exception '엄빠가 링크 방문을 씀'; exception when insufficient_privilege then null; end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :'od', 'is_anonymous', true)::text, false);
+select public.sp_note_visit();
+do $$ begin perform public.sp_ops_summary(current_date, current_date); raise exception '가족 기기가 운영 현황을 봄'; exception when insufficient_privilege then null; end $$;
+-- 들어간 가족방이 없는 사용자는 아무것도 안 남김
+select set_config('request.jwt.claims', json_build_object('sub', :'oo', 'is_anonymous', true)::text, false);
+select public.sp_note_visit();
+reset role;
+set role anon;
+do $$ begin perform public.sp_note_visit(); raise exception '로그인 없이 방문 기록'; exception when insufficient_privilege then null; end $$;
+do $$ begin perform public.sp_ops_summary(current_date, current_date); raise exception '로그인 없이 운영 현황'; exception when insufficient_privilege then null; end $$;
+reset role;
+select set_config('request.jwt.claims', '', false);
+set role service_role;
+select public.sp_note_link_visit('OpsCode1', 'link');
+select public.sp_note_link_visit('없는코드', 'link');
+select public.sp_ops_summary(public.sp_seoul_today() - 6, public.sp_seoul_today()) as osum \gset
+select public.sp_ops_families(public.sp_seoul_today() - 6, public.sp_seoul_today(), 'visits', 0) as olist \gset
+select public.sp_ops_family(:'ofam', public.sp_seoul_today() - 6, public.sp_seoul_today()) as odet \gset
+reset role;
+select pg_temp.ok((select count from public.visits where family_id = :'ofam' and kind = 'parent') = 2, '엄빠 방문 두 번은 한 줄 2회');
+select pg_temp.ok((select count from public.visits where family_id = :'ofam' and kind = 'device' and visitor = :'odev') = 1, '기기 방문은 기기 번호로');
+select pg_temp.ok((select count(*) from public.visits where visitor = :'oo') = 0, '가족방 없는 사용자는 기록 없음');
+select pg_temp.ok((select sum(count) from public.visits where family_id = :'ofam' and kind = 'link') = 1, '링크 방문은 있는 코드만');
+select pg_temp.ok((:'osum'::jsonb -> 'visits' ->> 'count')::int >= 3 and jsonb_array_length(:'osum'::jsonb -> 'visits' -> 'days') = 7, '현황: 방문 수와 7일 막대');
+select pg_temp.ok((:'osum'::jsonb -> 'providers' ->> 'kakao')::int >= 1, '현황: 로그인 방법');
+select pg_temp.ok((:'osum'::jsonb -> 'visits' -> 'days' -> 6 ->> 'day') = public.sp_seoul_today()::text, '현황: 막대 마지막 날은 오늘(날짜만)');
+select pg_temp.ok((:'olist'::jsonb -> 'rows' -> 0 ->> 'id') = :'ofam' and (:'olist'::jsonb -> 'rows' -> 0 ->> 'visits')::int = 3, '목록: 방문 많은 순 첫 줄');
+select pg_temp.ok(not (:'olist'::jsonb::text ~ '할머니|운영|아이|OpsCode1'), '목록에 이름·코드 없음');
+select pg_temp.ok(not (:'odet'::jsonb::text ~ '할머니|운영|아이|OpsCode1|3333'), '상세에 이름·코드·비밀번호 없음');
+select pg_temp.ok((:'odet'::jsonb -> 'devices' -> 0 ->> 'visits')::int = 1 and (:'odet'::jsonb -> 'parents' -> 0 ->> 'visits')::int = 2 and (:'odet'::jsonb -> 'entry' ->> 'link')::int = 1, '상세: 사람별 방문·링크 방문');
+select pg_temp.ok((:'odet'::jsonb -> 'devices' -> 0 ->> 'group')::int = 1, '상세: 그룹은 순서 번호');
+select public.sp_purge_family(:'ofam');
+select pg_temp.ok(not exists (select 1 from public.visits where family_id = :'ofam'), '가족방을 지우면 방문 기록도 지움');
