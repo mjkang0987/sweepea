@@ -116,6 +116,8 @@ export interface MediaQuery {
   before?: MediaCursor;
   after?: MediaCursor;
   id?: string;
+  /** 여러 장(177, 앱 사진 주소) */
+  ids?: string[];
   /** 찍은 날 범위 [takenFrom, takenBefore)(달별 개수) */
   takenFrom?: string;
   takenBefore?: string;
