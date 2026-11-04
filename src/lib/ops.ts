@@ -89,3 +89,16 @@ export function visitTarget(method: string, path: string): { kind: 'link'; code:
   if (/^\/(ops|api|m|auth|login|logout|install|_)(\/|$)/.test(path) || path === '/' || /\.[a-z0-9]+$/i.test(path)) return null;
   return { kind: 'user' };
 }
+
+/** 숫자 1,234 */
+export const nf = (n: number) => n.toLocaleString('ko-KR');
+/** 가족방 번호 앞 8자리(이름 대신) */
+export const shortId = (id: string) => id.slice(0, 8);
+/** 서울 날짜 → '오늘'·'어제'·'11월 4일' */
+export function dayLabel(day: string | null, today: string): string {
+  if (!day) return '없음';
+  if (day === today) return '오늘';
+  if (day === addDays(today, -1)) return '어제';
+  const [, m, d] = day.split('-').map(Number);
+  return `${m}월 ${d}일`;
+}

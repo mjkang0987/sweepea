@@ -1,0 +1,58 @@
+---
+// 운영자 화면 막대 그래프(164): 하루 한 막대(두 값이면 위 가족·아래 엄빠 쌓기, 밝기가 달라 색 없이도 구분).
+// 막대마다 title 말풍선(마우스), 아래 접힌 '숫자로 보기' 표(휴대폰·키보드·화면 읽기). 12px보다 안 가늘어지고 넘치면 좌우로 밀기,
+// rtl로 처음부터 오늘(오른쪽 끝)이 보이게 — 스크립트 없음
+import { dayLabel, nf } from '../lib/ops';
+
+interface Props {
+  label: string;
+  /** 계열 이름: 하나면 단일 막대, 둘이면 [위, 아래] */
+  names: string[];
+  rows: { day: string; v: number[] }[];
+  unit: string;
+  today: string;
+}
+const { label, names, rows, unit, today } = Astro.props;
+const max = Math.max(1, ...rows.map((r) => r.v.reduce((a, b) => a + b, 0)));
+const tip = (r: { day: string; v: number[] }) => [dayLabel(r.day, today), ...r.v.map((x, i) => (names.length > 1 ? `${names[i]} ${nf(x)}${unit}` : `${nf(x)}${unit}`))].join(' · ');
+const minWidth = rows.length * 16;
+const long = minWidth > 760;
+---
+
+<figure class="sp-o__chart">
+  <figcaption class="sp-vh">{label}, {dayLabel(rows[0]?.day ?? null, today)}부터 {dayLabel(rows.at(-1)?.day ?? null, today)}까지</figcaption>
+  <div class="sp-o__chart-scroll" tabindex={long ? 0 : undefined} role={long ? 'region' : undefined} aria-label={long ? `${label}, 옆으로 밀기` : undefined}>
+    <div class="sp-o__chart-inner" style={`min-width: ${minWidth}px`}>
+      <div class="sp-o__bars" role="img" aria-label={label}>
+        {
+          rows.map((r) => (
+            <div class="sp-o__bar" title={tip(r)}>
+              {names.length > 1 && <span class="sp-o__bar-b" style={`height: ${((r.v[1] ?? 0) / max) * 100}%`} />}
+              <span class="sp-o__bar-a" style={`height: ${((r.v[0] ?? 0) / max) * 100}%`} />
+            </div>
+          ))
+        }
+      </div>
+      <div class="sp-o__chart-ends" aria-hidden="true"><span>{dayLabel(rows[0]?.day ?? null, today)}</span><span>{dayLabel(rows.at(-1)?.day ?? null, today)}</span></div>
+    </div>
+  </div>
+  {long && <p class="sp-o__sub">옆으로 밀면 지난 날짜가 보여요</p>}
+  {
+    names.length > 1 && (
+      <p class="sp-o__sub sp-o__legend">
+        <span class="sp-o__key"><span class="sp-o__key-a" aria-hidden="true" />{names[0]}</span>
+        <span class="sp-o__key"><span class="sp-o__key-b" aria-hidden="true" />{names[1]}</span>
+      </p>
+    )
+  }
+  <details class="sp-o__numbers">
+    <summary class="sp-o__numbers-open">숫자로 보기</summary>
+    <table class="sp-o__table sp-o__table--small">
+      <caption class="sp-vh">{label}, 날짜별 숫자</caption>
+      <thead><tr><th scope="col" class="sp-o__cell sp-o__cell--head">날짜</th>{(names.length > 1 ? names : ['수']).map((n) => <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">{n}</th>)}</tr></thead>
+      <tbody>
+        {[...rows].reverse().map((r) => <tr class="sp-o__tr"><th scope="row" class="sp-o__cell sp-o__cell--row">{dayLabel(r.day, today)}</th>{r.v.map((x) => <td class="sp-o__cell sp-o__num">{nf(x)}{unit}</td>)}</tr>)}
+      </tbody>
+    </table>
+  </details>
+</figure>

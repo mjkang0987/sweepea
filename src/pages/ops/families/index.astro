@@ -1,0 +1,87 @@
+---
+// 운영자 가족방 목록(164, 디자인 OpsFamilies): 50곳씩, 머리 링크로 정렬(많은/최근 순). 이름 대신 번호 앞 8자리
+import Ops from '../../../layouts/Ops.astro';
+import OpsPeriod from '../../../components/OpsPeriod.astro';
+import { getBackend, type OpsSort } from '../../../lib/backend';
+import { sizeLabel } from '../../../lib/familyAdmin';
+import { dayLabel, nf, parsePeriod, periodQuery, shortId, withPeriod } from '../../../lib/ops';
+import { opsGate } from '../../../lib/opsgate';
+import { seoulDate, seoulToday } from '../../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+if (!(await opsGate(Astro.request, Astro.cookies))) return Astro.rewrite('/404');
+const today = seoulToday();
+const period = parsePeriod(Astro.url.searchParams, today);
+const SORTS: OpsSort[] = ['created', 'media', 'bytes', 'visits', 'last_visit'];
+const q = Astro.url.searchParams.get('sort');
+const sort: OpsSort = SORTS.includes(q as OpsSort) ? (q as OpsSort) : 'created';
+const offset = Math.max(0, Math.min(1_000_000, Number.parseInt(Astro.url.searchParams.get('o') ?? '0', 10) || 0));
+const list = await getBackend().opsFamilies(period.from, period.to, sort, offset);
+const sortHref = (k: OpsSort) => withPeriod('/ops/families', period, k === 'created' ? '' : `sort=${k}`);
+const cols: { name: string; sort?: OpsSort; num?: boolean }[] = [
+  { name: '만든 날', sort: 'created', num: true },
+  { name: '엄빠', num: true },
+  { name: '가족 승인 / 대기', num: true },
+  { name: '사진·영상', sort: 'media', num: true },
+  { name: '용량', sort: 'bytes', num: true },
+  { name: '방문', sort: 'visits', num: true },
+  { name: '마지막 올림', num: true },
+  { name: '마지막 방문', sort: 'last_visit', num: true },
+  { name: '상태' },
+];
+const sortName = cols.find((c) => c.sort === sort)?.name ?? '만든 날';
+const next = offset + list.rows.length < list.total ? withPeriod('/ops/families', period, [sort !== 'created' && `sort=${sort}`, `o=${offset + 50}`].filter(Boolean).join('&')) : null;
+---
+
+<Ops title="가족방" current="families" query={periodQuery(period)}>
+  <header class="sp-o__head">
+    <h1 class="sp-o__title">가족방</h1>
+    <p class="sp-o__lead">{nf(list.total)}곳 · 이름 대신 번호 앞 8자리로 보여요</p>
+  </header>
+  <OpsPeriod period={period} path="/ops/families" keep={sort === 'created' ? {} : { sort }} />
+  {
+    list.rows.length ? (
+      <div class="sp-o__table-wrap">
+        <table class="sp-o__table">
+          <caption class="sp-vh">가족방 목록, {sortName} 많은 순. 방문은 고른 기간</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">가족방</th>
+              {cols.map((c) => (
+                <th scope="col" class:list={['sp-o__cell sp-o__cell--head', c.num && 'sp-o__num']} aria-sort={c.sort === sort ? 'descending' : undefined}>
+                  {c.sort ? (
+                    <a class="sp-o__sort" href={sortHref(c.sort)} aria-current={c.sort === sort ? 'true' : undefined}>
+                      {c.name}
+                      {c.sort === sort && <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>}
+                    </a>
+                  ) : (
+                    c.name
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {list.rows.map((r) => (
+              <tr class="sp-o__tr">
+                <th scope="row" class="sp-o__cell sp-o__cell--row"><a class="sp-o__id" href={withPeriod(`/ops/families/${r.id}`, period)}>{shortId(r.id)}</a></th>
+                <td class="sp-o__cell sp-o__num">{dayLabel(seoulDate(r.created_at), today)}</td>
+                <td class="sp-o__cell sp-o__num">{nf(r.parents)}</td>
+                <td class="sp-o__cell sp-o__num">{nf(r.active)} / {nf(r.pending)}</td>
+                <td class="sp-o__cell sp-o__num">{nf(r.media)}</td>
+                <td class="sp-o__cell sp-o__num">{sizeLabel(r.bytes)}</td>
+                <td class="sp-o__cell sp-o__num">{nf(r.visits)}</td>
+                <td class="sp-o__cell sp-o__num">{r.last_upload ? dayLabel(seoulDate(r.last_upload), today) : '없음'}</td>
+                <td class="sp-o__cell sp-o__num">{dayLabel(r.last_visit, today)}</td>
+                <td class="sp-o__cell">{r.delete_after ? <span class="sp-o__badge sp-o__badge--warn">탈퇴 예정</span> : <span class="sp-o__badge">정상</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <p class="sp-o__sub">아직 가족방이 없어요.</p>
+    )
+  }
+  {next && <a class="sp-o__more" href={next}>다음 50곳</a>}
+</Ops>

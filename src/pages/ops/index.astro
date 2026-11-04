@@ -1,0 +1,143 @@
+---
+// 운영자 현황(164, 디자인 OpsHome·OpsHomeMobile). 지금 전체 숫자는 기간 줄 위, 고른 기간 숫자는 아래(직전 같은 길이 기간과 비교)
+import Ops from '../../layouts/Ops.astro';
+import OpsBars from '../../components/OpsBars.astro';
+import OpsPeriod from '../../components/OpsPeriod.astro';
+import { getBackend } from '../../lib/backend';
+import { sizeLabel } from '../../lib/familyAdmin';
+import { dayLabel, nf, parsePeriod, periodQuery, shortId, withPeriod } from '../../lib/ops';
+import { opsGate } from '../../lib/opsgate';
+import { PROVIDER_NAMES, seoulDate, seoulToday } from '../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+if (!(await opsGate(Astro.request, Astro.cookies))) return Astro.rewrite('/404');
+const today = seoulToday();
+const period = parsePeriod(Astro.url.searchParams, today);
+const s = await getBackend().opsSummary(period.from, period.to);
+const fam = (id: string) => withPeriod(`/ops/families/${id}`, period);
+const seenPct = s.seen.active ? Math.round((s.seen.visited / s.seen.active) * 100) : 0;
+const ago = (at: string) => {
+  const h = Math.floor((Date.now() - Date.parse(at)) / 3600_000);
+  return h >= 24 ? `${Math.floor(h / 24)}일 ${h % 24}시간` : `${h}시간`;
+};
+const checks = [
+  ...s.checks.pending.map((c) => ({ id: c.family_id, title: '승인 대기 2일 넘음', meta: `${nf(c.n)}명 · ${ago(c.since)}` })),
+  ...s.checks.full.map((c) => ({ id: c.family_id, title: '용량 80% 넘음', meta: `${sizeLabel(c.bytes)} / ${sizeLabel(c.quota)}` })),
+  ...s.checks.quiet.map((c) => ({ id: c.family_id, title: '7일 동안 아무도 안 봄', meta: `마지막 방문 ${dayLabel(c.last, today)}` })),
+  ...s.checks.closing.map((c) => ({ id: c.family_id, title: '탈퇴 예정', meta: `${dayLabel(seoulDate(c.at), today)} 지워짐` })),
+];
+const funnel = [
+  ['링크로 들어온 방문', s.entry.link],
+  ['비밀번호 화면까지', s.entry.link_pw],
+  ['들어오기 신청', s.entry.requested],
+  ['승인', s.entry.approved],
+] as const;
+const funnelMax = Math.max(1, ...funnel.map(([, n]) => n));
+const providers = Object.entries(s.providers).reduce<Record<string, number>>((a, [k, n]) => {
+  const name = PROVIDER_NAMES[k] ?? k;
+  a[name] = (a[name] ?? 0) + n;
+  return a;
+}, {});
+const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+---
+
+<Ops title="현황" current="home" query={periodQuery(period)}>
+  <header class="sp-o__head">
+    <h1 class="sp-o__title">현황</h1>
+    <p class="sp-o__lead">{now} 기준</p>
+  </header>
+
+  <section aria-labelledby="sp-o-now">
+    <h2 class="sp-vh" id="sp-o-now">지금 전체</h2>
+    <dl class="sp-o__stats sp-o__stats--5">
+      <div class="sp-o__stat"><dt class="sp-o__stat-label">가족방</dt><dd class="sp-o__stat-num">{nf(s.now.families)}</dd></div>
+      <div class="sp-o__stat"><dt class="sp-o__stat-label">엄빠</dt><dd class="sp-o__stat-num">{nf(s.now.parents)}</dd></div>
+      <div class="sp-o__stat"><dt class="sp-o__stat-label">가족 기기</dt><dd class="sp-o__stat-num">{nf(s.now.devices)}</dd><dd class="sp-o__sub">승인 {nf(s.now.devices_active)} · 대기 {nf(s.now.devices_pending)}</dd></div>
+      <div class="sp-o__stat"><dt class="sp-o__stat-label">사진·영상</dt><dd class="sp-o__stat-num">{nf(s.now.media)}</dd></div>
+      <div class="sp-o__stat"><dt class="sp-o__stat-label">저장 용량</dt><dd class="sp-o__stat-num">{sizeLabel(s.now.bytes)}</dd></div>
+    </dl>
+  </section>
+
+  <OpsPeriod period={period} path="/ops" />
+
+  <div class="sp-o__cols">
+    <div class="sp-o__col">
+      <section class="sp-p__card" aria-labelledby="sp-o-visits">
+        <div><h2 class="sp-p__card-title" id="sp-o-visits">방문</h2><p class="sp-o__sub">30분 안에 이어서 연 건 한 번으로 세요</p></div>
+        <dl class="sp-o__stats sp-o__stats--3 sp-o__stats--in">
+          <div class="sp-o__stat"><dt class="sp-o__stat-label">방문한 사람</dt><dd class="sp-o__stat-num">{nf(s.visits.people)}</dd><dd class="sp-o__stat-prev">직전 {nf(s.visits.prev_people)}</dd><dd class="sp-o__sub">엄빠 {nf(s.visits.people_parent)} · 가족 {nf(s.visits.people_device)}</dd></div>
+          <div class="sp-o__stat"><dt class="sp-o__stat-label">방문</dt><dd class="sp-o__stat-num">{nf(s.visits.count)}회</dd><dd class="sp-o__stat-prev">직전 {nf(s.visits.prev_count)}회</dd></div>
+          <div class="sp-o__stat"><dt class="sp-o__stat-label">하루 평균</dt><dd class="sp-o__stat-num">{nf(Math.round((s.visits.count / period.days) * 10) / 10)}회</dd></div>
+        </dl>
+        <OpsBars label="기간 안 날짜별 방문 수" names={['가족', '엄빠']} unit="회" today={today} rows={s.visits.days.map((d) => ({ day: d.day, v: [d.device, d.parent] }))} />
+      </section>
+
+      <section class="sp-p__card" aria-labelledby="sp-o-new">
+        <h2 class="sp-p__card-title" id="sp-o-new">새로 생긴 것</h2>
+        <dl class="sp-o__kv">
+          <dt class="sp-o__kv-name">새 가족방</dt><dd class="sp-o__kv-val">{nf(s.new.families)} <span class="sp-o__prev">직전 {nf(s.new.prev_families)}</span></dd>
+          <dt class="sp-o__kv-name">새로 들어온 가족 기기</dt><dd class="sp-o__kv-val">{nf(s.new.devices)} <span class="sp-o__prev">직전 {nf(s.new.prev_devices)}</span></dd>
+          <dt class="sp-o__kv-name">올린 사진·영상</dt><dd class="sp-o__kv-val">{nf(s.new.media)} <span class="sp-o__prev">직전 {nf(s.new.prev_media)}</span></dd>
+        </dl>
+      </section>
+
+      <section class="sp-p__card" aria-labelledby="sp-o-seen">
+        <div><h2 class="sp-p__card-title" id="sp-o-seen">가족이 실제로 보는지</h2><p class="sp-o__sub">승인된 가족 기기 중 이 기간에 들어와 본 비율</p></div>
+        <p class="sp-o__big">{seenPct}%</p>
+        <meter class="sp-p__meter" min="0" max="100" value={seenPct} aria-label={`승인된 가족 기기 중 ${seenPct}%가 들어와 봄`}>{seenPct}%</meter>
+        <dl class="sp-o__kv">
+          <dt class="sp-o__kv-name">들어와 본 가족 기기</dt><dd class="sp-o__kv-val">{nf(s.seen.visited)} / {nf(s.seen.active)}</dd>
+          <dt class="sp-o__kv-name">반응</dt><dd class="sp-o__kv-val">{nf(s.seen.reactions)} <span class="sp-o__prev">직전 {nf(s.seen.prev_reactions)}</span></dd>
+          <dt class="sp-o__kv-name">한마디</dt><dd class="sp-o__kv-val">{nf(s.seen.comments)} <span class="sp-o__prev">직전 {nf(s.seen.prev_comments)}</span></dd>
+        </dl>
+      </section>
+
+      <section class="sp-p__card" aria-labelledby="sp-o-entry">
+        <h2 class="sp-p__card-title" id="sp-o-entry">들어오다 멈춘 곳</h2>
+        <ol class="sp-o__funnel">
+          {funnel.map(([name, n]) => (
+            <li class="sp-o__step"><span>{name}</span><span class="sp-o__step-bar" aria-hidden="true"><span class="sp-o__step-fill" style={`width: ${(n / funnelMax) * 100}%`} /></span><span class="sp-o__kv-val">{nf(n)}</span></li>
+          ))}
+        </ol>
+        <p class="sp-o__sub">비밀번호 틀림 {nf(s.entry.failures)}번 · 승인 대기 기한 지남 {nf(s.entry.expired)}명</p>
+      </section>
+
+      <section class="sp-p__card" aria-labelledby="sp-o-help">
+        <h2 class="sp-p__card-title" id="sp-o-help">홈 화면에 두기 부탁</h2>
+        <dl class="sp-o__kv"><dt class="sp-o__kv-name">부탁</dt><dd class="sp-o__kv-val">{nf(s.install_help)}</dd></dl>
+      </section>
+    </div>
+
+    <div class="sp-o__col sp-o__first">
+      <section class="sp-p__card" aria-labelledby="sp-o-check">
+        <div><h2 class="sp-p__card-title" id="sp-o-check">살펴볼 것</h2><p class="sp-o__sub">지금 기준</p></div>
+        {
+          checks.length ? (
+            <ul class="sp-o__list">
+              {checks.map((c) => (
+                <li>
+                  <a class="sp-o__row" href={fam(c.id)}>
+                    <span class="sp-o__row-text">{c.title}<span class="sp-o__row-meta">가족방 {shortId(c.id)} · {c.meta}</span></span>
+                    <svg class="sp-o__chev" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p class="sp-o__sub">지금은 살펴볼 게 없어요.</p>
+          )
+        }
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-login">
+        <div><h2 class="sp-p__card-title" id="sp-o-login">로그인 방법</h2><p class="sp-o__sub">엄빠 전체</p></div>
+        {
+          Object.keys(providers).length ? (
+            <dl class="sp-o__kv">{Object.entries(providers).sort((a, b) => b[1] - a[1]).map(([k, n]) => (<><dt class="sp-o__kv-name">{k}</dt><dd class="sp-o__kv-val">{nf(n)}</dd></>))}</dl>
+          ) : (
+            <p class="sp-o__sub">아직 없어요.</p>
+          )
+        }
+      </section>
+    </div>
+  </div>
+</Ops>
