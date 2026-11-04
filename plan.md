@@ -1427,6 +1427,16 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 173. feature/ops-media — 운영 올린 사진·영상 목록(정보만) (진행 중)
+- 요구(사용자 2026-11-04): "사진 업로드된 거 리스트 뿌려줘" → 처리방침('운영자는 사진을 보지 않는다')을 알리고 두 안 중 **정보만** 고름(작은 사진까지 안은 안 고름)
+- 화면 `/ops/media`(메뉴 '사진'): 고른 기간에 올린 것 최근 순 50개씩. 한 줄 = 올린 때(날짜·시각)·가족방(→ 상세)·종류·크기(1MB 아래는 KB)·가로×세로·영상 길이·올린 사람(엄마/아빠, 가족 기기는 구성원 이름)·상태(올림/올리는 중(1시간 안)/올리다 멈춤). 사진·영상 자체와 파일 주소는 안 내보냄
+- `?f=<가족방>`이면 그 가족방만(가족방 상세 사진·영상 숫자에서 옴, '모든 가족방 보기'). 현황 사진·영상 숫자도 이 목록으로(172의 '사진 많은 순' 대신)
+- DB `20261104000005_ops_media.sql`: sp_ops_media(service_role만, 새 함수). **운영 적용을 웹보다 먼저**, 적용 전 사용자 확인
+- 처리방침 2항: 운영자가 보는 것에 '올린 사진·영상마다 올린 때·크기·가로세로·영상 길이·올린 사람', '사진·영상 자체는 안 봄'. 시행일 그대로
+- 영향 파일: 마이그레이션, src/lib/backend/{types,supabase,mock}.ts, src/components/OpsNav.astro, src/layouts/Ops.astro, src/pages/ops/{media,index}.astro, src/pages/ops/families/[id].astro, src/pages/privacy.astro, supabase/tests/rls.sql, tools/e2e/ops.py
+- 리뷰 1회 반영: 목록 머리말에 '고른 기간'·다 올라감/올리는 중·멈춤 수와 '현황·상세 숫자는 전체 기간 다 올라간 것' 안내(숫자가 달라 보이는 것), 0바이트는 0KB, 틀린 가족방 번호는 안내, e2e가 실제로 한 장 올려 줄·거르기까지 확인, DB 검사 보강(로그인 없이 거절·가족 기기 이름·지운 사진 빠짐)
+- 검사: DB, e2e ops.py 67개, 단위 65, astro check 0, 1280·390 화면
+
 ### 172. fix/ops-num-links — 운영 숫자 카드 누르면 그 목록으로 (완료, 0.44.1)
 - 요구(사용자 2026-11-04): "숫자 누르면 링크 연결되게"
 - 현황: 가족방 → 가족방 목록, 엄빠 → 계정 목록, 사진·영상 → 가족방 목록 사진 많은 순, 저장 용량 → 용량 큰 순(고른 기간 유지). 가족 기기는 따로 목록이 없어 그대로

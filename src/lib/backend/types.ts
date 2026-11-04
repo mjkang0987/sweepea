@@ -352,6 +352,8 @@ export interface Backend {
   opsFamily(id: string, from: string, to: string): Promise<OpsFamily | null>;
   /** 엄빠 계정 목록(익명 기기 계정 제외, 가족방별로 묶어 50묶음씩) */
   opsAccounts(from: string, to: string, sort: OpsAccountSort, offset: number): Promise<OpsAccountList>;
+  /** 고른 기간에 올린 사진·영상 정보(파일 주소 없음, 최근 순 50개씩). family가 있으면 그 가족방만 */
+  opsMedia(from: string, to: string, family: string | null, offset: number): Promise<OpsMediaList>;
   /** 가족 기기: 그 가족방에서 내 캐릭터(승인된 구성원만, 아니면 BackendError 403) */
   setMemberAvatar(pass: Pass, familyId: string, avatar: Avatar): Promise<void>;
   /** 엄빠: 내 캐릭터 */
@@ -515,6 +517,30 @@ export interface OpsAccount {
   role: 'mom' | 'dad' | null;
   visits: number;
   last_visit: string | null;
+}
+/** 올린 사진·영상 한 줄(사진 자체·파일 주소 없음) */
+export interface OpsMedia {
+  id: string;
+  family_id: string;
+  kind: 'photo' | 'video';
+  bytes: number;
+  width: number | null;
+  height: number | null;
+  duration_sec: number | null;
+  /** uploading = 올리다 멈췄거나 올리는 중 */
+  status: 'ready' | 'uploading';
+  created_at: string;
+  /** 엄빠가 올렸으면 역할, 가족 기기면 구성원 이름 */
+  by_role: 'mom' | 'dad' | null;
+  by_name: string | null;
+}
+export interface OpsMediaList {
+  total: number;
+  /** 다 올라간 것 수(나머지는 올리는 중·올리다 멈춤) */
+  ready: number;
+  /** 다 올라간 것의 크기 합 */
+  bytes: number;
+  rows: OpsMedia[];
 }
 export interface OpsAccountList {
   total: number;

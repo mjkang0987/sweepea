@@ -740,6 +740,17 @@ export function createMockBackend(): Backend {
       rows.sort((a, b) => String(b[by[sort]] ?? '').localeCompare(String(a[by[sort]] ?? ''), 'en', { numeric: true }));
       return { total: rows.length, rows: rows.slice(offset, offset + 50) };
     },
+    async opsMedia(from, to, family, offset) {
+      const ms = media
+        .filter((x) => (!family || x.family_id === family) && x.created_at && seoulDay(Date.parse(x.created_at)) >= from && seoulDay(Date.parse(x.created_at)) <= to)
+        .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+      const rows = ms.slice(offset, offset + 50).map((x) => {
+        const p = parents.get(x.uploader);
+        const m = members.find((y) => y.id === devices.get(key({ access: x.uploader } as Pass, x.family_id))?.memberId);
+        return { id: x.id, family_id: x.family_id, kind: x.kind, bytes: x.bytes, width: x.width ?? null, height: x.height ?? null, duration_sec: x.duration_sec ?? null, status: x.status, created_at: x.created_at!, by_role: p?.role ?? null, by_name: p ? null : (m?.name ?? null) };
+      });
+      return { total: ms.length, ready: ms.filter((x) => x.status === 'ready').length, bytes: ms.filter((x) => x.status === 'ready').reduce((a, x) => a + x.bytes, 0), rows };
+    },
     async opsAccounts(from, to, sort, offset) {
       const vs = visitRows().filter((r) => r.kind === 'parent');
       const rows = [...parents].map(([id, p]) => ({

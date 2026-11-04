@@ -129,6 +129,10 @@ with sync_playwright() as p:
     p2.fill('#child', '도담'); p2.fill('#birth', '2026-01-02'); p2.check('input[name=agree_terms]'); p2.check('input[name=agree_privacy]')
     p2.get_by_role('button', name='다음').click(); p2.wait_for_url('**/setup/password**')
     p2.fill('#pw', '0102'); p2.get_by_role('button', name='시작하기').click(); p2.wait_for_url('**/home')
+    # 173 사진 목록용으로 한 장 올림
+    p2.goto(B + '/upload'); p2.set_input_files('#up-files', [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'u0.jpg')])
+    p2.wait_for_function("!document.querySelector('#up-actions button').disabled", timeout=30000)
+    p2.get_by_role('button', name='보내지 않고 올리기만').click(); p2.wait_for_url('**/home', timeout=60000)
     c2.close()
     pg.goto(B + '/ops/accounts')
     rows = pg.locator('tbody .sp-o__tr')
@@ -143,9 +147,20 @@ with sync_playwright() as p:
     check(sg.get_by_role('link', name='계정 목록').count() == 1, '가입하고 멈춘 곳 → 계정 목록 링크')
     check(pg.get_by_role('heading', name='예약 정리 작업').is_visible() and '밀린 것 없어요' in pg.locator('main').inner_text(), '예약 정리 작업: 밀린 것 없음')
     check('유료 0' in pg.locator('main').inner_text(), '가족방 칸에 유료 수')
-    # 172: 숫자 카드 숫자 → 목록(가족방·계정·사진 많은 순·용량 큰 순), 카드 어디를 눌러도
+    # 173: 올린 사진·영상 목록 — 정보만(그림 없음), 메뉴 '사진', 가족방으로 거르기
+    pg.get_by_role('navigation', name='운영 메뉴').get_by_role('link', name='사진').click(); pg.wait_for_url('**/ops/media**')
+    check(pg.get_by_role('heading', name='올린 사진·영상', level=1).is_visible(), '사진 목록 열림')
+    check(pg.locator('main img, main video, main picture').count() == 0, '사진 목록에 사진·영상 자체는 없음')
+    mrows = pg.locator('tbody .sp-o__tr')
+    check(mrows.count() == 1 and '엄마' in mrows.first.inner_text() and '올림' in mrows.first.inner_text() and '사진' in mrows.first.inner_text(), '사진 목록: 엄마가 올린 사진 한 줄(올림)')
+    fam = mrows.first.locator('.sp-o__id').get_attribute('href').split('/')[-1].split('?')[0]
+    pg.goto(B + '/ops/families/' + fam); pg.locator('.sp-o__num-link[href*="/ops/media"]').click(); pg.wait_for_url('**/ops/media?*f=*')
+    check(pg.get_by_role('link', name='모든 가족방 보기').count() == 1 and pg.locator('tbody .sp-o__tr').count() == 1, '가족방 상세 사진 숫자 → 그 가족방 사진 목록')
+    pg.goto(B + '/ops/media?f=abc'); check('가족방 번호가 맞지 않아' in pg.locator('main').inner_text(), '틀린 가족방 번호는 안내')
+    pg.goto(B + '/ops')
+    # 172: 숫자 카드 숫자 → 목록(가족방·계정·사진 목록·용량 큰 순), 카드 어디를 눌러도
     hrefs = pg.locator('.sp-o__stats--5 .sp-o__num-link').evaluate_all('els => els.map(e => e.getAttribute("href"))')
-    check(hrefs == ['/ops/families', '/ops/accounts', '/ops/families?sort=media', '/ops/families?sort=bytes'], f'현황 숫자 링크 {hrefs}')
+    check(hrefs == ['/ops/families', '/ops/accounts', '/ops/media', '/ops/families?sort=bytes'], f'현황 숫자 링크 {hrefs}')
     box = pg.locator('.sp-o__stats--5 .sp-o__stat').first.bounding_box()
     pg.mouse.click(box['x'] + box['width'] - 10, box['y'] + box['height'] - 10); pg.wait_for_url('**/ops/families')
     check(True, '숫자 카드 빈 곳을 눌러도 목록으로')

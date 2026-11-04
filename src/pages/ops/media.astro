@@ -1,0 +1,82 @@
+---
+// 운영 올린 사진·영상 목록(173, 사용자 2026-11-04 "사진 업로드된 거 리스트" → '정보만'). 사진 자체는 안 보여 준다(처리방침).
+// 고른 기간에 올린 것, 최근 순 50개씩. ?f=<가족방>이면 그 가족방만(가족방 상세 사진·영상 숫자에서 옴)
+import Ops from '../../layouts/Ops.astro';
+import OpsPeriod from '../../components/OpsPeriod.astro';
+import { getBackend } from '../../lib/backend';
+import { sizeLabel } from '../../lib/familyAdmin';
+import { UUID } from '../../lib/media';
+import { dayLabel, nf, parsePeriod, periodQuery, shortId, withPeriod } from '../../lib/ops';
+import { opsGate } from '../../lib/opsgate';
+import { seoulDate, seoulToday } from '../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+if (!(await opsGate(Astro.request, Astro.cookies))) return Astro.rewrite('/404');
+const today = seoulToday();
+const period = parsePeriod(Astro.url.searchParams, today);
+const fq = Astro.url.searchParams.get('f');
+const family = fq && UUID.test(fq) ? fq : null;
+const badFamily = !!fq && !family;
+const offset = Math.max(0, Math.min(1_000_000, Number.parseInt(Astro.url.searchParams.get('o') ?? '0', 10) || 0));
+const list = await getBackend().opsMedia(period.from, period.to, family, offset);
+const ROLE = { mom: '엄마', dad: '아빠' } as const;
+// 사진 한 장은 대개 1MB 아래라 MB로만 쓰면 0MB가 됨
+const size = (b: number) => (b === 0 ? '0KB' : b < 1024 ** 2 ? `${Math.max(1, Math.round(b / 1024))}KB` : sizeLabel(b));
+const time = (at: string) => new Date(at).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false });
+const shape = (r: (typeof list.rows)[number]) =>
+  [r.width && r.height ? `${r.width}×${r.height}` : null, r.duration_sec != null ? `${Math.round(Number(r.duration_sec))}초` : null].filter(Boolean).join(' · ') || '—';
+const keep = family ? `f=${family}` : '';
+const next = offset + list.rows.length < list.total ? withPeriod('/ops/media', period, [keep, `o=${offset + 50}`].filter(Boolean).join('&')) : null;
+---
+
+<Ops title="사진" current="media" query={periodQuery(period)}>
+  <header class="sp-o__head">
+    <h1 class="sp-o__title">올린 사진·영상</h1>
+    <p class="sp-o__lead">
+      {family ? <>가족방 <a class="sp-o__link" href={withPeriod(`/ops/families/${family}`, period)}>{shortId(family)}</a> · </> : null}
+      고른 기간에 올린 것 {nf(list.total)}개(다 올라감 {nf(list.ready)} · 올리는 중·멈춤 {nf(list.total - list.ready)}) · {size(list.bytes)}
+    </p>
+    <p class="sp-o__sub">사진은 안 보이고 정보만 보여요. 현황·상세의 사진·영상 숫자는 전체 기간 다 올라간 것이라 이 목록 수와 다를 수 있어요.</p>
+    {badFamily && <p class="sp-o__sub sp-o__warn" role="status">가족방 번호가 맞지 않아 모든 가족방을 보여 줘요.</p>}
+    {family && <a class="sp-o__back" href={withPeriod('/ops/media', period)}>모든 가족방 보기</a>}
+  </header>
+  <OpsPeriod period={period} path="/ops/media" keep={family ? { f: family } : {}} />
+  {
+    list.rows.length ? (
+      <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="올린 사진·영상 목록, 옆으로 밀기">
+        <table class="sp-o__table">
+          <caption class="sp-vh">올린 사진·영상, 최근 순. 사진 자체는 없음</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">올린 때</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">가족방</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">종류</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">크기</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">가로×세로 · 길이</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">올린 사람</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.rows.map((r) => (
+              <tr class="sp-o__tr">
+                <th scope="row" class="sp-o__cell sp-o__cell--row">{dayLabel(seoulDate(r.created_at), today)} {time(r.created_at)}</th>
+                <td class="sp-o__cell"><a class="sp-o__id" href={withPeriod(`/ops/families/${r.family_id}`, period)}>{shortId(r.family_id)}</a></td>
+                <td class="sp-o__cell">{r.kind === 'video' ? '영상' : '사진'}</td>
+                <td class="sp-o__cell sp-o__num">{r.status === 'ready' ? size(r.bytes) : '—'}</td>
+                <td class="sp-o__cell sp-o__mono">{shape(r)}</td>
+                <td class="sp-o__cell">{r.by_role ? ROLE[r.by_role] : (r.by_name ?? '알 수 없음')}</td>
+                <td class="sp-o__cell">{r.status === 'ready' ? '올림' : Date.now() - Date.parse(r.created_at) < 3600_000 ? '올리는 중' : <span class="sp-o__warn">올리다 멈춤</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : list.total ? (
+      <p class="sp-o__sub">이 쪽에는 없어요. <a class="sp-o__id" href={withPeriod('/ops/media', period, keep)}>첫 쪽으로</a></p>
+    ) : (
+      <p class="sp-o__sub">이 기간에 올린 사진·영상이 없어요.</p>
+    )
+  }
+  {next && <a class="sp-o__more" href={next}>다음 50개</a>}
+</Ops>
