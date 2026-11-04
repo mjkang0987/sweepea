@@ -4,8 +4,9 @@
 
 ## 현재 상태
 
-- 버전 0.42.1(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 저장소 마이그레이션 28개 적용(2026-11-03 consents까지. 운영 기록엔 내용 없는 `media_changes` 한 줄 + 실제 내용 `media_changes_body`가 있어 27줄 — plan 123), 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
+- 버전 0.43.0(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 저장소 마이그레이션 31개 적용(2026-11-04 ops_more까지. 운영 기록엔 내용 없는 `media_changes` 한 줄 + 실제 내용 `media_changes_body`가 있어 27줄 — plan 123), 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
 - 운영자 화면(0.41.0, plan 164): `/ops` 현황·`/ops/families` 목록·`/ops/families/<id>` 상세. 문 세 겹 — Cloudflare Access 도장을 서버가 직접 확인(workers.dev 뒷문 막기, src/lib/ops.ts verifyAccessJwt) + 엄빠 로그인 + 비밀 값 `OPS_USER_IDS`(셋 다 없으면 404, src/lib/opsgate.ts). 비밀 값 `OPS_ACCESS_TEAM`(예: 팀.cloudflareaccess.com)·`OPS_ACCESS_AUD`. 숫자만(가족방은 번호 앞 8자리, 사람은 '가족 기기 3'), 기간 줄(오늘·7·30·90일·직접, 직전 같은 길이와 비교), 막대 바로 위 말풍선(운영 화면만 작은 스크립트, 없으면 CSS 말풍선, 0.41.2)·숫자로 보기·좌우 밀기, 목록은 줄 전체가 상세 링크(0.41.1). DB 함수 sp_ops_*는 service_role만, 기기 승인 판정은 sp_ops_devices(기기 active + 구성원 active)
+- 운영 현황 더 보기(0.43.0, plan 169): 가입하고 멈춘 곳(가입→처음 설정→첫 사진→가족 들어옴, 가족방 없는 계정 수)·예약 정리 작업 밀림·살펴볼 것 '올리다 멈춘 사진'·가족방 유료 수, DB sp_ops_summary(000003)
 - 운영 화면 글씨 키움(0.42.1, plan 168): ops.css만, `.sp-o` 안에서 글자 단계 한 칸씩 올림(본문 17px·작은 글 15px·카드 제목 20px)·숫자 34px·이름 칸 진하게·막대 160px
 - 운영 계정·설정 정보(0.42.0, plan 167): `/ops/accounts` 엄빠 계정 목록(번호만, 가족방 칸 → 상세), 가족방 상세에 지금 설정된 정보(엄빠·아이·그룹·구성원 이름, 아이 생일, 설정값 — 비밀번호·힌트·사진·한마디·이메일은 없음), DB sp_ops_accounts·sp_ops_family(000002)
 - 방문 기록(0.41.0, plan 164): 미들웨어가 30분 쿠키(sp_v 앨범·엄빠 화면, sp_vl 가족 링크, sp_vp 비밀번호 화면)가 없을 때만 응답 뒤(waitUntil) 기록. 표 `visits`(가족방·종류·누구·서울 날짜·횟수, 주소·IP·기기 정보 없음), 봇·미리 받기 제외, 가족방이 지워지면 같이, 나간 엄빠 기록은 트리거로 지움. 처리방침 2026-11-04에 반영
