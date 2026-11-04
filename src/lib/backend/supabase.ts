@@ -51,6 +51,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     if (opts.childId) q.set('media_children.child_id', `eq.${opts.childId}`);
     if (opts.groupId) q.set('media_groups.group_id', `eq.${opts.groupId}`);
     if (opts.id) q.set('id', `eq.${opts.id}`);
+    if (opts.ids) q.set('id', `in.(${opts.ids.join(',')})`);
     if (opts.kind) q.set('kind', `eq.${opts.kind}`);
     if (opts.takenFrom) q.append('taken_at', `gte.${opts.takenFrom}`);
     if (opts.takenBefore) q.append('taken_at', `lt.${opts.takenBefore}`);
