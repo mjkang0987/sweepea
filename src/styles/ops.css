@@ -693,24 +693,52 @@
 }
 .sp-o__pager {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
-.sp-o__pager-btn {
+.sp-o__pages {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+.sp-o__page {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
   min-height: 2.75rem;
-  padding: 0 var(--space-4);
-  border-radius: 12px;
-  background: var(--fill);
+  box-sizing: border-box;
+  padding: 0 var(--space-1);
+  border-radius: 10px;
   color: var(--label);
   font-size: var(--subhead-size);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   text-decoration: none;
 }
-.sp-o__pager-btn--off {
+/* 번호 링크만(지금 쪽·…·비활성 빼고) */
+.sp-o__page--link:hover {
+  background: var(--fill);
+}
+.sp-o__page--now {
+  background: var(--label);
+  color: var(--bg);
+}
+.sp-o__page--arrow {
+  min-width: 2rem;
+  font-size: var(--title-2-size);
+}
+.sp-o__page--gap {
+  min-width: 1.25rem;
+  padding: 0;
+  color: var(--label-2);
+}
+.sp-o__page--off {
   visibility: hidden;
 }
 .sp-o__pager-at {
