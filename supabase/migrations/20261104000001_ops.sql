@@ -140,20 +140,20 @@ begin
     -- 살펴볼 것(지금 기준): 가족방 번호와 짧은 사유 숫자만. 종류마다 50곳까지(나머지는 목록에서 정렬해 찾음)
     'checks', jsonb_build_object(
       -- 대기는 현황의 대기 수와 같은 뜻(구성원 대기 + 기기만 대기), 2일 넘은 것
-      'pending', (select coalesce(jsonb_agg(jsonb_build_object('family_id', family_id, 'n', n, 'since', since) order by since), '[]') from (
+      'pending', (select coalesce(jsonb_agg(jsonb_build_object('family_id', family_id, 'n', n, 'since', since) order by since, family_id), '[]') from (
           select family_id, count(*) as n, min(created_at) as since from dv
-          where st = 'pending' and created_at < now() - interval '2 days' group by family_id order by since limit 50) t),
-      'full', (select coalesce(jsonb_agg(jsonb_build_object('family_id', id, 'bytes', bytes, 'quota', quota) order by bytes desc), '[]') from (
+          where st = 'pending' and created_at < now() - interval '2 days' group by family_id order by since, family_id limit 50) t),
+      'full', (select coalesce(jsonb_agg(jsonb_build_object('family_id', id, 'bytes', bytes, 'quota', quota) order by bytes desc, id), '[]') from (
           select id, storage_used_bytes as bytes, public.sp_ops_quota(plan) as quota from public.families
-          where storage_used_bytes >= 0.8 * public.sp_ops_quota(plan) order by storage_used_bytes desc limit 50) t),
+          where storage_used_bytes >= 0.8 * public.sp_ops_quota(plan) order by storage_used_bytes desc, id limit 50) t),
       'quiet', (select coalesce(jsonb_agg(jsonb_build_object('family_id', id, 'last', last) order by last nulls first, id), '[]') from (
           select f.id, lastv.last from public.families f left join lastv on lastv.family_id = f.id
           where f.delete_after is null and f.created_at < now() - interval '7 days'
             and f.id in (select family_id from dv where st = 'active')
             and (lastv.last is null or lastv.last <= public.sp_seoul_today() - 7)
           order by lastv.last nulls first, f.id limit 50) t),
-      'closing', (select coalesce(jsonb_agg(jsonb_build_object('family_id', id, 'at', delete_after) order by delete_after), '[]') from (
-          select id, delete_after from public.families where delete_after is not null order by delete_after limit 50) t)
+      'closing', (select coalesce(jsonb_agg(jsonb_build_object('family_id', id, 'at', delete_after) order by delete_after, id), '[]') from (
+          select id, delete_after from public.families where delete_after is not null order by delete_after, id limit 50) t)
     )
   ) into v;
   return v;

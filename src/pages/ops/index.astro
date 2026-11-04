@@ -26,6 +26,8 @@ const checks = [
   ...s.checks.quiet.map((c) => ({ id: c.family_id, title: '7일 동안 아무도 안 봄', meta: `마지막 방문 ${dayLabel(c.last, today)}` })),
   ...s.checks.closing.map((c) => ({ id: c.family_id, title: '탈퇴 예정', meta: `${dayLabel(seoulDate(c.at), today)} 지워짐` })),
 ];
+// 종류마다 50곳까지만 받는다(sp_ops_summary): 잘렸을 수 있으면 안내
+const cut = [s.checks.pending, s.checks.full, s.checks.quiet, s.checks.closing].some((l) => l.length >= 50);
 const funnel = [
   ['링크로 들어온 방문', s.entry.link],
   ['비밀번호 화면까지', s.entry.link_pw],
@@ -80,6 +82,7 @@ const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 
             <p class="sp-o__sub">지금은 살펴볼 게 없어요.</p>
           )
         }
+        {cut && <p class="sp-o__sub">종류마다 50곳까지 보여요. 나머지는 가족방 목록에서 정렬해 찾아 주세요.</p>}
       </section>
       <section class="sp-p__card" aria-labelledby="sp-o-login">
         <div><h2 class="sp-p__card-title" id="sp-o-login">로그인 방법</h2><p class="sp-o__sub">엄빠 전체</p></div>
