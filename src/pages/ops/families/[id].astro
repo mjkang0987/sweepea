@@ -46,10 +46,10 @@ const people = [
   <div class="sp-o__cols sp-o__cols--narrow">
     <div class="sp-o__col">
       <dl class="sp-o__stats sp-o__stats--4">
-        <div class="sp-o__stat"><dt class="sp-o__stat-label">엄빠</dt><dd class="sp-o__stat-num">{nf(f.parents.length)}</dd></div>
-        <div class="sp-o__stat"><dt class="sp-o__stat-label">가족 기기</dt><dd class="sp-o__stat-num">{nf(f.devices.length)}</dd><dd class="sp-o__sub">승인 {nf(f.devices.filter((d) => d.status === 'active').length)} · 대기 {nf(f.devices.filter((d) => d.status === 'pending').length)}</dd></div>
-        <div class="sp-o__stat"><dt class="sp-o__stat-label">사진·영상</dt><dd class="sp-o__stat-num">{nf(f.photos + f.videos)}</dd><dd class="sp-o__sub">사진 {nf(f.photos)} · 영상 {nf(f.videos)}</dd></div>
-        <div class="sp-o__stat"><dt class="sp-o__stat-label">아이</dt><dd class="sp-o__stat-num">{nf(f.children.length)}</dd></div>
+        <div class="sp-o__stat"><dt class="sp-o__stat-label">엄빠</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href="#sp-o-who">{nf(f.parents.length)}</a></dd></div>
+        <div class="sp-o__stat"><dt class="sp-o__stat-label">가족 기기</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href="#sp-o-people">{nf(f.devices.length)}</a></dd><dd class="sp-o__sub">승인 {nf(f.devices.filter((d) => d.status === 'active').length)} · 대기 {nf(f.devices.filter((d) => d.status === 'pending').length)}</dd></div>
+        <div class="sp-o__stat"><dt class="sp-o__stat-label">사진·영상</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href="#sp-o-up">{nf(f.photos + f.videos)}</a></dd><dd class="sp-o__sub">사진 {nf(f.photos)} · 영상 {nf(f.videos)}</dd></div>
+        <div class="sp-o__stat"><dt class="sp-o__stat-label">아이</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href="#sp-o-who">{nf(f.children.length)}</a></dd></div>
       </dl>
       <section class="sp-p__card" aria-labelledby="sp-o-who">
         <h2 class="sp-p__card-title" id="sp-o-who">엄빠·아이</h2>
