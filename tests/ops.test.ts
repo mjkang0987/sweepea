@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inList, isBot, jwtKid, OPS_FILTERS, parseFilter, parseOffset, parsePeriod, verifyAccessJwt, visitTarget, withKeep, withPeriod, type AccessJwk } from '../src/lib/ops.ts';
+import { inList, isBot, jwtKid, OPS_FILTERS, pageList, parseFilter, parseOffset, parsePeriod, verifyAccessJwt, visitTarget, withKeep, withPeriod, type AccessJwk } from '../src/lib/ops.ts';
 
 const today = '2026-11-04';
 const q = (s: string) => new URLSearchParams(s);
@@ -44,6 +44,15 @@ test('parseFilter·parseOffset·withKeep: 아는 값만, 빈 값은 주소에서
   assert.equal(withKeep('/ops/media', p7, { kind: 'photo', o: '', sort: '' }), '/ops/media?kind=photo');
   assert.equal(withKeep('/ops/media', parsePeriod(q('p=30d'), today), { f: 'x', o: '50' }), '/ops/media?p=30d&f=x&o=50');
   assert.equal(withKeep('/ops/media', p7, {}), '/ops/media');
+});
+
+test('pageList: 처음·끝·앞뒤 1쪽, 사이는 …', () => {
+  assert.deepEqual(pageList(1, 1), [1]);
+  assert.deepEqual(pageList(1, 5), [1, 2, null, 5]);
+  assert.deepEqual(pageList(3, 5), [1, 2, 3, 4, 5]);
+  assert.deepEqual(pageList(6, 20), [1, null, 5, 6, 7, null, 20]);
+  assert.deepEqual(pageList(20, 20), [1, null, 19, 20]);
+  assert.deepEqual(pageList(3, 4), [1, 2, 3, 4]);
 });
 
 test('inList·isBot·visitTarget', () => {

@@ -168,7 +168,7 @@ with sync_playwright() as p:
     pg.goto(B + '/ops/families?sort=media&plan=free'); check(pg.locator('tbody .sp-o__tr').count() >= 1 and pg.locator('input[type=hidden][name=sort]').count() >= 1, '가족방 거르기: 무료, 정렬 유지')
     pg.goto(B + '/ops/accounts?fam=no'); check('거른 조건에 맞는 계정이 없어요' in pg.locator('main').inner_text(), '계정 거르기: 가족방 없음')
     pg.goto(B + '/ops/media?kind=photo&o=50'); pager = pg.get_by_role('navigation', name='쪽 넘기기')
-    check(pager.count() == 1 and pager.get_by_role('link', name='이전 50개').get_attribute('href') == '/ops/media?kind=photo', '쪽 넘기기: 이전은 거르기 유지·첫 쪽')
+    check(pager.count() == 1 and pager.get_by_role('link', name='이전 쪽').get_attribute('href') == '/ops/media?kind=photo' and pager.get_by_role('link', name='1쪽').count() == 1, '쪽 넘기기: 번호·이전은 거르기 유지·첫 쪽')
     pg.goto(B + '/ops')
     # 172: 숫자 카드 숫자 → 목록(가족방·계정·사진 목록·용량 큰 순), 카드 어디를 눌러도
     hrefs = pg.locator('.sp-o__stats--5 .sp-o__num-link').evaluate_all('els => els.map(e => e.getAttribute("href"))')

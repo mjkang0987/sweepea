@@ -1427,6 +1427,13 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 175. fix/ops-pager-numbers — 쪽 넘기기를 쪽 번호로 (완료, 0.46.1)
+- 요구(사용자 2026-11-04): "페이징 넘버링으로는 안 될까"
+- OpsPager: ‹ 1 … 5 [6] 7 … 20 › (첫·끝·지금 앞뒤 1쪽, 사이는 …), 아래 '251–300 / 987개'. 지금 쪽은 진한 칸 + aria-current=page, 번호마다 'n쪽' 이름, 끝을 넘은 쪽 주소면 이전은 마지막 쪽. 쪽 번호 계산은 src/lib/ops.ts pageList(단위 검사)
+- 휴대폰 360px 한 줄: 번호 칸 2.5rem·화살표 2rem·… 1.25rem·간격 2px(누르는 칸 24px 넘음), 3자리 번호(100쪽대)까지 한 줄 확인(임시 화면으로 찍고 지움)
+- 영향 파일: src/components/OpsPager.astro, src/lib/ops.ts, src/styles/ops.css, tests/ops.test.ts, tools/e2e/ops.py
+- 검사: 단위 67, e2e 76, astro check 0
+
 ### 174. feature/ops-filters — 운영 목록 거르기 + 쪽 넘기기 공용 (완료, 0.46.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 30일 사진 384·영상 6, 엄빠 390 + 가족 기기 0 = 전체 390, 서버만)
 - 요구(사용자 2026-11-04): "리스트 나오면 필터 좀" → 어느 목록이냐 묻자 "다 넣어 주고, 페이징 필요한 부분 페이징 공통 디자인 만들어서 적용"(새 공용 컴포넌트 만들기 요청 = 승인)
 - 새 공용 컴포넌트 2개(사용자 요청): **OpsFilter**(네이티브 select + '거르기' 버튼 GET 폼, 기간·정렬·가족방은 숨은 칸, 거르면 첫 쪽, '거르기 지우기'), **OpsPager**(이전 50 · 51–100 / 전체 · 다음 50, 없는 쪽 버튼은 자리만, nav '쪽 넘기기'). 예전 '다음 50개' 링크를 대신함

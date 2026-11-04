@@ -1,6 +1,6 @@
 ---
-// 운영 목록 쪽 넘기기(174, 세 목록 공용): 이전 · 지금 몇 번째 / 전체 · 다음. 50개(묶음)씩
-import { nf, withKeep, type Period } from '../lib/ops';
+// 운영 목록 쪽 넘기기(174·175, 세 목록 공용): ‹ 1 … 5 [6] 7 … 20 › 쪽 번호. 50개(묶음)씩, 아래에 몇 번째 / 전체
+import { nf, pageList, withKeep, type Period } from '../lib/ops';
 
 interface Props {
   path: string;
@@ -11,23 +11,39 @@ interface Props {
   /** 이 쪽에 보인 수(계정은 묶음 수) */
   shown: number;
   total: number;
-  /** 세는 말: 개·곳 */
+  /** 세는 말: 개·곳·묶음 */
   unit: string;
 }
 const { path, period, keep, offset, shown, total, unit } = Astro.props;
 const SIZE = 50;
-const at = (o: number) => withKeep(path, period, { ...keep, o: o > 0 ? String(o) : '' });
-// 끝을 넘은 쪽(주소로 o를 크게)에서 이전은 마지막 쪽으로
-const prev = offset > 0 ? at(offset >= total ? Math.max(0, Math.floor((total - 1) / SIZE) * SIZE) : Math.max(0, offset - SIZE)) : null;
-const next = offset + shown < total ? at(offset + SIZE) : null;
+const pages = Math.max(1, Math.ceil(total / SIZE));
+// 끝을 넘은 쪽(주소로 o를 크게)은 지금 쪽이 없음 — 번호는 다 링크, 이전은 마지막 쪽
+const cur = offset < total ? Math.floor(offset / SIZE) + 1 : pages + 1;
+const at = (n: number) => withKeep(path, period, { ...keep, o: n > 1 ? String((n - 1) * SIZE) : '' });
+const prev = cur > 1 ? at(Math.min(cur - 1, pages)) : null;
+const next = cur < pages ? at(cur + 1) : null;
+const nums = pageList(Math.min(cur, pages), pages);
 ---
 
 {
-  (prev || next) && (
+  (pages > 1 || offset > 0) && (
     <nav class="sp-o__pager" aria-label="쪽 넘기기">
-      {prev ? <a class="sp-o__pager-btn" href={prev} rel="prev">이전 {SIZE}{unit}</a> : <span class="sp-o__pager-btn sp-o__pager-btn--off" aria-hidden="true">이전 {SIZE}{unit}</span>}
+      <ol class="sp-o__pages">
+        <li>{prev ? <a class="sp-o__page sp-o__page--link sp-o__page--arrow" href={prev} rel="prev" aria-label="이전 쪽">‹</a> : <span class="sp-o__page sp-o__page--arrow sp-o__page--off" aria-hidden="true">‹</span>}</li>
+        {nums.map((n) => (
+          <li>
+            {n === null ? (
+              <span class="sp-o__page sp-o__page--gap" aria-hidden="true">…</span>
+            ) : n === cur ? (
+              <a class="sp-o__page sp-o__page--now" href={at(n)} aria-current="page" aria-label={`${n}쪽, 지금 쪽`}>{n}</a>
+            ) : (
+              <a class="sp-o__page sp-o__page--link" href={at(n)} aria-label={`${n}쪽`}>{n}</a>
+            )}
+          </li>
+        ))}
+        <li>{next ? <a class="sp-o__page sp-o__page--link sp-o__page--arrow" href={next} rel="next" aria-label="다음 쪽">›</a> : <span class="sp-o__page sp-o__page--arrow sp-o__page--off" aria-hidden="true">›</span>}</li>
+      </ol>
       <p class="sp-o__pager-at">{shown ? `${nf(offset + 1)}–${nf(offset + shown)}` : '0'} / {nf(total)}{unit}</p>
-      {next ? <a class="sp-o__pager-btn" href={next} rel="next">다음 {SIZE}{unit}</a> : <span class="sp-o__pager-btn sp-o__pager-btn--off" aria-hidden="true">다음 {SIZE}{unit}</span>}
     </nav>
   )
 }

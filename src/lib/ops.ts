@@ -66,6 +66,12 @@ export const OPS_FILTERS = {
 /** 주소에서 아는 거르기 값만 */
 export const parseFilter = (q: URLSearchParams, spec: FilterSpec): Record<string, string> =>
   Object.fromEntries(Object.keys(spec).flatMap((k) => (Object.hasOwn(spec[k].options, q.get(k) ?? '') ? [[k, q.get(k)!]] : [])));
+/** 쪽 번호 줄: 첫 쪽·끝 쪽·지금 쪽 앞뒤 1쪽, 사이가 비면 null(…). 1부터. 휴대폰 한 줄(최대 7칸 + 화살표)에 들어가게 */
+export function pageList(cur: number, pages: number): (number | null)[] {
+  const keep = new Set([1, pages, ...[-1, 0, 1].map((d) => cur + d)].filter((n) => n >= 1 && n <= pages));
+  const sorted = [...keep].sort((a, b) => a - b);
+  return sorted.flatMap((n, i) => (i && n - sorted[i - 1] > 1 ? [null, n] : [n]));
+}
 /** 쪽 넘김 o 값(0 ~ 100만) */
 export const parseOffset = (q: URLSearchParams) => Math.max(0, Math.min(1_000_000, Number.parseInt(q.get('o') ?? '0', 10) || 0));
 
