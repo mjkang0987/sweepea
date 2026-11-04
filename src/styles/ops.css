@@ -604,3 +604,11 @@
   font-size: var(--title-2-size);
   line-height: var(--title-2-line);
 }
+.sp-o__mono {
+  font-variant-numeric: tabular-nums;
+  color: var(--label-2);
+}
+.sp-o__kv--set {
+  /* 이름은 한 줄, 긴 값이 꺾임 */
+  grid-template-columns: max-content minmax(0, 1fr);
+}

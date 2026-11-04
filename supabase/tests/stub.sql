@@ -9,7 +9,7 @@ create schema auth;
 create schema extensions;
 grant usage on schema auth, extensions to anon, authenticated, service_role;
 
-create table auth.users (id uuid primary key, is_anonymous boolean not null default false, raw_app_meta_data jsonb, created_at timestamptz not null default now());
+create table auth.users (id uuid primary key, is_anonymous boolean not null default false, raw_app_meta_data jsonb, last_sign_in_at timestamptz, deleted_at timestamptz, created_at timestamptz not null default now());
 
 -- 검사에서는 request.jwt.claims(JSON)에 sub·is_anonymous를 넣어 사용자를 바꾼다
 create function auth.jwt() returns jsonb language sql stable

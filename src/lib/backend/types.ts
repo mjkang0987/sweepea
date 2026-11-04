@@ -350,6 +350,8 @@ export interface Backend {
   opsFamilies(from: string, to: string, sort: OpsSort, offset: number): Promise<OpsFamilyList>;
   /** 없는 가족방이면 null */
   opsFamily(id: string, from: string, to: string): Promise<OpsFamily | null>;
+  /** 엄빠 계정 목록(익명 기기 계정 제외, 50개씩) */
+  opsAccounts(from: string, to: string, sort: OpsAccountSort, offset: number): Promise<OpsAccountList>;
   /** 가족 기기: 그 가족방에서 내 캐릭터(승인된 구성원만, 아니면 BackendError 403) */
   setMemberAvatar(pass: Pass, familyId: string, avatar: Avatar): Promise<void>;
   /** 엄빠: 내 캐릭터 */
@@ -480,15 +482,36 @@ export interface OpsFamily {
   delete_after: string | null;
   bytes: number;
   quota: number | null;
-  children: number;
+  plan: 'free' | 'family';
+  download_allowed: boolean;
+  groups_enabled: boolean;
+  text_size_mode: TextSizeMode;
+  /** 지금 설정된 아이(167, 상세에서만) */
+  children: { name: string; birth_date: string; show_health: boolean }[];
   photos: number;
   videos: number;
   last_upload: string | null;
   shares: number;
-  groups: { no: number; members: number }[];
-  parents: { no: number; since: string; visits: number; last: string | null }[];
-  devices: { no: number; status: 'active' | 'pending'; group: number | null; visits: number; last: string | null }[];
+  groups: { no: number; name: string; include_by_default: boolean; members: number }[];
+  parents: { no: number; id: string; role: 'mom' | 'dad'; name: string; provider: string; since: string; visits: number; last: string | null }[];
+  devices: { no: number; status: 'active' | 'pending'; group: number | null; group_name: string | null; name: string | null; can_upload: boolean; visits: number; last: string | null }[];
   uploads: { day: string; n: number }[];
   visits: OpsDay[];
   entry: { link: number; failures: number };
+}
+export type OpsAccountSort = 'created' | 'last_sign_in' | 'visits' | 'last_visit';
+/** 엄빠 계정 한 줄(번호만, 이름·이메일 없음) */
+export interface OpsAccount {
+  id: string;
+  provider: string;
+  created_at: string;
+  last_sign_in: string | null;
+  family_id: string | null;
+  role: 'mom' | 'dad' | null;
+  visits: number;
+  last_visit: string | null;
+}
+export interface OpsAccountList {
+  total: number;
+  rows: OpsAccount[];
 }

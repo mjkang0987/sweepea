@@ -79,6 +79,8 @@ const next = offset + list.rows.length < list.total ? withPeriod('/ops/families'
           </tbody>
         </table>
       </div>
+    ) : list.total ? (
+      <p class="sp-o__sub">이 쪽에는 가족방이 없어요. <a class="sp-o__id" href={withPeriod('/ops/families', period, sort === 'created' ? '' : `sort=${sort}`)}>첫 쪽으로</a></p>
     ) : (
       <p class="sp-o__sub">아직 가족방이 없어요.</p>
     )

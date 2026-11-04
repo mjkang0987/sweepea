@@ -1,5 +1,6 @@
 ---
-// 운영자 가족방 상세(164, 디자인 OpsFamily): 이 집 숫자만. 사람·그룹은 이름 없이 들어온 순서 번호, 사진·한마디 내용 없음
+// 운영자 가족방 상세(164·167, 디자인 OpsFamily): 이 집 숫자 + 지금 설정된 정보(엄빠·아이·그룹·구성원 이름과 설정값, 사용자 2026-11-04).
+// 그룹 비밀번호·힌트, 사진·한마디 내용은 없음. 목록·계정 목록은 여전히 번호만
 import Ops from '../../../layouts/Ops.astro';
 import OpsBars from '../../../components/OpsBars.astro';
 import OpsPeriod from '../../../components/OpsPeriod.astro';
@@ -7,7 +8,7 @@ import { getBackend } from '../../../lib/backend';
 import { sizeLabel } from '../../../lib/familyAdmin';
 import { dayLabel, nf, parsePeriod, periodQuery, shortId, VISITS_SINCE, withPeriod } from '../../../lib/ops';
 import { opsGate } from '../../../lib/opsgate';
-import { seoulDate, seoulToday } from '../../../lib/parent';
+import { PROVIDER_NAMES, seoulDate, seoulToday } from '../../../lib/parent';
 
 Astro.response.headers.set('cache-control', 'private, no-store');
 if (!(await opsGate(Astro.request, Astro.cookies))) return Astro.rewrite('/404');
@@ -18,9 +19,16 @@ const period = parsePeriod(Astro.url.searchParams, today);
 const f = await getBackend().opsFamily(id, period.from, period.to);
 if (!f) return Astro.rewrite('/404');
 const pct = f.quota ? Math.min(100, Math.round((f.bytes / f.quota) * 100)) : 0;
+const ROLE = { mom: '엄마', dad: '아빠' } as const;
+const SIZE = { relation: '호칭에 맞춰(할머니·할아버지는 크게)', base: '기본', large: '크게', xlarge: '아주 크게' } as const;
+const onoff = (b: boolean) => (b ? '켬' : '끔');
+const birth = (d: string) => {
+  const [y, m, day] = d.split('-').map(Number);
+  return `${y}년 ${m}월 ${day}일`;
+};
 const people = [
-  ...f.parents.map((p) => ({ who: `엄빠 ${p.no}`, group: '엄빠', status: '—', warn: false, visits: p.visits, last: p.last })),
-  ...f.devices.map((d) => ({ who: `가족 기기 ${d.no}`, group: d.group ? `그룹 ${d.group}` : '—', status: d.status === 'active' ? '승인' : '승인 대기', warn: d.status === 'pending', visits: d.visits, last: d.last })),
+  ...f.parents.map((p) => ({ who: `${ROLE[p.role]} · ${p.name}`, group: '엄빠', status: '—', warn: false, upload: '—', visits: p.visits, last: p.last })),
+  ...f.devices.map((d) => ({ who: d.name ?? `가족 기기 ${d.no}`, group: d.group_name ?? '—', status: d.status === 'active' ? '승인' : '승인 대기', warn: d.status === 'pending', upload: d.can_upload ? '허용' : '—', visits: d.visits, last: d.last })),
 ];
 ---
 
@@ -31,7 +39,7 @@ const people = [
   <header class="sp-o__head sp-o__head--row">
     <h1 class="sp-o__title">가족방 {shortId(f.id)}</h1>
     {f.delete_after ? <span class="sp-o__badge sp-o__badge--warn">탈퇴 예정 · {dayLabel(seoulDate(f.delete_after), today)} 지워짐</span> : <span class="sp-o__badge">정상</span>}
-    <p class="sp-o__lead">{dayLabel(seoulDate(f.created_at), today)}에 만듦 · 마지막 올림 {f.last_upload ? dayLabel(seoulDate(f.last_upload), today) : '없음'} · 사진·이름·한마디는 안 보여요</p>
+    <p class="sp-o__lead">{dayLabel(seoulDate(f.created_at), today)}에 만듦 · 마지막 올림 {f.last_upload ? dayLabel(seoulDate(f.last_upload), today) : '없음'} · 사진·한마디 내용은 안 보여요</p>
   </header>
   <OpsPeriod period={period} path={`/ops/families/${f.id}`} />
 
@@ -41,8 +49,63 @@ const people = [
         <div class="sp-o__stat"><dt class="sp-o__stat-label">엄빠</dt><dd class="sp-o__stat-num">{nf(f.parents.length)}</dd></div>
         <div class="sp-o__stat"><dt class="sp-o__stat-label">가족 기기</dt><dd class="sp-o__stat-num">{nf(f.devices.length)}</dd><dd class="sp-o__sub">승인 {nf(f.devices.filter((d) => d.status === 'active').length)} · 대기 {nf(f.devices.filter((d) => d.status === 'pending').length)}</dd></div>
         <div class="sp-o__stat"><dt class="sp-o__stat-label">사진·영상</dt><dd class="sp-o__stat-num">{nf(f.photos + f.videos)}</dd><dd class="sp-o__sub">사진 {nf(f.photos)} · 영상 {nf(f.videos)}</dd></div>
-        <div class="sp-o__stat"><dt class="sp-o__stat-label">아이</dt><dd class="sp-o__stat-num">{nf(f.children)}</dd></div>
+        <div class="sp-o__stat"><dt class="sp-o__stat-label">아이</dt><dd class="sp-o__stat-num">{nf(f.children.length)}</dd></div>
       </dl>
+      <section class="sp-p__card" aria-labelledby="sp-o-who">
+        <h2 class="sp-p__card-title" id="sp-o-who">엄빠·아이</h2>
+        {
+          f.parents.length ? (
+        <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="엄빠, 옆으로 밀기">
+          <table class="sp-o__table">
+            <caption class="sp-vh">엄빠 계정</caption>
+            <thead><tr>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">엄빠</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">로그인 방식</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">계정</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">함께한 날</th>
+            </tr></thead>
+            <tbody>
+              {f.parents.map((p) => (
+                <tr class="sp-o__tr">
+                  <th scope="row" class="sp-o__cell sp-o__cell--row">{ROLE[p.role]} · {p.name}</th>
+                  <td class="sp-o__cell">{PROVIDER_NAMES[p.provider] ?? (p.provider === 'email' ? '이메일' : p.provider)}</td>
+                  <td class="sp-o__cell sp-o__mono">{shortId(p.id)}</td>
+                  <td class="sp-o__cell sp-o__num">{dayLabel(seoulDate(p.since), today)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+          ) : (
+            <p class="sp-o__sub">엄빠 계정이 없어요.</p>
+          )
+        }
+        {
+          f.children.length ? (
+            <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="아이, 옆으로 밀기">
+              <table class="sp-o__table">
+                <caption class="sp-vh">아이</caption>
+                <thead><tr>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">아이</th>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">생일</th>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">접종·검진 보기</th>
+                </tr></thead>
+                <tbody>
+                  {f.children.map((c) => (
+                    <tr class="sp-o__tr">
+                      <th scope="row" class="sp-o__cell sp-o__cell--row">{c.name}</th>
+                      <td class="sp-o__cell">{birth(c.birth_date)}</td>
+                      <td class="sp-o__cell">{onoff(c.show_health)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p class="sp-o__sub">아이가 없어요.</p>
+          )
+        }
+      </section>
       <section class="sp-p__card" aria-labelledby="sp-o-up">
         <h2 class="sp-p__card-title" id="sp-o-up">올린 사진·영상</h2>
         <OpsBars label="기간 안 날짜별 올린 사진·영상 수" names={['올림']} unit="개" today={today} rows={f.uploads.map((d) => ({ day: d.day, v: [d.n] }))} />
@@ -52,15 +115,16 @@ const people = [
         <OpsBars label="기간 안 날짜별 방문 수" names={['가족', '엄빠']} unit="회" today={today} rows={f.visits.map((d) => ({ day: d.day, v: [d.device, d.parent] }))} />
       </section>
       <section class="sp-p__card" aria-labelledby="sp-o-people">
-        <div><h2 class="sp-p__card-title" id="sp-o-people">사람별 방문</h2><p class="sp-o__sub">이름은 안 보여요. 번호는 들어온 순서예요</p></div>
-        <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="사람별 방문, 옆으로 밀기">
+        <div><h2 class="sp-p__card-title" id="sp-o-people">가족·방문</h2><p class="sp-o__sub">엄빠와 들어온 가족 기기(승인·기한 안 대기), 방문은 고른 기간</p></div>
+        <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="가족·방문, 옆으로 밀기">
           <table class="sp-o__table">
-            <caption class="sp-vh">사람별 방문, 방문은 고른 기간</caption>
+            <caption class="sp-vh">가족과 사람별 방문, 방문은 고른 기간</caption>
             <thead>
               <tr>
                 <th scope="col" class="sp-o__cell sp-o__cell--head">누구</th>
                 <th scope="col" class="sp-o__cell sp-o__cell--head">그룹</th>
                 <th scope="col" class="sp-o__cell sp-o__cell--head">상태</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head">사진 올리기</th>
                 <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">방문</th>
                 <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">마지막 방문</th>
               </tr>
@@ -71,6 +135,7 @@ const people = [
                   <th scope="row" class="sp-o__cell sp-o__cell--row">{p.who}</th>
                   <td class="sp-o__cell">{p.group}</td>
                   <td class:list={['sp-o__cell', p.warn && 'sp-o__warn']}>{p.status}</td>
+                  <td class="sp-o__cell">{p.upload}</td>
                   <td class="sp-o__cell sp-o__num">{nf(p.visits)}회</td>
                   <td class="sp-o__cell sp-o__num">{dayLabel(p.last, today)}</td>
                 </tr>
@@ -86,9 +151,18 @@ const people = [
         <p class="sp-o__kv-val sp-o__start">{sizeLabel(f.bytes)}{f.quota && ` / ${sizeLabel(f.quota)}`}</p>
         {f.quota && <meter class="sp-p__meter" min="0" max="100" low="80" high="95" optimum="0" value={pct} aria-label={`${sizeLabel(f.quota)} 중 ${pct}% 사용`}>{pct}%</meter>}
       </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-set">
+        <h2 class="sp-p__card-title" id="sp-o-set">설정</h2>
+        <dl class="sp-o__kv sp-o__kv--set">
+          <dt class="sp-o__kv-name">요금제</dt><dd class="sp-o__kv-val">{f.plan === 'free' ? '무료' : '가족 플랜'}</dd>
+          <dt class="sp-o__kv-name">가족도 사진 저장하기</dt><dd class="sp-o__kv-val">{onoff(f.download_allowed)}</dd>
+          <dt class="sp-o__kv-name">그룹 나누기</dt><dd class="sp-o__kv-val">{onoff(f.groups_enabled)}</dd>
+          <dt class="sp-o__kv-name">가족 화면 글자 크기</dt><dd class="sp-o__kv-val">{SIZE[f.text_size_mode]}</dd>
+        </dl>
+      </section>
       <section class="sp-p__card" aria-labelledby="sp-o-gr">
-        <h2 class="sp-p__card-title" id="sp-o-gr">그룹</h2>
-        <dl class="sp-o__kv">{f.groups.map((g) => (<><dt class="sp-o__kv-name">그룹 {g.no}</dt><dd class="sp-o__kv-val">{nf(g.members)}명</dd></>))}</dl>
+        <div><h2 class="sp-p__card-title" id="sp-o-gr">그룹</h2><p class="sp-o__sub">인원은 승인 + 기한 안 대기</p></div>
+        <dl class="sp-o__kv">{f.groups.map((g) => (<><dt class="sp-o__kv-name">{g.name}{!g.include_by_default && ' (새 사진 기본 제외)'}</dt><dd class="sp-o__kv-val">{nf(g.members)}명</dd></>))}</dl>
       </section>
       <section class="sp-p__card" aria-labelledby="sp-o-in">
         <div><h2 class="sp-p__card-title" id="sp-o-in">들어오기</h2><p class="sp-o__sub">링크 수는 지금, 나머지는 고른 기간</p></div>
@@ -98,14 +172,6 @@ const people = [
           <dt class="sp-o__kv-name">비밀번호 틀림(최근 7일만 남음)</dt><dd class="sp-o__kv-val">{nf(f.entry.failures)}번</dd>
         </dl>
       </section>
-      {
-        f.parents.length > 1 && (
-          <section class="sp-p__card" aria-labelledby="sp-o-co">
-            <h2 class="sp-p__card-title" id="sp-o-co">함께 관리</h2>
-            <p class="sp-o__lead">엄빠 둘 · {dayLabel(seoulDate(f.parents[1].since), today)}부터</p>
-          </section>
-        )
-      }
     </div>
   </div>
 </Ops>
