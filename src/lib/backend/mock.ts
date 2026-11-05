@@ -89,6 +89,8 @@ const addVisit = (fam: string, kind: string, who: string) => {
   const k = `${fam}|${kind}|${who}|${seoulDay()}`;
   visits.set(k, (visits.get(k) ?? 0) + 1);
 };
+/** 자세한 방문(179) */
+const sessions: { key: string; fam: string; kind: 'parent' | 'device' | 'link' | 'link_pw'; who: string; at: string; last: string; screens: string[] }[] = [];
 const visitRows = () => [...visits].map(([k, n]) => { const [fam, kind, who, day] = k.split('|'); return { fam, kind, who, day, n }; });
 const devState = (d: Device): 'active' | 'pending' | null => {
   const m = members.find((x) => x.id === d.memberId);
@@ -690,6 +692,7 @@ export function createMockBackend(): Backend {
     purgeDeletedFamilies: async () => [],
     cleanupStaleUploads: async () => 0,
     cleanupAuth: async () => 0,
+    cleanupVisits: async () => 0,
     r2CleanupTake: async () => [],
     r2CleanupDone: async () => {},
     // 운영(164): mock 상태에서 대강 센다(실제 규칙은 DB 검사가 맡는다). mock 엄빠 사용자 id = 출입증 문자열
@@ -701,7 +704,34 @@ export function createMockBackend(): Backend {
     },
     async noteLinkVisit(code, step) {
       const sh = shares.find((x) => x.code === code && !x.revoked);
-      if (sh) addVisit(familyOf(sh), step, code);
+      if (sh) {
+        addVisit(familyOf(sh), step, code);
+        sessions.push({ key: crypto.randomUUID(), fam: familyOf(sh), kind: step, who: code, at: new Date().toISOString(), last: new Date().toISOString(), screens: [step === 'link_pw' ? '가족 링크 비밀번호' : '가족 링크 누구세요'] });
+      }
+    },
+    // 자세한 방문(179): mock은 대강(30분·남의 줄 규칙은 DB 검사가 맡는다)
+    async visitStart(pass, key, screen) {
+      if (sessions.some((s) => s.key === key)) return;
+      await this.noteVisit(pass);
+      const now = new Date().toISOString();
+      const p = parents.get(pass.access);
+      const who: [string, 'parent' | 'device', string][] = p ? [[p.familyId, 'parent', pass.access]] : [];
+      for (const [k, d] of devices) if (k.startsWith(`${pass.access}|`) && devState(d)) who.push([d.familyId, 'device', d.id]);
+      for (const [fam, kind, w] of who) sessions.push({ key, fam, kind, who: w, at: now, last: now, screens: [screen] });
+    },
+    async visitTouch(_pass, key, screen) {
+      for (const s of sessions) if (s.key === key) {
+        s.last = new Date().toISOString();
+        if (s.screens.at(-1) !== screen && s.screens.length < 100) s.screens.push(screen);
+      }
+    },
+    async opsVisitLog(id, from, to) {
+      const day = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(iso));
+      const names = (await this.opsFamily(id, from, to)) ?? null;
+      return sessions.filter((s) => s.fam === id && day(s.at) >= from && day(s.at) <= to).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 200).map((s) => ({
+        at: s.at, last: s.last, kind: s.kind, screens: [...s.screens],
+        who: s.kind === 'parent' ? (names?.parents.find((x) => x.id === s.who)?.name ?? null) : s.kind === 'device' ? (members.find((m) => m.id === [...devices.values()].find((d) => d.id === s.who)?.memberId)?.name ?? null) : null,
+      }));
     },
     async opsSummary(from, to) {
       const rows = visitRows().filter((r) => r.day >= from && r.day <= to);

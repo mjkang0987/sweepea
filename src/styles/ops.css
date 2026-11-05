@@ -534,6 +534,14 @@
 .sp-o__cell--row {
   font-weight: 600;
 }
+/* 방문 기록의 본 화면(179): 길면 줄바꿈(다른 칸은 한 줄) */
+.sp-o__screens {
+  min-width: 16rem;
+  height: auto;
+  padding-block: var(--space-2);
+  white-space: normal;
+  word-break: keep-all;
+}
 .sp-o__tr {
   border-top: 1px solid var(--separator);
 }
