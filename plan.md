@@ -1427,6 +1427,15 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 179. feature/ops-visit-log — 운영자 가족방 상세에 방문 기록(시각·머문 시간·본 화면) (진행 중, 사용자 2026-11-05 "관리자에 방문기록 시간까지 좀 남겨줘 자세히")
+
+- 정한 것(사용자 2026-11-05): 남길 것 = 방문 시각·머문 시간·본 화면(앱·웹 구분·기기·IP는 안 남김). 개인정보 처리방침을 고치고 약관 버전을 올려 다시 동의받음. 자세한 기록은 90일 보관(날짜별 횟수는 지금처럼 가족방이 있는 동안)
+- 요구사항: ① 방문 한 번(30분 넘게 쉬었다 다시 연 것, 지금 세는 방식 그대로)마다 한 줄: 누가(엄빠·가족 기기·가족 링크 단계), 처음 연 시각, 마지막으로 화면을 연 시각, 연 화면 이름 차례(같은 화면 연달아는 한 번, 100개까지). ② 운영자 가족방 상세(/ops/families/[id])에 '방문 기록' 표: 시각('11월 5일 오후 3:12'), 누구, 머문 시간('1분 미만'·'12분'·'1시간 5분'), 본 화면('앨범 → 크게 보기 → 설정'). 고른 기간 안, 최근 것부터 200줄. ③ 90일 지난 자세한 기록은 지움. 엄빠가 나가거나 내보내지면 그 사람 기록도 바로 지움(지금 날짜별 기록과 같음), 가족방이 지워지면 같이 지움. ④ 처리방침 '방문 기록'·보관 항목 고침, 약관·처리방침 시행일과 동의 버전(CONSENT.terms)을 2026-11-05로 → 다음에 들어올 때 다시 동의(앱 두 개의 Consent도 같이 올림)
+- 구현 방식: 새 표 visit_sessions(id·family_id·kind·visitor·started_at·last_at·screens text[]), 새 함수 sp_visit_start(p_screen)→줄 id들(지금 sp_note_visit 일 + 줄 만들기 + 90일 지난 줄 지우기), sp_visit_touch(p_ids, p_screen)(내 줄이고 30분 안일 때만 마지막 시각·화면 더함), sp_note_link_visit에 줄 만들기 더함, sp_ops_visit_log(p_id, p_from, p_to)(서버만). 웹 미들웨어: 방문 쿠키 값에 줄 id를 넣고, 쿠키가 있으면 touch. 화면 이름은 lib/ops.ts에서 주소로 정함. sp_note_visit은 배포 사이 옛 코드용으로 남김(추가만이라 웹보다 DB 먼저 적용해도 됨)
+- 영향 파일: supabase/migrations/새 파일, src/middleware.ts, src/lib/ops.ts(화면 이름·머문 시간 글), src/lib/backend(types·supabase·mock), src/pages/ops/families/[id].astro, src/pages/privacy.astro·terms.astro·lib/consent.ts, 앱 두 개 Consent, 검사
+- 예상 결과: 화면 이름·머문 시간 글 검사, mock으로 운영 상세 화면 확인. 운영 DB 적용·dev 머지(=운영 배포)는 사용자 확인 뒤
+- 알아 둔 것: 지금 iOS·안드로이드 앱은 방문을 아예 안 셈(sp_note_visit을 안 부름) — 앱 방문 기록은 따로(이번엔 웹만)
+
 ### 178. feature/app-upload-bearer — 올리기 API가 앱 출입증도 받기 (완료, 0.49.0 — 운영 배포 2026-11-05 사용자 "Deploy it")
 - 요구(사용자 2026-11-05 "Go to 3-4"): iOS·안드로이드 앱이 웹과 같은 올리기 API(POST /api/media, PUT /api/media/<id>/<부분>, POST …/done, …/multipart)를 쓰게
 - 구현: lib/media.ts uploaderPasses가 요청 머리 `Authorization: Bearer <Supabase 출입증>`이 있으면 그 출입증만 쓴다(쿠키는 안 봄). 없으면 지금과 같음(엄빠 세션 → 가족 기기 출입증). withUploader에 request를 넘긴다. 토큰 글자 검사는 177과 같음
