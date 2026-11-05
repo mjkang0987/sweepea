@@ -1435,38 +1435,44 @@ select pg_temp.ok(exists (select 1 from public.visits v join public.devices d on
 -- 179: 자세한 방문 기록 — 시작·같은 방문 안 화면 덧붙이기·남의 줄은 못 고침·90일 지난 줄 지움·운영 상세는 서버만
 select set_config('request.jwt.claims', json_build_object('sub', :'op', 'is_anonymous', false)::text, false);
 set role authenticated;
-select public.sp_visit_start('앨범') as ovs \gset
-select public.sp_visit_touch(:'ovs'::bigint[], '크게 보기');
-select public.sp_visit_touch(:'ovs'::bigint[], '크게 보기');
-select public.sp_visit_touch(:'ovs'::bigint[], '설정');
+select gen_random_uuid() as ovk \gset
+select public.sp_visit_start(:'ovk', '앨범');
+select public.sp_visit_start(:'ovk', '앨범');
+select public.sp_visit_touch(:'ovk', '크게 보기');
+select public.sp_visit_touch(:'ovk', '크게 보기');
+select public.sp_visit_touch(:'ovk', '설정');
 do $$ begin perform 1 from public.visit_sessions; raise exception '자세한 방문 기록이 읽힘'; exception when insufficient_privilege then null; end $$;
-do $$ begin insert into public.visit_sessions (family_id, kind, visitor) values (gen_random_uuid(), 'parent', auth.uid()); raise exception '자세한 방문 기록을 직접 씀'; exception when insufficient_privilege then null; end $$;
+do $$ begin insert into public.visit_sessions (key, family_id, kind, visitor) values (gen_random_uuid(), gen_random_uuid(), 'parent', auth.uid()); raise exception '자세한 방문 기록을 직접 씀'; exception when insufficient_privilege then null; end $$;
 do $$ begin perform public.sp_ops_visit_log(gen_random_uuid(), current_date, current_date); raise exception '엄빠가 운영 방문 기록을 봄'; exception when insufficient_privilege then null; end $$;
 select set_config('request.jwt.claims', json_build_object('sub', :'od', 'is_anonymous', true)::text, false);
-select public.sp_visit_start('가족 앨범') as dvs \gset
+select gen_random_uuid() as dvk \gset
+select public.sp_visit_start(:'dvk', '가족 앨범');
 -- 기기가 엄빠 줄을 고치려 해도 안 바뀜
-select public.sp_visit_touch(:'ovs'::bigint[], '남의 줄');
+select public.sp_visit_touch(:'ovk', '남의 줄');
+-- 같은 열쇠라도 기기는 자기 줄을 따로 만든다(한 브라우저에 엄빠·가족 출입증)
+select public.sp_visit_start(:'ovk', '가족 앨범');
 reset role;
 set role anon;
-do $$ begin perform public.sp_visit_start('앨범'); raise exception '로그인 없이 방문 시작'; exception when insufficient_privilege then null; end $$;
-do $$ begin perform public.sp_visit_touch('{1}', '앨범'); raise exception '로그인 없이 방문 이어 쓰기'; exception when insufficient_privilege then null; end $$;
+do $$ begin perform public.sp_visit_start(gen_random_uuid(), '앨범'); raise exception '로그인 없이 방문 시작'; exception when insufficient_privilege then null; end $$;
+do $$ begin perform public.sp_visit_touch(gen_random_uuid(), '앨범'); raise exception '로그인 없이 방문 이어 쓰기'; exception when insufficient_privilege then null; end $$;
 reset role;
-select pg_temp.ok((select screens = '{앨범,"크게 보기",설정}' from public.visit_sessions where id = (:'ovs'::bigint[])[1]), '엄빠 방문: 화면 차례(연달아 같은 화면은 한 번), 남의 줄은 안 바뀜');
-select pg_temp.ok((select last_at >= started_at from public.visit_sessions where id = (:'ovs'::bigint[])[1]), '마지막 시각은 처음 시각 뒤');
-select pg_temp.ok((select kind = 'device' and screens = '{"가족 앨범"}' from public.visit_sessions where id = (:'dvs'::bigint[])[1]), '기기 방문은 기기 번호로 한 줄');
+select pg_temp.ok((select count(*) = 1 from public.visit_sessions where key = :'ovk' and kind = 'parent') and (select count(*) = 1 from public.visit_sessions where key = :'ovk' and kind = 'device'), '같은 열쇠로 두 번 시작해도 내 줄은 하나, 같은 열쇠의 다른 사람은 자기 줄');
+select pg_temp.ok((select screens = '{앨범,"크게 보기",설정}' from public.visit_sessions where key = :'ovk' and kind = 'parent'), '엄빠 방문: 화면 차례(연달아 같은 화면은 한 번), 남의 줄은 안 바뀜');
+select pg_temp.ok((select last_at >= started_at from public.visit_sessions where key = :'ovk' and kind = 'parent'), '마지막 시각은 처음 시각 뒤');
+select pg_temp.ok((select kind = 'device' and screens = '{"가족 앨범"}' from public.visit_sessions where key = :'dvk'), '기기 방문은 기기 번호로 한 줄');
 select pg_temp.ok(exists (select 1 from public.visit_sessions where family_id = :'ofam' and kind = 'link' and screens = '{"가족 링크 누구세요"}'), '링크 방문도 한 줄');
 -- 30분 지난 줄은 이어 쓰지 않음
-update public.visit_sessions set last_at = now() - interval '31 minutes' where id = (:'ovs'::bigint[])[1];
+update public.visit_sessions set last_at = now() - interval '31 minutes' where key = :'ovk' and kind = 'parent';
 select set_config('request.jwt.claims', json_build_object('sub', :'op', 'is_anonymous', false)::text, false);
 set role authenticated;
-select public.sp_visit_touch(:'ovs'::bigint[], '알림');
+select public.sp_visit_touch(:'ovk', '알림');
 reset role;
-select pg_temp.ok((select cardinality(screens) = 3 from public.visit_sessions where id = (:'ovs'::bigint[])[1]), '30분 지난 방문은 이어 쓰지 않음');
+select pg_temp.ok((select cardinality(screens) = 3 from public.visit_sessions where key = :'ovk' and kind = 'parent'), '30분 지난 방문은 이어 쓰지 않음');
 -- 90일 지난 줄은 다음 방문 시작 때 지움
-insert into public.visit_sessions (family_id, kind, visitor, started_at, last_at) values (:'ofam', 'device', :'odev', now() - interval '91 days', now() - interval '91 days') returning id as oold \gset
+insert into public.visit_sessions (key, family_id, kind, visitor, started_at, last_at) values (gen_random_uuid(), :'ofam', 'device', :'odev', now() - interval '91 days', now() - interval '91 days') returning id as oold \gset
 select set_config('request.jwt.claims', json_build_object('sub', :'od', 'is_anonymous', true)::text, false);
 set role authenticated;
-select public.sp_visit_start('가족 앨범');
+select public.sp_visit_start(gen_random_uuid(), '가족 앨범');
 reset role;
 select pg_temp.ok(not exists (select 1 from public.visit_sessions where id = :'oold'), '90일 지난 자세한 기록은 지움');
 select pg_temp.ok((select count from public.visits where family_id = :'ofam' and kind = 'device' and visitor = :'odev' and day = public.sp_seoul_today()) >= 2, '방문 시작은 날짜별 횟수도 셈');
@@ -1481,6 +1487,12 @@ select pg_temp.ok(exists (select 1 from jsonb_array_elements(:'olog'::jsonb) r w
 select pg_temp.ok((select (a ->> 'at') >= (b ->> 'at') from jsonb_array_elements(:'olog'::jsonb) with ordinality x(a, i) join jsonb_array_elements(:'olog'::jsonb) with ordinality y(b, j) on j = i + 1 limit 1), '운영 방문 기록: 최근 것부터');
 select pg_temp.ok(:'olog0'::jsonb = '[]'::jsonb, '400일 넘는 기간은 빈 목록');
 select pg_temp.ok(not (:'olog'::jsonb::text ~ 'OpsCode1|3333'), '운영 방문 기록에 공유 코드·비밀번호 없음');
+update public.devices set status = 'revoked' where id = :'odev';
+set role service_role;
+select public.sp_ops_visit_log(:'ofam', public.sp_seoul_today() - 6, public.sp_seoul_today()) as olog2 \gset
+reset role;
+select pg_temp.ok(not exists (select 1 from jsonb_array_elements(:'olog2'::jsonb) r where r ->> 'who' = '할머니'), '내보낸 기기의 방문 기록은 이름 없이');
+update public.devices set status = 'active' where id = :'odev';
 -- 엄빠가 나가면 그 가족방의 엄빠 방문 기록을 지운다
 update public.parents set removed_at = now() where user_id = :'op';
 select pg_temp.ok(not exists (select 1 from public.visits where kind = 'parent' and visitor = :'op'), '나간 엄빠의 방문 기록은 지움');
