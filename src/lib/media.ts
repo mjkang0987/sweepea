@@ -3,8 +3,16 @@ import type { AstroCookies } from 'astro';
 import { BackendError, type MediaKind, type Pass } from './backend';
 import { currentParent, currentPass } from './pass';
 
-/** 올릴 수 있는 출입증들: 부모 세션, 가족 기기 출입증 순. 한쪽 갱신이 일시적으로 실패해도 다른 쪽은 쓴다 */
-async function uploaderPasses(cookies: AstroCookies): Promise<Pass[]> {
+/** 앱(iOS·안드로이드)이 보낸 출입증(Authorization: Bearer, 177·178). 토큰 글자만(다른 글자면 머리에 못 실어 500이 되므로) */
+export function bearerPass(request: Request): Pass | null {
+  const access = request.headers.get('authorization')?.match(/^Bearer ([A-Za-z0-9._~+/=-]+)$/i)?.[1];
+  return access ? { access, refresh: '', expiresAt: 0 } : null;
+}
+
+/** 올릴 수 있는 출입증들: 앱 출입증이 있으면 그것만(쿠키는 안 봄), 아니면 부모 세션, 가족 기기 출입증 순. 한쪽 갱신이 일시적으로 실패해도 다른 쪽은 쓴다 */
+async function uploaderPasses(cookies: AstroCookies, request?: Request): Promise<Pass[]> {
+  const app = request && bearerPass(request);
+  if (app) return [app];
   const out: Pass[] = [];
   let failed: unknown = null;
   for (const get of [currentParent, currentPass]) {
@@ -21,8 +29,8 @@ async function uploaderPasses(cookies: AstroCookies): Promise<Pass[]> {
 }
 
 /** 출입증마다 시도해서 처음 되는 것(403·null이면 다음 출입증). 하나도 없으면 null */
-export async function withUploader<T>(cookies: AstroCookies, fn: (pass: Pass) => Promise<T | null>): Promise<{ pass: Pass; value: T } | null | 'login'> {
-  const passes = await uploaderPasses(cookies);
+export async function withUploader<T>(cookies: AstroCookies, fn: (pass: Pass) => Promise<T | null>, request?: Request): Promise<{ pass: Pass; value: T } | null | 'login'> {
+  const passes = await uploaderPasses(cookies, request);
   if (!passes.length) return 'login';
   let lastError: unknown = null;
   for (const pass of passes) {
