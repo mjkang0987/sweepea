@@ -1427,6 +1427,12 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 178. feature/app-upload-bearer — 올리기 API가 앱 출입증도 받기 (93 ①, 앱 3-4 사진 올리기에 필요)
+- 요구(사용자 2026-11-05 "Go to 3-4"): iOS·안드로이드 앱이 웹과 같은 올리기 API(POST /api/media, PUT /api/media/<id>/<부분>, POST …/done, …/multipart)를 쓰게
+- 구현: lib/media.ts uploaderPasses가 요청 머리 `Authorization: Bearer <Supabase 출입증>`이 있으면 그 출입증만 쓴다(쿠키는 안 봄). 없으면 지금과 같음(엄빠 세션 → 가족 기기 출입증). withUploader에 request를 넘긴다. 토큰 글자 검사는 177과 같음
+- 영향 파일: src/lib/media.ts, src/pages/api/media/index.ts, [id]/[part].ts, [id]/done.ts, [id]/multipart.ts
+- 예상 결과: Bearer로 만들기·넣기·끝내기가 되고, 다른 사람 출입증이면 404/403, 쿠키 흐름은 그대로(e2e upload 계열 통과)
+
 ### 177. feature/app-media-urls — 앱용 사진 주소 받기 API (완료, 0.48.0 — 운영 배포 2026-11-05 사용자 "Deploy it")
 - 요구(사용자 2026-11-05 "3단계 엄빠 홈"): iOS·안드로이드 앱이 사진을 보려면 서명된 파일 주소(/m/…)가 필요한데 서명 비밀은 서버에만 있다
 - 구현: `POST /api/app/media-urls`, `Authorization: Bearer <Supabase 출입증>`(엄빠·가족 익명 둘 다), 본문 `{ ids }`(사진 id 1~100개) → `{ urls: { <id>: { view, thumb, poster } } }`(절대 주소, 서명은 웹과 같은 signedMediaUrl). 볼 수 있는 사진만: 그 출입증으로 media를 읽어 DB 권한(RLS)이 거른다. 못 보는·없는 id는 빠짐. 쿠키는 안 씀(앱 전용 입구)
