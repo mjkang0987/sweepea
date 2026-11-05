@@ -136,6 +136,8 @@ export function visitTarget(method: string, path: string): { kind: 'link'; code:
 
 /** 방문 기록을 쌓기 시작한 날(0.41.0 배포). 이보다 앞 날짜가 들어간 기간은 안내 */
 export const VISITS_SINCE = '2026-11-04';
+/** 자세한 방문 기록(시각·머문 시간·본 화면, 179)을 쌓기 시작한 날 */
+export const VISIT_LOG_SINCE = '2026-11-05';
 
 /** 숫자 1,234 */
 export const nf = (n: number) => n.toLocaleString('ko-KR');
@@ -148,4 +150,58 @@ export function dayLabel(day: string | null, today: string): string {
   if (day === addDays(today, -1)) return '어제';
   const [, m, d] = day.split('-').map(Number);
   return `${m}월 ${d}일`;
+}
+
+/** 자세한 방문 기록(179)에 남길 화면 이름. 주소·사진 번호는 남기지 않고 이름만(처리방침: '본 화면') */
+const SCREENS: [RegExp, string][] = [
+  [/^\/home$/, '앨범'],
+  [/^\/view\/[^/]+$/, '크게 보기'],
+  [/^\/photo\/[^/]+$/, '사진 정보'],
+  [/^\/photos\/edit$/, '여러 장 고치기'],
+  [/^\/upload$/, '올리기'],
+  [/^\/reactions$/, '알림'],
+  [/^\/kid\/[^/]+$/, '아이 자세히'],
+  [/^\/health\/[^/]+$/, '접종·검진'],
+  [/^\/settings$/, '설정'],
+  [/^\/settings\/avatar$/, '설정 · 내 캐릭터'],
+  [/^\/settings\/text-size$/, '설정 · 글자 크기'],
+  [/^\/settings\/storage$/, '설정 · 저장 용량'],
+  [/^\/settings\/account$/, '설정 · 계정'],
+  [/^\/settings\/children(\/|$)/, '설정 · 아이'],
+  [/^\/settings\/family\/groups(\/|$)/, '설정 · 그룹'],
+  [/^\/settings\/family(\/|$)/, '설정 · 가족'],
+  [/^\/album$/, '가족 앨범'],
+  [/^\/album\/save$/, '골라서 저장'],
+  [/^\/album\/[^/]+$/, '가족 크게 보기'],
+  [/^\/me\/avatar$/, '내 캐릭터'],
+  [/^\/me\/text-size$/, '글자 크기'],
+  [/^\/wait$/, '승인 대기'],
+  [/^\/setup(\/|$)/, '처음 설정'],
+  [/^\/agree$/, '약관 동의'],
+  [/^\/restore$/, '되살리기'],
+  [/^\/join\/[^/]+$/, '함께 관리 초대'],
+  [/^\/goodbye$/, '작별'],
+  [/^\/terms$/, '이용약관'],
+  [/^\/privacy$/, '개인정보 처리방침'],
+];
+export function screenName(path: string): string {
+  const p = path.length > 1 ? path.replace(/\/+$/, '') : path;
+  return SCREENS.find(([re]) => re.test(p))?.[1] ?? '그 밖의 화면';
+}
+
+/** 방문 시각 '오늘 오후 3:12'·'어제 오전 9:05'·'11월 3일 오후 8:40'(서울) */
+export function timeLabel(iso: string, today: string): string {
+  const d = new Date(iso);
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(d);
+  const t = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: 'numeric', minute: '2-digit' }).format(d);
+  return `${dayLabel(day, today)} ${t}`;
+}
+
+/** 머문 시간: 처음 연 시각 ~ 마지막으로 화면을 연 시각. '1분 미만'·'12분'·'1시간 5분' */
+export function stayLabel(from: string, to: string): string {
+  const min = Math.floor((Date.parse(to) - Date.parse(from)) / 60000);
+  if (!(min >= 1)) return '1분 미만';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h ? `${h}시간${m ? ` ${m}분` : ''}` : `${m}분`;
 }
