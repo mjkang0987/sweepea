@@ -1427,6 +1427,16 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 180. feature/seo-geo — 검색(SEO)·AI 검색(GEO)·답변 엔진(AEO) 손보기 (완료, 0.51.0)
+- 요구(사용자 2026-11-06): "스위피 GEO, SEO, AEO 개선"
+- 지금 상태(점검): 검색에 보이는 곳은 첫 화면 `/`뿐(나머지는 X-Robots-Tag noindex, 의도). 제목·설명·og·canonical·sitemap·네이버 소유 확인은 있음. 없는 것: 구조화 데이터(JSON-LD), AI용 요약 `llms.txt`(운영 404), `og:locale`. 운영 robots.txt에는 Cloudflare 관리 목록이 앞에 붙어 AI 학습 봇(GPTBot·ClaudeBot·Google-Extended 등)만 막고 검색·답변용 봇(OAI-SearchBot·PerplexityBot·Googlebot 등)은 열려 있음 → 그대로(학습 허용 여부는 Cloudflare 설정, 사용자 결정)
+- 구현: ① 첫 화면에 JSON-LD(Organization PIKAWORKS + WebSite + WebApplication 무료 5GB) — 화면에 안 보이는 정보라 '한 장' 결정(92)과 안 부딪힘. FAQPage는 화면에 질문이 없으면 검색 규칙 위반이라 안 넣음 ② `public/llms.txt`: 서비스 사실만(92의 사실 목록·약관·처리방침 기준) ③ Base에 `og:locale` ko_KR ④ Base에 head 이름 칸(slot) 하나, Parent가 넘김
+- 영향 파일: `src/layouts/Base.astro`, `src/layouts/Parent.astro`, `src/pages/index.astro`, `public/llms.txt`, `index.md`
+- 범위 밖(사용자 결정): 질문·답 글이 있는 안내 화면(AEO에 가장 큰 효과지만 첫 화면 한 장 결정과 별개의 새 화면), AI 학습 봇 허용
+- 예상 결과: 운영 `/` HTML에 JSON-LD 한 개(검증 통과), `/llms.txt` 200, 빌드·타입 검사 통과, 화면 모양 그대로
+- 결과: 개발 서버에서 `/`만 JSON-LD 1개(head 안, 파싱 OK)·다른 화면(Parent·Family) 0개·og:locale 모두, llms.txt 200. 검토: llms.txt가 약관보다 지나친 말 고침(긴 영상은 원본 보관, 탈퇴는 함께 관리면 나만 빠짐·3일 안 되살리기, '용량을' 줄임, '그룹 비밀번호'), 회사 로고 자리에 앱 아이콘이라 logo 뺌
+- 남은 것(사용자): 서치 콘솔·서치어드바이저 리치 결과 테스트, AI 학습 봇 허용 여부(Cloudflare), 질문·답 안내 화면을 만들지
+
 ### 179. feature/ops-visit-log — 운영자 가족방 상세에 방문 기록(시각·머문 시간·본 화면) (완료, 0.50.0 — 운영 DB 적용·배포 2026-11-06 사용자 "응 배포 바로 해쥬면 될거갘아", 다시 동의로 사전 고지를 갈음, 사용자 2026-11-05 "관리자에 방문기록 시간까지 좀 남겨줘 자세히")
 
 - 정한 것(사용자 2026-11-05): 남길 것 = 방문 시각·머문 시간·본 화면(앱·웹 구분·기기·IP는 안 남김). 개인정보 처리방침을 고치고 약관 버전을 올려 다시 동의받음. 자세한 기록은 90일 보관(날짜별 횟수는 지금처럼 가족방이 있는 동안)

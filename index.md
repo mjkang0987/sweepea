@@ -4,7 +4,7 @@
 
 ## 현재 상태
 
-- 버전 0.50.0(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 저장소 마이그레이션 37개 모두 적용(2026-11-06 visit_sessions까지, 운영 기록 37줄. `media_changes`는 운영 기록에 내용 없는 줄 + `media_changes_body` — plan 123), 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
+- 버전 0.51.0(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 저장소 마이그레이션 37개 모두 적용(2026-11-06 visit_sessions까지, 운영 기록 37줄. `media_changes`는 운영 기록에 내용 없는 줄 + `media_changes_body` — plan 123), 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
 - 방문 기록 자세히(0.50.0, plan 179, 운영 DB 적용·배포 2026-11-06 사용자 "배포 바로 해쥬면"): 방문마다 시각·머문 시간·본 화면 이름을 visit_sessions에 90일(미들웨어 열쇠 쿠키 sp_v, 매일 정리), 운영 가족방 상세 '방문 기록' 표. 처리방침 시행 11월 5일·동의 버전 2026-11-05
 - 운영자 화면(0.41.0, plan 164): `/ops` 현황·`/ops/families` 목록·`/ops/families/<id>` 상세. 문 세 겹 — Cloudflare Access 도장을 서버가 직접 확인(workers.dev 뒷문 막기, src/lib/ops.ts verifyAccessJwt) + 엄빠 로그인 + 비밀 값 `OPS_USER_IDS`(셋 다 없으면 404, src/lib/opsgate.ts). 비밀 값 `OPS_ACCESS_TEAM`(예: 팀.cloudflareaccess.com)·`OPS_ACCESS_AUD`. 숫자만(가족방은 번호 앞 8자리, 사람은 '가족 기기 3'), 기간 줄(오늘·7·30·90일·직접, 직전 같은 길이와 비교), 막대 바로 위 말풍선(운영 화면만 작은 스크립트, 없으면 CSS 말풍선, 0.41.2)·숫자로 보기·좌우 밀기, 목록은 줄 전체가 상세 링크(0.41.1). DB 함수 sp_ops_*는 service_role만, 기기 승인 판정은 sp_ops_devices(기기 active + 구성원 active)
 - 올리기 API가 앱 출입증도(0.49.0, plan 178): POST /api/media·PUT …/<부분>·POST …/done·…/multipart가 `Authorization: Bearer <Supabase 출입증>`이 있으면 그것만 씀(쿠키 안 봄), 없으면 예전처럼 쿠키. 토큰 글자 검사는 lib/media.ts bearerPass
@@ -71,7 +71,7 @@
 - 아래 고정 버튼(96, 0.5.1~): 주요 버튼은 화면 아래 막대(`.sp-p__savebar`, 가족 `.sp-f__bottom--fixed`). 탭 없는 화면(처음 설정·소개·올리기·가족 비밀번호)은 맨 아래에서 safe-area(사파리 아래 바·홈 막대)만큼 올리고, 탭 있는 화면은 탭바 위. 레이아웃 `savebar`(2면 버튼 둘)·Family `bar`로 아래 여백. 넓은 올리기 화면(64rem~)과 낮은 화면(높이 30rem 미만)은 제자리. 올리기 진행은 따로 막대 없이 상태 칸이 차오름(`.sp-p__toast--progress`, 화면 읽기는 숨은 progress).
 - 보신 기록(95, 이름만): 가족이 본 사진을 엄빠 크게 보기 날짜 아래 '외할아버지·큰이모가 봤어요'(셋 넘으면 외 N명, 횟수·시간 없음, 디자인 ParentViewViewers). 가족이 눌러서 연 크게 보기는 바로, 크게 보기에서 넘긴 사진·넘겨 보기 가운데 카드는 1.5초 머물면 `POST /api/views`. 표 `views`(사진·구성원 한 줄), `sp_note_views`(볼 수 있는 사진·승인된 구성원만)·`sp_parent_media_viewers`. 입장 화면에 '엄마아빠에게 누가 봤는지 보여요'.
 - 가족 입장 화면(링크 → 누구세요 → 비밀번호 → 앨범·승인 대기·안내) 완료. 승인 대기(새 이름)는 /wait에 들어온 링크의 사진 묶음을 한 줄에 한 장 크게(0.5.5~, 디자인 WaitPhotos, 누르기·반응 없음, 묶음이 비면 글만). 기기 하나로 여러 가족방에 들어간다(가족방마다 승인·차단 따로). 다음 이슈는 plan.md 참고.
-- 첫 화면(`/`, 0.4.38~, 0.4.39 한 장): 처음 온 사람(엄마아빠·검색)에겐 한 화면 소개(제목 '아기 사진, 단톡방에 올리고 계신가요?' + 할머니가 보는 넘겨 보기 휴대폰 그림 + 무료로 시작하기·가족 안내, 디자인 Landing), 들어온 기기는 앨범·대기로. 검색에는 첫 화면만: 나머지 화면·사진은 `X-Robots-Tag: noindex`(미들웨어, robots.txt로 막으면 카톡 미리보기도 막힐 수 있어서), `public/robots.txt`는 `/api/`만 막고 `public/sitemap.xml`. 모든 화면에 공유 미리보기(og), 첫 화면에 대표 주소 canonical. 클라이언트 JS 0KB(Base 인라인 오류 처리만).
+- 첫 화면(`/`, 0.4.38~, 0.4.39 한 장): 처음 온 사람(엄마아빠·검색)에겐 한 화면 소개(제목 '아기 사진, 단톡방에 올리고 계신가요?' + 할머니가 보는 넘겨 보기 휴대폰 그림 + 무료로 시작하기·가족 안내, 디자인 Landing), 들어온 기기는 앨범·대기로. 검색에는 첫 화면만: 나머지 화면·사진은 `X-Robots-Tag: noindex`(미들웨어, robots.txt로 막으면 카톡 미리보기도 막힐 수 있어서), `public/robots.txt`는 `/api/`만 막고 `public/sitemap.xml`. 모든 화면에 공유 미리보기(og), 첫 화면에 대표 주소 canonical·JSON-LD(Organization·WebSite·WebApplication, 0.51.0, plan 180 — Base `head` 이름 칸으로 넣음), AI용 요약 `public/llms.txt`(약관과 같은 사실만, 숫자 바꾸면 같이). 클라이언트 JS 0KB(Base 인라인 오류 처리만).
 - 로컬 Lighthouse(모바일, 기본 스로틀링): LCP 약 1.4초(0.4.38 첫 화면 소개 기준, 예산 1.8초), CLS 0, 접근성 100점.
 
 ## 기술

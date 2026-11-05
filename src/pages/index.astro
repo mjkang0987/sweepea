@@ -16,6 +16,27 @@ if (pass) {
   if (families.length) return Astro.redirect('/wait');
 }
 const home = `${(SITE_ORIGIN || Astro.url.origin).replace(/\/$/, '')}/`;
+// 검색·AI 답변이 서비스를 정확히 알게(180): 화면에 있는 사실만. FAQPage는 화면에 질문이 없어 넣지 않는다(검색 규칙)
+const ld = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'Organization', '@id': `${home}#org`, name: 'PIKAWORKS', url: home, email: 'pikaworks.help@gmail.com' },
+    { '@type': 'WebSite', '@id': `${home}#site`, name: '스위피', alternateName: 'Sweepea', url: home, inLanguage: 'ko-KR', publisher: { '@id': `${home}#org` } },
+    {
+      '@type': 'WebApplication',
+      name: '스위피',
+      alternateName: 'Sweepea',
+      url: home,
+      applicationCategory: 'PhotographyApplication',
+      operatingSystem: '웹 브라우저',
+      inLanguage: 'ko-KR',
+      description: '엄마·아빠가 아기 사진을 올리고 카톡으로 링크를 보내면 할머니·할아버지가 앱 설치도 가입도 없이 보는 가족 사진 앨범. 외가·친가 그룹을 따로 나누고, 처음 보는 이름은 엄마·아빠가 승인합니다.',
+      image: `${home}og.png`,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'KRW', description: '5GB까지 무료' },
+      publisher: { '@id': `${home}#org` },
+    },
+  ],
+};
 // 한 장(92): 처음 보는 사람이 '내 얘기'라고 느끼는 제목(단톡방) + 두 줄 + 실제 서비스 화면(할머니가 링크로 보는 넘겨 보기, 디자인 Landing) + 짧은 낱말 셋 + 시작하기. 제품 사실만
 const chips = ['외가·친가 따로', '하트·한마디', '지우기 전엔 그대로'];
 const reacts = [
@@ -32,6 +53,7 @@ const reacts = [
   description="아기 사진을 올리고 카톡으로 링크만 보내면 할머니·할아버지는 앱 설치도 가입도 없이 바로 봐요. 외가·친가는 따로, 처음 보는 이름은 엄마아빠가 확인해요. 무료 5GB로 시작하세요."
   canonical={home}
 >
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(ld)} />
   <section class="sp-p__brand sp-p__landing" aria-labelledby="brand">
     <p class="sp-p__landing-name"><img class="sp-p__landing-kongi" src="/kongi.svg" width="28" height="28" alt="" />스위피</p>
     <h1 class="sp-p__landing-title" id="brand">아기 사진, <br />단톡방에 올리고 계신가요?</h1>
