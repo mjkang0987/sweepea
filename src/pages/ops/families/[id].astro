@@ -6,7 +6,7 @@ import OpsBars from '../../../components/OpsBars.astro';
 import OpsPeriod from '../../../components/OpsPeriod.astro';
 import { getBackend } from '../../../lib/backend';
 import { sizeLabel } from '../../../lib/familyAdmin';
-import { dayLabel, nf, parsePeriod, periodQuery, shortId, VISITS_SINCE, withPeriod } from '../../../lib/ops';
+import { dayLabel, nf, parsePeriod, periodQuery, shortId, stayLabel, timeLabel, VISIT_LOG_SINCE, VISITS_SINCE, withPeriod } from '../../../lib/ops';
 import { opsGate } from '../../../lib/opsgate';
 import { PROVIDER_NAMES, seoulDate, seoulToday } from '../../../lib/parent';
 
@@ -16,8 +16,10 @@ const id = Astro.params.id ?? '';
 if (!/^[0-9a-f-]{36}$/i.test(id)) return Astro.rewrite('/404');
 const today = seoulToday();
 const period = parsePeriod(Astro.url.searchParams, today);
-const f = await getBackend().opsFamily(id, period.from, period.to);
+const [f, log] = await Promise.all([getBackend().opsFamily(id, period.from, period.to), getBackend().opsVisitLog(id, period.from, period.to)]);
 if (!f) return Astro.rewrite('/404');
+// 방문 기록(179): 누구 — 엄빠는 이름, 가족 기기는 구성원 이름, 링크 단계는 입장 전이라 사람을 모름
+const whoOf = (v: (typeof log)[number]) => (v.kind === 'parent' ? `엄빠 · ${v.who ?? '나간 엄빠'}` : v.kind === 'device' ? (v.who ?? '가족 기기') : '가족 링크(입장 전)');
 const pct = f.quota ? Math.min(100, Math.round((f.bytes / f.quota) * 100)) : 0;
 const ROLE = { mom: '엄마', dad: '아빠' } as const;
 const SIZE = { relation: '호칭에 맞춰(할머니·할아버지는 크게)', base: '기본', large: '크게', xlarge: '아주 크게' } as const;
@@ -143,6 +145,39 @@ const people = [
             </tbody>
           </table>
         </div>
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-log">
+        <div>
+          <h2 class="sp-p__card-title" id="sp-o-log">방문 기록</h2>
+          <p class="sp-o__sub">고른 기간에 시작한 방문, 최근 것부터 200개까지. 머문 시간은 처음 연 때부터 마지막으로 화면을 연 때까지(30분 넘게 쉬면 다음 방문) · 90일 보관{period.from < VISIT_LOG_SINCE && ` · ${dayLabel(VISIT_LOG_SINCE, today)}부터 남겨요`}</p>
+        </div>
+        {log.length === 0 ? (
+          <p class="sp-o__sub">이 기간에 남은 방문 기록이 없어요</p>
+        ) : (
+          <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="방문 기록, 옆으로 밀기">
+            <table class="sp-o__table">
+              <caption class="sp-vh">방문 기록: 시각·누구·머문 시간·본 화면, 최근 것부터</caption>
+              <thead>
+                <tr>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">시각</th>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">누구</th>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">머문 시간</th>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">본 화면</th>
+                </tr>
+              </thead>
+              <tbody>
+                {log.map((v) => (
+                  <tr class="sp-o__tr">
+                    <th scope="row" class="sp-o__cell sp-o__cell--row"><time datetime={v.at}>{timeLabel(v.at, today)}</time></th>
+                    <td class="sp-o__cell">{whoOf(v)}</td>
+                    <td class="sp-o__cell sp-o__num">{stayLabel(v.at, v.last)}</td>
+                    <td class="sp-o__cell sp-o__screens">{v.screens.length ? v.screens.join(' → ') : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
     <div class="sp-o__col">

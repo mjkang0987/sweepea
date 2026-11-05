@@ -117,6 +117,14 @@ with sync_playwright() as p:
     people = pg.locator('section[aria-labelledby=sp-o-people] tbody .sp-o__tr')
     check(people.count() >= 1 and '외할머니' in people.first.inner_text() and '1회' in people.first.inner_text(), '가족·방문 표(외할머니 1회)')
     check('호칭에 맞춰' in pg.locator('section[aria-labelledby=sp-o-set]').inner_text(), '설정값(가족 화면 글자 크기)')
+    # 179: 방문 기록 — 시각·누구·머문 시간·본 화면(링크 단계 둘 + 외할머니 앨범 방문, 다시 연 앨범은 같은 방문)
+    log = pg.locator('section[aria-labelledby=sp-o-log] tbody .sp-o__tr')
+    texts = log.all_inner_texts()
+    check(log.count() == 3, f'방문 기록 3줄(링크 누구세요·비밀번호·앨범) {texts}')
+    check(any('외할머니' in t and '가족 앨범' in t and '오늘 ' in t for t in texts), '방문 기록: 외할머니·오늘 시각·본 화면')
+    check(any('가족 링크(입장 전)' in t and '가족 링크 비밀번호' in t for t in texts), '방문 기록: 링크 단계')
+    check(all('1분 미만' in t for t in texts), '방문 기록: 머문 시간')
+    check(not any('Harin' in t or '/album' in t for t in texts), '방문 기록에 코드·주소 없음')
     pg.wait_for_timeout(500)  # 화면 넘김 애니메이션이 끝난 뒤
     pg.screenshot(path=OUT + 'ops-3-detail.png', full_page=True)
     # 계정 목록(167): 메뉴, 엄빠 계정만, 가족방 칸이 상세로
