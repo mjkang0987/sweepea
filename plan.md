@@ -1432,6 +1432,7 @@
 - 구현: lib/media.ts uploaderPasses가 요청 머리 `Authorization: Bearer <Supabase 출입증>`이 있으면 그 출입증만 쓴다(쿠키는 안 봄). 없으면 지금과 같음(엄빠 세션 → 가족 기기 출입증). withUploader에 request를 넘긴다. 토큰 글자 검사는 177과 같음
 - 영향 파일: src/lib/media.ts, src/pages/api/media/index.ts, [id]/[part].ts, [id]/done.ts, [id]/multipart.ts
 - 예상 결과: Bearer로 만들기·넣기·끝내기가 되고, 다른 사람 출입증이면 404/403, 쿠키 흐름은 그대로(e2e upload 계열 통과)
+- 결과(2026-11-05, 브랜치만 — 운영 배포는 사용자 확인 뒤): tools/e2e/appupload.py 9개 통과(출입증 없음·글자 틀림 401, 만들기·넣기·끝내기, 남의 출입증 404, 올린 사진 주소 받기, 웹 쿠키 올리기 그대로), 177 appurls 그대로. 토큰 글자 검사를 lib/media.ts bearerPass 하나로(177 media-urls도 같이 씀)
 
 ### 177. feature/app-media-urls — 앱용 사진 주소 받기 API (완료, 0.48.0 — 운영 배포 2026-11-05 사용자 "Deploy it")
 - 요구(사용자 2026-11-05 "3단계 엄빠 홈"): iOS·안드로이드 앱이 사진을 보려면 서명된 파일 주소(/m/…)가 필요한데 서명 비밀은 서버에만 있다
