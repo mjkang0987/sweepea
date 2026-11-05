@@ -22,6 +22,7 @@ const { title, tab, wide, savebar, alerts = 0, waiting = 0, description, canonic
 ---
 
 <Base title={title} description={description} canonical={canonical}>
+  <slot name="head" slot="head" />
   <main class:list={['sp-p', tab && 'sp-p--tabbed', wide && 'sp-p--wide', savebar && 'sp-p--savebar', savebar === 2 && 'sp-p--savebar2']}>
     <slot />
   </main>
