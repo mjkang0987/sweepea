@@ -38,7 +38,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   if (!input) return json(400, { error: 'bad_request' });
   try {
     // 그 가족방에 올릴 수 있는 출입증으로(부모가 다른 가족방 기기 출입증도 가진 경우)
-    const r = await withUploader(cookies, (pass) => getBackend().createMedia(pass, input));
+    const r = await withUploader(cookies, (pass) => getBackend().createMedia(pass, input), request);
     if (r === 'login') return json(401, { error: 'login_required' });
     return json(201, { id: r!.value });
   } catch (e) {

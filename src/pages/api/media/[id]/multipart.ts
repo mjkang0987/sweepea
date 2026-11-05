@@ -9,9 +9,9 @@ import { BIG_VIDEO, PARTS, UUID, backendErrorResponse, isMediaKey, json, newMedi
 const MAX_PARTS = Math.ceil(BIG_VIDEO.max / BIG_VIDEO.part);
 
 /** 올린 사람의 올리는 중인 영상인지. 아니면 오류 응답 */
-async function videoTarget(cookies: Parameters<APIRoute>[0]['cookies'], id: string) {
+async function videoTarget(cookies: Parameters<APIRoute>[0]['cookies'], id: string, request: Request) {
   if (!UUID.test(id)) return json(404, { error: 'not_found' });
-  const r = await withUploader(cookies, (pass) => getBackend().uploadTarget(pass, id));
+  const r = await withUploader(cookies, (pass) => getBackend().uploadTarget(pass, id), request);
   if (r === 'login') return json(401, { error: 'login_required' });
   if (!r || r.value.kind !== 'video') return json(404, { error: 'not_found' });
   return r.value;
@@ -21,7 +21,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
   const id = params.id ?? '';
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   try {
-    const target = await videoTarget(cookies, id);
+    const target = await videoTarget(cookies, id, request);
     if (target instanceof Response) return target;
     if (body?.action === 'create') {
       const type = String(body.type ?? '').toLowerCase();
@@ -64,7 +64,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
 export const PUT: APIRoute = async ({ params, request, cookies, url }) => {
   const id = params.id ?? '';
   try {
-    const target = await videoTarget(cookies, id);
+    const target = await videoTarget(cookies, id, request);
     if (target instanceof Response) return target;
     const key = url.searchParams.get('key');
     const uploadId = url.searchParams.get('upload') ?? '';

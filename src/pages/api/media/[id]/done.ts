@@ -10,7 +10,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   try {
     const backend = getBackend();
-    const r = await withUploader(cookies, (pass) => backend.uploadTarget(pass, id));
+    const r = await withUploader(cookies, (pass) => backend.uploadTarget(pass, id), request);
     if (r === 'login') return json(401, { error: 'login_required' });
     if (!r) return json(404, { error: 'not_found' });
     const target = r.value;

@@ -9,7 +9,7 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
   const part = params.part ?? '';
   if (!UUID.test(id)) return json(404, { error: 'not_found' });
   try {
-    const r = await withUploader(cookies, (pass) => getBackend().uploadTarget(pass, id));
+    const r = await withUploader(cookies, (pass) => getBackend().uploadTarget(pass, id), request);
     if (r === 'login') return json(401, { error: 'login_required' });
     const target = r?.value ?? null;
     const spec = target && Object.hasOwn(PARTS[target.kind], part) ? PARTS[target.kind][part] : null;
