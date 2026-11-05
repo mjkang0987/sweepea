@@ -1,6 +1,6 @@
 // Supabase Auth·PostgREST를 fetch로 직접 부른다. supabase-js는 서버에서만 쓸 일이지만
 // Worker 번들 크기와 의존성을 줄이려고 필요한 호출 네 가지만 쓴다.
-import type { ActivityItem, AdminDevice, OpsAccountList, OpsMediaFamilyList, OpsMediaList, OpsFamily, OpsFamilyList, OpsSummary, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaChange, MediaComment, MediaItem, MediaMonth, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
+import type { ActivityItem, AdminDevice, OpsAccountList, OpsMediaFamilyList, OpsMediaList, OpsFamily, OpsFamilyList, OpsSummary, OpsVisit, AdminGroup, AdminMember, Backend, EnterInput, EnterResult, EntryInfo, FamilyParents, MediaChange, MediaComment, MediaItem, MediaMonth, MediaQuery, Me, ParentHome, ParentInviteInfo, Pass, ReactionCount, UploadTarget } from './types';
 
 interface TokenResponse {
   access_token: string;
@@ -153,6 +153,9 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     },
     noteVisit: (pass) => rpc<void>(pass, 'sp_note_visit', {}),
     noteLinkVisit: (code, step) => serviceRpc<void>('sp_note_link_visit', { p_code: code, p_step: step }),
+    visitStart: (pass, key, screen) => rpc<void>(pass, 'sp_visit_start', { p_key: key, p_screen: screen }),
+    visitTouch: (pass, key, screen) => rpc<void>(pass, 'sp_visit_touch', { p_key: key, p_screen: screen }),
+    opsVisitLog: async (id, from, to) => (await serviceRpc<OpsVisit[] | null>('sp_ops_visit_log', { p_id: id, p_from: from, p_to: to })) ?? [],
     opsSummary: (from, to) => serviceRpc<OpsSummary>('sp_ops_summary', { p_from: from, p_to: to }),
     opsFamilies: (from, to, sort, offset, filter) => serviceRpc<OpsFamilyList>('sp_ops_families', { p_from: from, p_to: to, p_sort: sort, p_offset: offset, p_filter: filter }),
     opsFamily: (id, from, to) => serviceRpc<OpsFamily | null>('sp_ops_family', { p_id: id, p_from: from, p_to: to }),

@@ -345,8 +345,14 @@ export interface Backend {
   userId(pass: Pass): Promise<string | null>;
   /** 방문 한 번(164): 엄빠면 자기 가족방, 기기면 들어간 가족방마다. 30분 거름은 서버 쿠키가 한다 */
   noteVisit(pass: Pass): Promise<void>;
-  /** 가족 링크를 연 것(service_role, 입장 전이라 사용자가 없음) */
+  /** 가족 링크를 연 것(service_role, 입장 전이라 사용자가 없음). 자세한 기록 한 줄도 같이 */
   noteLinkVisit(code: string, step: 'link' | 'link_pw'): Promise<void>;
+  /** 자세한 방문 시작(179): 날짜별 횟수도 센다. key는 웹이 만든 무작위 열쇠(30분 쿠키) */
+  visitStart(pass: Pass, key: string, screen: string): Promise<void>;
+  /** 같은 방문 안에서 화면을 또 엶: 내 줄이고 30분 안이면 마지막 시각·화면 이름을 더함 */
+  visitTouch(pass: Pass, key: string, screen: string): Promise<void>;
+  /** 운영 가족방 상세 '방문 기록'(service_role): 고른 기간에 시작한 방문, 최근 것부터 200줄 */
+  opsVisitLog(id: string, from: string, to: string): Promise<OpsVisit[]>;
   /** 운영자 화면(service_role). 날짜는 서울 YYYY-MM-DD, 끝 포함 */
   opsSummary(from: string, to: string): Promise<OpsSummary>;
   /** filter: 아는 값만(lib/ops OPS_FILTERS) */
@@ -488,6 +494,15 @@ export interface OpsFamilyList {
   total: number;
   rows: OpsFamilyRow[];
 }
+/** 자세한 방문 한 번(179). who: 엄빠·가족 이름(링크 단계·지운 기기면 null) */
+export interface OpsVisit {
+  at: string;
+  last: string;
+  kind: 'parent' | 'device' | 'link' | 'link_pw';
+  who: string | null;
+  screens: string[];
+}
+
 export interface OpsFamily {
   id: string;
   created_at: string;
