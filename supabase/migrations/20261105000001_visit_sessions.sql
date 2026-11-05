@@ -37,7 +37,11 @@ declare v_screen text := public.sp_visit_screen(p_screen);
 begin
   -- 같은 열쇠로 내 줄이 이미 있거나, 1분 안에 시작한 내 방문이 있으면 그대로(엄빠·가족 출입증이 한 브라우저에 같이 있으면 같은 열쇠를 각자 씀).
   -- 1분: 새 열쇠로 계속 불러 줄·횟수를 부풀리지 못하게(사람이 30분 쉬고 다시 여는 것과는 안 겹침)
-  if p_key is null or exists (select 1 from public.visit_sessions s where (s.key = p_key or s.started_at > now() - interval '1 minute')
+  if p_key is null then return; end if;
+  -- 같은 사람의 시작은 한 번에 하나씩(첫 화면 기록이 들어가기 전에 다음 화면·다른 탭이 와도 두 줄·두 번 세지 않게)
+  perform pg_advisory_xact_lock(hashtext('visit:' || coalesce(auth.uid()::text, '')));
+  -- 열쇠가 같아도 30분 지난 줄(쿠키만 살아 있던 경우)은 막지 않고 새로 시작
+  if exists (select 1 from public.visit_sessions s where ((s.key = p_key and s.last_at > now() - interval '30 minutes') or s.started_at > now() - interval '1 minute')
       and ((s.kind = 'parent' and s.visitor = auth.uid())
         or (s.kind = 'device' and exists (select 1 from public.devices d where d.id = s.visitor and d.auth_user_id = auth.uid())))) then
     return;
@@ -77,8 +81,11 @@ grant execute on function public.sp_visit_touch(uuid, text) to authenticated;
 -- 가족 링크 단계(누구세요·비밀번호)를 연 것: 날짜별 횟수 + 자세한 줄(입장 전이라 사람 대신 링크). 서버만.
 -- 같은 링크·단계는 30분에 한 줄(쿠키 없이 계속 열어도 줄이 끝없이 쌓이지 않게): 30분 안이면 마지막 시각만
 create or replace function public.sp_note_link_visit(p_code text, p_step text) returns void
-language sql security definer set search_path = ''
+language plpgsql security definer set search_path = ''
 as $$
+begin
+  -- 같은 링크·단계를 동시에 열어도 한 줄(30분 안이면 마지막 시각만)
+  perform pg_advisory_xact_lock(hashtext('link:' || coalesce(p_code, '') || ':' || coalesce(p_step, '')));
   insert into public.visits (family_id, kind, visitor, day)
     select s.family_id, p_step, s.id, public.sp_seoul_today() from public.shares s
     where s.code = p_code and s.revoked_at is null
@@ -86,11 +93,11 @@ as $$
   update public.visit_sessions v set last_at = now()
     from public.shares s
     where s.code = p_code and s.revoked_at is null and v.kind = p_step and v.visitor = s.id and v.last_at > now() - interval '30 minutes';
+  if found then return; end if;
   insert into public.visit_sessions (key, family_id, kind, visitor, screens)
     select gen_random_uuid(), s.family_id, p_step, s.id, array[case when p_step = 'link_pw' then '가족 링크 비밀번호' else '가족 링크 누구세요' end] from public.shares s
-    where s.code = p_code and s.revoked_at is null
-      and not exists (select 1 from public.visit_sessions v where v.kind = p_step and v.visitor = s.id and v.last_at > now() - interval '30 minutes')
-$$;
+    where s.code = p_code and s.revoked_at is null;
+end $$;
 
 -- 엄빠가 나가거나 옮기거나 지워지면 예전 가족방의 그 엄빠 자세한 줄도 지운다(처리방침 3항, visits와 같은 트리거)
 create or replace function public.sp_visits_parent_gone() returns trigger
@@ -124,17 +131,17 @@ as $$
           and (d.status = 'pending' or (d.status = 'active' and (m.status = 'active' or (m.status = 'pending' and m.pending_until > now())))))
         else null end as who
     from public.visit_sessions s
-    where s.family_id = p_id and p_from <= p_to and p_to - p_from < 400 and s.started_at > now() - interval '90 days'
+    where s.family_id = p_id and p_from <= p_to and p_to - p_from < 400 and s.last_at > now() - interval '90 days'
       and s.started_at >= p_from::timestamp at time zone 'Asia/Seoul' and s.started_at < (p_to + 1)::timestamp at time zone 'Asia/Seoul'
     order by s.started_at desc
     limit 200
   ) x
 $$;
--- 매일 정리: 90일 지난 자세한 방문 기록(처리방침 3항). 지운 줄 수. 서버만
+-- 매일 정리: 마지막 기록이 90일 지난 자세한 방문 기록(처리방침 3항). 지운 줄 수. 서버만
 create function public.sp_cleanup_visits() returns int
 language sql security definer set search_path = ''
 as $$
-  with gone as (delete from public.visit_sessions where started_at < now() - interval '90 days' returning 1)
+  with gone as (delete from public.visit_sessions where last_at < now() - interval '90 days' returning 1)
   select count(*)::int from gone
 $$;
 revoke all on function public.sp_cleanup_visits() from public, anon, authenticated;

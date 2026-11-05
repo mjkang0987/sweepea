@@ -1477,7 +1477,7 @@ set role service_role;
 select public.sp_ops_visit_log(:'ofam', public.sp_seoul_today() - 120, public.sp_seoul_today()) as olog90 \gset
 select public.sp_cleanup_visits() as ocl \gset
 reset role;
-select pg_temp.ok(jsonb_array_length(:'olog90'::jsonb) = (select count(*) from public.visit_sessions where family_id = :'ofam' and started_at > now() - interval '90 days'), '운영 방문 기록은 90일 안 것만');
+select pg_temp.ok(jsonb_array_length(:'olog90'::jsonb) = (select count(*) from public.visit_sessions where family_id = :'ofam' and last_at > now() - interval '90 days'), '운영 방문 기록은 90일 안 것만');
 select pg_temp.ok(:'ocl'::int = 1 and not exists (select 1 from public.visit_sessions where id = :'oold'), '90일 지난 자세한 기록은 매일 정리가 지움');
 set role authenticated;
 do $$ begin perform public.sp_cleanup_visits(); raise exception '사용자가 방문 정리를 부름'; exception when insufficient_privilege then null; end $$;
@@ -1497,6 +1497,13 @@ set role authenticated;
 select public.sp_visit_touch(:'onk', '글자 크기');
 reset role;
 select pg_temp.ok((select screens = '{"글자 크기"}' from public.visit_sessions where key = :'onk'), '없는 열쇠로 이어 쓰면 그 열쇠로 시작');
+-- 쿠키만 살아 있고 줄은 30분 지남: 같은 열쇠로 새 방문 줄
+update public.visit_sessions set started_at = now() - interval '40 minutes', last_at = now() - interval '35 minutes' where key = :'onk';
+select set_config('request.jwt.claims', json_build_object('sub', :'od', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_visit_touch(:'onk', '앨범');
+reset role;
+select pg_temp.ok((select count(*) = 2 from public.visit_sessions where key = :'onk') and exists (select 1 from public.visit_sessions where key = :'onk' and screens = '{앨범}'), '30분 지난 열쇠는 새 방문으로');
 -- 링크는 같은 단계 30분에 한 줄
 set role service_role;
 select public.sp_note_link_visit('OpsCode1', 'link');
