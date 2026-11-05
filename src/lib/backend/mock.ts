@@ -692,6 +692,7 @@ export function createMockBackend(): Backend {
     purgeDeletedFamilies: async () => [],
     cleanupStaleUploads: async () => 0,
     cleanupAuth: async () => 0,
+    cleanupVisits: async () => 0,
     r2CleanupTake: async () => [],
     r2CleanupDone: async () => {},
     // 운영(164): mock 상태에서 대강 센다(실제 규칙은 DB 검사가 맡는다). mock 엄빠 사용자 id = 출입증 문자열

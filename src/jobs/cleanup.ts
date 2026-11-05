@@ -1,4 +1,4 @@
-// 매일 정리(예약 작업): 탈퇴 기한 지난 가족방 → 하루 지난 '올리는 중' 사진 → R2 정리 대기열의 폴더 파일 지우기.
+// 매일 정리(예약 작업): 탈퇴 기한 지난 가족방 → 하루 지난 '올리는 중' 사진 → 로그인 계정 → 90일 지난 방문 기록 → R2 정리 대기열의 폴더 파일 지우기.
 // 백엔드·버킷을 받아서 돌린다(가짜로 단위 검사). 한 폴더가 실패해도 다음 폴더는 계속하고, 실패한 폴더는 대기열에 남아 내일 다시
 import type { Backend } from '../lib/backend/types';
 
@@ -8,7 +8,7 @@ export interface CleanupBucket {
   delete(keys: string[]): Promise<void>;
 }
 
-type CleanupBackend = Pick<Backend, 'purgeDeletedFamilies' | 'cleanupStaleUploads' | 'cleanupAuth' | 'r2CleanupTake' | 'r2CleanupDone'>;
+type CleanupBackend = Pick<Backend, 'purgeDeletedFamilies' | 'cleanupStaleUploads' | 'cleanupAuth' | 'cleanupVisits' | 'r2CleanupTake' | 'r2CleanupDone'>;
 
 /** 남은 외부 호출 수. 쓰기 전에 하나씩 뺀다 */
 export interface Budget {
@@ -54,6 +54,7 @@ export async function runCleanup(backend: CleanupBackend, bucket: CleanupBucket,
   const families = await step('가족방', () => backend.purgeDeletedFamilies(), [] as string[]);
   const stale = await step('올리는 중', () => backend.cleanupStaleUploads(), 0);
   const accounts = await step('로그인 계정', () => backend.cleanupAuth(), 0);
+  const visits = await step('방문 기록', () => backend.cleanupVisits(), 0);
   let folders = 0;
   let files = 0;
   const failed: string[] = [];
@@ -81,5 +82,5 @@ export async function runCleanup(backend: CleanupBackend, bucket: CleanupBucket,
       errors.push(`R2 ${prefix}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
-  return { families: families.length, stale, accounts, folders, files, failed, errors, calls: limit - budget.left };
+  return { families: families.length, stale, accounts, visits, folders, files, failed, errors, calls: limit - budget.left };
 }

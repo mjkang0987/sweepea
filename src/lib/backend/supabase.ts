@@ -141,6 +141,7 @@ export function createSupabaseBackend(url: string, anonKey: string, serviceKey?:
     purgeDeletedFamilies: () => serviceRpc<string[]>('sp_purge_deleted_families', {}),
     cleanupStaleUploads: () => serviceRpc<number>('sp_cleanup_stale_uploads', {}),
     cleanupAuth: () => serviceRpc<number>('sp_cleanup_auth', {}),
+    cleanupVisits: () => serviceRpc<number>('sp_cleanup_visits', {}),
     r2CleanupTake: (limit) => serviceRpc<string[]>('sp_r2_cleanup_take', { p_limit: limit }),
     r2CleanupDone: (prefix) => serviceRpc<void>('sp_r2_cleanup_done', { p_prefix: prefix }),
     async userId(pass) {

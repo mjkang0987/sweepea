@@ -338,6 +338,8 @@ export interface Backend {
   cleanupStaleUploads(): Promise<number>;
   /** 기기 없이 남은 익명 로그인 계정·비밀번호 틀린 기록 7일 뒤 지우기(138). 지운 계정 수 */
   cleanupAuth(): Promise<number>;
+  /** 90일 지난 자세한 방문 기록 지우기(179). 지운 줄 수 */
+  cleanupVisits(): Promise<number>;
   /** R2 정리 대기열(폴더 접두사) 오래된 것부터 */
   r2CleanupTake(limit: number): Promise<string[]>;
   r2CleanupDone(prefix: string): Promise<void>;

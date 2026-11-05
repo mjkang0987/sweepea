@@ -1449,7 +1449,10 @@ select gen_random_uuid() as dvk \gset
 select public.sp_visit_start(:'dvk', '가족 앨범');
 -- 기기가 엄빠 줄을 고치려 해도 안 바뀜
 select public.sp_visit_touch(:'ovk', '남의 줄');
--- 같은 열쇠라도 기기는 자기 줄을 따로 만든다(한 브라우저에 엄빠·가족 출입증)
+-- 같은 열쇠라도 기기는 자기 줄을 따로 만든다(한 브라우저에 엄빠·가족 출입증). 1분 안 다시 시작 막기를 피해 앞 방문을 2분 전으로
+reset role;
+update public.visit_sessions set started_at = now() - interval '2 minutes' where key = :'dvk';
+set role authenticated;
 select public.sp_visit_start(:'ovk', '가족 앨범');
 reset role;
 set role anon;
@@ -1468,14 +1471,38 @@ set role authenticated;
 select public.sp_visit_touch(:'ovk', '알림');
 reset role;
 select pg_temp.ok((select cardinality(screens) = 3 from public.visit_sessions where key = :'ovk' and kind = 'parent'), '30분 지난 방문은 이어 쓰지 않음');
--- 90일 지난 줄은 다음 방문 시작 때 지움
+-- 90일 지난 줄은 매일 정리가 지우고, 운영 화면에도 안 나옴
 insert into public.visit_sessions (key, family_id, kind, visitor, started_at, last_at) values (gen_random_uuid(), :'ofam', 'device', :'odev', now() - interval '91 days', now() - interval '91 days') returning id as oold \gset
+set role service_role;
+select public.sp_ops_visit_log(:'ofam', public.sp_seoul_today() - 120, public.sp_seoul_today()) as olog90 \gset
+select public.sp_cleanup_visits() as ocl \gset
+reset role;
+select pg_temp.ok(jsonb_array_length(:'olog90'::jsonb) = (select count(*) from public.visit_sessions where family_id = :'ofam' and started_at > now() - interval '90 days'), '운영 방문 기록은 90일 안 것만');
+select pg_temp.ok(:'ocl'::int = 1 and not exists (select 1 from public.visit_sessions where id = :'oold'), '90일 지난 자세한 기록은 매일 정리가 지움');
+set role authenticated;
+do $$ begin perform public.sp_cleanup_visits(); raise exception '사용자가 방문 정리를 부름'; exception when insufficient_privilege then null; end $$;
+reset role;
+-- 1분 안에 새 열쇠로 또 시작하면 줄·횟수를 안 늘림
 select set_config('request.jwt.claims', json_build_object('sub', :'od', 'is_anonymous', true)::text, false);
+select (select count from public.visits where family_id = :'ofam' and kind = 'device' and visitor = :'odev' and day = public.sp_seoul_today()) as ocnt \gset
 set role authenticated;
 select public.sp_visit_start(gen_random_uuid(), '가족 앨범');
 reset role;
-select pg_temp.ok(not exists (select 1 from public.visit_sessions where id = :'oold'), '90일 지난 자세한 기록은 지움');
-select pg_temp.ok((select count from public.visits where family_id = :'ofam' and kind = 'device' and visitor = :'odev' and day = public.sp_seoul_today()) >= 2, '방문 시작은 날짜별 횟수도 셈');
+select pg_temp.ok((select count from public.visits where family_id = :'ofam' and kind = 'device' and visitor = :'odev' and day = public.sp_seoul_today()) = :'ocnt'::int, '1분 안 새 열쇠 시작은 안 셈');
+-- 시작 기록이 없는 열쇠로 이어 쓰면 그 열쇠로 시작(처음 설정 중·시작 실패)
+update public.visit_sessions set started_at = now() - interval '2 minutes' where kind = 'device' and visitor = :'odev';
+select gen_random_uuid() as onk \gset
+select set_config('request.jwt.claims', json_build_object('sub', :'od', 'is_anonymous', true)::text, false);
+set role authenticated;
+select public.sp_visit_touch(:'onk', '글자 크기');
+reset role;
+select pg_temp.ok((select screens = '{"글자 크기"}' from public.visit_sessions where key = :'onk'), '없는 열쇠로 이어 쓰면 그 열쇠로 시작');
+-- 링크는 같은 단계 30분에 한 줄
+set role service_role;
+select public.sp_note_link_visit('OpsCode1', 'link');
+select public.sp_note_link_visit('OpsCode1', 'link');
+reset role;
+select pg_temp.ok((select count(*) = 1 from public.visit_sessions where family_id = :'ofam' and kind = 'link'), '같은 링크 단계는 30분에 한 줄');
 select set_config('request.jwt.claims', '', false);
 set role service_role;
 select public.sp_ops_visit_log(:'ofam', public.sp_seoul_today() - 6, public.sp_seoul_today()) as olog \gset
