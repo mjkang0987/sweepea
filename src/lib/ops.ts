@@ -155,6 +155,7 @@ export function dayLabel(day: string | null, today: string): string {
 /** 자세한 방문 기록(179)에 남길 화면 이름. 주소·사진 번호는 남기지 않고 이름만(처리방침: '본 화면') */
 const SCREENS: [RegExp, string][] = [
   [/^\/home$/, '앨범'],
+  [/^\/guide$/, '자주 묻는 질문'],
   [/^\/view\/[^/]+$/, '크게 보기'],
   [/^\/photo\/[^/]+$/, '사진 정보'],
   [/^\/photos\/edit$/, '여러 장 고치기'],
