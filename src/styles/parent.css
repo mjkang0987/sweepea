@@ -3436,3 +3436,54 @@
 .sp-doc__strong {
   font-weight: 700;
 }
+/* 자주 묻는 질문(181, 디자인 Guide): 한 판 안에 질문 줄, 네이티브 details로 펼침. 표시 화살표만 오른쪽 꺾쇠로 */
+.sp-guide {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+.sp-guide__item + .sp-guide__item {
+  box-shadow: inset 0 1px 0 var(--separator);
+}
+.sp-guide__q {
+  min-height: var(--target-min);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--body-size);
+  line-height: var(--body-line);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+/* 판이 모서리를 자르므로(overflow) 포커스 테두리는 안쪽에 */
+.sp-body .sp-guide__q:focus-visible {
+  outline-offset: -2px;
+}
+.sp-guide__q::-webkit-details-marker {
+  display: none;
+}
+.sp-guide__q::after {
+  content: '';
+  flex: none;
+  width: 0.5em;
+  height: 0.5em;
+  margin: 0 0.25em 0 auto;
+  border-right: 2px solid var(--label-2);
+  border-bottom: 2px solid var(--label-2);
+  transform: rotate(45deg);
+}
+.sp-guide__qa[open] > .sp-guide__q::after {
+  transform: rotate(-135deg);
+}
+.sp-guide__a {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-4);
+  font-size: var(--subhead-size);
+  line-height: 1.6;
+  color: var(--label-2);
+}
