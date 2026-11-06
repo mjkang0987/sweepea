@@ -1,0 +1,55 @@
+---
+// 자주 묻는 질문(181, 사용자 2026-11-06, 디자인 Guide). 첫 화면 한 장(92)은 그대로 두고, 검색·AI 답변이 인용할 질문·답을 여기에.
+// 약관·처리방침에 있는 사실만(숫자 바꾸면 terms·privacy·llms.txt도). 화면 글과 FAQPage 구조화 데이터는 같은 배열에서
+import { SITE_ORIGIN } from 'astro:env/server';
+import Parent from '../layouts/Parent.astro';
+import { backHref } from '../lib/back';
+
+const QA = [
+  { q: '할머니도 앱을 깔거나 가입해야 하나요?', a: '아니요. 엄마·아빠가 보낸 링크를 누르고 처음 한 번 이름을 고르고 그룹 비밀번호만 넣으면 돼요. 처음 쓰는 이름이면 엄마·아빠가 승인한 뒤 앨범이 열려요. 같은 휴대폰·같은 브라우저에서는 다음부터 링크만 누르면 돼요.' },
+  { q: '링크가 다른 사람에게 가면 사진이 보이나요?', a: '링크만으로는 볼 수 없어요. 그룹 비밀번호를 알아야 하고, 처음 보는 이름은 엄마·아빠가 승인하기 전까지 그 링크로 보낸 사진만 볼 수 있어요. 링크와 비밀번호는 믿는 가족에게만 보내 주세요. 사진은 검색에도 나오지 않아요.' },
+  { q: '외가와 친가에 다른 사진을 보여 줄 수 있나요?', a: '네. 외가·친가처럼 그룹을 나누고(10개까지), 사진마다 어느 그룹에 보일지 정해요.' },
+  { q: '정말 무료인가요?', a: '5GB까지 무료예요. 다 차면 새로 올리기만 멈추고, 올린 사진은 그대로 볼 수 있어요.' },
+  { q: '원본 화질로 올라가나요?', a: '휴대폰에서 용량을 줄여 올려요. 사진은 해상도 그대로(긴 쪽 최대 4032픽셀), 3분 이하 영상은 1080p예요. 원본은 따로 보관하지 않으니 휴대폰에도 남겨 두세요. 3분이 넘거나 휴대폰이 줄이지 못한 영상은 받은 파일 그대로 보관해요.' },
+  { q: '카톡으로 사진을 보내는 것과 뭐가 다른가요?', a: '사진이 대화에 묻히지 않고 한 앨범에 날짜순으로 모여요. 가족은 하트와 한마디를 남기고, 엄마·아빠는 누가 봤는지 알 수 있어요. 엄마·아빠가 지우기 전까지 사진은 그대로예요.' },
+  { q: '엄마·아빠 둘 다 올릴 수 있나요?', a: '네. 한 가족방을 엄마·아빠 두 사람이 함께 관리해요. 가족에게도 사진 올리기를 허락할 수 있어요.' },
+  { q: '탈퇴하면 사진은 어떻게 되나요?', a: '탈퇴하면 가족 화면이 바로 닫히고 3일 뒤 모든 정보와 사진이 지워져요. 3일 안에는 다시 로그인해 되살릴 수 있어요. 함께 관리하는 엄마·아빠가 남아 있으면 탈퇴한 사람만 빠져요.' },
+];
+const ld = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: QA.map(({ q, a }) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+};
+const canonical = `${(SITE_ORIGIN || Astro.url.origin).replace(/\/$/, '')}/guide`;
+---
+
+<Parent
+  title="자주 묻는 질문 · 스위피 가족 앨범"
+  description="할머니도 앱 설치·가입 없이 보나요? 링크가 새면? 무료 용량은? 스위피 가족 사진 앨범에 대해 자주 묻는 질문과 답이에요."
+  canonical={canonical}
+>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(ld)} />
+  <nav class="sp-p__nav" aria-label="뒤로">
+    <a class="sp-p__back" href={backHref(Astro.url)}>뒤로</a>
+  </nav>
+  <article class="sp-doc" aria-labelledby="doc-title">
+    <h1 class="sp-doc__title" id="doc-title">자주 묻는 질문</h1>
+    <p class="sp-doc__lead">스위피는 아기 사진을 올리고 카톡으로 링크만 보내면 할머니·할아버지가 앱 설치도 가입도 없이 보는 가족 앨범이에요.</p>
+    <ul class="sp-guide" role="list">
+      {
+        QA.map(({ q, a }, i) => (
+          <li class="sp-guide__item">
+            <details class="sp-guide__qa" open={i === 0}>
+              <summary class="sp-guide__q">{q}</summary>
+              <p class="sp-guide__a">{a}</p>
+            </details>
+          </li>
+        ))
+      }
+    </ul>
+  </article>
+  <div class="sp-p__bottom sp-p__landing-bottom">
+    <a class="sp-p__login" href="/login">무료로 시작하기</a>
+    <p class="sp-p__note">5GB까지 무료</p>
+  </div>
+</Parent>
