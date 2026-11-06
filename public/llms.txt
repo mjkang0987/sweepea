@@ -24,6 +24,7 @@
 ## 문서
 
 - [첫 화면](https://sweepea.co.kr/)
+- [자주 묻는 질문](https://sweepea.co.kr/guide)
 - [이용약관](https://sweepea.co.kr/terms)
 - [개인정보 처리방침](https://sweepea.co.kr/privacy)
 - 문의: pikaworks.help@gmail.com
