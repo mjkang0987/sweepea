@@ -1427,6 +1427,12 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 182. fix/terms-approval — 약관 제3조 승인 문구를 실제대로 (완료, 0.52.1)
+- 요구(사용자 2026-11-06): 181 검토에서 약관 "보호자가 승인해야 사진을 볼 수 있습니다"가 실제보다 강함(그룹에 있는 이름은 비밀번호만으로 들어오고, 새 이름은 승인 전에도 그 링크로 보낸 사진은 봄) → "약관도 고쳐"
+- 구현: 제3조 둘째 줄을 '새 이름은 승인해야 앨범, 승인 전엔 그 링크 사진만, 링크·비밀번호는 믿는 가족에게만'으로. 약관 시행일 2026년 11월 6일, 동의 버전 terms 2026-11-06 — 179처럼 7일 전 고지 대신 다시 동의로 갈음(엄빠는 다음 방문에 /agree 한 번)
+- 영향 파일: `src/pages/terms.astro`, `src/lib/consent.ts`
+- 남은 것: iOS·안드로이드 앱의 동의 버전(Consent 2026-11-05)도 2026-11-06으로 올려야 웹과 같음(앱 저장소, 앱은 아직 출시 전)
+
 ### 181. feature/guide — 자주 묻는 질문 화면 `/guide` (완료, 0.52.0)
 - 요구(사용자 2026-11-06): 180 뒤 "안내 화면 어디 만들지?" → `/guide` 따로, 첫 화면 맨 아래 작은 링크 줄에 더하기로 "응 좋아"
 - 왜: 답변 엔진(AEO)·AI 검색은 화면에 보이는 질문·답을 인용한다. 첫 화면은 한 장(92)으로 두고 따로 만든다
