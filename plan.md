@@ -1427,6 +1427,18 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 181. feature/guide — 자주 묻는 질문 화면 `/guide` (완료, 0.52.0)
+- 요구(사용자 2026-11-06): 180 뒤 "안내 화면 어디 만들지?" → `/guide` 따로, 첫 화면 맨 아래 작은 링크 줄에 더하기로 "응 좋아"
+- 왜: 답변 엔진(AEO)·AI 검색은 화면에 보이는 질문·답을 인용한다. 첫 화면은 한 장(92)으로 두고 따로 만든다
+- 구현: `src/pages/guide.astro` — Parent 뼈대 + 처리방침 글 모양(`.sp-doc`) 재사용, 질문마다 네이티브 details/summary, 맨 아래 무료로 시작하기. 질문·답은 한 배열에서 화면과 FAQPage JSON-LD 둘 다 만듦(화면과 같은 글). 첫 화면 맨 아래 줄·설정 '이용약관' 위에 링크. 검색: 미들웨어 noindex에서 `/guide` 빼기, canonical, sitemap에 더함. 뒤로는 `backHref`
+- 질문 8개(약관·처리방침 사실만, 카톡 보관 기간 같은 확인 못 한 숫자 없음): 설치·가입 / 링크가 새면 / 외가·친가 / 무료 / 화질 / 카톡과 다른 점 / 엄빠 둘·가족 올리기 / 탈퇴
+- 디자인: 캔버스 Guide·Guide-Light 보드(첫 화면 옆), Landing 보드에 맨 아래 작은 링크 줄(앱엔 이미 있음)
+- 영향 파일: `src/pages/guide.astro`, `src/pages/index.astro`, `src/pages/settings/index.astro`, `src/middleware.ts`, `src/lib/ops.ts`(방문 기록 화면 이름), `src/styles/parent.css`, `public/sitemap.xml`, `public/llms.txt`, `tools/design/guide.py`, `index.md`
+- 예상 결과: `/guide` 200·noindex 없음·FAQPage JSON-LD, 첫 화면 한 장 모양 그대로, 접근성 100
+- 결과: 캔버스 v271·v273(Guide·Guide-Light, Landing 맨 아래 링크 줄), 개발 서버에서 다크·라이트 보드와 같음·펼침·가로 넘침 없음, `/guide`만 색인 허용(다른 화면 noindex 그대로), 단위 69·타입 0·빌드 통과
+- 검토(qa): 답 둘이 실제보다 강했음 → 고침(새 이름은 승인 전까지 그 링크로 보낸 사진만 보임, 있는 이름은 비밀번호만으로 바로 — 1번 '바로 봐요'·2번 '승인해야 들어와요'), 같은 브라우저에서만 다음부터 바로, 포커스 테두리가 판 밖으로 잘림 → 안쪽(-2px, `.sp-body` 붙여 base보다 우선), VoiceOver용 role=list, 운영 방문 기록 화면 이름에 '자주 묻는 질문'
+- 남은 것(사용자 결정): 약관 34행 "처음 보는 이름은 보호자 승인"도 같은 이유로 덜 정확(승인 전 그 링크 사진은 보임) — 고치면 약관 시행일 문제. FAQ 리치 결과는 구글이 정부·건강 사이트로만 보여서 검색 화면에 펼침 표시는 안 나옴(AI 답변·네이버용)
+
 ### 180. feature/seo-geo — 검색(SEO)·AI 검색(GEO)·답변 엔진(AEO) 손보기 (완료, 0.51.0)
 - 요구(사용자 2026-11-06): "스위피 GEO, SEO, AEO 개선"
 - 지금 상태(점검): 검색에 보이는 곳은 첫 화면 `/`뿐(나머지는 X-Robots-Tag noindex, 의도). 제목·설명·og·canonical·sitemap·네이버 소유 확인은 있음. 없는 것: 구조화 데이터(JSON-LD), AI용 요약 `llms.txt`(운영 404), `og:locale`. 운영 robots.txt에는 Cloudflare 관리 목록이 앞에 붙어 AI 학습 봇(GPTBot·ClaudeBot·Google-Extended 등)만 막고 검색·답변용 봇(OAI-SearchBot·PerplexityBot·Googlebot 등)은 열려 있음 → 그대로(학습 허용 여부는 Cloudflare 설정, 사용자 결정)
