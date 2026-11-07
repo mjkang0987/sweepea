@@ -1427,6 +1427,15 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 183. feature/empty-upload — 엄빠 앨범이 비었을 때 가운데 '사진 추가하기' (진행 중)
+- 요구(웹 UX 점검 2026-11-03 남은 것, 사용자 2026-11-07 "웹 UX 남은 것" 고름): 사진이 하나도 없을 때 올리는 길이 오른쪽 아래 둥근 + 뿐이라 처음 온 엄빠가 못 찾을 수 있음
+- 문서·구현 차이(발견): 보드 ParentEmpty엔 탭바 위에 떠 있는 '사진 추가하기' 알약이 있지만, 102(유리 탭바)에서 떠 있던 버튼을 일부러 뺐고 ParentEmpty 보드는 옛 탭바 그대로였음
+- 구현 방식: 떠 있는 버튼은 다시 만들지 않고 빈 화면 안내 글 아래에 채운 버튼 '사진 추가하기'(/upload) 하나. 이미 있는 `.sp-p__btn`·`.sp-p__empty-btn`(SendSetupEmpty와 같은 모양) 그대로. 거르기로 비었을 땐 넣지 않음(사진이 있는 집)
+- 보드: ParentEmpty·ParentEmpty-Light를 유리 탭바(tools/design/glasstab.py glass())로 바꾸고 떠 있던 알약 대신 안내 아래 버튼
+- 영향 파일: `src/pages/home.astro`, 보드 ParentEmpty(-Light), 검사 tools/e2e/emptyupload.py
+- 예상 결과: 사진 없는 엄빠 홈에 콩이·제목·안내 아래 '사진 추가하기' → 누르면 올리기, 거르기로 빈 화면엔 없음
+- 앱(iOS·안드로이드)도 같은 빈 화면이라 다음에 같이(이 작업 공간은 iOS 빌드가 안 됨)
+
 ### 182. fix/terms-approval — 약관 제3조 승인 문구를 실제대로 (완료, 0.52.1)
 - 요구(사용자 2026-11-06): 181 검토에서 약관 "보호자가 승인해야 사진을 볼 수 있습니다"가 실제보다 강함(그룹에 있는 이름은 비밀번호만으로 들어오고, 새 이름은 승인 전에도 그 링크로 보낸 사진은 봄) → "약관도 고쳐"
 - 구현: 제3조 둘째 줄을 '새 이름은 승인해야 앨범, 승인 전엔 그 링크 사진만, 링크·비밀번호는 믿는 가족에게만'으로. 약관 시행일 2026년 11월 6일, 동의 버전 terms 2026-11-06 — 179처럼 7일 전 고지 대신 다시 동의로 갈음(엄빠는 다음 방문에 /agree 한 번)
