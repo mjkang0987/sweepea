@@ -4,7 +4,8 @@
 
 ## 현재 상태
 
-- 버전 0.52.1(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 저장소 마이그레이션 37개 모두 적용(2026-11-06 visit_sessions까지, 운영 기록 37줄. `media_changes`는 운영 기록에 내용 없는 줄 + `media_changes_body` — plan 123), 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
+- 버전 0.53.0(dev, 운영 주소에 자동 배포). main은 아직 첫 커밋(PR #1 열림). 운영 Supabase(서울)에 저장소 마이그레이션 37개 모두 적용(2026-11-06 visit_sessions까지, 운영 기록 37줄. `media_changes`는 운영 기록에 내용 없는 줄 + `media_changes_body` — plan 123), 사진은 R2. 새 세션 인계는 plan.md 맨 위 '새 세션 인계'.
+- 빈 엄빠 앨범(0.53.0, plan 183): 콩이·'○○ 첫 사진을 올려 주세요'·안내 아래 '사진 추가하기'(/upload, `.sp-p__empty-btn` 넓은 화면은 22rem), 거르기로 빈 화면엔 없음
 - 방문 기록 자세히(0.50.0, plan 179, 운영 DB 적용·배포 2026-11-06 사용자 "배포 바로 해쥬면"): 방문마다 시각·머문 시간·본 화면 이름을 visit_sessions에 90일(미들웨어 열쇠 쿠키 sp_v, 매일 정리), 운영 가족방 상세 '방문 기록' 표. 처리방침 시행 11월 5일·약관 시행 11월 6일·동의 버전 2026-11-06(plan 182, 약관 제3조 승인 문구)
 - 운영자 화면(0.41.0, plan 164): `/ops` 현황·`/ops/families` 목록·`/ops/families/<id>` 상세. 문 세 겹 — Cloudflare Access 도장을 서버가 직접 확인(workers.dev 뒷문 막기, src/lib/ops.ts verifyAccessJwt) + 엄빠 로그인 + 비밀 값 `OPS_USER_IDS`(셋 다 없으면 404, src/lib/opsgate.ts). 비밀 값 `OPS_ACCESS_TEAM`(예: 팀.cloudflareaccess.com)·`OPS_ACCESS_AUD`. 숫자만(가족방은 번호 앞 8자리, 사람은 '가족 기기 3'), 기간 줄(오늘·7·30·90일·직접, 직전 같은 길이와 비교), 막대 바로 위 말풍선(운영 화면만 작은 스크립트, 없으면 CSS 말풍선, 0.41.2)·숫자로 보기·좌우 밀기, 목록은 줄 전체가 상세 링크(0.41.1). DB 함수 sp_ops_*는 service_role만, 기기 승인 판정은 sp_ops_devices(기기 active + 구성원 active)
 - 올리기 API가 앱 출입증도(0.49.0, plan 178): POST /api/media·PUT …/<부분>·POST …/done·…/multipart가 `Authorization: Bearer <Supabase 출입증>`이 있으면 그것만 씀(쿠키 안 봄), 없으면 예전처럼 쿠키. 토큰 글자 검사는 lib/media.ts bearerPass
