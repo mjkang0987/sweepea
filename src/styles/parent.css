@@ -579,10 +579,11 @@
   line-height: var(--title-2-line);
   font-weight: 700;
 }
-/* 빈 상태 아래 버튼(디자인 SendSetupEmpty): 폭 가득 */
+/* 빈 상태 아래 버튼(디자인 SendSetupEmpty·ParentEmpty): 폰은 폭 가득, 넓은 화면(엄빠 앨범)은 레이어 폭까지만 가운데 */
 .sp-p__empty-btn {
   align-self: stretch;
-  margin-top: var(--space-2);
+  max-width: 22rem;
+  margin: var(--space-2) auto 0;
 }
 .sp-p__month {
   display: flex;
