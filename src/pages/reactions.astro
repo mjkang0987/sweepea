@@ -77,5 +77,6 @@ const old = rows.filter((r) => !r.isNew);
         </section>
       ))
   }
-  {rows.length === 0 && <p class="sp-p__note">아직 반응이 없어요. 사진을 올리고 카톡으로 보내 보세요.</p>}
+  {/* 사진을 이미 올렸으면 올리라는 말 대신 반응이 어디 모이는지(184) */}
+  {rows.length === 0 && <p class="sp-p__note">{(a.home.photo_count ?? 0) + (a.home.video_count ?? 0) > 0 ? '아직 반응이 없어요. 가족이 사진을 보고 하트나 한마디를 남기면 여기에 모여요.' : '아직 반응이 없어요. 사진을 올리고 카톡으로 보내 보세요.'}</p>}
 </Parent>
