@@ -1,0 +1,107 @@
+---
+// 엄빠 크게 보기: 조부모와 같은 화면(반응·한마디 남기기·저장) + 사진 정보 수정 버튼. 순서는 앨범과 같음(아이 ?k=, 사진/영상 ?t=, 그룹 ?g=를 골랐으면 그 안에서만)
+import Family from '../../layouts/Family.astro';
+import Viewer from '../../components/Viewer.astro';
+import { applyReactPost, dayLabel, loadReacts, loadWindow, slideWindow } from '../../lib/album';
+import { getBackend } from '../../lib/backend';
+import { UUID } from '../../lib/media';
+import { callName } from '../../lib/ko';
+import { photoAge } from '../../lib/age';
+import { loadParent, seoulDate } from '../../lib/parent';
+import { signedMediaUrl } from '../../lib/signed';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const id = Astro.params.id ?? '';
+if (!UUID.test(id)) return Astro.redirect('/home');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const b = getBackend();
+const kids = a.home.children ?? [];
+const picked = kids.length > 1 ? kids.find((x) => x.id === Astro.url.searchParams.get('k')) : undefined;
+// 앨범 칸 단계(1·2·3)도 이어 받아 닫을 때 그 단계로(기억한 단계가 월별이어도 보던 자리로 돌아가게, 리뷰 2026-10-29)
+const zp = ['1', '2', '3'].includes(Astro.url.searchParams.get('z') ?? '') ? Astro.url.searchParams.get('z') : null;
+// 앨범 거르기를 이어 받아 그 안에서만 넘김(125, 사용자 "외가 사진만 보는 게 맞지 않나?").
+// 그룹은 값 모양만 보고 바로 거르고, 아래에서 함께 받는 그룹 목록으로 내 가족방 그룹인지 확인(아니면 g를 뺀 주소로). 예전엔 목록을 먼저 따로 기다림(134)
+const t0 = Astro.url.searchParams.get('t');
+const kind = t0 === 'photo' || t0 === 'video' ? t0 : undefined;
+const g1 = Astro.url.searchParams.get('g');
+const g0 = g1 && /^[\w-]{1,64}$/.test(g1) ? g1 : undefined;
+const qsOf = (g?: string) => [picked && `k=${encodeURIComponent(picked.id)}`, kind && `t=${kind}`, g && `g=${encodeURIComponent(g)}`, zp && `z=${zp}`].filter(Boolean).join('&');
+const qs = qsOf(g0);
+const kq = qs ? `?${qs}` : '';
+// 반응·한마디: 부모 계정으로. 돌아갈 곳은 이 화면 주소만
+if (Astro.request.method === 'POST') {
+  const pass = a.pass;
+  const back = /^\/view\/[0-9a-f-]{36}(\?[A-Za-z0-9=&%._-]*)?(#[A-Za-z0-9_-]+)?$/;
+  const ops = { react: (m: string, k: Parameters<typeof b.parentReact>[2], on: boolean) => b.parentReact(pass, m, k, on), comment: (m: string, t: string) => b.parentComment(pass, m, t), deleteComment: (c: string) => b.deleteComment(pass, c) };
+  return Astro.redirect(await applyReactPost(Astro.request, id, ops, back, `/view/${id}${kq}`), 303);
+}
+// 그 사진 앞뒤 21장과 자리·전체(몇 번째 사진이든). 반응·한마디는 주소의 id로 함께 받는다(왕복 한 번 줄임)
+// 본 사람(보신 기록, 95)도 같이. 못 받아도 화면은 연다
+// 엄빠가 이 사진을 봤음(117e: 엄빠 앨범 새 사진 표시가 사람마다 빠짐). 눌러서 연 것만 바로, 옆으로 넘겨 미리 받은 페이지(x-sp-slide)는 화면이 1.5초 머문 뒤. 못 남겨도 화면은 연다
+const slid = Astro.request.headers.get('x-sp-slide') === '1';
+// 앨범이 누르기 직전에 미리 받은 크게 보기(131, Sec-Purpose: prefetch)는 아직 연 게 아니라 '봤음'을 안 남기고, 실제로 열리면 화면이 남긴다(data-unnoted)
+const prefetched = /prefetch/i.test(Astro.request.headers.get('sec-purpose') ?? '');
+// 보이는 그룹(118, 사용자 "사진 수정 들어가기 전에 어느 그룹에 노출되는지"): 사진의 그룹 이름, 그룹이 둘 이상인 가족방만. 옆 기능이라 못 받으면 줄만 뺌
+const [win, reacts, comments, viewers, , info, admin] = await Promise.all([loadWindow(a.pass, { childId: picked?.id, kind, groupId: g0 }, id).catch((e) => (g0 ? null : Promise.reject(e))), loadReacts(a.pass, [id]), b.mediaComments(a.pass, id), b.mediaViewers(a.pass, id).catch(() => []), slid || prefetched ? undefined : b.noteParentViews(a.pass, [id]).catch(() => {}), b.mediaInfo(a.pass, id).catch(() => null), b.familyAdmin(a.pass).catch(() => null)]);
+const groupNames = admin && info && admin.groups.length > 1 ? admin.groups.filter((g) => info.group_ids.includes(g.id)).map((g) => g.name) : [];
+// 내 가족방 그룹이 아니면(또는 그룹 목록을 못 받으면) 그룹 거르기를 뺀 같은 사진으로.
+// 옆으로 넘겨 미리 받는 화면(x-sp-slide)은 돌려보내지 않는다(받는 스크립트가 거르지 않은 넘기기 줄을 쓰게 되므로). 내 가족방 것만 나오는 건 DB 권한이 지킴
+if (g0 && !slid && !admin?.groups.some((x) => x.id === g0)) return Astro.redirect(`/view/${id}${qsOf() ? `?${qsOf()}` : ''}`);
+if (!win) return Astro.redirect(`/home${kq}`);
+const { items, i } = win;
+const m = items[i];
+const prev = items[i - 1];
+const next = items[i + 1];
+const what = m.kind === 'video' ? '영상' : '사진';
+const label = `${dayLabel(m.taken_at)} ${what}`;
+const src = await signedMediaUrl(m.view_key);
+const poster = m.poster_key ? await signedMediaUrl(m.poster_key) : undefined;
+const here = `/view/${m.id}${kq}`;
+const say = Astro.url.searchParams.get('say');
+const sayHere = Astro.url.searchParams.get('sm') === m.id || !Astro.url.searchParams.get('sm') ? say : null;
+// 아이를 안 골랐고 여럿이면 사진의 아이를 모르니 '아이'로
+const child = picked ? callName(picked.name) : kids.length === 1 ? callName(kids[0].name) : '아이';
+// 찍은 날 아이 나이: 고른 아이, 아이가 하나면 그 아이(여럿인데 안 골랐으면 어느 아이 사진인지 몰라 안 보임)
+const ageKid = picked ?? (kids.length === 1 ? kids[0] : undefined);
+const age = ageKid ? photoAge(ageKid.birth_date, seoulDate(m.taken_at)) : null;
+const saveName = `sweepea-${seoulDate(m.taken_at)}.${m.kind === 'video' ? 'mp4' : 'jpg'}`;
+const view = (x: { id: string }) => `/view/${x.id}${kq}`;
+const slides = await slideWindow(items, i, view, (x) => `${dayLabel(x.taken_at)} ${x.kind === 'video' ? '영상' : '사진'}`);
+---
+
+<Family title={`${label} · ${win.pos} / ${win.total}`} wide>
+  <Viewer
+    noteViews="parent"
+    unnoted={prefetched}
+    groups={groupNames}
+    m={m}
+    age={age}
+    label={label}
+    src={src}
+    poster={poster}
+    pos={win.pos}
+    total={win.total}
+    closeHref={`/home?${qs ? `${qs}&` : ''}to=${m.id}#c-${m.id}`}
+    save={{ href: src, name: saveName, label }}
+    prev={prev && { href: view(prev), video: prev.kind === 'video' }}
+    next={next && { href: view(next), video: next.kind === 'video' }}
+    reacts={reacts}
+    action={`/view/${m.id}`}
+    here={here}
+    child={child}
+    say={sayHere}
+    sentText="보냈어요. 가족도 볼 수 있어요."
+    toast={Astro.url.searchParams.get('done') === 'saved' ? '사진 정보를 저장했어요.' : undefined}
+    slides={slides}
+    comments={comments}
+    viewers={viewers}
+  >
+    <div class="sp-v__float sp-v__hide">
+      <a class="sp-v__edit" href={`/photo/${m.id}${kq}`}>
+        <svg class="sp-v__edit-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
+        사진 정보 수정
+      </a>
+    </div>
+  </Viewer>
+</Family>

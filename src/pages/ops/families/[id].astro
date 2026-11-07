@@ -1,0 +1,212 @@
+---
+// 운영자 가족방 상세(164·167, 디자인 OpsFamily): 이 집 숫자 + 지금 설정된 정보(엄빠·아이·그룹·구성원 이름과 설정값, 사용자 2026-11-04).
+// 그룹 비밀번호·힌트, 사진·한마디 내용은 없음. 목록·계정 목록은 여전히 번호만
+import Ops from '../../../layouts/Ops.astro';
+import OpsBars from '../../../components/OpsBars.astro';
+import OpsPeriod from '../../../components/OpsPeriod.astro';
+import { getBackend } from '../../../lib/backend';
+import { sizeLabel } from '../../../lib/familyAdmin';
+import { dayLabel, nf, parsePeriod, periodQuery, shortId, stayLabel, timeLabel, VISIT_LOG_SINCE, VISITS_SINCE, withPeriod } from '../../../lib/ops';
+import { opsGate } from '../../../lib/opsgate';
+import { PROVIDER_NAMES, seoulDate, seoulToday } from '../../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+if (!(await opsGate(Astro.request, Astro.cookies))) return Astro.rewrite('/404');
+const id = Astro.params.id ?? '';
+if (!/^[0-9a-f-]{36}$/i.test(id)) return Astro.rewrite('/404');
+const today = seoulToday();
+const period = parsePeriod(Astro.url.searchParams, today);
+const [f, log] = await Promise.all([getBackend().opsFamily(id, period.from, period.to), getBackend().opsVisitLog(id, period.from, period.to)]);
+if (!f) return Astro.rewrite('/404');
+// 방문 기록(179): 누구 — 엄빠는 이름, 가족 기기는 구성원 이름, 링크 단계는 입장 전이라 사람을 모름
+const whoOf = (v: (typeof log)[number]) => (v.kind === 'parent' ? `엄빠 · ${v.who ?? '나간 엄빠'}` : v.kind === 'device' ? (v.who ?? '가족 기기') : '가족 링크(입장 전)');
+const pct = f.quota ? Math.min(100, Math.round((f.bytes / f.quota) * 100)) : 0;
+const ROLE = { mom: '엄마', dad: '아빠' } as const;
+const SIZE = { relation: '호칭에 맞춰(할머니·할아버지는 크게)', base: '기본', large: '크게', xlarge: '아주 크게' } as const;
+const onoff = (b: boolean) => (b ? '켬' : '끔');
+const birth = (d: string) => {
+  const [y, m, day] = d.split('-').map(Number);
+  return `${y}년 ${m}월 ${day}일`;
+};
+const people = [
+  ...f.parents.map((p) => ({ who: `${ROLE[p.role]} · ${p.name}`, group: '엄빠', status: '—', warn: false, upload: '—', visits: p.visits, last: p.last })),
+  ...f.devices.map((d) => ({ who: d.name ?? `가족 기기 ${d.no}`, group: d.group_name ?? '—', status: d.status === 'active' ? '승인' : '승인 대기', warn: d.status === 'pending', upload: d.can_upload ? '허용' : '—', visits: d.visits, last: d.last })),
+];
+---
+
+<Ops title={`가족방 ${shortId(f.id)}`} current="families" query={periodQuery(period)}>
+  <a class="sp-o__back" href={withPeriod('/ops/families', period)}>
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>가족방
+  </a>
+  <header class="sp-o__head sp-o__head--row">
+    <h1 class="sp-o__title">가족방 {shortId(f.id)}</h1>
+    {f.delete_after ? <span class="sp-o__badge sp-o__badge--warn">탈퇴 예정 · {dayLabel(seoulDate(f.delete_after), today)} 지워짐</span> : <span class="sp-o__badge">정상</span>}
+    <p class="sp-o__lead">{dayLabel(seoulDate(f.created_at), today)}에 만듦 · 마지막 올림 {f.last_upload ? dayLabel(seoulDate(f.last_upload), today) : '없음'} · 사진·한마디 내용은 안 보여요</p>
+  </header>
+  <OpsPeriod period={period} path={`/ops/families/${f.id}`} />
+
+  <div class="sp-o__cols sp-o__cols--narrow">
+    <div class="sp-o__col">
+      <dl class="sp-o__stats sp-o__stats--4">
+        <div class="sp-o__stat"><dt class="sp-o__stat-label">엄빠</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href="#sp-o-who">{nf(f.parents.length)}</a></dd></div>
+        <div class="sp-o__stat"><dt class="sp-o__stat-label">가족 기기</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href="#sp-o-people">{nf(f.devices.length)}</a></dd><dd class="sp-o__sub">승인 {nf(f.devices.filter((d) => d.status === 'active').length)} · 대기 {nf(f.devices.filter((d) => d.status === 'pending').length)}</dd></div>
+        <div class="sp-o__stat"><dt class="sp-o__stat-label">사진·영상</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href={withPeriod('/ops/media', period, `f=${f.id}`)}>{nf(f.photos + f.videos)}</a></dd><dd class="sp-o__sub">사진 {nf(f.photos)} · 영상 {nf(f.videos)}</dd></div>
+        <div class="sp-o__stat"><dt class="sp-o__stat-label">아이</dt><dd class="sp-o__stat-num"><a class="sp-o__num-link" href="#sp-o-who">{nf(f.children.length)}</a></dd></div>
+      </dl>
+      <section class="sp-p__card" aria-labelledby="sp-o-who">
+        <h2 class="sp-p__card-title" id="sp-o-who">엄빠·아이</h2>
+        {
+          f.parents.length ? (
+        <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="엄빠, 옆으로 밀기">
+          <table class="sp-o__table">
+            <caption class="sp-vh">엄빠 계정</caption>
+            <thead><tr>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">엄빠</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">로그인 방식</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head">계정</th>
+              <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">함께한 날</th>
+            </tr></thead>
+            <tbody>
+              {f.parents.map((p) => (
+                <tr class="sp-o__tr">
+                  <th scope="row" class="sp-o__cell sp-o__cell--row">{ROLE[p.role]} · {p.name}</th>
+                  <td class="sp-o__cell">{PROVIDER_NAMES[p.provider] ?? (p.provider === 'email' ? '이메일' : p.provider)}</td>
+                  <td class="sp-o__cell sp-o__mono">{shortId(p.id)}</td>
+                  <td class="sp-o__cell sp-o__num">{dayLabel(seoulDate(p.since), today)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+          ) : (
+            <p class="sp-o__sub">엄빠 계정이 없어요.</p>
+          )
+        }
+        {
+          f.children.length ? (
+            <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="아이, 옆으로 밀기">
+              <table class="sp-o__table">
+                <caption class="sp-vh">아이</caption>
+                <thead><tr>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">아이</th>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">생일</th>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">접종·검진 보기</th>
+                </tr></thead>
+                <tbody>
+                  {f.children.map((c) => (
+                    <tr class="sp-o__tr">
+                      <th scope="row" class="sp-o__cell sp-o__cell--row">{c.name}</th>
+                      <td class="sp-o__cell">{birth(c.birth_date)}</td>
+                      <td class="sp-o__cell">{onoff(c.show_health)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p class="sp-o__sub">아이가 없어요.</p>
+          )
+        }
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-up">
+        <h2 class="sp-p__card-title" id="sp-o-up">올린 사진·영상</h2>
+        <OpsBars label="기간 안 날짜별 올린 사진·영상 수" names={['올림']} unit="개" today={today} rows={f.uploads.map((d) => ({ day: d.day, v: [d.n] }))} />
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-vis">
+        <div><h2 class="sp-p__card-title" id="sp-o-vis">방문</h2>{period.from < VISITS_SINCE && <p class="sp-o__sub">방문 기록은 {dayLabel(VISITS_SINCE, today)}부터예요</p>}</div>
+        <OpsBars label="기간 안 날짜별 방문 수" names={['가족', '엄빠']} unit="회" today={today} rows={f.visits.map((d) => ({ day: d.day, v: [d.device, d.parent] }))} />
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-people">
+        <div><h2 class="sp-p__card-title" id="sp-o-people">가족·방문</h2><p class="sp-o__sub">엄빠와 들어온 가족 기기(승인·기한 안 대기), 방문은 고른 기간</p></div>
+        <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="가족·방문, 옆으로 밀기">
+          <table class="sp-o__table">
+            <caption class="sp-vh">가족과 사람별 방문, 방문은 고른 기간</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="sp-o__cell sp-o__cell--head">누구</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head">그룹</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head">상태</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head">사진 올리기</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">방문</th>
+                <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">마지막 방문</th>
+              </tr>
+            </thead>
+            <tbody>
+              {people.map((p) => (
+                <tr class="sp-o__tr">
+                  <th scope="row" class="sp-o__cell sp-o__cell--row">{p.who}</th>
+                  <td class="sp-o__cell">{p.group}</td>
+                  <td class:list={['sp-o__cell', p.warn && 'sp-o__warn']}>{p.status}</td>
+                  <td class="sp-o__cell">{p.upload}</td>
+                  <td class="sp-o__cell sp-o__num">{nf(p.visits)}회</td>
+                  <td class="sp-o__cell sp-o__num">{dayLabel(p.last, today)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-log">
+        <div>
+          <h2 class="sp-p__card-title" id="sp-o-log">방문 기록</h2>
+          <p class="sp-o__sub">고른 기간에 시작한 방문, 최근 것부터 200개까지. 머문 시간은 처음 연 때부터 마지막으로 화면을 연 때까지(30분 넘게 쉬면 다음 방문) · 90일 보관{period.from < VISIT_LOG_SINCE && ` · ${dayLabel(VISIT_LOG_SINCE, today)}부터 남겨요`}</p>
+        </div>
+        {log.length === 0 ? (
+          <p class="sp-o__sub">이 기간에 남은 방문 기록이 없어요</p>
+        ) : (
+          <div class="sp-o__table-wrap" tabindex="0" role="region" aria-label="방문 기록, 옆으로 밀기">
+            <table class="sp-o__table">
+              <caption class="sp-vh">방문 기록: 시각·누구·머문 시간·본 화면, 최근 것부터</caption>
+              <thead>
+                <tr>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">시각</th>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">누구</th>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head sp-o__num">머문 시간</th>
+                  <th scope="col" class="sp-o__cell sp-o__cell--head">본 화면</th>
+                </tr>
+              </thead>
+              <tbody>
+                {log.map((v) => (
+                  <tr class="sp-o__tr">
+                    <th scope="row" class="sp-o__cell sp-o__cell--row"><time datetime={v.at}>{timeLabel(v.at, today)}</time></th>
+                    <td class="sp-o__cell">{whoOf(v)}</td>
+                    <td class="sp-o__cell sp-o__num">{stayLabel(v.at, v.last)}</td>
+                    <td class="sp-o__cell sp-o__screens">{v.screens.length ? v.screens.join(' → ') : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+    <div class="sp-o__col">
+      <section class="sp-p__card" aria-labelledby="sp-o-st">
+        <h2 class="sp-p__card-title" id="sp-o-st">저장 용량</h2>
+        <p class="sp-o__kv-val sp-o__start">{sizeLabel(f.bytes)}{f.quota && ` / ${sizeLabel(f.quota)}`}</p>
+        {f.quota && <meter class="sp-p__meter" min="0" max="100" low="80" high="95" optimum="0" value={pct} aria-label={`${sizeLabel(f.quota)} 중 ${pct}% 사용`}>{pct}%</meter>}
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-set">
+        <h2 class="sp-p__card-title" id="sp-o-set">설정</h2>
+        <dl class="sp-o__kv sp-o__kv--set">
+          <dt class="sp-o__kv-name">요금제</dt><dd class="sp-o__kv-val">{f.plan === 'free' ? '무료' : '가족 플랜'}</dd>
+          <dt class="sp-o__kv-name">가족도 사진 저장하기</dt><dd class="sp-o__kv-val">{onoff(f.download_allowed)}</dd>
+          <dt class="sp-o__kv-name">그룹 나누기</dt><dd class="sp-o__kv-val">{onoff(f.groups_enabled)}</dd>
+          <dt class="sp-o__kv-name">가족 화면 글자 크기</dt><dd class="sp-o__kv-val">{SIZE[f.text_size_mode]}</dd>
+        </dl>
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-gr">
+        <div><h2 class="sp-p__card-title" id="sp-o-gr">그룹</h2><p class="sp-o__sub">인원은 승인 + 기한 안 대기</p></div>
+        <dl class="sp-o__kv">{f.groups.map((g) => (<><dt class="sp-o__kv-name">{g.name}{!g.include_by_default && ' (새 사진 기본 제외)'}</dt><dd class="sp-o__kv-val">{nf(g.members)}명</dd></>))}</dl>
+      </section>
+      <section class="sp-p__card" aria-labelledby="sp-o-in">
+        <div><h2 class="sp-p__card-title" id="sp-o-in">들어오기</h2><p class="sp-o__sub">링크 수는 지금, 나머지는 고른 기간</p></div>
+        <dl class="sp-o__kv">
+          <dt class="sp-o__kv-name">공유 링크</dt><dd class="sp-o__kv-val">{nf(f.shares)}개</dd>
+          <dt class="sp-o__kv-name">링크로 들어온 방문</dt><dd class="sp-o__kv-val">{nf(f.entry.link)}</dd>
+          <dt class="sp-o__kv-name">비밀번호 틀림(최근 7일만 남음)</dt><dd class="sp-o__kv-val">{nf(f.entry.failures)}번</dd>
+        </dl>
+      </section>
+    </div>
+  </div>
+</Ops>

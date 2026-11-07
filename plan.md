@@ -1,0 +1,2179 @@
+# plan.md
+
+현재 진행 중인 작업과 앞으로의 계획. 기획서: [스위피 · 가족 공유 앨범 앱 기획서](https://claude.ai/artifact/MSiCj7dUjxWEbmwMba3Aei), 디자인: [스위피 메인 디자인](https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU).
+
+## 새 세션 인계 (2026-11-04 정리, dev 0.42.0)
+
+새 세션은 이 절부터 읽는다. 자세한 기록은 아래 번호 이슈(160~163이 최근). 시작할 때 `git pull origin dev` 먼저(다른 곳에서 작업된 적 있음 — 11-03에 맥 사본이 0.14.5에 멈춰 있었음)
+
+### 지금 상태
+
+- dev = 0.40.2, dev에 푸시하면 운영 주소로 자동 배포(Workers Builds, 40~60초, 결과가 GitHub에 늦게 붙을 때 있음). 운영 주소 https://sweepea.co.kr (www는 대표 주소로 308, workers.dev도 살아 있음 `workers_dev: true` 필수). CI(perf: 타입 검사·빌드·Lighthouse)는 dev 푸시마다 → `gh run list --branch dev`
+- main은 첫 커밋 그대로. PR #1(main ← dev, 제목은 0.2.0 시절)이 열려 있음 → main 머지는 사용자 확인 뒤, 제목·설명을 지금 버전으로 고친다
+- 운영 Supabase(`aemzbelwyyweugxuqgoh`, 서울): 새 마이그레이션은 적용 전에 매번 사용자에게 묻는다. 적용 도구에 DROP이 들어가면 취소되므로 이름을 바꾼 새 함수로 만든다. 160~163은 DB 변경 없음
+- 디자인 캔버스: https://claude.ai/artifact/PWAPCX4B9x9UTW7CH75giU (최근 v261, 2026-11-03). 맨 아래 '올리기 화면 시안 비교'(A·C·D·B 막대 비교) 줄과 '올리기 흐름 (시안 B)' 줄(1·2·3·4·4-1·4-2·5, 앱과 맞춤). 예전 ParentUpload·ParentUpload-Light·UploadShrink·UploadSending 보드는 161 전 화면(지울지 사용자 확인 안 함). 보드 고칠 땐 캔버스에서 새로 받을 것(저장소 tools/canvas는 git 제외). 시안 생성기는 세션 임시 폴더에 있었음(남지 않음) — 고칠 땐 보드 파일을 직접 고친다
+- 앱: iOS `~/Desktop/git/sweepea-ios`(dev 0.1.1), 안드로이드 `~/Desktop/git/sweepea-android`(2026-11-03 새로, 비공개 GitHub mjkang0987/sweepea-android, dev 0.1.0). 둘 다 1단계 바탕까지, 2단계(입구)부터 같이 진행. 글꼴은 휴대폰 기본(Pretendard 안 씀). 사용자 "앱 전에 웹 UX부터"로 잠시 멈춤
+- 2026-11-03~04에 끝낸 것: 160 조부모 앨범 위 줄 줄이기(0.39.0: 넘겨 보기 사진 위엔 보기 방식 한 줄, 내 캐릭터·글자 크기는 넘겨 보기 맨 아래·모아 보기는 위, 사진 종류는 모아 보기에만) · 161 올리기 다시 짜기(0.40.0: 사진 전부 + 아래 유리 막대에서 아이·그룹, 줄이기·올리기 같이, 가운데 진행 레이어·그만 올리기·남은/올린 두 묶음, ✕·되돌리기) · 162 영상이 처음엔 안 열리고 다시 하면 됨(0.40.1: 20초 기다림, 저절로 한 번 더) · 163 영상 못 엶 단계·오류 번호 안내(0.40.2)
+- 맥에서 e2e 돌리기: tools/e2e를 임시 폴더로 통째 복사하고 /home/claude/sweepea·/home/user 경로를 바꿔 실행(검사끼리 import·그림을 같은 폴더에서 찾음). 코드를 고친 직후 첫 실행은 개발 서버 다시 빌드로 시간 초과가 날 수 있음(다시 돌리면 통과). 원래부터 깨진 검사(dev에서도 같음): keepsmall, bigvideo '50MB 조각 거절', masonry '넓은 화면 4줄 폭', waitphotos, subhead, savebar, pc
+- 클라우드 세션에서 검사 돌리기(2026-10-31): Python Playwright는 설치된 브라우저와 같은 판(`pip install playwright==1.63.0`, `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`), 예전 e2e의 `/home/claude/sweepea` 고정 경로는 링크로
+
+### 웹 UX 점검(2026-11-03)에서 남은 것
+
+전체 흐름을 따라가 찾은 7개 중 1번(조부모 앨범 위 줄)은 160, 사용자가 직접 말한 올리기 화면은 161로 끝냄. 남은 것(사용자에게 아직 순서 안 정함):
+- 결정 기다림(2026-11-07 시안, 캔버스 v276 맨 아래 '결정 1·2·3' 줄, tools/design/decide.py): ① 조부모 한마디가 넘겨 보기에 안 보임 — A 카드 아래 최근 한마디 2개+모두 보기(추천, 가운데 카드일 때 받아 오는 작은 API) / B 카드에 '한마디 N' 알약만 ② 승인 대기 안내 9줄 — A 할 일 한 문장+작은 글 3일(추천) / B 1·2·3 순서 ③ 설정 › 가족 보내는 곳 셋 — A '가족에게 보내기' 한 묶음 세 줄(추천) / B 버튼 하나 → 누구에게(라디오)
+- 엄빠: ~~사진이 없을 때 가운데 '사진 올리기' 버튼 없음~~(183, 0.53.0) · 설정 > 가족에 보내는 방법이 셋(아빠 초대·문자로 공유·링크 만들기)이라 헷갈림 · ~~알림 화면 빈 글이 사진을 올린 뒤에도 같음~~(184, 0.53.1)
+- 못 본 것: 어두운 화면·아주 큰 글자·PC·실제 카톡 안 브라우저
+- 실기기 확인 대기: 161 유리 막대 위 작은 글자 대비(실제 사진 위), 긴 영상 줄이기와 올리기를 같이 할 때 폰 느려짐, 안드로이드 뒤로 가기와 올리는 중 레이어, 162·163 영상(IMG_2455.mov) — 또 안 되면 사용자가 보내 줄 안내 줄(단계·오류 번호)로 원인 찾기
+
+### 다음 할 일 (순서대로)
+
+0. **164 운영자 화면 1단계**: 끝(2026-11-04) — dev 0.41.0·운영 DB 적용·Cloudflare Access 설정·운영에서 열림 확인(사용자). 남은 결정: 처리방침 7일 전 고지 조항과 시행일·엄빠 다시 동의 받을지. 다음은 2단계(조치하기). 아래 164 절
+1. **운영 확인**: 엄빠 넘겨 보기(0.15.0, 실기기 사파리에서 옆으로 밀기·크게 보기 닫고 돌아오면 그 카드가 가운데), 보신 기록("○○가 봤어요"가 바로 뜨는지, 0.14.5), 안드로이드 사진 저장 뒤 갤러리 'Download' 안내(0.14.4), 실기기 사파리에서 크기 바꾸기 애니메이션(98e). 자동 검사는 mock에서만 돌렸음
+2. ~~조부모 음성 한마디~~(108): 앱에서만으로 정함(2026-11-01) → iOS 앱 한마디 화면 때 서버와 같이. 웹 할 일 없음
+3. 그다음 원본 보관(아직 없는 기능, 플러스) → 경쟁력 기능 3 액자 모드 — **정함(사용자 2026-11-01 "액자 앱에서만")**: iOS 앱에서만, 웹은 안 만듦
+4. **사용자 결정 남은 것**: 요금제 하나/둘(94 '스위피 플러스' 월 ₩5,900·연 ₩59,000 안), 사진 핀치 확대(웹은 브라우저 화면 전체 확대만 됨, 사진만 확대는 iOS 앱에서 자연스러움 — 웹에도 넣을지)
+5. 사용자 쪽 할 일 안내만: 서치 콘솔(TXT 기록·sitemap), 카카오 공유 미리보기 디버거, 실기기(아이폰 사파리) 확인 — 아래 고정 막대가 사파리 아래 바 접힘·키보드 열림에서 괜찮은지(시뮬레이터 iOS 26에서는 확인함)
+6. 기획서 문서(Claude Docs) 갱신: 자동 모드 분류기에 막혔음 → 사용자 허락 필요
+7. 예전부터 남은 것: 옛 함수 `sp_media_comments` 지우기(DROP이라 사용자가 SQL 편집기에서 직접), `design-audit.md` 디자인 검수 남은 것(2026-11-01 다시 대조, A 묶음은 0.16.0에서 앱을 고침. 사용자 정함: 남은 차이는 보드를 앱에 맞춘다 → PC 엄빠 앨범 5칸은 0.16.1, 보드를 앱에 맞춤은 캔버스 v206(2026-11-01, 50쌍). PC 가족 −/+ 자리·한마디 입력 줄 선은 0.16.2·캔버스 v207), 아이폰 HDR 영상 색 확인
+- 정함: 게스트 모드(혼자 쓰기) 없음(사용자 "게스트 서비스 막아야겠는데")
+
+### 사용자 작업 규칙 (꼭 지킬 것)
+
+- 답은 항상 한국어로, 영어·개발 용어 없이 쉬운 말로. 실수하면 "미안해, 내가 잘못했어"로 먼저 사과
+- 순서: 원인을 찾아 먼저 말함 → plan.md에 계획 → 디자인 캔버스 먼저 고침 → 개발 → 코드리뷰·검증·기능검증 3회(사용자 2026-10-27 '꼭', 회차마다 따로 리뷰) → 디자인 보드와 실제 화면 나란히 대조, 차이 전부 맞춤 → 머지
+- 디자인 시스템(토큰·컴포넌트) 꼭 지키기. CSS는 클래스·ID 선택자만, 네이티브 컨트롤·시맨틱 HTML·WCAG
+- 브랜치는 origin/dev에서, dev에 `--no-ff` 머지, 머지마다 package.json·package-lock.json 버전 올림(`npm version x.y.z --no-git-tag-version`), 매번 푸시. 강제 푸시는 막혀 있음(커밋을 나눌 땐 푸시 전에)
+- 커밋: 한국어 Conventional Commits, 작게. 끝에 빈 줄 하나 두고 Co-Authored-By·Claude-Session 줄(빈 줄이 없으면 제목에 붙어 버림)
+- 비밀 값은 채팅·커밋에 넣지 않음(`.dev.vars.supabase`는 git 제외)
+
+### 개발 도구 (`tools/`)
+
+- `tools/dev.sh`: mock 백엔드 개발 서버(:4321). 환경의 node가 22.23.4보다 낮으면 Node 24를 `tools/.node`에 받아 씀. 백그라운드로 실행
+- `tools/e2e/*.py`: 화면 흐름 검사(Python Playwright, 개발 서버 필요). 최근 것: instant(즉시 반영)·cdelete(한마디 지우기)·comments·toast·sheetios·photodel(사진 지우기 레이어)·motion. 실행: `cd tools/e2e && python3 instant.py` → 끝줄 `FAILS []`. 스크린샷은 `tools/shots/`(git 제외)
+- 디자인 보드 만들기 `tools/design/*.py`, 보드 그려 보기 `tools/render/rdc.py`(`cd tools && python3 render/rdc.py out.png T_x.dc.html:light`, 파일은 `tools/canvas/project/`). `tools/canvas/`는 git 제외 → 새 세션에선 Artifact read(`path`)로 캔버스 파일(`project/*.dc.html`, `project/canvas.json`)을 받아 `tools/canvas/project/`에 두고, 올릴 때 Artifact publish `root`를 `tools/canvas`로
+- 검사 명령: `npx astro check`, `npm run test:unit`(32개), DB 검사는 맥에서 `LC_ALL=C PG_BIN=/opt/homebrew/bin bash supabase/tests/run.sh`(의도한 거절 63개, 로캘이 ko면 initdb 실패)
+- 개발 서버는 미리보기 도구 `sweepea-mock`(:4321, mock은 사진 없이 시작). 브랜치를 바꾸면 ENOENT로 죽으니 다시 켠다. 최근 검사: views.py(보신 기록)·bottombar.py(아래 고정·올리기 진행)·loadmore.py(인자: 임시 폴더)
+
+## 진행 방식
+
+- 이슈마다 `dev`에서 `feature/<이름>` 브랜치를 딴다.
+- feature 안에서 작업 → 코드리뷰 → 개선 → 검증을 세 번 돌고(사용자 2026-10-27 기준) 디자인 대조까지 마친 뒤 `dev`에 머지한다. `dev`에서 같은 사이클로 통합 확인 후 PR로 `main`에 올린다.
+- 커밋은 한국어 + Conventional Commits 접두사, 작은 단위로.
+- 성능 예산(LCP 1.8초, CLS 0.05, 첫 화면 JS 압축 후 50KB)을 넘으면 머지하지 않는다. CI는 비압축 50KB로 더 엄격하게 잰다(미리보기 서버가 압축을 안 함). 실제 JS가 붙어 이 기준이 과하면 압축 크기 측정으로 바꾼다.
+
+## 지금 하는 일
+
+### 1. feature/setup — 웹 기본 설정 (완료, dev 머지)
+
+- 요구사항
+  - Astro 서버 렌더링 + Cloudflare 어댑터로 빌드되는 빈 앱
+  - 디자인 토큰을 CSS 변수로. 라이트/다크는 시스템 테마(`prefers-color-scheme`)만 따르고 앱 안 전환은 없다
+  - 성능 예산 검사(Lighthouse CI)를 로컬과 GitHub Actions에서 돌린다
+- 구현 방식
+  - `src/styles/tokens.css`: 색·글자·간격 토큰. 태그 선택자 없이 `:root`와 클래스만
+  - `src/layouts/Base.astro`: `lang="ko"`, `color-scheme`, 토큰 CSS
+  - `src/pages/index.astro`: 임시 첫 화면(심볼 + 이름). 실제 화면은 뷰어 이슈에서 → 91에서 소개 한 장으로
+  - `lighthouserc.json` + `.github/workflows/perf.yml`
+- 영향받는 파일: `package.json`, `astro.config.mjs`, `tsconfig.json`, `src/**`, `lighthouserc.json`, `.github/workflows/perf.yml`, `index.md`
+- 예상 결과: `npm run build`가 통과하고, `npm run perf`가 예산 안에서 통과한다
+- 범위 밖: Pretendard 글꼴 로딩(용량이 커서 서브셋 방식을 따로 정함), Supabase 연결
+
+### 2. feature/rename-sweepea — 이름을 스위피(Sweepea)로 변경 (완료, dev 머지)
+
+- 요구사항: 서비스 이름을 스윗피(Sweetpea)에서 **스위피(Sweepea)**로, 대표 도메인을 **sweepea.co.kr**(가비아, DNS는 Cloudflare)로 바꾼다
+- 이유: "스윗피"는 2026년 OpenAI 이어버드 코드명 기사로 검색이 덮여 있고, 영어권에 같은 이름의 아기 기록 앱(Sweetpea - Baby Tracker)이 있다. sweetpea 도메인은 대부분 선점됨. Sweepea는 pea(콩)를 살려 심볼·콩이 마스코트를 그대로 쓴다
+- 구현 방식: 화면 글자·문서·패키지·Worker 이름 교체. 디자인(색·심볼·마스코트)은 그대로
+- 영향받는 파일: `README.md`, `index.md`, `plan.md`, `package.json`, `package-lock.json`, `wrangler.jsonc`, `src/pages/index.astro`, `src/layouts/Base.astro`, `src/styles/tokens.css`
+- 예상 결과: 저장소 안에 옛 이름이 남지 않고, 빌드·성능 검사 통과
+- 남은 일: 도메인 Active 후 Worker에 `sweepea.co.kr` 연결, 출시 전 키프리스 상표 확인(스위피·SWEEPEA, 9·42류)
+
+### 3. feature/key-color-teal — 키컬러 틸 + 유리 버튼 토큰 (완료, dev 머지)
+
+- 요구사항: 키컬러를 칙칙한 파인 그린(#2F7A5C)에서 틸(#0F766E, 다크 #2DD4BF)로. 타스·클립노트 보라와 겹치지 않게 초록 계열 유지
+- 구현: `tokens.css` 색 교체, 사진 위 떠 있는 버튼용 유리 토큰(`--glass-tint`, `--glass-clear`, `--glass-edge`) 추가, 파비콘 색 교체
+- 대비 확인: 흰 글자/틸 5.47:1, 검정 글자/밝은 틸 11.28:1, 유리 버튼은 흰 사진 위 최악 4.5:1 이상(불투명도 0.92)
+
+### 4. feature/app-icon-kongi — 앱 아이콘·파비콘을 도트 콩이로 (완료, dev 머지)
+
+- 요구사항: 앱 아이콘을 콩깍지 심볼에서 도트 콩이(3단계 떡잎)로. 근거: 구체적인 그림이 노인에게 더 빨리 인식되고(Zheng 2026), 가족·키즈 앱은 캐릭터 아이콘이 유리
+- 구현: `public/favicon.svg`를 32×32 콩이 도트로 교체(라이트 연한 틸, 다크 짙은 틸 바탕). 홈 화면 아이콘(PNG·manifest)은 홈 화면 추가 이슈에서
+
+### 5. feature/db-schema — Supabase 스키마·RLS·입장 함수 (완료, dev 머지)
+
+- 요구사항
+  - 10월 24일 확정한 입장·보안 규칙을 DB에서 강제한다: 공유마다 짧은 링크(새 입장 72시간), 그룹별 4자리 비밀번호+힌트, 3번 틀리면 30초 쉬기, 10번 틀리면 승인 대기, 새 이름은 승인 대기 3일 뒤 만료, 이미 들어온 기기는 계속 열람
+  - 그룹은 기본 꺼짐(가족방마다 기본 그룹 1개), 켜면 이름을 직접 정하고 그룹마다 "새 사진에 기본 포함"
+  - 사진별 공개 그룹(여러 개), 아이 태그, 반응 5종(하트·최고·좋아·감동·반짝), 한마디
+  - 올리기 권한 가족(배우자 등): 승인된 기기에만
+  - 탈퇴 3일 유예(가족방에 삭제 예정 시각)
+  - 권한 판정은 서버(RLS·보안 함수)에서만
+- 구현 방식
+  - `supabase/migrations/20261025000001_init.sql`: 테이블, 인덱스, RLS, 보안 함수(`sp_*`), 입장 RPC(`sp_enter`)
+  - 부모는 Supabase Auth 사용자, 가족 기기는 Supabase 익명 사용자(기기 하나 = 익명 사용자 하나)
+  - 비밀번호는 pgcrypto bcrypt 해시로만 저장
+  - `supabase/tests/`: 로컬 Postgres 16에 `auth.uid()` 흉내 스키마를 깔고 마이그레이션 + 권한 시나리오 검사를 돌리는 스크립트(`npm run test:db`)
+- 영향받는 파일: `supabase/**`, `package.json`(스크립트), `index.md`, `plan.md`
+- 예상 결과: 로컬 검사에서 부모·가족·승인 대기·다른 그룹·만료 링크 시나리오가 모두 의도대로 통과
+- 범위 밖: Supabase 프로젝트 생성·배포(계정 필요, 사용자 작업), 사진 업로드 서명 URL·R2(이슈 4·6), 인앱결제 영수증 검증, 추억(v1.x)
+- 참고: 기획서의 '권한·공개 범위 규칙'·'데이터 모델' 표는 10월 24일 결정 이전 내용(고정 그룹, 7일 대기 등)이라 이 이슈 기준으로 함께 고친다
+- 검토 두 번(별도 리뷰어) 반영: 빈 비밀번호 입장, 익명 사용자 갈아타기 무차별 대입, 그룹 번갈아 맞히기, 가족방 교차 참조, 이름 선점, 거절 기기 재입장 등. 검사 시나리오 40여 개, 의도된 거부 15건
+- 남은 위험·후속
+  - 4자리 비밀번호는 링크가 퍼지면 경보 한도 안에서 천천히(하루 30회) 맞힐 수 있다 → Supabase 연결 때 익명 로그인에 Cloudflare Turnstile을 켠다. 경보가 울리면 부모에게 알림(앱 출시 후)
+  - 힌트는 디자인대로 입장 전에 보여 준다. "하린이 생일"처럼 비밀번호를 거의 알려 주는 힌트는 위험해서, 힌트 입력란에 안내 문구가 필요하다
+  - 기기 하나는 가족방 하나에만 들어간다(할머니가 두 자녀 앨범을 한 폰으로 보는 경우는 나중에)
+  - 부모 계정을 지우면 가족방에 주인이 없어진다 → 탈퇴 3일 유예 후 삭제 작업(예약 함수)에서 같이 처리
+
+### 6. feature/entry-flow — 가족 입장 웹 화면 (완료, dev 머지)
+
+- 요구사항
+  - 공유 링크 `/i/<코드>` → 누구세요?(이름 고르기·직접 쓰기·글자 크기) → 가족 비밀번호 → 결과별 화면(들어감, 승인 기다림, 10번 틀림, 쉬는 중, 주소 기간 지남, 앨범 닫힘, 주소 없음, 내 가족 아님)
+  - 출입증: Supabase 익명 세션을 httpOnly 쿠키(`sp_pass`)에 담는다. 이미 들어온 기기는 링크를 다시 열면 바로 앨범으로
+  - 주소 없이 `sweepea.co.kr`로 오면 "가족에게 받은 주소로 들어와 주세요"
+  - 글자 크기: 기본값 '기본', 할머니·할아버지 이름을 고르면 '크게'(쿠키 `sp_size`로 루트 글자 크기만 바꿈)
+  - 클라이언트 JS 0KB(네이티브 폼 + 서버 렌더링). 카톡 인앱 브라우저·오래된 웹뷰에서도 동작
+- 구현 방식
+  - `src/lib/backend/`: 백엔드 인터페이스. `supabase.ts`(fetch로 Auth·RPC 호출, supabase-js 안 씀: 첫 화면 JS 예산), `mock.ts`(개발·검사용 메모리 구현, 운영에선 쓰지 못하게 막음)
+  - `src/lib/pass.ts`: 출입증 쿠키 읽기·쓰기·토큰 갱신
+  - 새 마이그레이션 `sp_me()`: 지금 기기 상태(승인 대기·차단·가족방 닫힘)와 이름
+  - 화면: `src/pages/i/[code]/index.astro`, `src/pages/i/[code]/password.astro`, `src/pages/wait.astro`, `src/pages/album.astro`(다음 이슈 전까지 자리만), `src/pages/index.astro`(주소 없음), 공통 `src/styles/family.css`
+  - 환경 변수(`astro:env`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SWEEPEA_BACKEND`(supabase·mock)
+- 영향받는 파일: `astro.config.mjs`, `src/**`, `supabase/migrations/*_me.sql`, `supabase/tests/rls.sql`, `index.md`, `plan.md`
+- 예상 결과: mock 백엔드로 브라우저에서 입장 흐름 전체가 동작하고, 빌드·성능 예산·DB 검사 통과
+- 범위 밖: 앨범 화면(이슈 7), 부모 승인 화면(이슈 9), Turnstile(Supabase 연결 때), 실제 Supabase 연결 확인(프로젝트 생성 후)
+- 결과: 검토 2회 반영, e2e·타입 검사·빌드 통과. 남은 위험: 부모가 기기를 거절했는데 액세스 토큰이 아직 살아 있으면 만료(최대 1시간)까지 오류 화면 → 실제 Supabase 연결 때 401 처리 확인
+
+### 7. feature/multi-family — 한 기기로 여러 가족방 (완료, dev 머지)
+
+- 요구사항
+  - 할머니 한 명이 딸네(하린이네)·아들네(도윤이네)처럼 여러 가족방에 같은 기기로 들어갈 수 있다
+  - 기기(익명 사용자) 하나가 가족방마다 따로 승인·차단·이름을 가진다. 한 가족방에서 차단돼도 다른 가족방은 그대로
+  - 가족방끼리는 서로 안 보인다: 하린이네 엄마아빠는 할머니가 도윤이네에도 있다는 걸 모른다
+  - 앨범은 기본으로 모든 가족방 사진을 섞어 보여 주고, 한 집만 골라 보기 가능(뷰어 이슈에서 화면 구현)
+- 구현 방식
+  - DB(아직 적용 전이라 기존 마이그레이션을 고침): `devices`의 unique를 `(auth_user_id, family_id)`로. 권한 함수는 가족방을 받는다(`sp_device_member(family)`, `sp_device_members()`, `sp_in_family`, `sp_media_member`)
+  - `sp_enter`: 링크의 가족방 기준으로 기기를 찾고 만든다. `sp_me()`: `{families: [...]}`(마지막으로 들어가려던 곳이 끝)
+  - `sp_entry_info`: 이 가족방에서의 내 상태(`me`)를 같이 돌려줘 이미 들어간 가족방이면 바로 앨범으로
+  - `sp_create_share`: 가족방은 첫 그룹으로 정한다
+  - 부모는 기기의 `auth_user_id`를 못 읽는다(열 권한). 두 집 부모가 맞춰 봐도 같은 기기인지 모르게. 부모 화면은 `select *` 대신 열을 적어야 한다
+  - 웹: 누구세요 화면 이동 규칙을 '이 링크의 가족방' 기준으로. 글자 크기는 기기 하나에 하나
+- 영향받는 파일: `supabase/migrations/`(새 마이그레이션), `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/pages/i/[code]/*`, `src/pages/album.astro`, `src/pages/wait.astro`, `index.md`, `plan.md`
+- 예상 결과: 한 기기로 두 가족방에 각각 들어가고, 한쪽 차단·대기가 다른 쪽에 영향 없음. 가족방 사이 데이터가 섞이지 않음을 DB 검사로 확인
+- 디자인: 앨범 위 가족방 고르기(모두 / 하린이네 / 도윤이네) 시안 추가 완료(캔버스 GrandMulti). 실제 구현은 JS 없이 링크(`?f=`) + `aria-current`, '모두'일 때 사진에 아이 이름표
+- 결과: 검토 2회 반영. DB 검사(의도된 거부 17건), e2e(두 번째 가족방 입장 포함), 타입 검사·빌드 통과
+
+### 8. feature/upload-api — 사진 올리기·목록 API (완료, dev 머지)
+
+- 요구사항
+  - 부모(또는 올리기 권한 가족)가 사진·영상을 올리면 R2에 저장되고, 볼 수 있는 가족에게 목록으로 보인다
+  - 기획서 기준: 올리기 전에 기기에서 압축(사진 긴 변 2048 보기용 + 작은 썸네일, 영상은 포스터 이미지 함께). 원본 보관은 유료(나중)
+  - 저장 키·용량·상태는 서버만 정한다(클라이언트가 크기를 속이지 못하게)
+- 구현 방식
+  - 업로드는 서명 URL 대신 **Worker를 거쳐 R2에 직접 넣는다**(R2 바인딩). R2 API 키·CORS 설정이 필요 없고, 크기를 Worker가 직접 잰다. 한 파일 100MB까지(Workers 요청 한도)
+    1. 사진 행 만들기: 사용자 권한으로 `media` insert(기존 RLS가 올리기 권한 확인) → `uploading`
+    2. `PUT /api/media/<id>/<view|thumb|poster>`: `sp_upload_target(id)`로 올린 사람·가족방 확인 → 형식(jpeg·webp·png·mp4·mov)·크기 확인 → R2 `<가족방>/<사진>/<종류>-<uuid>`(넣을 때마다 새 키, 응답으로 돌려줌)
+    3. `POST /api/media/<id>/done` 본문 `{view, thumb, poster?}`(PUT이 준 키): 이 사진의 키인지·R2에 있는지 확인 → 서버 전용 `sp_finish_upload`(service_role)로 `ready`·키·용량 기록, 가족방 사용량 더하기
+  - 목록: 새 SQL 없이 PostgREST로 `media` 읽기(RLS가 볼 수 있는 것만). `?family_id=`로 한 집만
+  - 사진 행은 `sp_create_media`로만(직접 insert 막음). 올린 사람별 하루 안 끝낸 올리기 50개까지(넘으면 429)
+  - 백엔드 계약에 올리기·목록 추가, mock도 구현(메모리 R2)
+  - 환경: `wrangler.jsonc`에 R2 바인딩 `MEDIA`, 비밀 `SUPABASE_SERVICE_ROLE_KEY`
+- 영향받는 파일: `supabase/migrations/`(새 마이그레이션), `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/pages/api/media/*`, `wrangler.jsonc`, `astro.config.mjs`, `index.md`, `plan.md`
+- 예상 결과: 로컬에서 mock 백엔드 + 로컬 R2로 올리기 → 완료 → 목록까지 동작. 권한 없는 사람·남의 사진 id로 올리기 거부를 DB 검사·API 검사로 확인
+- 범위 밖: 올리기 화면(이슈 10), 기기 압축 코드(이슈 10), 사진 보여 주는 Worker(이슈 6), 5GB 상한(이슈 13), 부모 로그인(이슈 9: 그 전까지 API 검사는 올리기 권한 가족 기기로)
+- 사용자 작업: Cloudflare에서 R2 켜기(카드 등록), 버킷 `sweepea-media` 만들기
+- 결과: 검토 2회 반영(가족 기기 올리기 버그, 덮어쓰기 경쟁, 인증 오류 500 등). DB 검사(의도된 거부 20건), 올리기 API e2e 20개, 입장 e2e, 타입 검사·빌드 통과. 남은 위험: 안 쓰인 파일·끝내지 않은 올리기 정리는 이슈 13, 실제 R2·Supabase에선 아직 안 돌려 봄
+
+### 9. feature/photo-worker — 사진 전달 (완료, dev 머지)
+
+- 요구사항
+  - 볼 수 있는 사람만 사진·영상을 받는다. 앨범 칸마다 DB를 부르지 않게 빠르게
+  - 영상은 이어 보기·넘겨 보기가 되게 범위 요청(Range) 지원
+  - 올린 파일 형식을 브라우저가 다르게 해석하지 못하게(nosniff)
+- 구현 방식
+  - 앨범을 그리는 서버가 사진 목록(RLS로 볼 수 있는 것만)을 받고, 파일마다 **서명된 짧은 주소**(`/m/<키>?e=<만료>&s=<HMAC>`)를 만든다. 서명 키는 서버 비밀 `MEDIA_URL_SECRET`
+  - `GET /m/<키>`: 서명·만료만 확인(DB 안 부름) → R2에서 꺼내 그대로 흘려 보냄. Range면 206
+  - 만료는 1시간 단위로 맞춰 같은 시간대엔 같은 주소(브라우저 캐시가 먹게). 캐시는 `private`
+  - 목록에 저장 키(view·thumb·poster)를 함께 받는다. 키를 알아도 서명 없이는 못 받는다
+  - 앨범 자리 화면에 썸네일을 띄워 끝까지 확인(실제 뷰어는 이슈 7)
+- 영향받는 파일: `src/lib/signed.ts`(새), `src/pages/m/[...key].ts`(새), `src/lib/backend/*`, `src/pages/album.astro`, `astro.config.mjs`, `index.md`, `plan.md`
+- 예상 결과: 볼 수 있는 사람의 앨범에 썸네일이 보이고, 서명이 틀리거나 만료된 주소·다른 가족방 키는 거부. 영상 Range 206
+- 범위 밖: Cloudflare 이미지 변환, 엣지 공유 캐시, 원본 내려받기(유료)
+- 결과: 검토 2회 반영(범위 요청 경계, 412·304, `media` 읽기 열 제한: 부모 사용자 id·원본 키·용량은 RPC로만). DB 검사(의도된 거부 21건), 올리기·전달 e2e, 타입 검사·빌드 통과. 운영 배포 전 `MEDIA_URL_SECRET` 필요. 남은 위험: 막힌 기기도 받은 주소는 최대 2시간 열림, 실제 R2의 이상한 범위 처리는 미확인
+
+### 10. feature/grand-viewer — 조부모 뷰어: 보기 (완료, dev 머지)
+
+- 요구사항(캔버스 GrandHome·GrandList·GrandMulti·PhotoView·VideoView)
+  - `/album`: 제목·사진 수, 집 고르기(여러 가족방일 때 모두/하린이네/도윤이네), 보기 탭(넘겨 보기·모아 보기)
+  - 넘겨 보기: 큰 카드를 옆으로 밀어 넘김, "1 / 12", 카드를 누르면 크게 보기
+  - 모아 보기: 날짜별 묶음, 칸 크기 −/+ (1·2·3·5칸), '모두'일 때 사진에 아이 이름표
+  - 크게 보기 `/album/<id>`: 닫기, "3 / 12", 이전·다음, 사진은 화면에 맞춤, 영상은 재생
+  - 클라이언트 JS 0KB 유지: 넘겨 보기는 CSS scroll-snap, 탭·집 고르기·칸 크기는 링크(`?v=`, `?f=`, `?z=`) + `aria-current`, 모아 보기 배치는 CSS columns
+- 구현 방식: `src/pages/album/index.astro`·`[id].astro`, 공통 읽기는 `src/lib/album.ts`, 스타일은 `family.css`에 `.sp-a*`·`.sp-v*`. 사진 주소는 이슈 9의 서명 주소(넘겨 보기는 보기용, 모아 보기는 썸네일)
+- 영향받는 파일: `src/pages/album.astro`, `src/pages/album/[id].astro`, `src/components/`, `src/styles/family.css`, `src/lib/backend/*`(목록에 아이 이름), `index.md`, `plan.md`
+- 예상 결과: 실제 JPEG로 올린 사진이 세 보기에서 보이고, 키보드·스크린리더로 모두 조작 가능. 성능 예산 통과
+- 결과: 검토 2회 반영(그림 설명 중복, 포커스 잘림, 다크 이름표 대비, 캐시 금지, 칸 크기 버튼 위치, 연도). 입장·올리기 e2e, 실제 JPEG로 화면 확인, 타입 검사·빌드 통과
+- 넘겨 보기는 시안(GrandHome)대로 다시 맞춤: 290×360 가운데 카드, 양옆 카드는 기울고 흐림(CSS 스크롤 애니메이션, 지원 안 하는 브라우저는 평평하게), 카드 아래 "1 / 12 · 옆으로 밀거나 옆 사진을 누르세요", 탭은 흰 바탕+그림자
+- 범위 밖(다음 이슈): 하트·한마디(이슈 5와 함께), 홈 화면에 두기 버튼, 머리말 '새 사진'·올린 사람(데이터 필요), 저장 버튼(가족방 '내려받기 허용' 설정), 생후 개월 표시(아이 생일·태그), 월별·연별 모아 보기, 영상 재생 막대 시안(A안)은 JS가 필요해 우선 브라우저 기본 재생 막대, 홈 화면에 두기 안내(이슈 12), 다음 쪽 넘기기(최근 200장)
+
+### 11. feature/reactions — 하트·반응·한마디 (완료, dev 머지)
+
+- 요구사항(캔버스 GrandHome·PhotoView)
+  - 가족이 사진에 반응 5가지(하트·최고·좋아·감동·반짝)를 누르고 다시 누르면 취소. 카드·크게 보기에 하트 수와 내가 눌렀는지
+  - "하린이에게 한마디"를 써서 보내기(200자). 가족 화면엔 목록 없이 "보냈어요"만(읽기는 부모 화면, 이슈 12)
+  - 모아 보기 칸에 하트·한마디 배지
+  - JS 없이: 버튼은 폼 POST → 같은 화면으로 돌아오기(PRG, 303). 넘겨 보기의 반응 줄은 카드마다 두고 가운데 카드 것만 보이게(CSS 스크롤 애니메이션, 지원 안 하면 카드 밑에 각각 보임)
+- 구현 방식
+  - DB(새 마이그레이션): `sp_react(사진, 종류, 켜기)`, `sp_comment(사진, 글)`(구성원별 하루 30개, 넘으면 429), `sp_reaction_counts(사진들)`(호출자 권한, RLS로 볼 수 있는 것만, 종류별 수·내가 눌렀는지·한마디 수)
+  - 백엔드 계약에 react·comment·reactionCounts, mock 구현
+  - 화면: `src/pages/album/[id].astro`(POST 처리), `src/pages/album/index.astro`, 반응 아이콘은 시안의 도트 SVG를 컴포넌트로
+- 영향받는 파일: `supabase/migrations/`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/pages/album/*`, `src/components/`, `src/styles/family.css`, `index.md`, `plan.md`
+- 예상 결과: 반응·취소·한마디가 DB 검사와 e2e로 확인되고, 남의 이름·다른 가족방·안 보이는 사진엔 반응 불가
+- 범위 밖: 하트 떠오르는 효과(부모 화면), 한마디 고치기·지우기 화면, 부모 최근 반응(이슈 12)
+- 결과: 검토 2회 반영(반응·한마디는 함수로만, 한마디 글은 부모·쓴 사람만, 승인 대기는 반응 불가, 이모지 한 번만 그리기, 옆 카드 반응 숨김, 지원 안 하는 브라우저는 반응 줄 숨김). DB 검사(의도된 거부 23건), 반응 e2e 13개, 타입 검사·빌드 통과
+- 남은 일: 부모는 구성원 행이 없어 반응·한마디 함수가 막힘 → 부모 화면에서 반응하려면 함수에 부모 분기 필요(이슈 9·12). 키 작은 화면에서 반응 뒤 돌아올 때 반응 줄이 아래로 밀릴 수 있음(실기기 확인)
+
+### 12. feature/parent-start — 부모 시작: 소개·로그인·처음 설정·앨범 (완료, dev 머지)
+
+- 요구사항(캔버스 ParentIntro1~3·ParentLogin·ParentOnboard·ParentOnboard2·ParentEmpty·ParentHome)
+  - 소개 3장(처음 한 번, 건너뛰기) → 로그인(카카오·네이버·Google·Apple, 구현 안 된 제공자는 버튼 숨김) → 처음 설정 1/2 아이(이름·생일·엄마/아빠) → 2/2 가족 비밀번호(숫자 4자리·힌트) → 앨범
+  - 앨범: 사진이 없으면 "하린이 첫 사진을 올려 주세요", 있으면 월별 모아 보기. 아래 탭(앨범·설정), "사진 추가하기"(올리기 화면은 이슈 14)
+  - 이미 설정한 부모는 로그인하면 바로 앨범, 로그인 안 했으면 소개/로그인으로
+- 구현 방식
+  - 로그인: Supabase Auth OAuth(PKCE). `/login/<제공자>` → Supabase 인증 → `/auth/callback`에서 코드 교환 → httpOnly 쿠키 `sp_parent`(가족 기기 출입증 `sp_pass`와 따로). 출입증 읽기·갱신은 `pass.ts`를 쿠키 이름만 바꿔 같이 쓴다
+  - 켤 제공자는 환경 변수 `PARENT_PROVIDERS`(예: `kakao,google`). 네이버는 Supabase 기본 제공자가 아니라 따로 확인 필요(확인 전엔 숨김)
+  - 개발용: mock 백엔드에서 `/login/dev`로 가짜 부모 로그인(운영 금지)
+  - 처음 설정은 JS 없이 2단계 폼(1단계 값을 2단계에 숨은 칸으로), 마지막에 `sp_create_family`
+  - 새 DB 함수 `sp_parent_home()`: 내 가족방·아이들·역할(없으면 null)
+  - 부모 화면 스타일은 `parent.css`(.sp-p*), 높이 기준 52/40/56
+- 영향받는 파일: `supabase/migrations/`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/lib/pass.ts`, `src/pages/{start,login,auth,setup,home}*`, `src/layouts/Parent.astro`, `src/styles/parent.css`, `astro.config.mjs`, `index.md`, `plan.md`
+- 예상 결과: mock으로 소개 → 로그인 → 처음 설정 → 빈 앨범, 사진이 있으면 앨범까지 e2e 통과. 실제 OAuth는 Supabase 연결 때 확인
+- 범위 밖: 설정 > 가족(승인·구성원·링크, 다음 이슈), 올리기 화면, 위 띠(승인 요청·접종 일정), 최근 반응, 아이 여러 명 전환, 이용약관·개인정보 처리방침 본문
+- 결과: 검토 반영(없는 날짜·서울 날짜 기준, 비밀번호·힌트 검사, 로그아웃 때 Supabase 세션 끊기, 탭바·떠 있는 버튼 아래 여백, 오류 연결). 부모 e2e 16개·입장·올리기 e2e, 타입 검사·빌드 통과
+- Supabase 연결 때 할 일: Additional Redirect URLs에 `https://sweepea.co.kr/auth/callback`(미리보기 주소도) 추가, 켤 제공자를 `PARENT_PROVIDERS`에. 네이버는 기본 제공자가 아니라 별도 확인
+
+### 13. feature/family-settings — 설정 > 가족: 승인·링크 (완료, dev 머지)
+
+- 요구사항(캔버스 Settings·Family·SendSetup)
+  - 설정: '가족' 줄(승인 n · 그룹 n · 기기 n)과 로그아웃. 나머지 줄(아이·글자 크기·저장하기·계정·용량·플랜)은 다음 이슈
+  - 설정 > 가족: 승인 기다리는 사람(새 이름: 거절 / '외가 가족으로 승인'), 새로 들어온 기기(비밀번호 10번 틀림·경보: 승인 / 내 가족 아님), 가족 그룹별 구성원과 '링크 만들기'
+  - 링크를 만들면 주소와 함께 문자 보내기(`sms:`)·복사(길게 눌러 선택) 안내. 카톡 공유 버튼은 카카오 JS SDK가 필요해 올리기 이슈에서
+  - 문자로 공유하기: 누구 폰인지 고르고(등록된 이름) 그 사람 전용 링크(한 번만 쓰는 문자 링크) + 미리 쓴 문자
+- 구현 방식
+  - 읽기: 부모 권한으로 PostgREST(`groups`, `members`, `devices` 정해진 열). 쓰기: 구성원 상태 PATCH(승인·거절), 기기 상태 PATCH(승인·내 가족 아님), 링크는 `sp_create_share`
+  - JS 없이 폼 POST → 같은 화면으로(PRG). 승인·거절 같은 되돌리기 어려운 동작은 버튼 이름에 대상·결과를 적는다
+  - 백엔드 계약: familyAdmin·setMemberStatus·setDeviceStatus·createShare, mock 구현(부모가 만든 링크로 가족이 들어오고 승인까지)
+- 영향받는 파일: `src/lib/backend/*`, `src/pages/settings*`, `src/styles/parent.css`, `supabase/tests/rls.sql`(부모 PATCH 확인), `index.md`, `plan.md`
+- 예상 결과: mock으로 부모가 링크를 만들고 → 가족이 새 이름으로 들어와 승인 대기 → 부모가 승인 → 가족 앨범이 열리는 e2e
+- 범위 밖: 구성원 상세(올리기 허용·내보내기), 그룹 추가·이름·비밀번호 바꾸기, 기기 이름, 카톡 공유
+- 결과: 검토 반영(승인 대기 기기 승인 때 같은 이름이면 그 사람으로 붙임·이름이 없어졌으면 막음, 거절하면 그 이름을 요청한 대기 기기도 막음, 한 사람용 문자 링크 72시간, 승인 대기인 것만 바꾸고 이미 처리·기간 지남은 안내, 거절·내 가족 아님은 한 번 더 확인, 만든 링크는 잠깐 쓰는 쿠키로(주소로 가짜 카드 금지), 공유 주소는 `SITE_ORIGIN`). 가족 e2e 11개와 기존 e2e 모두 통과
+- 남은 일: 승인된 기기의 올리기 허용(구성원 상세 화면), 배포 때 `SITE_ORIGIN=https://sweepea.co.kr`
+
+### 14. feature/upload-screen — 부모 올리기 화면 (완료, dev 머지)
+
+- 요구사항(캔버스 ParentUpload)
+  - 사진·영상 여러 장 고르기(기본 파일 고르기) → 미리보기(첫 장이 카톡 카드 대표, 다른 장을 눌러 바꾸기) → 아이·보여줄 그룹 고르기(체크박스, 그룹은 '기본 포함'이 미리 체크) → 크기 표시 → "올리고 카톡으로 보내기" / "보내지 않고 올리기만"
+  - 기기에서 압축: 사진은 긴 변 2048 JPEG(보기용) + 긴 변 480(썸네일), 영상은 원본(100MB까지) + 첫 장면으로 포스터·썸네일
+  - 찍은 날: JPEG EXIF 촬영 시각(시간대 정보 없으면 한국 시간), 없으면 파일 수정 시각
+  - 올린 뒤 그 사진들만 담은 공유 링크를 만들어 공유 창(Web Share)으로 카톡 등에 보냄. 카카오 JS SDK 카드 공유는 카카오 앱 키를 받은 뒤
+- 구현 방식
+  - 부모 화면이라 JS 사용(가족 화면은 계속 0KB). `src/pages/upload.astro` + 페이지 스크립트, 순수 함수(EXIF 읽기·크기 계산)는 `src/lib/exif.ts`로 빼고 `node --test`로 검사
+  - API가 부모 세션도 받게: `/api/media`는 부모 쿠키가 있으면 부모로, 없으면 가족 기기 출입증으로. 공유 링크는 새 `POST /api/shares`(그룹·사진)
+  - 백엔드: createShare에 사진 목록, familyAdmin 그룹에 기본 포함 여부, mock은 부모 올리기 허용
+- 영향받는 파일: `src/pages/upload.astro`, `src/pages/api/media/*`, `src/pages/api/shares.ts`, `src/lib/exif.ts`, `tests/`, `src/lib/backend/*`, `src/styles/parent.css`, `package.json`, `index.md`, `plan.md`
+- 예상 결과: 브라우저에서 실제 JPEG를 골라 올리면 부모 앨범·가족 앨범에 보이고, 공유 링크로 들어온 가족에게 그 사진들이 보임(e2e). EXIF 날짜 단위 검사
+- 범위 밖: 카카오 카드 공유(앱 키), 사진 정보 화면(찍은 날·그룹 바꾸기·지우기), 원본 보관(유료), 영상 압축, 페이지를 닫았다 연 뒤 이어 올리기
+- 결과: 검토 반영(영상 이벤트 시간 제한, 실패 뒤 다시 누르면 이어 올리기·중복 없음, EXIF 이상한 파일 예외 방지, 처리 중 다시 고르기·두 번 누르기 막기, 대표 사진을 공유 링크 `cover_media_id`로 저장, 서버가 받는 영상 형식만 고르기, 캔버스 하나 돌려쓰기, 출입증을 가족방에 맞게 고르기, 초점·알림 영역). 올리기 화면 e2e 10개·이어 올리기 e2e·EXIF 단위 검사 5개·기존 e2e 통과
+- 남은 위험: 아이폰 실기기(HEIC·영상 첫 장면·메모리)와 영상 업로드는 자동 검사 못 함(검사 브라우저가 H.264를 못 열음). 영상·EXIF 없는 사진의 찍은 날은 파일 시각
+
+### 15. feature/settings-members — 설정: 구성원 상세·사진 저장하기·저장 용량 (완료, dev 머지)
+
+- 요구사항(캔버스 MemberDetail·Settings·Storage)
+  - 설정 > 가족 > 그룹의 사람을 누르면 구성원 상세: 이름·그룹·기기 수, **사진 올리기 허용**(체크박스, 이 사람의 승인된 기기에만), **내 가족 아님 · 내보내기**(한 번 더 확인, 기기도 막힘)
+  - 설정 첫 화면: **가족도 사진 저장하기**(가족방 설정, 켜면 가족 크게 보기에 '저장' 버튼), **저장 용량**(사용량/5GB, 사진·영상 수)
+  - 가족 크게 보기: 저장이 켜져 있으면 '저장' 링크(그 파일을 내려받기)
+- 구현 방식
+  - 읽기: 가족 관리 목록에 구성원별 기기(올리기 여부). 쓰기: 기기 `can_upload` PATCH(승인된 기기만), 구성원 거절은 기존 함수, 가족방 `download_allowed` PATCH
+  - `sp_parent_home`에 용량·사진 수·저장 허용 추가, 가족 쪽 `sp_me`/`sp_entry_info`엔 저장 허용 여부
+  - 폼 POST + PRG, 되돌릴 수 없는 동작은 확인 화면(설정 > 가족과 같은 방식)
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/lib/familyAdmin.ts`, `src/pages/settings/**`, `src/pages/album/[id].astro`, `src/pages/m/[...key].ts`(내려받기 이름), `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: mock으로 하린 아빠 올리기 허용 → 그 기기에서 올리기 가능, 내보내기 → 그 기기 막힘, 저장 켜기 → 할머니 화면에 저장 버튼 e2e
+- 범위 밖: 아이·글자 크기·계정(다음 이슈), 가족 플랜·인앱결제
+- 결과: 내려받기 이름은 `download` 속성으로 해결해 `/m` 변경 없음. 검토 두 번 반영: 올리기 허용은 그 사람의 모든 휴대폰이 켜져야 '켜짐'(새 휴대폰은 꺼진 채 들어옴), 내보내기 확인은 '내보낼까요?'(대기 중 이름은 '거절')·취소하면 구성원 화면, 내보낸 사람의 반응·한마디가 있으면 같은 이름 재사용으로 기록을 지우지 않고 그 이름은 막음, 스위치 설명 연결·기기 없을 때 이유 표시·고대비 표시, 저장 허용은 버튼만 보이게 하는 것(길게 눌러 저장은 못 막음)이라고 안내. DB 검사 추가(내보내면 기기 막힘·올리기 꺼짐, 기록 보존, 다른 가족방·가족 기기는 저장 허용 못 바꿈), e2e 10개·기존 e2e 통과
+- 남은 위험: 실수로 내보낸 사람을 되살리거나 이름을 바꾸는 화면이 없음(그 이름은 계속 막힘). 영상 저장 이름은 늘 `.mp4`(아이폰 `.mov`도). 아이폰은 '파일'로 저장되고 카톡 인앱 브라우저는 `download`를 무시할 수 있음(실기기 확인 필요). `storage_used_bytes`는 늘기만 함(사진 지우기 때 빼기, 13번)
+
+### 16. feature/settings-child-size-account — 설정: 아이·가족 화면 글자 크기·계정 (완료, dev 머지)
+
+- 요구사항(캔버스 Settings·ChildSettings·ChildAdd·TextSize·Account)
+  - 설정 첫 화면에 줄 추가: 아이(이름들), 가족 화면 글자 크기(지금 값), 계정(로그인 제공자·이름)
+  - 아이: 목록(이름·생일·생후 개월) → 고치기(이름·생일), 아이 추가(이름·생일, 안내 "앨범 위에서 아이를 골라 볼 수 있어요")
+  - 가족 화면 글자 크기: 관계에 맞춰(할머니·할아버지는 크게) / 모두 기본 / 모두 크게 / 모두 아주 크게 (라디오) + 외할머니 화면 미리보기. 처음 들어올 때 크기이고, 가족이 자기 화면에서 고른 크기가 먼저
+  - 계정: 제공자 아이콘·이름·"카카오로 로그인 · 하린 엄마", 로그아웃
+- 구현 방식
+  - DB: `sp_parent_home`에 부모 이름·로그인 제공자(JWT `app_metadata.provider`)·글자 크기 설정 추가, `sp_entry_info`에 글자 크기 설정. 아이 추가·고치기와 글자 크기 설정은 기존 RLS·열 권한으로 PostgREST 직접(자기 가족방만)
+  - 백엔드 계약: `addChild`, `updateChild`, `setTextSizeMode`
+  - 입장(비밀번호 화면): 고른 크기 없으면 가족방 설정으로(관계에 맞춰면 지금처럼 호칭으로)
+  - 화면은 폼 POST + PRG. 글자 크기 미리보기는 고른 라디오에 맞춰 CSS(`:has`)로 바뀜(JS 없음), 저장 버튼으로 반영
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/lib/pass.ts`, `src/pages/i/[code]/password.astro`, `src/pages/settings/index.astro`, `src/pages/settings/children/*`, `src/pages/settings/text-size.astro`, `src/pages/settings/account.astro`, `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: mock으로 아이 추가 → 설정·올리기 화면 아이 목록에 보임, 고치기 반영, 글자 크기 '모두 아주 크게' 저장 → 새로 들어온 가족 화면이 아주 크게(e2e). DB 검사: 다른 가족방 아이·글자 크기 못 바꿈, 가족 기기는 못 바꿈
+- 결과: 부모 이름 대신 계정 화면은 "하린 엄마 · 카카오로 로그인"(설정에서 받은 부모 이름이 '엄마'·'아빠'라서). 로그아웃은 계정 화면으로 옮김. 검토 두 번 반영: 아이는 이름·생일만 넣고 고치게 열 권한 제한(지우기·순서는 아직 막음), 가족방당 아이 10명, 누구세요 화면부터 가족방 글자 크기, 미리 골라진 크기는 들어오기 전엔 저장 안 함, 아이 추가 다시 보내기 막기, 미리보기는 화면 읽기에서 제외. DB 검사(의도된 거부 29건)·생후 개월 단위 검사·e2e 16개·기존 e2e 통과
+- 남은 위험: 아이 추가를 아주 빠르게 두 번 누르면 둘 다 들어갈 수 있음(10명 한도 안). 크기 쿠키는 기기 전체라, 다른 가족방에 이미 들어온 휴대폰은 그 크기를 유지. 네이버(직접 연결 제공자)는 제공자 이름이 '로그인'으로 보일 수 있음(실제 연결 뒤 확인)
+- 범위 밖: 탈퇴하기·되살리기(다음 이슈, 캔버스 AccountDelete·AccountRestore), 접종·검진 일정 보기 체크(아이 정보 카드 이슈 11에서), 아이 지우기(사진 연결이 같이 지워져서 따로 확인 필요), 아이 사진, 가족 플랜, 구성원별 글자 크기 원격 변경
+
+### 17. feature/account-delete — 탈퇴하기·되살리기 (완료, dev 머지)
+
+- 요구사항(캔버스 AccountDelete·AccountDeleteSub·AccountDeleted·AccountRestore, 결정 2026-10-24 '탈퇴')
+  - 계정 > 탈퇴하기 → 확인("정말 탈퇴할까요?", 3일 뒤 사진 N장·가족·아이 정보 삭제 안내, "모두 지워지는 것을 확인했어요" 체크해야 탈퇴하기)
+  - 구독 중이면 탈퇴 대신 "구독 중이에요"(스토어에서 먼저 해지) 안내
+  - 탈퇴하면 가족 화면은 바로 닫히고, 로그아웃 뒤 "그동안 고마웠어요"(지워지는 날짜, 처음으로)
+  - 3일 안에 다시 로그인하면 "탈퇴 신청 중이에요" → 되살리기(그대로 돌아옴) / 그대로 탈퇴하기(로그아웃)
+- 구현 방식
+  - DB: `sp_request_delete()`(부모만, 구독 중이면 거부, `delete_after = now() + 3일`), `sp_restore_family()`(유예 중만 되돌림). 부모가 `delete_after`를 직접 못 고치게 열 권한에서 뺀다(아무 날짜나 넣어 바로 지워지는 걸 막음). 실제 삭제는 `sp_purge_deleted_families()`(service_role, 기한 지난 가족방 지우고 id 반환)
+  - 부모 화면 진입(`loadParent`): 유예 중이면 `/restore`로. 확인 단계는 JS 없이 계정 화면의 확인 카드 + 기본 체크박스 `required`
+  - 화면: `/settings/account`(탈퇴하기·확인), `/goodbye`(그동안 고마웠어요), `/restore`(되살리기)
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/lib/parent.ts`, `src/pages/settings/account.astro`, `src/pages/goodbye.astro`, `src/pages/restore.astro`, `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: mock으로 탈퇴 → 가족 앨범 닫힘·작별 화면, 다시 로그인 → 되살리기 → 앨범 다시 열림(e2e). DB 검사: 다른 부모·가족 기기는 탈퇴 못 함, 구독 중 거부, `delete_after` 직접 수정 불가, 기한 지난 가족방만 지워짐
+- 범위 밖: 기한 지난 가족방을 실제로 지우는 예약 작업(Worker cron)과 R2 파일 삭제는 13번 정리 작업에서 같이(출시 전 필수), 부모 Auth 사용자 삭제, 가족 기기에 탈퇴 알림
+- 결과: 검토 두 번 반영. 유예 중엔 부모도 올리기·공유를 멈춤(`sp_can_upload`), 지울 날이 지나면 부모에겐 가족방이 없는 것으로 보여 처음 설정으로 가고 그때 먼저 지움, 지운 가족방은 `r2_cleanup` 대기열에 남김, 구독 중이면 끝나는 날을 알려 주고 탈퇴 막음, 확인 체크를 안 하면 이유 안내, 작별 화면 날짜 검사. DB 검사(의도된 거부 35건)·탈퇴 e2e 15개·기존 e2e 통과
+- **출시 전 필수(13번)**: 예약 작업 → 24번에서 만듦. 배포 뒤 실제로 도는지 확인 필요
+- 남은 위험: 이미 받은 사진 주소는 닫힌 뒤에도 최대 2시간 열림. 구독 해지 여부는 모르고 끝나는 날까지 탈퇴를 막음(스토어 연동 때 갱신 상태 추가)
+
+### 18. feature/restore-remaining — 탈퇴 신청 중 남은 시간 안내 (완료, dev 머지)
+
+- 요구사항(사용자 요청 2026-10-26): "탈퇴 신청 중이에요" 화면에 지워지기까지 얼마나 남았는지 보여 준다
+- 구현 방식: 지울 시각까지 남은 시간을 "2일 5시간 남았어요"(하루 미만 "5시간 남았어요", 1시간 미만 "곧 지워져요". 지울 날이 지나면 부모에겐 가족방이 없는 것으로 보여 이 화면은 안 뜬다)로. 화면을 연 시각 기준(JS 없음). 순수 함수 `remainingLabel`(`src/lib/age.ts`) + 단위 검사
+- 영향받는 파일: `src/lib/age.ts`, `tests/age.test.ts`, `src/pages/restore.astro`, `index.md`, `plan.md`
+- 예상 결과: 탈퇴 직후 다시 로그인하면 "2일 23시간 남았어요"(e2e), 경계값 단위 검사
+- 결과: 빨간 굵은 글씨로 남은 시간, 아래에 지울 시각(예: 10월 29일 오전 1:46). 검토 반영(마지막 1시간·알 수 없는 값은 '곧 지워져요'). 단위 검사·탈퇴 e2e 통과. 화면을 연 시각 기준이라 열어 둔 채로는 줄지 않음
+
+### 19. feature/group-settings — 그룹 관리: 그룹 목록·추가·상세·비밀번호 바꾸기·주소 다시 만들기 (완료, dev 머지)
+
+- 요구사항(캔버스 GroupSettings·GroupDetail·PasswordChange)
+  - 그룹 목록(`/settings/family/groups`): 그룹마다 이름·구성원 이름·인원·'기본 포함' 표시, 그룹 추가(10개까지)
+  - 그룹 추가(`/settings/family/groups/new`): 이름·비밀번호 4자리·힌트·새 사진에 기본으로 포함
+  - 그룹 상세(`/settings/family/groups/<id>`): 이름 바꾸기, 새 사진에 기본으로 포함(체크), 비밀번호(힌트)·바꾸기, 주소 카톡으로 보내기(기존 링크 만들기), 구성원(마지막으로 본 때·올리기·확인 기다림 남은 날), 주소 다시 만들기(예전 주소는 바로 막힘, 한 번 더 확인)
+  - 비밀번호 바꾸기(`/settings/family/groups/<id>/password`): 새 비밀번호·힌트, "이미 들어온 기기는 그대로" 안내
+  - 설정 > 가족에서 그룹 관리로 가는 줄
+- 구현 방식
+  - DB: `sp_add_group`에 10개 한도, `sp_reset_group_links(group)`(그 그룹이 들어간 공유 링크를 지워 예전 주소를 막음). 이름·기본 포함은 기존 열 권한으로 PATCH, 비밀번호는 기존 `sp_set_group_password`
+  - 백엔드: `familyAdmin`에 그룹 힌트·기기 마지막으로 본 때, `addGroup`·`updateGroup`·`setGroupPassword`·`resetGroupLinks`
+  - 폼 POST + PRG, 주소 다시 만들기는 설정 > 가족의 확인 카드·링크 카드 재사용
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/lib/familyAdmin.ts`, `src/pages/settings/family/index.astro`, `src/pages/settings/family/groups/*`, `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: mock으로 그룹 추가 → 목록·올리기 화면에 보임, 이름·기본 포함 바꾸기, 비밀번호 바꾸면 새 비밀번호로만 입장, 주소 다시 만들면 예전 링크는 없는 주소(e2e). DB 검사: 다른 가족방 그룹 못 바꿈, 11번째 그룹 거부, 다시 만들면 예전 코드 막힘
+- 범위 밖: 그룹 지우기·순서 바꾸기, '홈 화면에 있음' 표시(설치 여부를 서버가 모름)
+- 결과: 검토 두 번 반영. 주소 다시 만들기는 링크를 지우지 않고 막는다(`shares.revoked_at`, 그 링크로 들어와 승인 기다리는 사람은 링크 사진을 계속 봄), 탈퇴 유예 중엔 거절, 저장 실패 때 고른 값 유지. 비밀번호 검사(`pinError`)는 처음 설정과 같이 씀. DB 검사(의도된 거부 38건)·그룹 e2e 15개·기존 e2e 통과
+- 남은 위험: 여러 그룹이 같이 들어간 링크는 한 그룹 주소를 다시 만들면 같이 막힘(안내 문구에 적음). 막힌 링크는 쌓이기만 함(정리 작업 13번에서)
+
+### 20. feature/photo-info — 부모 사진 정보: 찍은 날·아이·보여줄 그룹 고치기, 사진 지우기 (완료, dev 머지)
+
+- 요구사항(캔버스 ParentPhoto)
+  - 부모 앨범에서 사진을 누르면 사진 정보(`/photo/<id>`): 큰 사진, 가장 최근 한마디(누가·무엇), 찍은 날(날짜), 아이(체크), 보여줄 그룹(체크, 하나 이상), "그룹을 빼면 그 가족 화면에서 바로 사라져요", 저장
+  - 사진 지우기(한 번 더 확인): 사진·반응·한마디가 지워지고 저장 용량에서 빠짐
+- 구현 방식
+  - DB: `sp_update_media(사진, 찍은 날, 아이들, 그룹들)` 한 번에(부모 또는 올린 가족, 같은 가족방 아이·그룹만, 그룹 하나 이상), `sp_delete_media(사진)`(부모만, 용량 빼고 R2 정리 대기열에 넣고 행 삭제). R2 정리 대기열은 가족방 폴더뿐 아니라 사진 폴더도 담게 `r2_cleanup.prefix`로 바꾼다
+  - 찍은 날은 날짜만 바꾸고 시각(서울)은 그대로, `taken_at_source = 'manual'`
+  - 백엔드: `mediaInfo`, `updateMedia`, `deleteMedia`. 화면은 폼 POST + PRG, 지우기는 확인 카드
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/pages/home.astro`(칸을 링크로), `src/pages/photo/[id].astro`, `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: mock으로 사진 올림 → 사진 정보에서 그룹 빼기 → 그 그룹 가족 앨범에서 사라짐, 찍은 날 바꾸면 앨범 달이 바뀜, 지우면 앨범·용량에서 빠짐(e2e). DB 검사: 남의 사진·남의 가족방 그룹/아이 거부, 그룹 0개 거부, 가족 기기는 지우기 불가, 지우면 용량 감소·대기열
+- 범위 밖: 올린 가족(배우자)이 자기 사진 고치는 화면(DB는 허용), 여러 장 한꺼번에 고치기. 영상은 기본 플레이어로 재생
+- 결과: 검토 두 번 반영. 탈퇴 유예 중엔 고치기·지우기 거절(화면은 원래 되살리기로 감), 다 올라간 사진만 지우기, 오늘로 바꿔 미래 시각이 되면 지금으로, 오류를 해당 칸에 연결. DB 검사(의도된 거부 44건)·사진 정보 e2e 10개·기존 e2e 통과
+- 남은 위험: 그룹을 빼거나 지워도 이미 받은 사진 주소는 최대 2시간 열림. PostgREST 연결 표 불러오기(`media_groups(...)`)는 실제 Supabase에서 확인 필요(확인 필요 목록)
+
+### 21. feature/parent-reactions — 부모 최근 반응 (완료, dev 머지)
+
+- 요구사항(캔버스 ParentReactions, 결정 '부모 알림은 앱 전까지 없음, 열면 보임')
+  - 부모 앨범 위에 '최근 반응'(새 반응 수) → `/reactions`: 가족이 남긴 하트·반응·한마디(사진 썸네일, "외할머니 하트를 보냈어요", "외할머니 "…"", 10분 전·1시간 전·어제), 승인 기다리는 사람("큰이모 외가 앨범에 들어오려고 해요 · 확인 ›")
+  - 열면 '새 반응'이 읽음으로
+- 구현 방식
+  - DB: `parents.activity_seen_at`, `sp_parent_activity()`(최근 30일, 50개, 승인된 가족의 반응·한마디만, 지운 한마디 제외) + `sp_mark_activity_seen()`, `sp_parent_home`에 새 반응 수
+  - 화면은 서버에서 그리고 JS 없음. 사진을 누르면 사진 정보로, 승인 대기는 설정 > 가족으로
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/lib/age.ts`(몇 분 전), `src/pages/home.astro`, `src/pages/reactions.astro`, `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: mock으로 가족이 하트·한마디 → 부모 앨범에 '새 반응 2', 최근 반응 목록, 열고 나면 0(e2e). DB 검사: 다른 가족방 반응 안 보임, 내보낸 사람 반응 빠짐, 가족 기기는 함수 불가
+- 범위 밖: 앱 알림, 한마디에 답하기
+- 결과: 검토 두 번 반영. 읽음 표시는 목록을 읽은 시각까지만(그 사이 온 반응은 다음에 새 반응), 새 반응 수와 목록 규칙 맞춤(30일·다 올라간 사진), 시각 색인, 사진이 없어도 최근 반응 줄. DB 검사·최근 반응 e2e 7개·기존 e2e 통과
+- 남은 위험: 하트를 껐다 켜면 새 반응으로 다시 올라옴. 배지는 50개 넘게 셀 수 있음(목록은 50개). 반응 저장 시각이 트랜잭션 시작 시각이라 아주 짧은 순간 겹치면 새 반응 표시를 놓칠 수 있음
+
+### 22. feature/health — 접종·검진 일정 (완료, dev 머지)
+
+- 요구사항(캔버스 Health·ChildSettings, 기획 이슈 11 일부)
+  - 부모 앨범 위 아이별 줄(다음 일정) → `/health/<아이 id>`: 아이·생후 개월, 다가오는 일정(접종/검진, 권장 시기, 지금 가능·시기 지남·N월 N일부터), 완료(체크한 날), "국가 권장 시기 기준. 실제 기록은 질병관리청 예방접종도우미에서"
+  - 체크하면 완료한 날(오늘)이 기록됨. 부모만 보고(가족 화면엔 안 보임)
+  - 설정 > 아이: "앨범에 접종·검진 일정 보기"(끄면 앨범 위 줄이 사라짐)
+- 일정 데이터(2026-10-26 확인): 국가예방접종 표준 일정(질병관리청 표, 동대문구 보건소 게시 2026-01-05 수정본)과 영유아 건강검진 1~8차(생후 14~35일, 4~6, 9~12, 18~24, 30~36, 42~48, 54~60, 66~71개월). 질병관리청 원문 사이트는 자동으로 못 읽어 보건소 게시본으로 확인 → 확인 필요 목록
+  - 넣지 않는 것: 인플루엔자(매년), HPV(성별 정보 없음), 구강검진(보건소마다 시기 표기가 달라 확인 필요), 결핵 경피용·유료 백신
+- 구현 방식
+  - `src/lib/health.ts`: 일정 표(키·종류·이름·권장 시기 글·시작/끝 개월) + 생일로 날짜 계산(달력 개월) + 상태. 단위 검사
+  - DB: `health_done(child_id, item_key, done_on)`(부모만, RLS), 아이 `show_health` 열 권한
+  - 화면은 폼 하나(체크박스 + 저장), JS 없음
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/health.ts`, `tests/health.test.ts`, `src/lib/backend/*`, `src/pages/health/[id].astro`, `src/pages/home.astro`, `src/pages/settings/children/index.astro`, `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: 13개월 아이로 일정 상태가 맞게 보이고, 체크·저장하면 완료로, 끄면 앨범 위 줄이 사라짐(e2e). 날짜 계산 단위 검사. DB 검사: 다른 가족방·가족 기기는 못 읽고 못 씀
+- 범위 밖: 접종 알림, 예방접종도우미 연동, 아이 정보 카드(사진·키·몸무게)
+- 결과: 검토 두 번 반영. 일본뇌염 차수 나눔(1·2차 12~23개월, 3차·생백신 2차 24~35개월), 로타 접종 끝 시기(1차 14주 6일, 2·3차 8개월 전), A형간염 2차는 1차를 체크한 날 6개월 뒤부터, 처음 쓰는 부모를 위해 오래된 항목은 '지난 일정'으로 접기, 화면을 그릴 때 체크돼 있던 것만 풀기, 일정 오류가 나도 앨범은 보이기. 단위 검사 14개·DB 검사·e2e 5개·기존 e2e 통과
+- 남은 위험: 일정 데이터는 보건소 게시본 기준(원문 대조는 확인 필요). 체크를 풀면 완료한 날이 지워짐
+
+### 23. feature/install-guide — 홈 화면에 두기 (완료, dev 머지)
+
+- 요구사항(캔버스 GrandInstall·InstallGuide, 결정 '가족 화면 홈 화면에 두기 버튼은 채운 버튼')
+  - 가족 앨범 아래에 "홈 화면에 두세요" 안내(아이폰: 공유 → 홈 화면에 추가 → 추가 / 안드로이드: 메뉴 ⋮ → 홈 화면에 추가 → 추가), 알겠어요·다음에 할게요
+  - 카톡 안에서 열렸으면: "카톡 안에서는 둘 수 없어요" + 엄마아빠에게 부탁하기(부모 최근 반응에 "외할머니가 홈 화면에 두기를 부탁했어요 → 문자로 공유하기")
+  - 홈 화면 아이콘으로 열면(standalone) 안내를 보이지 않음
+  - 웹 앱 매니페스트·아이콘(PNG 180·192·512, 마스커블)으로 홈 화면 아이콘이 콩이로 보이게. `/`는 부모면 앨범(/home), 가족이면 앨범(/album)
+- 구현 방식
+  - 기기 종류는 서버에서 User-Agent로 고름(아이폰·안드로이드·카톡·그 밖). 이미 홈 화면에서 연 경우는 CSS `@media (display-mode: standalone)`로 숨김(JS 없음)
+  - 알겠어요·다음에 할게요는 폼 POST로 쿠키(다음에: 7일, 알겠어요: 1년)
+  - DB: `members.install_help_at`, `sp_request_install_help()`(가족 기기 본인만), 부모 최근 반응에 7일 동안 표시
+- 영향받는 파일: `public/manifest.webmanifest`, `public/icons/*`, `src/layouts/Base.astro`, `src/pages/index.astro`, `src/pages/album/index.astro`, `src/components/InstallGuide.astro`, `src/lib/install.ts`, `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/lib/backend/*`, `src/pages/reactions.astro`, `src/styles/family.css`, `index.md`, `plan.md`
+- 예상 결과: 아이폰·안드로이드·카톡 UA마다 맞는 안내(e2e), 다음에 할게요 누르면 숨김, 부탁하기 → 부모 최근 반응에 보임. 성능 예산(가족 화면 JS 0KB) 유지
+- 결과: 검토 두 번 반영. 안내는 떠 있는 판 대신 앨범 위 판(앨범·초점을 가리지 않게), 앱 안 브라우저(카톡·네이버·라인·인스타·페이스북·밴드·이름 모를 웹뷰)는 부탁하기, 단계를 모르는 브라우저(아이폰 크롬·웨일, 삼성 인터넷)는 안내 안 함, 부탁은 승인된 가족만. 단위 검사·DB 검사·e2e 10개·기존 e2e 통과. 가족 화면 JS 0KB 유지
+- 범위 밖: 카톡에서 외부 브라우저로 넘기기(`kakaotalk://web/openExternal`은 실기기 확인 필요, 넘어가면 출입증 쿠키가 없어 다시 들어와야 함 → 확인 필요), 설치 여부 서버 기록
+
+### 24. feature/cleanup-jobs — 정리 예약 작업·5GB 상한 (완료, dev 머지)
+
+- 요구사항(이슈 13, 결정 '탈퇴 3일 뒤 삭제', 저장 용량 5GB)
+  - 매일 한 번(서울 새벽 3시대) 예약 작업: 탈퇴 기한 지난 가족방 지우기, 하루 지난 '올리는 중' 사진 지우기, R2 정리 대기열의 폴더 파일 지우기
+  - 올리기를 끝낼 때 같은 사진 폴더에 남은 예전 파일(PUT마다 새 키) 바로 지우기
+  - 무료 가족방은 저장 용량 5GB가 차면 새로 올리기만 멈춤(가족은 계속 봄), 올리기 화면에 안내
+- 구현 방식
+  - Worker 진입점을 `src/worker.ts`로(어댑터의 `@astrojs/cloudflare/handler`로 화면은 그대로, `scheduled`만 추가). `wrangler.jsonc`에 `main`·`triggers.crons`
+  - DB(service_role만): `sp_cleanup_stale_uploads()`, `sp_r2_cleanup_take(개수)`, `sp_r2_cleanup_done(폴더)`. `sp_create_media`에 5GB 상한(PT507 → HTTP 507)
+  - 작업 본체는 `src/jobs/cleanup.ts`(백엔드·버킷을 받아서), 가짜 버킷으로 단위 검사
+- 영향받는 파일: `supabase/migrations/*`, `supabase/tests/rls.sql`, `src/worker.ts`, `src/jobs/cleanup.ts`, `tests/cleanup.test.ts`, `wrangler.jsonc`, `worker-configuration.d.ts`, `src/lib/backend/*`, `src/lib/media.ts`, `src/pages/api/media/[id]/done.ts`, `src/pages/upload.astro`, `index.md`, `plan.md`
+- 예상 결과: 단위 검사(대기열 폴더의 파일을 지우고 끝 표시, 실패한 폴더는 남김), DB 검사(기한·하루 기준, service_role만, 5GB 거절), 빌드 결과에 scheduled 핸들러
+- 범위 밖: 가족 플랜(유료) 상한, 정리 결과 알림, 실제 Cloudflare 예약 실행 확인(배포 뒤 → 확인 필요)
+- 결과: 검토 두 번 반영. 예약 작업은 끝까지 기다리고 실패가 있으면 예약 기록에 실패로 남김, 앞 단계가 실패해도 R2 정리는 계속, 외부 호출 45개 안에서 쪽마다 멈추고 다 못 지운 폴더는 대기열에 남겨 다음 날 이어서. 미리보기 서버에서 scheduled 핸들러 동작 확인(비밀 값 없음 로그). 단위 검사 6개·DB 검사(의도된 거부 48건)·기존 e2e 통과
+
+### 25. feature/pc-layout — PC 화면 (완료, dev 머지)
+
+- 요구사항(캔버스 GrandListPC·PhotoViewPC·ParentHomePC·ParentUploadPC, 기획 이슈 14)
+  - 넓은 화면(64rem 이상)에서 가족 앨범·크게 보기는 넓게(모아 보기 4·6·8칸), 부모 앨범은 넓게 + 메뉴가 위로(6칸), 올리기는 왼쪽 사진·오른쪽 아이·그룹·보내기 두 칸, 사진을 끌어다 놓아 고르기
+- 구현 방식: CSS 미디어 쿼리만(가족 화면 JS 0KB 유지). 넓힐 화면만 레이아웃에 `wide` 표시. 올리기 끌어다 놓기는 부모 화면이라 작은 스크립트(파일 입력에 넘김)
+- 영향받는 파일: `src/layouts/Family.astro`, `src/layouts/Parent.astro`, `src/pages/album/*.astro`, `src/pages/home.astro`, `src/pages/upload.astro`, `src/styles/family.css`, `src/styles/parent.css`, `index.md`, `plan.md`
+- 예상 결과: 1280px에서 화면이 넓게 쓰이고, 390px은 그대로(e2e 스크린샷·기존 e2e). 끌어다 놓기로 사진이 골라짐(e2e)
+- 범위 밖: 부모 앨범 아이별 거르기(시안의 전체·하린·도윤), 크게 보기 양옆 화살표(이전·다음 링크는 아래 그대로), 마우스 오버 효과
+- 결과: 검토 두 번 반영. 가족은 모아 보기·크게 보기만 넓게(넘겨 보기는 좁게 그대로), PC에서 다 올린 뒤 올리기 칸 숨김, 위 메뉴 밑 포커스 가림 막기, 칸 밖에 떨어뜨려도 화면 유지. PC e2e 10개·기존 e2e 통과
+
+### 26. feature/swipe-wide — 넓은 화면 넘겨 보기 (완료, dev 머지)
+
+- 요구사항(사용자 피드백 2026-10-26 "넘겨보기 UI 왜저래"): 화면이 가운데 칸보다 넓으면(태블릿·PC) 넘겨 보기 줄이 가운데 칸 끝에서 잘려 옆 카드가 뚝 끊겨 보인다. 휴대폰처럼 화면 끝까지 이어지게
+- 구현 방식: 처음엔 줄을 화면 끝까지 펼쳤는데 카드 크기·겹침 애니메이션(view-timeline)이 줄 너비 기준이라 옆 카드가 가운데를 덮어서 되돌림. 대신 가운데 칸(32rem)보다 넓은 화면에서 줄 양끝 1.25rem을 흐리게(mask). CSS만
+- 영향받는 파일: `src/styles/family.css`, `src/styles/base.css`(필요하면), `index.md`, `plan.md`
+- 예상 결과: 1280px에서 옆 카드가 칸 끝에서 부드럽게 흐려지고 반응 버튼은 그대로, 390px은 그대로(스크린샷·기존 e2e)
+- 결과: 검토 두 번(기준 폭을 칸 너비에 맞춤). 반응 e2e 통과
+
+### 27. feature/group-pw-dots — 그룹 비밀번호 화면 정리 (완료, dev 머지)
+
+- 요구사항(사용자 피드백 2026-10-26): ① 부모 그룹 상세 "비밀번호 ••••"의 점이 무슨 뜻인지 모르겠다 → 삭제 ② 비밀번호 칸이 시안은 왼쪽 정렬인데 코드는 가운데 정렬 → 한때 왼쪽으로 맞췄다가, 사용자 결정("비밀번호는 다 가운데정렬")으로 가운데 정렬 유지
+- 구현 방식: 줄 제목을 "비밀번호"만 남김. 부모·조부모 비밀번호 칸 모두 가운데 정렬 그대로(왼쪽 정렬 커밋은 되돌림). 시안 보드의 부모 비밀번호 칸 3곳은 가운데로 고쳐야 함
+- 영향받는 파일: `src/pages/settings/family/groups/[id]/index.astro`, `src/styles/parent.css`, `plan.md`
+- 예상 결과: 그룹 상세에 점이 안 보이고, 비밀번호 칸은 모두 가운데 정렬(스크린샷·groups e2e)
+
+### 28. feature/activity-split — 최근 반응과 들어오기 요청 나누기
+
+- 요구사항(사용자 피드백 2026-10-26 "최근반응 반응이랑 진입요청이랑 분리해서 노출"): 최근 반응 화면에 반응·한마디만. 들어오려는 사람(승인 대기)과 홈 화면에 두기 부탁은 앨범 위에 따로 띠로 보인다(시안 부모 앨범의 승인 요청·설치 부탁 띠)
+- 구현 방식
+  - `/reactions`: '도와줄 사람'·'확인할 사람' 칸을 뺌. familyAdmin 호출도 뺌
+  - `/home`: familyAdmin을 목록과 같이 불러(실패하면 띠만 안 보임) 띠 두 개. ① 확인할 사람(대기 구성원+새 휴대폰): 한 명이면 "{이름}이 {그룹} 앨범에 들어오려고 해요", 새 휴대폰만이면 "새 휴대폰 {N}대가 들어오려고 해요", 여럿이면 "{N}명이 들어오려고 해요" → `/settings/family` "확인 ›" ② 홈 화면에 두기 부탁(7일 안): "{이름}이 홈 화면에 두기를 부탁했어요"(여럿이면 "외 N명") → `/settings/family/sms` "문자 ›"
+  - 띠 모양: pea-tint 바탕, pea-deep 글자, 56px, radius 14px(시안). 도트 이모지는 범위 밖
+- 영향받는 파일: `src/pages/reactions.astro`, `src/pages/home.astro`, `src/styles/parent.css`, `plan.md`, 작업 폴더 e2e(reactions·install)
+- 예상 결과: 최근 반응엔 반응만, 앨범 위 띠에서 승인·부탁으로 감(e2e)
+- 결과: 검토 반영(이/가 조사, 새 휴대폰만 기다릴 때 문구). reactions·install·parent·members·health e2e 통과
+
+### 29. feature/video-player — 가족 크게 보기(사진·영상) 새 배치 (디자인 버전 96)
+
+- 요구사항(사용자 2026-10-26, 디자인 먼저 고친 뒤 적용)
+  - 크게 보기는 화면 고정 겹침 배치: 사진·영상이 위 메뉴 뒤까지 화면을 채우고, 위 메뉴(닫기·n/N·저장)와 아래 판이 그 위에 겹친다
+  - 위 메뉴·아래 판은 반투명, 판 안 버튼·칸은 판 배경보다 진하게: 라이트 판 흰 75%·버튼 85%·입력칸 92%, 다크 판 검정 65%·버튼 회색 85%·입력칸 검정 70%(처음 50/72/86·42/72/60에서 글자 대비 때문에 올림, 사용자 확인 2026-10-26), 배경 흐림 20px. 투명도 줄이기 설정이면 꽉 채움
+  - 아래 판: (영상만) 재생 막대(6px 캡슐·28px 손잡이·44px 누르는 영역, 시간 양끝)·소리 버튼 → 날짜·하트 → 반응 5개 → 한마디 칸
+  - 반응 버튼은 이모지만(글자 삭제, 이모지 40px, 버튼 높이 60px). 화면 읽기용 이름은 그대로. 넘겨 보기도 같이
+  - 넘겨 보기의 "직접 쓰기" 버튼 대신 한마디 칸을 바로 보인다
+  - 영상: 가운데 72px 재생 버튼. 재생하면 위 메뉴·가운데 버튼·‹ ›·날짜·반응·한마디가 숨고, 맨 아래 반투명 줄에 재생 막대(손잡이)·시간·소리 버튼만 남음(재생 중에도 끌어서 옮기기). 재생 중 화면을 누르면 일시정지 + 메뉴 다시 보임. 자동 숨김·작은 안내 글자 없음(어르신이 못 봄). 소리는 켜진 채로 시작. 시간 글자는 진한 글자색(반투명 위 대비)
+  - 넘기기: 옆으로 밀면 이전·다음. 한 번 누르는 대체 수단으로 양옆 가운데 48px 반투명 ‹ › 버튼(WCAG 2.5.1). 영상 재생 중엔 메뉴와 같이 숨음. 맨 아래 이전·다음 버튼은 삭제
+- 결정: 크게 보기 화면에만 작은 스크립트 허용(사용자 "1번으로"). 모아 보기·넘겨 보기 등 다른 가족 화면은 0KB 유지
+- 구현 방식
+  - `album/[id].astro`: `sp-v` 겹침 배치(position fixed 무대, 미디어 `object-fit: contain`(잘리지 않게)). ‹ ›는 진짜 링크(`rel=prev/next`)라 스크립트 없이도 넘어감
+  - 영상: HTML엔 `controls`. 스크립트가 돌면 `controls`를 빼고 직접 만든 재생 버튼·막대·소리 버튼을 보임(스크립트 실패 시 기본 막대로 볼 수 있음). 재생 막대는 네이티브 `<input type="range">`, 재생·소리는 `<button>` + aria-label 바꿈. 길이는 `duration_sec` 있으면 서버에서 먼저 씀
+  - 밀기: pointer 이벤트로 가로 이동이 세로보다 크고 일정 거리 넘으면 ‹ › 링크 주소로 이동. 재생 막대·입력칸·버튼에서 시작한 터치는 제외
+  - 스크립트는 페이지 안 작은 모듈 하나(목표 2KB 이하, 압축 전)
+- 영향받는 파일: `src/pages/album/[id].astro`, `src/components/ReactRow.astro`, `src/pages/album/index.astro`(직접 쓰기→한마디 칸), `src/styles/family.css`, `plan.md`, `index.md`(가족 화면 JS 예외)
+- 예상 결과(390·1280px, e2e): 디자인과 같은 배치, 재생→메뉴 숨김·진행 선, 화면 누르면 일시정지·메뉴, 막대 끌기, 소리 켜고 끄기, 밀기·‹ ›로 이동, 막대 끌 때는 안 넘어감, 스크립트 끄면 기본 막대·‹ › 링크로 동작, 기존 반응·한마디 e2e 통과
+- 범위 밖(다음): 사진 크게 보기 PC 배치 세부, 넘겨 보기·크게 보기 외 화면
+
+### 30. feature/parent-nav — 부모 화면 이동 표시 정리 (디자인 버전 107, 디자인 시스템 README 18)
+
+- 요구사항(사용자 2026-10-26, 디자인 먼저 고친 뒤 적용)
+  - 아래 탭에 알림 추가: 앨범 · 알림 · 설정. 알림 탭에 새 반응 수 배지. 최근 반응 화면은 알림 탭 첫 화면(큰 제목 "알림", 뒤로가기 없음). 앨범 위 "최근 반응" 줄 삭제
+  - 앨범 위 접종 줄 → 아이 카드: 콩이 + 이름 · 생후 N개월 · 태어난 지 N일 + 다음 일정. 카드 전체가 접종·검진 링크, "다음"·"일정" 글자 없이 오른쪽 꺾쇠만. 위아래 가운데 정렬
+  - 누르면 넘어가는 줄·띠는 오른쪽 꺾쇠 아이콘만: 승인 요청·홈 화면 부탁 띠의 "확인 ›"·"문자 ›", 그룹 비밀번호 "바꾸기", 아이 "고치기" → 꺾쇠. 글자 ›는 같은 모양 선 아이콘으로
+  - 왼쪽 위 뒤로가기는 글자만("설정", "앨범"…, ‹ 없음). 가족 크게 보기 "닫기"도 글자만(어르신이 헷갈리지 않게 한 규칙으로)
+- 구현 방식: `Parent.astro`에 알림 탭과 `alerts` 배지(각 화면이 `a.home.new_activity` 전달, 알림 화면은 0). `.sp-p__chev`는 CSS mask로 선 아이콘, 띠·카드는 인라인 svg(`.sp-p__icon-chev`). 아이 카드 `.sp-p__kid`. 콩이는 지금 있는 `/favicon.svg`(나이별 7단계 그림은 아직 없음)
+- 영향받는 파일: `src/layouts/Parent.astro`, `src/pages/home.astro`, `src/pages/reactions.astro`, 탭 있는 부모 화면 17개(배지 전달·뒤로가기 글자), `src/pages/settings/children/index.astro`, `src/pages/settings/family/groups/[id]/index.astro`, `src/pages/album/[id].astro`(닫기), `src/styles/parent.css`, `plan.md`
+- 예상 결과: 알림 탭·배지·아이 카드·꺾쇠·글자 뒤로가기(스크린샷), reactions·health·install 등 e2e 통과
+- 결과: e2e(reactions·install·health·settings2·groups·members·parent·family·vplay) 통과. 범위 밖: 설정 탭의 승인 배지(디자인엔 있음, 코드엔 원래 없음), 나이별 콩이 그림
+
+### 31. feature/center-layers — 가운데 레이어 3종 (디자인 버전 109)
+
+- 요구사항(사용자 2026-10-26, 조사·추천 1–3번 확정): 앱을 열 때 꼭 알아야 할 일만 가운데 레이어로. 같은 일은 한 번만, 한 번 열 때 하나만, 저절로 사라지지 않음
+  1. 부모 앨범: 들어오기 신청(새 휴대폰 포함). "큰이모가 외가 앨범에 들어오려고 해요" + 신청 시각·3일 뒤 자동 취소 [확인하기 → 가족 설정] [나중에]
+  2. 가족 앨범: 승인 뒤 처음 열 때 콩이 + "엄마아빠가 확인했어요 / 이제 ○○ 사진을 모두 볼 수 있어요" [사진 보기]
+  3. 가족 앨범: 지난번 이후 새로 올라온 사진이 있을 때 "○○ 새 사진 N장이 왔어요" + 썸네일 3칸(+N) + "○월 ○일에 올라왔어요" [보기]. 가족은 2가 3보다 먼저
+- 구현 방식(DB 칸 추가 없음, 기기별 쿠키)
+  - "봤음"은 기기 쿠키에 기록: `sp_join_seen`(부모, 마지막으로 닫은 신청 시각), `sp_waited`(가족, /wait에서 기다리던 가족방 id), `sp_photos_seen`(가족, 마지막으로 본 사진의 올린 시각). 1년, httpOnly·lax
+  - 버튼은 폼 POST(PRG)로 쿠키를 적고 돌아감 → 가족 화면 JS 0KB 유지. 레이어는 서버가 `<dialog open>`로 그리고 첫 버튼에 autofocus
+  - 새 사진 판단에 사진의 올린 시각이 필요해 `MediaItem`에 `created_at` 추가(DB 열은 이미 있고 읽기 권한도 있음, 목록 select만 추가)
+  - 처음 오는 기기는 쿠키가 없으므로 3번을 띄우지 않고 지금 사진까지 본 걸로 기록(카톡으로 막 들어온 사람에게 "새 사진" 레이어는 군더더기)
+- 영향받는 파일: `src/lib/backend/types.ts`, `src/lib/backend/supabase.ts`, `src/lib/backend/mock.ts`, `src/lib/layers.ts`(쿠키 이름·읽기), `src/pages/home.astro`, `src/pages/album/index.astro`, `src/pages/wait.astro`, `src/styles/base.css`(레이어 공통), `plan.md`
+- 예상 결과: 각 레이어가 조건에서 한 번만 뜨고 버튼 뒤 다시 안 뜸(e2e), 다크·라이트 스크린샷
+- 확인 필요: 기기 쿠키라 브라우저를 바꾸거나 쿠키를 지우면 2·3이 다시 뜰 수 있음(3은 지금 사진 기준이라 영향 적음). 레이어가 열린 동안 뒤 화면도 Tab으로 갈 수 있음(JS 없이 inert를 걸 수 없음). '새 사진'은 올리기 시작 시각(created_at) 기준이라 여러 장을 동시에 올릴 때 먼저 끝난 늦은 사진이 기준을 올리면 앞 사진이 안내에서 빠질 수 있음(정확히 하려면 준비된 시각 열 필요). 한 집만 거른 화면(?f)에선 레이어·기록 안 함. 최근 200장 밖(찍은 날이 아주 오래된 사진)은 안내 안 됨. 기존 기기가 다시 승인 대기로 바뀌면 만든 시각이 옛날이라 신청 레이어가 안 뜰 수 있음(띠는 뜸)
+- 결과: 검토 반영(빈 앨범 첫 방문은 지금 시각으로 기록, ?f 화면 제외, 새 휴대폰 신청엔 3일 문구 빼기, 설명 연결·autofocus 하나). layers e2e 13개, 기존 e2e는 레이어 자동 닫기 도우미로 통과
+
+### 32. feature/layers-milestone-storage — 가운데 레이어 4·5 (완료, dev 머지, 디자인 버전 111)
+
+- 요구사항(사용자 2026-10-26 "2번 둘 다 지금 진행"): 부모 앨범에
+  4. 백일·돌·생일 당일: 콩이 + "오늘은 하린이 태어난 지 100일이에요"(돌: "첫 생일이에요", 그 뒤 "두 번째 생일이에요") + "오늘 찍은 사진을 올려서 가족과 함께 축하해요" [사진 올리기 → /upload] [닫기]
+  5. 저장 공간 90% 이상(무료 5GB): "저장 공간이 거의 찼어요"(100%면 "다 찼어요") + 막대 + "5GB 중 4.6GB를 쓰고 있어요…" [저장 용량 보기] [나중에]
+  5-2. 가족 플랜 7일 안에 끝남: 디자인만(LayerPlan). 코드는 결제 이슈에서(지금은 플랜·결제가 없어 갈 화면이 없음)
+- 구현 방식: 31과 같은 기기 쿠키 + 폼 POST(PRG). 한 번 열 때 하나만, 순서는 들어오기 신청 → 백일·생일 → 저장 공간
+  - `sp_milestone_seen`: 본 날 키(`아이id:YYYY-MM-DD`). 그날만 뜸, 닫으면 그날 다시 안 뜸
+  - `sp_storage_seen`: 본 단계(`90`/`100`). 90에서 닫아도 100이 되면 한 번 더. 90 밑으로 내려가면 쿠키를 지워 다음에 다시 넘으면 또 뜸
+  - 날짜 계산은 `src/lib/age.ts`에 `milestone(birth, today)` 추가(서울 날짜, 태어난 날이 1일째) + 단위 테스트
+- 영향받는 파일: `src/lib/age.ts`, `tests/age.test.ts`, `src/lib/layers.ts`, `src/pages/home.astro`, `plan.md`
+- 예상 결과: 조건 날에만 한 번 뜨고 버튼 뒤 다시 안 뜸(e2e), 스크린샷
+- 결과: layers45 e2e 9개(백일·저장 공간·돌·평범한 날), 기존 layers·health·members 통과, 단위 22개. 저장 공간 확인용으로 mock에 `SWEEPEA_MOCK_USED_BYTES` 추가. 막대는 35에서 키컬러로 통일
+- 확인 필요: 2월 29일생은 평년엔 생일 레이어 없음. 가족 플랜 레이어는 자동 갱신을 끈 사람에게만 띄울지(스토어 구독 상태 필요), 끝난 뒤 정책 문구
+
+### 33. feature/settings-badge — 설정 탭 승인 대기 배지 (완료, dev 머지, 디자인 버전 112)
+
+- 요구사항(사용자 2026-10-26 "추가되어야 확인하지"): 부모 아래 탭 '설정'에 승인 기다리는 사람·휴대폰 수 배지(`blossom`), 화면 읽기는 "설정, 승인 기다리는 사람 N명"
+- 구현 방식: 부모 첫 화면 정보(`sp_parent_home`)에 `waiting`(기한 안 지난 들어오기 신청 + 승인 기다리는 휴대폰) 추가 → 탭 있는 모든 화면이 레이아웃에 넘김. 마이그레이션은 아직 적용 전이라 parent_home 파일을 직접 고침
+- 영향받는 파일: `supabase/migrations/20261025000006_parent_home.sql`, `src/lib/backend/types.ts`, `src/lib/backend/mock.ts`, `src/layouts/Parent.astro`, 탭 있는 부모 화면 17개, `plan.md`
+- 예상 결과: 신청이 오면 설정 탭에 숫자, 승인하면 사라짐(e2e), 스크린샷
+- 같이 정리: 켜고 끄기는 토글로 결정(디자인을 토글로 고침, 코드는 이미 토글, 디자인 시스템 README 19)
+- 결과: badge e2e 5개, 기존 members·layers·parent 통과. 확인 필요: parent_home SQL은 실제 DB에서 아직 안 돌려 봄(DB 설정 뒤)
+
+### 34. feature/kid-tabs — 폰·PC 통일: 아이 고르기 세그먼트 탭 (완료, dev 머지, 디자인 버전 113)
+
+- 요구사항(사용자 2026-10-26 "1, 2 진행 완료"): 폰·PC는 같은 컴포넌트, 배치만 다르게. 아이 고르기는 라디오 칩 대신 한 줄 좌우 스크롤 세그먼트 탭
+- 디자인(버전 113): PC 보드를 코드의 넓은 화면 배치에 맞춤 — 부모 PC 앨범(위 메뉴 = 폰 탭 3개, 아이 카드 = 폰 카드, 세그먼트 탭, 떠 있는 '사진 추가하기'), 부모 PC 올리기(폰과 같은 '취소 / 사진 N장' 줄), 가족 PC 모아 보기(폰과 같은 제목·세그먼트·떠 있는 −/+), PC 크게 보기(넘기기 안내 문구 삭제). 폰 올리기 '아이'도 그룹과 같은 체크 칩
+- 코드: 부모 앨범에 아이가 둘 이상이면 `전체 · 하린 · 도윤` 탭(`?k=아이id` 링크, aria-current). 고른 아이 사진만(사진-아이 연결), 아이 카드도 그 아이만
+  - `listMedia`에 `childId` 추가: supabase는 `media_children!inner` 필터, mock은 childIds
+- 영향받는 파일: `src/lib/backend/types.ts`, `supabase.ts`, `mock.ts`, `src/pages/home.astro`, `src/styles/parent.css`, `plan.md`
+- 예상 결과: 탭 누르면 그 아이 사진만, 폰은 가로 꽉, PC는 글자 폭만큼, 넘치면 옆으로 밀림(e2e)
+- 결과: kidtabs e2e 11개, 기존 parent·health·upload 통과. 탭은 아이 카드 아래(디자인 순서). 확인 필요: supabase `media_children!inner` 필터는 실제 DB에서 아직 안 돌려 봄. 부모 앨범 칸 모양(코드 정사각 / 디자인 높이 제각각)은 그대로 둠
+
+### 35. feature/design-gaps — 디자인·코드 차이 정리 (완료, dev 머지, 디자인 버전 114)
+
+- 요구사항(사용자 2026-10-26 "2 진행 완료"): 비교에서 찾은 차이 정리. 있는 데이터로 할 수 있는 건 코드를 디자인에, 데이터가 없는 건 디자인을 코드에
+- 코드: 목록 줄 사이 구분선(`.sp-p__list > * + *`, li라 전체 선택자), 저장 막대(meter)를 키컬러 하나로(브라우저 기본 노랑 대신, 고대비 모드는 기본), 구성원 상세 부제에 마지막으로 본 날("가족 · 휴대폰 1대 · 오늘")
+- 디자인: 구성원 상세 부제를 코드 표기로, '올린 사진'·'가족 화면 글자 크기' 줄 삭제(구성원별 올린 수·글자 크기 데이터 없음, 원격 글자 크기는 범위 밖), 안내 문구를 코드 문구로. 저장 막대는 분홍 → 키컬러(blossom은 하트에만)
+- 결과: 기존 settings2·members·groups e2e 통과, 스크린샷 확인
+- 남김: 가족 플랜 줄·카드(결제 이슈에서), 설정 하위 화면 제목 배치(디자인은 가운데 작은 제목, 코드는 큰 제목)
+
+### 36. feature/db-setup — 실제 Supabase 연결 (완료, dev 머지)
+
+- 요구사항(사용자 2026-10-26 "3번 진행하자"): mock이 아닌 실제 Supabase에 스키마를 올리고 화면을 실제 백엔드로 확인
+- 지우님이 할 일(둘 중 하나)
+  - A(선택됨): Supabase 커넥터 연결(커넥터는 조직 하나만 고를 수 있어 sweepea 조직으로)
+  - B: supabase.com에서 프로젝트를 직접 만들고 Project URL, anon 키, service_role 키, DB 비밀번호를 알려 주기(service_role·DB 비밀번호는 이 대화 대신 `.dev.vars`에 직접 넣어도 됨)
+- 구현 방식(연결 뒤)
+  1. 마이그레이션 13개를 순서대로 적용(로컬 Postgres 16 검사는 통과: `npm run test:db`, 의도된 거부 48건). 적용 뒤부터 init 직접 수정 금지, 새 파일로
+  2. Auth: 익명 로그인 켜기(가족 기기), 부모 로그인 제공자(카카오 먼저, 나머지는 키 받은 뒤), 사이트 주소·리다이렉트 주소
+  3. `.dev.vars`(git 제외)에 SUPABASE_URL·SUPABASE_ANON_KEY·SUPABASE_SERVICE_ROLE_KEY·MEDIA_URL_SECRET, `SWEEPEA_BACKEND=supabase`로 개발 서버
+  4. 실제 백엔드로 핵심 흐름 확인: 부모 처음 설정 → 링크 → 가족 입장·승인 → 올리기(R2는 로컬 miniflare) → 보기·반응 → 아이 탭(`media_children!inner`)·배지(waiting)·사진 정보
+  5. 운영 배포(Cloudflare 시크릿·R2 버킷)는 다음 이슈
+- 영향받는 파일: 확인 중 나오는 버그 수정만(supabase.ts 등), `.dev.vars.example`, `index.md`, `plan.md`
+- 진행(2026-10-26): 프로젝트 `sweepea`(ref aemzbelwyyweugxuqgoh, 서울, 무료 조직) 생성. 마이그레이션 13개 적용 완료(커넥터, 같은 이름). 보안 점검: 정책 없는 표 2개(entry_failures·r2_cleanup, 의도: 함수만 씀), 로그인 사용자가 부르는 security definer 함수 31개·anon `sp_entry_info`(의도: 권한 판정을 함수 안에서 함). `.dev.vars.supabase`(git 제외)에 URL·anon 키
+- 대시보드(지우님): 익명 로그인 켬, 이메일 확인 잠시 끔(테스트 부모 계정용), secret 키 `dev-test` 발급 → `.dev.vars.supabase`
+- 결과: 실제 Supabase로 핵심 흐름 e2e 11개 통과 — 처음 설정, 아이 추가, 사진 올리기(완료 처리 = secret 키로 sp_finish_upload), 아이 탭(`media_children!inner` 필터), 링크 → 새 이름 입장 → 설정 탭 배지(waiting) → 승인 → 승인 완료 레이어 → 가족 앨범 → 반응 → 부모 알림 배지. 부모는 이메일 테스트 계정 토큰을 sp_parent 쿠키에 직접 넣어 확인(앱 화면엔 이메일 로그인 없음). 코드 수정 없이 통과
+- 실제 DB로 아직 안 돌린 것: 사진 정보 고치기·지우기, 그룹, 탈퇴·되살리기, 정리 예약 작업, 승인 대기 휴대폰(10번 틀림). R2는 로컬(miniflare)
+- 확인 필요: 카카오 로그인은 카카오 개발자 앱(REST 키·Client Secret)이 있어야 켤 수 있음. 무료 조직은 1주 쉬면 프로젝트가 멈춤
+- 확인 필요(출시 전): 익명 가입 남용 막기(CAPTCHA·가입 횟수 제한), 테스트 데이터(가족방·테스트 계정) 지우기
+
+### 37. feature/deploy — Cloudflare Workers 첫 배포 (완료, dev 머지)
+
+- 요구사항(사용자 2026-10-26 "배포 먼저 가볼까?"): 실제 Supabase + 진짜 R2로 인터넷에서 열리는 주소
+- 구현 방식
+  1. 먼저 `*.workers.dev` 주소로 배포(도메인 연결은 그다음)
+  2. R2 버킷 `sweepea-media` 만들기(wrangler.jsonc 그대로)
+  3. 시크릿: SUPABASE_URL·SUPABASE_ANON_KEY(공개)·MEDIA_URL_SECRET(새로 만듦)·SITE_ORIGIN, SUPABASE_SERVICE_ROLE_KEY는 **운영용 secret 키를 지우님이 Cloudflare 대시보드에 직접**(대화에 남기지 않게). PARENT_PROVIDERS는 카카오 연결 전까지 비움(로그인 화면은 "준비되지 않았어요")
+  4. 매일 정리 예약(18:17 UTC)은 wrangler.jsonc 그대로 올라감
+  5. 배포 뒤 확인: 첫 화면·로그인 화면·가족 링크 화면 응답, 사진 전달 경로, 보안 헤더
+  6. Supabase Auth 사이트 주소·리다이렉트에 배포 주소 추가(카카오 연결 때 필요)
+- 배포 방법: 지우님이 Cloudflare API 토큰(Workers 스크립트·R2 편집 권한)을 만들어 주면 여기서 `wrangler deploy`. 토큰은 배포 끝나면 지우님이 삭제
+- 진행(2026-10-26): 계정 `Takeaseat.cs@gmail.com's Account`(workers.dev 이름 takeaseat-cs, 기존 Worker tas-proxy 있음). R2 켬(지우님, 무료 구간), 버킷 `sweepea-media`(apac) 만듦, 배포 → **https://sweepea.takeaseat-cs.workers.dev** (매일 18:17 UTC 예약 포함). 시크릿 SUPABASE_URL·SUPABASE_ANON_KEY·MEDIA_URL_SECRET(새로 만듦, 여기 안 남김) 넣음. SITE_ORIGIN은 비움(요청 주소로 링크 만듦, 도메인 연결 때 넣기)
+- 배포 확인: 첫 화면 200, 로그인 200("준비되지 않았어요"), /home → /start, 없는 가족 링크 → 안내 화면, 정적 파일 200
+- 지우님: 운영용 secret 키 `prod`를 Cloudflare에 직접 넣음(SUPABASE_SERVICE_ROLE_KEY, 시크릿 4개 확인), Supabase 사이트 주소·리다이렉트
+- 결과: 배포 주소에서 실제 Supabase + 진짜 R2로 핵심 흐름 e2e 11개 통과(처음 설정·올리기·아이 탭·입장·배지·승인·레이어·반응·알림). R2에 view·thumb 파일 저장 확인. 콩이 움직임(38)도 같이 배포
+- 정리(2026-10-26 확인): 이메일 확인 다시 켬, Cloudflare 토큰 무효 확인, Supabase dev-test 키 삭제. 이후 배포는 44(자동 배포)
+- 확인 필요: 화면 응답에 보안 헤더(X-Frame-Options/CSP frame-ancestors·Referrer-Policy 등)가 사진 전달(/m)에만 있음. 가족 링크 주소(/i/코드)가 Referer로 새지 않게 다음 이슈에서 공통 헤더 추가
+- 영향받는 파일: `wrangler.jsonc`(필요하면), `index.md`, `plan.md`
+- 확인 필요: Cloudflare 계정·요금제(무료면 요청당 외부 호출 50개 → 정리 작업이 나눠서 돎), sweepea.co.kr 등록·DNS 위치
+### 38. feature/kongi-hop — 콩이 통통 움직임 (완료, dev 머지)
+
+- 요구사항(사용자 2026-10-26 "콩 들어있는데는 전반적으로 움직이게"): 디자인 시스템 규칙(2.4초마다 통통 두 번, steps로 끊어서, 여러 마리면 0.3초씩 늦게, 동작 줄이기면 멈춤)을 코드에. 디자인 캔버스는 이미 움직임(`sp-kongi-anim`)이라 디자인 수정 없음
+- 구현: `base.css`에 `sp-kongi-hop` 하나, 콩이 클래스 7개(부모 소개·빈 앨범·아이 카드·소개 시안, 가족 입장·앨범, 가운데 레이어)에 적용. 아이 카드가 여러 개면 두 번째부터 0.3초씩 늦게
+- 영향받는 파일: `src/styles/base.css`, `plan.md`
+
+### 39. feature/security-headers — 공통 보안 헤더 (완료, dev 머지)
+
+- 요구사항(37에서 발견, 사용자 2026-10-26 "응"): 사진 전달(/m) 말고는 보안 헤더가 없음. 다른 사이트가 틀(iframe)에 넣어 누르게 하는 공격, 가족 링크(/i/코드)·사진 주소가 Referer로 밖에 새는 것 막기
+- 구현: `src/middleware.ts`(모든 화면 응답) — X-Content-Type-Options nosniff, Referrer-Policy no-referrer, X-Frame-Options DENY, CSP `frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'`, Permissions-Policy(카메라·마이크·위치 끔), 운영에서만 HSTS. 이미 있는 헤더(/m의 sandbox CSP)는 덮지 않음. 정적 파일은 `public/_headers`로 nosniff·no-referrer
+- 전체 CSP(script-src 등)는 화면마다 인라인 스크립트가 있어 이번엔 안 함(확인 필요로)
+- 영향받는 파일: `src/middleware.ts`(새), `public/_headers`(새), `plan.md`
+- 예상 결과: 화면·리다이렉트·정적 파일 응답에 헤더(e2e), 기존 e2e 통과, 배포 뒤 확인
+- 결과: 개발 서버에서 화면·리다이렉트·404·가족 링크 응답 헤더 확인, 기존 parent·members·layers·vplay e2e 통과. 확인 필요: 전체 CSP(script-src·img-src)는 인라인 스크립트를 해시로 바꾼 뒤
+
+### 40. feature/kongi-asset — 콩이만 움직이게 (완료, dev 머지)
+
+- 요구사항(사용자 2026-10-26 "콩만 움직여야지 배경은 움직이지 말고"): 코드는 콩이 자리에 앱 아이콘(`favicon.svg`, 둥근 바탕 칸 포함)을 써서 바탕까지 같이 뛰었음. 디자인 캔버스 콩이는 바탕 없는 그림이라 코드만 달랐음
+- 구현: 디자인의 콩이 그림(3단계 떡잎, 바탕 없음)을 `public/kongi.svg`로 넣고 콩이 자리 8곳을 바꿈. 앱 아이콘(`favicon.svg`)은 탭 아이콘으로만
+- 영향받는 파일: `public/kongi.svg`(새), `src/components/Notice.astro`, `src/pages/home.astro`, `src/pages/start.astro`, `src/pages/album/index.astro`, `src/pages/login/index.astro`, `plan.md`
+- 확인 필요: 콩이 나이별 7단계 그림은 아직 3단계 하나로 씀
+
+### 41. feature/kakao-login — 부모 카카오 로그인 연결 (완료)
+
+- 요구사항(사용자 2026-10-26 "그럼 카카오"): 배포된 사이트에서 부모가 카카오로 로그인
+- 지우님이 할 일: 카카오 개발자 앱 만들기(스위피) → REST API 키·Client Secret → 카카오 로그인 켜기, Redirect URI `https://aemzbelwyyweugxuqgoh.supabase.co/auth/v1/callback`, 동의항목 닉네임(필수 아님 최소) → Supabase Kakao 켜기 + 키 두 개 + "Allow users without an email" → Cloudflare 변수 `PARENT_PROVIDERS=kakao`
+- 구현 방식: 코드는 이미 있음(PKCE, `/login/kakao` → Supabase → `/auth/callback`). 이메일은 받지 않음(비즈 앱 필요, 쓸 데 없음). 카카오가 이메일 범위 때문에 거절하면 authorize 주소에 범위를 직접 지정
+- 영향받는 파일: 필요하면 `src/lib/backend/supabase.ts`(parentAuthorizeUrl), `plan.md`
+- 예상 결과: 지우님 휴대폰으로 배포 주소에서 카카오 로그인 → 처음 설정 → 앨범
+- 결과(2026-10-26): 지우님 휴대폰으로 배포 주소에서 카카오 로그인 성공(가족 설정 화면까지). 겪은 것: KOE101(REST API Key 칸에 'sweepea'), KOE205(Supabase는 이메일·프로필 사진·닉네임을 늘 요청 → 카카오 동의항목을 맞춤), localhost로 감(Supabase URL Configuration 미저장). 코드 수정 없음
+- 같이 고침(44 자동 배포로 올라감): fix/group-link — 가족 화면 '그룹 관리' 칩이 실기기에서 깨짐 → 디자인대로 '가족 그룹 ›' 제목 링크. fix/alerts-empty — 알림 화면에 반응이 없으면 안내 두 줄이 겹쳐 보임 → 빈 안내 하나만(reactions e2e의 배지 검사를 알림 탭으로 좁힘: 설정 배지가 생겨서 오판)
+- 확인 필요: 카카오에서 받는 이메일·사진은 쓰지 않으니 개인정보 처리방침에 적고, 나중에 직접 OIDC로 닉네임만 받는 방식 검토
+- 확인 필요: 도메인(sweepea.co.kr)은 실제 가족에게 링크 보내기 전에 등록·연결(링크가 주소에 묶이고, 주소가 바뀌면 가족 기기가 다시 들어와야 함). .co.kr은 국내 등록 업체에서 사고 네임서버만 Cloudflare로
+
+### 42. feature/save-many — 가족 모아 보기에서 여러 장 골라 저장 (완료, dev 머지, 디자인 버전 115)
+
+- 요구사항(사용자 2026-10-26 "선택해서 여러개 저장" → 가족 모아 보기, 한 장씩 연달아 저장): 엄마아빠가 '가족도 사진 저장하기'를 켠 가족방 사진만
+- 구현 방식
+  - 모아 보기에 [골라서 저장하기] 링크(저장 허용된 집이 하나라도 있을 때) → `/album/save`(같은 쿼리)
+  - `/album/save`: 체크박스 폼(GET, name=id). 사진을 누르면 초록 테두리·체크(`:has(:checked)`), 아래 고정 버튼. 저장 허용 안 된 집 사진은 목록에서 뺌
+  - 스크립트(이 화면만, 가족 화면 JS 예외 2번째): 고른 수 표시, 버튼 문구 'N장 휴대폰에 저장하기', 누르면 파일을 받아 **휴대폰은 공유 창(이미지 저장)**, 공유 창이 없으면(PC) 한 장씩 내려받기
+  - 스크립트 없을 때: 버튼을 누르면 고른 사진마다 [저장] 링크가 있는 목록(한 장씩 누름)
+- 영향받는 파일: `src/pages/album/save.astro`(새), `src/pages/album/index.astro`, `src/styles/family.css`, `index.md`, `plan.md`
+- 예상 결과: 고르기·수 표시·저장 시도(e2e, PC 내려받기 이벤트), 스크립트 없이 목록, 저장 안 되는 집 사진 제외, 큰 글씨 화면 스크린샷
+- 결과: save e2e 10개(저장 꺼짐이면 버튼 없음·화면 막음, 고르기·빼기·장수, PC 2장 내려받기, 스크립트 없이 저장 링크). 고르면 바로 파일을 미리 받아 둠(누른 직후 공유 창을 열어야 휴대폰이 막지 않음). 확인 필요(실기기): 아이폰·안드로이드 공유 창에서 '이미지 저장'으로 사진 앱에 들어가는지, 영상 여러 개(용량 큼)일 때 메모리
+
+### 43. fix/toast-float — 완료 안내 토스트 (완료, dev 머지)
+
+- 요구사항(사용자 2026-10-26 "사진 지우고나면 메세지 사라져야지, 토스트로"): '지웠어요.' 같은 완료 안내가 칸으로 계속 남아 있었음
+- 구현: CSS만. 부모 화면 완료 안내(`.sp-p__toast`, 실패 `--error`·올리기 진행 `--live` 제외)를 화면 위 가운데 반투명 알약으로 띄우고 4초 뒤 사라짐(동작 줄이기면 미끄러짐 없이 사라지기만, 투명도 줄이기면 채운 바탕). 아래엔 '사진 추가하기'가 있어 위에
+- 결과: 4초 뒤 숨김 확인, settings2·members·groups·health e2e 통과
+- 확인 필요: 주소의 `?done=…`이 남아 새로고침하면 다시 뜸(스크립트 없이 지우려면 PRG 한 번 더)
+
+
+### 44. chore/auto-deploy — dev 푸시하면 자동 배포 (완료)
+
+- 요구사항(사용자 2026-10-26 "설정해두고 계속 되게 못해"): 배포 때마다 토큰을 새로 만들지 않기
+- 방식: Cloudflare Workers Builds를 GitHub `mjkang0987/sweepea`에 연결(지우님). 운영 브랜치 `dev`, 빌드 `npm run build`, 배포 `npx wrangler deploy`, 경로 `/`, 미리보기 빌드 끔(feature 브랜치가 실제 DB·R2를 건드리지 않게). 빌드 토큰은 Cloudflare가 만들어 보관
+- 연결만으로는 빌드가 돌지 않아 이 기록 커밋을 dev에 푸시해 첫 빌드를 띄움
+- 출시 때: 운영 브랜치를 `main`으로 바꾸기
+
+### 45. feature/settings-version — 설정 맨 아래 버전 (완료, dev 머지, 디자인 버전 117)
+
+- 요구사항(사용자 2026-10-26 "뭐 하나 배포해줘 테스트보게"): 자동 배포 확인용. 휴대폰에서 지금 몇 버전인지 보이게
+- 방식: 설정 화면 맨 아래 "스위피 0.2.1"(package.json 버전). 버전 0.2.0 → 0.2.1
+- 결과: 타입 검사·단위 테스트·e2e(ver.py) 통과, dev 푸시로 자동 배포
+
+### 46. fix/photo-nav — 사진 정보 넘겨보기·날짜 칸 넘침 (완료, dev 머지, 디자인 버전 118)
+
+- 요구사항(사용자 2026-10-26 실기기 캡처 "틀어지고 넘겨보기 안돼"): 사진 정보 화면에서 날짜 칸이 오른쪽으로 넘침, 옆 사진으로 못 넘어감
+- 원인: 아이폰 사파리 날짜 입력칸은 기본 모양일 때 width를 무시하고 내용 폭으로 넓어짐 → 공통 `.sp-p__input[type=date]`에 appearance:none(올리기·아이 추가 화면도 같이 고침)
+- 넘겨보기: 사진 위 ‹ › 링크(스크립트 없이도 됨) + 옆으로 밀기 작은 스크립트. 순서는 앨범과 같음(최근 200장, 아이를 골랐으면 `?k=` 이어받아 그 아이 사진만)
+- 결과: 타입 검사·단위 테스트·e2e(nav.py 8개, photo.py) 통과. 날짜 칸 넘침은 크롬에서만 확인, 아이폰 실기기 확인 필요
+
+### 47. feature/photo-swiper — 사진 정보 진짜 스와이퍼 (완료, dev 머지)
+
+- 요구사항(사용자 2026-10-26 "매번 페이지로드하면 불편해서", 진짜 스와이퍼 선택): 넘길 때 페이지를 다시 부르지 않고 손가락을 따라 넘김
+- 방식: 서버가 앞뒤 20장 주소를 서명해 넘기고, 스크립트가 CSS 스크롤 스냅 트랙으로 바꿈. 멈추면 주소만 바꾸고(replaceState) 그 사진 화면을 받아 아래 한마디·날짜·아이·그룹 칸만 갈아 끼움. 폼은 action에 사진 id를 박아 늘 그 칸의 사진에 저장. 스크립트가 없으면 한 장 + ‹ › 링크
+- 같이 고침: 사진 칸이 `figure` 기본 여백 때문에 좁고 가운데로 몰려 있었음 → div로
+- 디자인: 생김새는 버전 118 그대로(화살표). 사진 칸 높이는 디자인 260px, 코드는 화면 60%
+- 결과: 타입 검사·단위 테스트·e2e(swiper.py 11개, photo.py) 통과. nav.py는 swiper.py로 대체
+- 다음: 가족 크게 보기(`/album/[id]`)도 스와이퍼로(반응·한마디·저장 링크까지 갈아 끼워야 함)
+- 고침(사용자 "버튼 늦게 없어져", "촬영날짜 중앙정렬 안됐어"): 화살표를 멈춘 뒤가 아니라 미는 동안 바로 바꿈, 멈춤 알림(scrollend)이 있으면 바로 정보 칸 교체. 날짜 칸은 기본 모양을 끄면 아이폰이 글자를 위에 붙여서 줄 높이로 세로 가운데(가로는 다른 입력칸처럼 왼쪽 — 사용자 의도 확인 필요). 0.2.4
+- 고침(사용자 "사진 위아래 여백"): 칸 높이를 화면 60%로 고정해서 가로 사진은 위아래가 회색 빈 칸으로 남았음 → 지금 사진 비율에 맞춰 칸 높이를 바꿈(화면 60%까지, 0.2초 전환). 아주 긴 세로 사진은 60%에서 멈춰 좌우가 빔. 0.2.5
+
+### 48. feature/parent-gallery — 엄빠도 조부모와 같은 갤러리 (계획)
+
+- 요구사항(사용자 2026-10-27 "엄빠도 갤러리 보긴 해야할거같아"): 엄빠가 앨범에서 사진을 누르면 조부모처럼 화면 가득 넘겨 보기. 지금은 바로 '사진 정보'(관리 화면)로 감
+- 진행 방식(사용자 2026-10-27): 원인·계획 먼저 보고 → 개발 → 코드 리뷰·검증·기능 리뷰 3회차 → 머지
+- 현재 구조
+  - 가족 크게 보기 `/album/[id]`: Family 레이아웃, 가족 출입증 쿠키(loadAlbum), 반응·한마디·저장 링크, 넘길 때마다 페이지를 새로 부름
+  - 엄빠 사진 정보 `/photo/[id]`: 관리 화면 + 스와이퍼(47)
+- 구현 방식(안)
+  1. 디자인 먼저: 엄빠 크게 보기 보드(다크·라이트). 조부모 크게 보기와 같은 화면(반응·한마디 남기기·저장) + 엄빠만 '사진 정보 수정' 플로팅 버튼(사용자 2026-10-27). 엄빠 업로드 화면은 그대로
+   - 엄빠도 반응·한마디를 남김(사용자 2026-10-27 "처음부터 남기기까지")
+  2. 크게 보기 화면을 공통 부품으로 빼서 엄빠·가족이 같이 씀. 스와이퍼(손가락 따라 넘김, 페이지 안 부름)도 이 부품에서 한 번만
+  3. 엄빠 경로 `/view/[id]`(탭 없이 화면 가득, 아이 고르기 `?k=` 이어받기). 앨범 격자 → `/view`, 크게 보기 '정보 수정' 버튼 → `/photo/[id]`(수정 화면)
+  4. 사진 정보 → '정보 수정' 화면(사용자 2026-10-27 "하단에서 고치는 거 말고 버튼으로 수정 진입"): 크게 보기에는 입력칸을 두지 않고 버튼으로만 들어감. 수정 화면은 작은 미리보기 + 날짜·아이·그룹·지우기, 저장하면 크게 보기의 그 사진으로 돌아감. 스와이퍼는 크게 보기로 옮김
+  5. 가족 `/album/[id]`도 공통 부품으로 갈아타 스와이퍼 적용(반응·한마디·저장 링크를 사진마다 갈아 끼움)
+- 영향 파일: src/components/(새 크게 보기 부품), src/pages/view/[id].astro(새), src/pages/album/[id].astro, src/pages/photo/[id].astro, src/pages/home.astro, src/styles/family.css·parent.css, e2e
+- 예상 결과: 엄빠·가족 모두 사진을 화면 가득 손가락으로 넘겨 봄. 스크립트가 없으면 ‹ › 링크로 넘김
+- 조사(2026-10-27): 반응·한마디 표는 `member_id`(링크로 들어온 가족)만 받는다. 부모 계정은 `parents` 한 명(배우자는 구성원으로 들어옴)이라 반응을 남길 자리가 없음
+  - 고칠 곳: reactions·comments에 `parent_user_id` 열 추가(둘 중 하나만), reactions 기본 키 → 고유 색인 2개, 부모용 RPC(sp_parent_react·sp_parent_comment), 반응 수(sp_reaction_counts)·한마디 목록·부모 새 반응 수(내 반응은 빼기)·최근 반응 목록에 부모 포함, RLS·DB 검사(rls.sql)
+  - 조부모 화면에는 부모 이름으로 보임(parents.display_name, 예: '하린 엄마')
+- (가) 디자인 완료: 버전 119(ParentView·ParentView-Light 새 보드, ParentPhoto → 사진 정보 수정: 닫기·저장 버튼·작은 미리보기)
+- (나) DB 완료(feature/parent-react-db, dev 머지): 마이그레이션 20261027000001_parent_reactions, 백엔드 parentReact·parentComment. 리뷰 3회차
+  - 1회차(별도 리뷰): 가족이 reactions.parent_user_id(부모 사용자 id)를 읽을 수 있었음 → 열 권한으로 막음. 탈퇴 유예 중 부모 반응 막음. 부모 지울 때 찾는 색인. 검사 추가(다른 집 부모, 하루 30개, 지우기, 탈퇴 유예)
+  - 2회차: mock과 DB 동작 대조(부모 이름 '엄마/아빠' = 실제 parents.display_name), parents 읽기 정책 확인
+  - 3회차: DB 검사(의도된 거부 58건), 타입 검사, 단위 테스트, e2e(reactions·photo·swiper) 통과
+  - 남은 것: 부모는 자기 한마디를 고칠 수 없음(지우기만, 가족도 고치는 화면은 아직 없음)
+- (다) 공통 갤러리 + 엄빠 갤러리 완료(feature/parent-view): src/components/Viewer.astro(가족·엄빠 공통), /view/[id](엄빠, 부모 계정으로 반응·한마디, 늘 저장, '사진 정보 수정' 플로팅 버튼), 앨범 격자 → /view. 폼 처리 applyReactPost 공통화. 리뷰 3회차
+  - 1회차(별도 리뷰): 큰 글씨·가로 화면에서 수정 버튼이 저장 링크를, › 화살표가 수정 버튼을 가림 → 판+버튼 묶음(.sp-v__dock)을 화면 75%로 제한, 버튼을 화살표 위로, 판이 가운데까지 오면 화살표를 판 위로(스크립트가 묶음 높이를 --dock-h로). 앨범 칸 이름에서 '정보' 뺌, 아이 여럿·안 골랐으면 한마디 대상 '아이', 화면 읽기 제목을 부품 안으로
+  - 2회차: 가족 크게 보기 회귀 확인(영상 막대·저장·반응 e2e), 스크립트 없을 때 묶음 배치
+  - 3회차: e2e pview(12개 + 글씨 3단계 × 화면 3개 가림 검사), photo·swiper·reactions·vplay·save 통과. react.py는 dev에서도 실패(심어 둔 가족방에 사진이 없어 첫 하트를 못 찾음 — 테스트 순서 의존, 이번 변경과 무관)
+- (라) 사진 정보 수정 화면 완료(feature/photo-edit): 제목 '사진 정보 수정', 닫기 → 크게 보기, 작은 미리보기(10rem), 스와이퍼 걷어냄(넘겨 보기는 크게 보기에서), 저장하면 크게 보기로 + '사진 정보를 저장했어요.' 알약(완료 안내 움직임을 base.css로 옮겨 가족 화면도 씀). 리뷰 3회차
+  - 1회차: 남은 /photo 링크 점검 → 알림 목록이 수정 화면으로 가고 있었음 → 크게 보기로. 그런데 크게 보기엔 한마디 글이 없어 알림에서 온 엄빠가 글을 못 봄 → 디자인 121에 최근 한마디 말풍선 넣고(왼쪽, 수정 버튼은 오른쪽) 코드 적용
+  - 2회차: 지운 스타일(.sp-p__stage·arrow·track·slide) 참조 없음 확인, 지우기·오류 흐름은 그대로
+  - 3회차: e2e photo(수정 흐름·저장 뒤 알약), pview(말풍선 포함), reactions(알림 → 크게 보기 한마디), vplay, save 통과. swiper.py는 사진 정보 스와이퍼를 걷어내서 지움(크게 보기 스와이퍼는 (마)에서 새로)
+  - 디자인에 없는 것: 크게 보기 완료 알약은 보드에 상태로 안 그림
+- (마) 크게 보기 스와이퍼 완료(feature/viewer-swiper, 엄빠·가족 공통): 서버가 앞뒤 20장 주소를 서명해 넘기고(slideWindow, 창 밖 이웃 before·after), 스크립트가 CSS 스크롤 스냅 트랙으로 바꿈. 멈추면 replaceState + 그 화면을 받아 위 메뉴·아래 판만 갈아 끼움. 영상에 멈추면 그 화면을 새로 엶(재생 막대), 영상 화면 자체는 예전처럼. 스크립트 없으면 한 장 + ‹ › 링크. 리뷰 3회차
+  - 1회차(별도 리뷰): 손가락 댄 채 멈추면 중간 위치에서 넘어감 → 칸에 딱 맞을 때만, scrollend 있으면 시간 기다리지 않음. 불러오는 동안 지난 사진 폼이 남아 반응이 지난 사진에 감 → 위 메뉴·아래 판 inert. 빠른 두 번 누르기가 한 칸만 → 가는 중인 칸 기준. 끝에서 › 숨으면 포커스 사라짐 → ‹ 로. 슬라이드 이름 고정·바뀐 사진 안 알림 → 슬라이드마다 이름, 제목 aria-live. 화살표 이름(사진/영상) 갱신. 확대한 채 위아래 둘러보기 막힘 → 트랙 pan-y 추가. 연달아 넘기면 이전 요청 끊음(AbortController)
+  - 2회차: e2e vswipe(엄빠·가족 넘기기, 넘긴 사진에 반응, 화살표, 스크립트 없을 때, 빠른 두 번, 포커스, 잠금)·pview·vplay·photo·reactions·save 통과
+  - 3회차(기능): 손가락 따라 넘김·페이지 안 부름 충족. 남은 것: 쓰다 만 한마디는 넘기면 지워짐, 영상 쪽 넘기기는 기록이 쌓임(사진은 안 쌓임), 아이폰 실기기(스냅·확대·inert) 확인 필요
+- 배포(2026-10-27 07:50, 0.3.0): 실제 DB에 마이그레이션 parent_reactions 적용(사용자 승인) → dev 머지·푸시 → 자동 배포. /view 응답 확인
+- 사고: 0.2.6(10-27 00:56, ‹ 뒤로 링크) 배포에 부모 반응 백엔드 코드가 같이 올라감. 원인: fix/back-chevron 브랜치를 DB 작업이 머지된 로컬 dev에서 만든 뒤, dev를 origin으로 되돌리고 그 브랜치를 머지함. 그 사이(약 01:00~07:50) 실제 DB엔 parent_user_id가 없어 사진 정보 화면(최근 한마디 불러오기 parents 연결)이 실패했을 것. 마이그레이션 적용으로 해소. 다음부터: 배포 브랜치는 origin/dev에서 만들고, 푸시 전 origin/dev와의 차이(git diff --stat)를 확인
+- 나눠서 머지: (가) 디자인 → (나) DB: 부모 반응·한마디 → (다) 크게 보기 공통 부품 + 엄빠 갤러리 → (라) 사진 정보 수정 화면 → (마) 조부모 크게 보기 스와이퍼. 단계마다 코드 리뷰·검증·기능 리뷰 3회차
+
+### 49. feature/album-masonry — 엄빠 앨범 배열을 디자인대로 (완료, dev 머지)
+
+- 요구사항(사용자 2026-10-27 캡처 + "배열", "디자인대로 개발 진행 안 하는 건 왜야"): 디자인 ParentHome은 2줄 엇갈린 배열(사진 비율대로 높이)인데 코드는 3줄 정사각 격자였음
+- 원인: 33번(아이 탭) 때 "칸 모양은 그대로 둠"으로 미뤄 둠. 보드와 화면을 나란히 대조하지 않고 기능 검증만 했음
+- 방식: src/lib/masonry.ts(가장 짧은 줄에 쌓기, 단위 테스트) → 서버가 칸마다 줄·시작·칸 수를 CSS 변수로(2줄·4줄 둘 다), CSS 격자 + 컨테이너 단위(cqi)로 높이. 스크립트 없음, DOM은 날짜 순서. 받은 하트·한마디 알약(이름에도 넣음), 영상 길이, 달 제목 '10월'(올해) + '하린 생후 N개월 · 사진 N'
+- 리뷰 3회차: 1회차 디자인 보드와 나란히 비교(남은 차이: 오른쪽 위 가족 버튼, 새 반응 하트 올라가는 움직임 → 전체 대조 목록으로), 2회차 접근성(알약은 화면 읽기에서 숨기고 사진 이름에 수), 3회차 e2e masonry(2줄·비율·알약·달 제목·4줄)·photo·kidtabs·parent·pview 통과
+- 다음: 모든 화면 디자인 대조 목록 → 차이 고치기. 리뷰 3회차에 '디자인 보드와 화면 비교'를 항상 넣음
+
+### 50. fix/top-button-align — 위 버튼 자리 통일 (완료, dev 머지, 디자인 123)
+
+- 요구사항(사용자 2026-10-27 "사진 정보 수정 닫기와 사진 채워 보기 닫기 위치가 다름, 상단 버튼 위치 다 맞춰"): 
+- 원인: 크게 보기(.sp-v__bar)는 가족 화면용 간격(위 16px·옆 12px + 링크 안쪽 8px, 큰 글씨 단위)으로, 엄빠 화면(.sp-p__bar)은 화면 안쪽 여백 20px + 44px 줄로 따로 만들어짐. 디자인 보드도 둘이 달랐음(크게 보기 16/12, 엄빠 화면 20/20)
+- 고침: 기준을 엄빠 화면으로(글자 왼쪽 20px, 세로 가운데 46px). 디자인 크게 보기 보드 6개(조부모·영상·엄빠) 먼저 고치고, 코드 .sp-v__bar 위 여백을 46px - 누를 칸 높이/2, 옆 20px, 링크 안쪽 여백 0, 굵기 600(디자인)
+- 검수: 재기(topbtn.py) 크게 보기 닫기 (20, 45) · 수정 화면 닫기 (20, 46) · 뒤로 ‹ (20, 46). 디자인과 나란히 캡처(빨간 기준선 x 20·y 46). e2e pview·vswipe·vplay·photo 통과
+- 남은 차이(전체 대조 목록에서 같이): 하위 화면 제목은 디자인이 위 줄 가운데 작은 제목, 코드는 아래 큰 제목
+
+### 51. fix/edit-design-emoji — 사진 정보 수정 디자인 대조, 반응 이모지 (완료, dev 머지, 디자인 124)
+
+- 요구사항(사용자 2026-10-27 "이모지 좀 더 줄여, active 시 정렬 안 맞아", 수정 화면 캡처 + "디자인이랑 비교")
+- 원인
+  - 이모지: 그림은 40px 고정인데 담는 칸은 2.5rem(엄빠 화면은 글자 배율이 작아 약 33px) → 그림이 칸 밖으로 삐져나와 눌림(테두리) 때 어긋나 보임. 밝은 화면에선 버튼 배경(--panel-item 흰 반투명)이 판과 같은 색이라 안 보였음
+  - 수정 화면: 큰 제목·따로 놓인 입력칸·말풍선 없음(디자인과 다름), 폼이 flex:1로 늘어나 '사진 지우기'가 멀리 떨어짐
+- 고침: 디자인 이모지 28px(보드 10개) → 코드 칸 1.75rem·그림 100%, 버튼 회색 칸. 수정 화면: 위 줄 닫기 + 가운데 작은 제목(.sp-p__nav), 160px 미리보기 + 최근 한마디 말풍선, 찍은 날·아이·그룹 한 묶음 목록(.sp-p__group, 날짜는 줄 오른쪽 초록 글자), 칩 15px, 지우기 저장 바로 아래
+- 검수: 디자인과 나란히(ed-cmp.png), 이모지 가운데·그림=칸 크기 재기, e2e editshot·photo·pview·vswipe·reactions·save 통과
+- 남은 차이: 크게 보기 '생후 N개월'(가족 쪽은 아이 생일 정보가 없어 DB 필요), 미리보기 하트 올라가는 움직임
+
+### 52. 디자인 대조 — 전부 맞추기 (진행 중)
+
+- 요구사항(사용자 2026-10-27 "큰 차이 말고 개발하고 나면 디자인 검수 함께"): 디자인 보드와 실제 화면 차이를 크기 상관없이 전부 맞춘다. 앞으로 모든 개발은 리뷰 3회차에 디자인 보드와 나란히 캡처 검수를 넣는다
+- 목록: design-audit.md(화면별 체크리스트, 54개 비교 이미지). 순서: 공통 패턴(하위 화면 머리글 → 묶음 행 → 콩이 → 시트·모달) → 가족 화면 → 엄빠 화면 → 설정. 묶음마다 브랜치 하나, 리뷰 3회차 + 나란히 캡처 검수 후 머지
+
+### 53. fix/subpage-header — 하위 화면 머리글 (완료, dev 머지)
+
+- 디자인 대조 1번 패턴. 원인: 하위 화면을 '뒤로 줄 + 아래 큰 제목(h1)'으로 만들어 왔음(35번에서 발견하고 미룸)
+- 고침: 13개 화면(가족·그룹·그룹 추가·그룹 상세·비밀번호·구성원·문자로 공유·글자 크기·아이·아이 추가/고치기·저장 용량·계정·접종)을 .sp-p__nav(왼쪽 ‹ 이전, 가운데 작은 h1)로. 접종 화면 제목은 '접종·검진', 아이 줄은 h2. 뒤로 글자 보통 굵기(디자인), 구성원 이름 20px
+- 검수: subhead.py 14개 화면 — 제목 가운데(±1px)·뒤로와 같은 줄·세로 46px·왼쪽 20px. 나란히 캡처(sub-cmp.png). e2e groups·members·health·settings2·photo·upload 통과
+
+### 54. fix/grouped-rows — 묶음 안 줄 + 바로 적용 (완료, dev 머지)
+
+- 디자인 대조 2번 패턴(글자 크기·아이·그룹 상세)과 '+ 추가' 초록 글자
+- 원인: 체크·라디오를 카드 밖 왼쪽에 두고 따로 '저장' 버튼으로 보내게 만들었음. '+ ' 띄어쓰기는 버튼이 flex라 공백이 사라졌음
+- 고침: AutoSave 부품(data-autosave 폼은 칸이 바뀌면 바로 보냄, form 속성으로 밖에 둔 칸 포함, 스크립트 없으면 저장 버튼). 묶음 줄(.sp-p__group-row--check/--link), 그룹 이름 회색 채운 칸, 아이 줄 콩이 상자·'고치기', 접종 보기 묶음 안, 라디오 오른쪽, 섹션 이름 작은 회색
+- 사고 2(사용자 캡처로 발견): 51번에서 만든 .sp-p__group이 가족 화면 그룹 블록의 기존 class와 겹쳐 0.3.3~0.3.5 가족 화면 그룹 칸 여백이 사라짐 → .sp-p__rows로 바꿈(0.3.6). 오늘 만든 class 전부 중복 정의 점검(남은 중복은 원래 의도된 것)
+- 같이 찾은 사고: 51번에서 만든 .sp-p__preview가 글자 크기 화면의 미리보기 class와 겹쳐 그 화면이 깨졌음(0.3.3~0.3.4) → .sp-p__thumbbox로 바꿔 먼저 배포. 다음부터 새 class는 만들기 전에 grep으로 겹침 확인
+- 검수: rows.py(라디오 오른쪽·바로 저장·고치기·초록·기본 포함·이름 Enter·주소 보내기 줄·스크립트 없을 때) 11개, 나란히 캡처(b2-cmp.png), e2e settings2·groups·health·kidtabs 통과(저장 버튼 대신 바로 적용으로 고침)
+### 55. feature/comment-list — 크게 보기 한마디 목록 (완료, 운영 DB 적용, dev 머지 0.4.0, 디자인 126)
+
+- 요구사항(사용자 2026-10-27): 한마디 두 개인데 크게 보기에 안 보임 → 엄빠·가족 모두 본다. 최근 하나는 늘 보이고 '모두 보기'로 나머지. 한마디 모양을 수정 화면과 같은 말풍선으로
+- 원인: 처음 설계가 '가족 화면엔 한마디 수만'(comments 읽기 정책이 쓴 사람·엄빠만). 엄빠 크게 보기는 떠 있는 말풍선 하나만 따로 그렸음
+- 구현: DB 함수 sp_media_comments(볼 수 있는 사진이면 승인된 가족·엄빠 한마디 최근 100개, 이름·글·시각·내 것. 쓴 사람 id는 안 내보냄, 표 정책은 그대로). 백엔드 mediaComments(목·Supabase). Viewer 판 안 반응 아래: 회색 말풍선(이름 · 방금/어제) + 네이티브 details '한마디 N개 모두 보기 ›'(펼치면 '접기'). 엄빠 떠 있는 말풍선은 없애고 수정 버튼만. 가족 보냄 안내 '가족 모두 볼 수 있어요'
+- 영향 파일: supabase/migrations/20261027000002_media_comments.sql, supabase/tests/rls.sql, src/lib/backend/{types,supabase,mock}.ts, src/components/{Viewer,SayForm}.astro, src/pages/{view,album}/[id].astro, src/styles/family.css
+- 리뷰 1(따로 리뷰어): 승인 대기 기기가 공유 묶음 사진의 남 이름·한마디를 봄 → 함수에 '승인된 구성원 또는 부모' 조건, DB 검사 추가(조건 빼면 실패하는 것 확인). 옛 말풍선 CSS를 지우는 스크립트가 엉뚱한 곳을 잡아 블록이 복사됨 → 지움. '대기 중 한마디 안 보임'은 해당 없음(대기는 쓰기부터 막힘)
+- 리뷰 2(새 리뷰어): 막는 문제 없음. '모두 보기' 개수를 펼쳐지는 목록 수로, 목 한마디 수를 승인된 사람 것만, 수정 화면 최근 한마디도 같은 목록 함수로(mediaInfo의 따로 부르던 쿼리 없앰)
+- 리뷰 3: 전체 변경 다시 읽음. 나란히 캡처(cm-cmp·cm-cmp-d·cm-open-parent). e2e comments·pview·vplay·reactions·photo·groups·health·settings2·editshot·rows, 단위·DB·타입 검사 통과
+- 배포 순서: 운영 DB에 함수 먼저(안 그러면 크게 보기·수정 화면이 500) → dev 머지. 적용은 지우님 확인 뒤
+
+### 56. fix/thumb-motion — 세로 사진 미리보기 + 디자인 움직임 (계획)
+
+- 요구사항(사용자 2026-10-27): 사진 정보 수정 미리보기에서 세로 사진이 잘림 → '흐린 배경 + 칸 키우기'(칸 높이 고정 200px쯤, 사진 전체 보이게, 좌우는 같은 사진 흐리게). 디자인에 있는 움직임이 앱에 없음
+- 원인: 미리보기 칸 160px 고정 + cover라 세로 사진은 가운데 띠만 남음. 디자인 대조를 정지 캡처로만 해서 움직임(sp-rise 반응 올라감, sp-bubble 말풍선 나타남, sp-pop 하트 톡)을 놓침
+- 할 일: 디자인 보드 먼저(ParentPhoto 칸 높이·흐린 배경) → 수정 화면 미리보기, 반응 올라가는 움직임(그 사진에 있는 반응 종류만), 말풍선 나타남, 엄빠 앨범 하트 톡. 레이어 보드 움직임도 대조. 움직임 줄이기 설정이면 끔
+
+### 57. feature/reaction-chips — 반응 한 줄(슬랙처럼) + 한마디 한 줄·시트 (완료, dev 머지 0.4.1, 디자인 129~131)
+
+- 요구사항(사용자 2026-10-27): 판 안에 쌓이는 한마디 말풍선이 보기 싫음 → 한 줄 + 누르면 아래 시트(추천안 동의). 이모지가 너무 큼 → 줄이기. 하트가 위(오른쪽 위)와 반응 줄에 두 번 → 하나로("슬랙처럼 괜찮은 듯")
+- 원인: 디자인은 '위 하트 + 반응 4개'인데 앱은 반응 줄에 하트까지 5개라 중복. 이모지는 앱 28px(디자인 22px). 55에서 한마디를 판 안 말풍선으로 쌓아 판이 커짐
+- 디자인(129~130): 날짜 줄엔 날짜만. 반응 5개 알약 한 줄(이모지 20px, 높이 44px, 수 있으면 옆에 숫자, 누른 건 초록 테두리·연한 초록). 한마디는 회색 한 줄('이름 글…  말풍선 아이콘 N ›', 말줄임) → 누르면 아래 시트(제목 '한마디 N개', 닫기, 이름·때·글 목록, 아래 입력칸). 크게 보기(가족·엄빠·영상·PC)와 넘겨 보기 카드 같은 반응 줄
+- 구현: ReactRow에 수 표시(알약), HeartToggle은 크게 보기·넘겨 보기에서 빠짐. Viewer 한마디: 한 줄 링크(#talk) + dialog 시트(스크립트 있으면 showModal, 없으면 :target으로 보임). 시트는 스와이퍼가 바꾸는 판(dock) 안에 둔다
+- 영향 파일: src/components/{ReactRow,Viewer}.astro(HeartToggle 지움), src/pages/album/index.astro, src/styles/family.css, e2e
+- 리뷰 1(따로 리뷰어): 스크롤 애니메이션 없는 브라우저(iOS 26 전·파이어폭스)는 넘겨 보기 반응 줄이 원래 숨어 카드 하트만 남아 있었는데 하트를 지워 반응할 곳이 없어짐 → 그 브라우저에서만 카드에 하트 알약 하나. 320px·큰 글씨에서 알약 넘침 → 같은 폭 + 줄바꿈. 한 줄 수 대비 4.48:1 → 진한 초록(디자인 131도). 넘기는 중 연 시트가 멈춤 → 넘기기 전에 닫음. #talk로 펼친 시트 닫기 안 됨, 스크립트 없을 때 입력칸 두 개, 닫기 폭 44px
+- 리뷰 2(새 리뷰어): 막는 문제 없음. 카드 하트의 숨은 제목·이름표 없앰(카드마다 반복), 카드 바탕과 같은 색 → 회색 칸, #talk 상태에서 다시 눌러도 그대로
+- 리뷰 3: 최종 변경 다시 읽음. 나란히 캡처(chip-cmp·chip-cmp-d·swipe-cmp·cm-swipe-old). e2e comments(옛 브라우저 흉내·320px·스크립트 없음 포함)·reactions·pview·vplay·vswipe·editshot·masonry·photo·family 통과. react.py는 예전부터 시드에 사진이 없어 실패
+
+### 58. feature/layer-motion — 레이어 나타나는 움직임 + 이모지 가끔 다시 (완료, dev 머지 0.4.2, 디자인 132~135)
+
+- 요구사항(사용자 2026-10-27): "레이어 애니메이션 추가하면 안 되나?", "이모지가 애니메이션 되다가 멈추네" → '가끔 다시 움직이기' 고름
+- 원인: 레이어는 디자인·앱 둘 다 나타나는 움직임이 없었음(정지 디자인). 신청 레이어 반짝 이모지 움직임은 보드에만 있었음. 반응 이모지는 WCAG 2.2.2(5초 넘는 움직임)를 지키려고 두 번만 움직이게 했었음
+- 구현: 레이어 배경 0.2초 어두워짐, 상자 0.92→1.02→1 (0.32초), 반짝 이모지 두 번(base.css). 반응 이모지는 처음 두 번 + 6초마다 한 번씩 차례로(0.4초 간격, family.css *-gap 키프레임). 동작 줄이기면 모두 없음. 이모지 반복은 WCAG 2.2.2와 어긋남을 알리고 사용자가 고름. 닫힐 때 움직임은 폼 이동이라 없음
+- 디자인: 레이어 보드 12장에 같은 움직임(132), 이모지 쓰는 보드 28장을 '두 번 + 6초마다'로(133)
+- 리뷰 1(따로 리뷰어): 넘겨 보기는 카드마다 반응 줄(숨은 줄 포함 약 250개)이 끝없이 움직여 화면을 계속 다시 그림(배터리) → 6초마다 반복은 1분(10번)까지만. 보드도 같게. 그 밖(레이어 transform 충돌·두 움직임 겹침·키프레임 이름)은 문제 없음
+- 리뷰 2·3: 변경 다시 읽음, e2e motion(레이어 움직임 이름·횟수, 이모지 2번+10번, 동작 줄이기)·layers·comments·editshot·reactions·vplay 통과
+
+### 59. fix/sms-empty — 문자로 공유하기 빈 상태 (완료, dev 머지 0.4.3, 디자인 134)
+
+- 요구사항(사용자 2026-10-27 캡처): 빈 상태 문구가 안내문보다 크게 나옴. 맞는 문구라면 크기라도 맞아야
+- 원인: 디자인에 빈 상태가 없었고, 앱은 크기 없는 .sp-p__note(본문 17px)로 넣었음. 같은 클래스를 쓰는 알림 빈 문구·로그인 준비 중 문구도 같은 문제. 안내문도 디자인 문구('설치 링크')와 달랐음
+- 고침: 디자인 SendSetupEmpty 보드(콩이·'아직 들어온 가족이 없어요'·설명·'가족 링크 보내러 가기'). 앱은 엄빠 앨범 빈 화면 형식(.sp-p__empty)으로, 버튼 폭 가득. .sp-p__note를 안내문과 같은 15px로. 안내문 디자인 문구로
+- 검수: smsempty.py(제목·크기 같음·버튼 폭·링크·문구), 나란히 캡처(sms-cmp), reactions·settings2·groups 통과
+
+### 60. fix/emoji-once — 반응 이모지는 크게 보기에서 열 때 한 번 (완료, dev 머지 0.4.4, 디자인 136)
+
+- 요구사항(사용자 2026-10-27): "처음 로드할 때만 한 번", "자세히 보기에서만 움직이면" → 크게 보기에서 열거나 넘길 때 한 번, 넘겨 보기 카드는 멈춤(58의 6초마다 반복을 바꿈)
+- 고침: .sp-v__panel 안 이모지만 한 번(스와이퍼가 판을 새로 넣으면 다시 한 번), *-gap 키프레임 지움. WCAG 2.2.2도 다시 지킴. 보드: 크게 보기류는 한 번, GrandHome은 멈춤
+- 검수: motion.py(크게 보기 5개 한 번씩), comments.py(넘겨 보기 카드 멈춤, 넘긴 사진에서 다시 한 번), vplay·editshot·reactions·layers 통과
+
+### 61. fix/sheet-ios — 아이폰 사파리에서 한마디 시트 목록이 안 보임 (완료, dev 머지 0.4.5)
+
+- 증상(사용자 2026-10-27 아이폰 사파리 캡처): 시트는 열리고 제목·입력칸은 보이는데 한마디 목록이 없음, '닫기'에 네모 초점 테두리
+- 원인: 목록이 flex: 1(0%에서 시작)인데 시트 높이는 max-height만 있어 사파리가 목록 높이를 0으로 계산(크롬은 내용 높이). 테두리는 showModal이 첫 초점 대상(닫기 링크)에 초점을 줘서
+- 고침: 목록 flex: 0 1 auto(내용 높이에서 시작해 72% 안에서 줄고 굴러감). 시트 제목에 tabindex=-1 autofocus로 초점(화면 읽기는 제목부터, 테두리 없음)
+- 검수: sheetios.py(목록 높이, 초점 제목, 12개면 72% 안에서 목록만 굴러감·입력칸 보임), comments.py 통과. 웹킷은 이 환경에 없어 실제 아이폰 확인 필요
+
+### 62. fix/masonry-gap — 엄빠 앨범 사진 사이 세로 간격 = 가로 4px (완료, dev 머지 0.4.6)
+
+- 요구사항(사용자 2026-10-27): 마소니 간격 상하·좌우 같게, 지금 상하가 안 맞음
+- 원인: 세로 간격을 높이 단위 1칸(줄 폭의 1/40)으로 비워 화면 폭 따라 4.1~6.9px, 가로는 4px 고정(디자인은 둘 다 4px)
+- 고침: 칸 아래 여백을 4px로(차지한 줄은 그대로, 남는 1px 안쪽은 사진이 가짐)
+- 검수: gaps.py(375·390·430·1280px에서 세로·가로 모두 4px), masonry.py 통과
+### 63. fix/thumb-tall — 사진 정보 수정 미리보기 세로 사진 (완료, dev 머지 0.4.7, 디자인 127)
+
+- 요구사항(사용자 2026-10-27): 세로 긴 사진이 미리보기에서 잘림 → '흐린 배경 + 칸 키우기'
+- 원인: 칸 160px 고정 + cover라 세로 사진은 가운데 띠만 남음
+- 고침: 칸 200px, 사진은 크기만큼(최대 칸) 가운데·그림자, 남는 곳은 같은 사진을 흐리게(칸보다 40px씩 크게 깔아 가장자리까지), 모서리 isolation. 영상은 포스터로 흐림
+- 리뷰 1(따로 리뷰어): 흐림 가장자리 옅은 띠 → 크게 깔기, 파노라마 그림자 → 폭·높이 둘 다 최대로 맞춤(flex 가운데), 옛 사파리 모서리 → isolation
+- 리뷰 2·3: 세로·파노라마 측정(thumbtall.py), photo·editshot 통과, 나란히 캡처(thumb-3)
+
+### 64. feature/comment-delete — 한마디 지우기, 쓴 사람만 (완료, 운영 DB 적용, dev 머지 0.4.8, 디자인 137)
+
+- 요구사항(사용자 2026-10-27): 댓글 삭제 기능, 권한은 '쓴 사람만'(엄빠도 남의 것은 못 지움)
+- 원인/현재: DB sp_delete_comment가 이미 있었지만 화면이 없었고, 엄빠는 가족방 사진의 모든 한마디를 지울 수 있게 되어 있었음
+- 구현: 마이그레이션 20261027000003(sp_delete_comment 쓴 사람만, sp_media_comments에 id). 백엔드 deleteComment(목은 지운 표시로 남겨 하루 한도엔 셈). 시트 안 내 한마디에 '지우기'(이름 줄 오른쪽, 44px) → 네이티브 details로 '이 한마디를 지울까요? [지우기]' → 폼(del) → 지운 뒤 #talk로 돌아와 시트를 모달로 다시 열고 '한마디를 지웠어요.', 다 지웠으면 화면 안내
+- 사고: CSS 넣을 자리를 '.sp-v__sheet-form {'로 찾았는데 ':target .sp-v__sheet-form {'이 먼저 걸려 규칙 중간에 끼워 넣음(테스트로 발견, 바로잡음). 앞으로 자리 찾기는 줄 처음(^)으로 고정
+- 운영 DB 적용은 지우님 확인 뒤(머지 전에 적용해야 함: 새 코드가 목록 id를 씀)
+- 운영 적용: drop function이 든 마이그레이션은 도구가 '취소됨'으로 두 번 돌아옴(파괴적 작업 확인이 전달 안 됨) → drop 없이 id 돌려주는 새 함수 sp_comment_list를 만들고 옛 sp_media_comments는 남김(다음 정리 때 지움). 적용 뒤 함수 결과·권한·엄빠 조건 빠짐 확인
+- 리뷰 1(따로 리뷰어): 보안·마이그레이션 문제 없음(checkOrigin, back 제한 그대로). 고침: 지운 뒤 #talk로 돌아와 모달을 닫으면 :target 때문에 판 안에 다시 펼쳐짐 → #talk 대신 서버가 시트를 open으로 그리고 스크립트가 모달로 바꿈(스크립트 없으면 판 안에 펼침), 주소에서 say 뗌. 지우기 실패 안내(delerror) 없었음 → 시트 안에 '지우지 못했어요'. 안내를 시트 설명(aria-describedby)으로. 목의 '내 것'을 DB처럼 활성 기기·승인된 구성원으로. 지우기 누를 자리를 이름 줄 쪽으로. DB 검사에 다른 가족·다른 집 부모 거부 추가(61건)
+- 리뷰 2(새 리뷰어): :modal을 모르는 옛 브라우저(iOS 15.4~15.5 등)에서 스크립트가 멈추고 CSS 규칙(:target 펼침 포함)이 통째로 무시됨 → :modal 대신 서버가 붙인 sp-v__sheet--inline 클래스, 시트 바로 뒤 인라인 스크립트가 첫 화면 전에 모달로(깜빡임 없음), 다 지운 경우에도 주소에서 say 뗌, 안내 role=status 중복 뗌
+- 리뷰 3: cdelete(지우기·재열림·닫으면 사라짐·실패 안내·엄빠 못 지움·다 지움·스크립트 없음)·comments·sheetios·reactions·pview·vplay·vswipe·photo·editshot·motion, 단위·DB(61) 통과, 디자인 대조(del-cmp)
+
+### 65. fix/delete-icon — 한마디 지우기를 휴지통 아이콘으로, 자리 바로잡기 (완료, dev 머지 0.4.9, 디자인 138)
+
+- 요구사항(사용자 2026-10-27): 지우기 위치 확인, '지우기' 글자 대신 삭제 아이콘
+- 원인: 리뷰 1회차에서 누를 자리를 위로 올리며 기준을 li 바깥(top:-12px)으로 잡아 이름 줄보다 위에 뜸. 다시 연 시트 제목 테두리는 전체 .sp-body :focus-visible 규칙이 이겨서
+- 고침: 휴지통 아이콘(20px, 누를 자리 44px, 이름 '한마디 지우기: 글'), 이름 줄 가운데·오른쪽 끝(디자인과 같은 2px 안쪽). 제목 초점 테두리 규칙을 더 구체적으로
+- 검수: cdelete(아이콘 자리·이름·제목 테두리 없음 포함)·comments·sheetios 통과, 나란히 캡처(del-cmp2)
+
+### 66. fix/toast — 한마디 결과·저장 안내를 디자인 토스트로 (완료, dev 머지 0.4.10, 디자인 139)
+
+- 요구사항(사용자 2026-10-27 캡처): '한마디를 써 주세요' 같은 안내를 토스트 디자인에 맞춰, 왜 안 없어지나
+- 원인: 한마디 결과는 입력칸 아래 고정 상자(.sp-f__box)라 계속 남고 판이 길어짐, 주소의 say=로 새로 고침해도 다시 뜸. 저장 안내는 위쪽 알약(.sp-v__toast)으로 모양이 또 달랐음
+- 고침: Toast 부품(디자인 GrandHome 카드: 반투명, 18px 모서리, 60px, 보냄=하트+반짝 role=status 4초, 오류=빨간 느낌표 role=alert 6초), 크게 보기에선 판 바로 위 12px, 넘겨 보기는 화면 아래. 문구는 lib/say. 크게 보기 스크립트가 주소에서 say·sm 뗌. 동작 줄이기면 움직임 없이 사라짐. 오류 토스트 디자인 보드 ToastError, 크게 보기 보냄 ToastSent 추가
+- 검수: toast.py(오류·보냄·판 위 12px·4/6초 뒤 사라짐·새로 고침·동작 줄이기), vplay·photo·pview·comments·cdelete·sheetios 통과, 나란히 캡처(toast-cmp)
+
+### 67. feature/instant-actions — 크게 보기 누르기·페이지 넘김 빠르게 (완료, dev 머지 0.4.11, 디자인 140)
+
+- 원인(사용자 "너무 느린데", "페이지 전환 쓰레기"): 하트·반응·한마디·지우기가 모두 폼 POST → 같은 페이지로 이동 → 전체 다시 그리기. 누를 때마다 하얗게 깜빡이고 판·스크롤이 처음으로
+- 구현: 크게 보기 스크립트가 `.sp-v__more` 안 폼 제출을 가로채 fetch(같은 폼 데이터+누른 버튼) → 돌아온 페이지에서 `.sp-v__more`와 토스트만 갈아 끼움. 반응은 누르는 즉시 눌림·수를 바꿔 두고(낙관적), 요청은 차례로 보냄. 실패하면 페이지를 새로 엶. 넘기는 중 바뀐 사진이면 버림. 시트가 열려 있었거나 지운 뒤(서버가 open으로 그림)면 새 시트를 showModal
+- 페이지 이동: base.css `@view-transition { navigation: auto }`(움직임 줄이기면 끔) — 하얀 깜빡임 대신 겹쳐 넘어감. 지원 안 하는 브라우저는 지금과 같음
+- 스크립트 없으면 지금처럼 폼 POST. 화면 모양 변경 없음(디자인 캔버스 변경 없음)
+- 영향 파일: src/components/Viewer.astro, src/styles/base.css
+- 리뷰 3회 반영: 보낸 글 즉시 비움(되살아나 두 번 보내기 방지)·실패하면 글 돌려줌, 건너뛴 응답의 안내도 띄움(다른 사진 것은 버림), 쓰던 칸·커서 유지, 판 밖 포커스는 안 건드림, 큐 예외 뒤 새로 열기, 늘 있는 알림 칸(status·alert)에 글자만 넣어 읽기, 시트가 열려 있으면 안내·알림 칸을 시트 입력칸 위로(디자인 CommentSheetToast 추가)
+- 엄빠 크게 보기: 목록·반응·한마디를 한 번에(Promise.all) 받음
+- 시트에서 보내면 시트가 열린 채 남음(전에는 페이지가 새로 열려 닫혔음)
+- 미리 받기(prefetch)는 뺌: GET에 부작용 있는 주소(/m, /auth, 로그아웃 등)와 서버 부담 때문에 따로 판단
+
+### 68. fix/delete-toast — 토스트 아이콘 빼기·지운 안내도 토스트·페이지 전환 오류 (완료, dev 머지 0.4.12, 디자인 141)
+
+- 사용자: "한마디를 지웠어요는 왜 또 저렇게 뜰까", "토스트 아이콘 빼줘", 콘솔 'ViewTransition opt-in disabled'
+- 원인: 지운 안내만 시트 안 초록 박스(sp-v__sheet-note)로 남아 있었음(시트가 토스트를 가려서). 이제 시트 안 입력칸 위에 토스트를 띄울 수 있음
+- 토스트: 하트·반짝·느낌표 아이콘 없이 글자만(디자인 GrandHome·ToastSent·ToastError·CommentSheetToast 고침). 오류와 보냄은 화면 읽기(alert/status)로만 구분
+- 지운 안내·실패 안내: 페이지 토스트로 그리고, 시트가 열리면 시트 입력칸 위로 옮김(인라인 스크립트·즉시 반영 둘 다). 토스트 글자 칸 id=talk-note로 시트 설명 연결. 디자인 CommentSheetDeleted 추가
+- 페이지 전환: @view-transition을 @media 밖 맨 위로, 움직임 줄이기는 애니메이션만 끔. 사용자 오류는 여기서 재현 못 함(헤드리스 크롬) — 실기기 확인 필요
+- 영향 파일: Toast.astro, Viewer.astro, family.css, base.css
+
+### 69. fix/sheet-toast-pos — 시트 토스트가 한마디를 가림 (완료, dev 머지 0.4.13, 디자인 142)
+
+- 사용자: "댓글창에서 토스트가 뜨면서 가리는 현상"
+- 시트가 열려 있으면 토스트를 시트 위쪽 바깥(어두운 곳)에 12px 띄움. 시트는 overflow: visible(목록은 따로 굴러감). 디자인 CommentSheetToast·Deleted도 같은 자리로
+
+### 70. feature/photo-delete-layer — 사진 지우기를 레이어로 (완료, dev 머지 0.4.14, 디자인 142 PhotoDeleteLayer)
+
+- 사용자: "사진 지우기도 레이어로 띄워줘 / 이 사진을 지울까요?"
+- 스크립트 있으면 '사진 지우기' 링크가 dialog#del을 showModal(주소·화면 그대로). 취소는 form method=dialog(브라우저 기본), Esc·바깥 누르면 닫힘, 포커스는 취소에서 시작
+- 스크립트 없으면 ?confirm=delete로 같은 레이어를 연 채 다시 그림(홈 레이어와 같은 .sp-layer 구조). 예전 경고 카드는 없앰
+- base.css .sp-layer__modal(가운데·바깥 어둡게·닫혀 있으면 숨김)
+
+
+### 71. feature/family-inplace — 설정 › 가족 그 자리에서 (완료, dev 머지 0.4.17, 디자인 144)
+
+- 요구사항(다음 할 일 1-1): 승인·거절·내 가족 아님·링크 만들기를 페이지 이동 없이 그 자리에서. 거절·내 가족 아님 확인은 가운데 레이어. 결과 안내는 토스트. 스크립트 없으면 지금처럼 폼
+- 디자인: FamilyRejectLayer·FamilyRevokeLayer(가운데 레이어, 빨강 버튼·취소), FamilyApprovedToast(탭바 위 12px 토스트) 추가
+- 구현
+  - 토스트(`Toast.astro`) CSS를 family.css → base.css로(엄빠·가족 공통), 엄빠 탭 화면은 탭바 위(parent.css)
+  - `/settings/family`: 결과 안내를 Toast로(오류도 토스트), 서버 확인 카드(`?confirm=`)를 `.sp-layer` 레이어로(사진 지우기와 같은 구조)
+  - 스크립트: 거절·내 가족 아님 버튼은 `dialog.sp-layer__modal`을 열고(취소는 `formmethod="dialog"`), 이 화면 폼 제출은 fetch로 보내 돌아온 화면의 내용(`main`)과 탭 배지만 갈아 끼움. 차례로 보내기, 안내는 늘 있는 알림 칸으로 읽기, 실패하면 오류 토스트
+- 영향 파일: `src/pages/settings/family/index.astro`, `src/styles/base.css`, `src/styles/family.css`, `src/styles/parent.css`, `tools/design/familylayer.py`, `tools/e2e/famplace.py`
+- 예상 결과: 누르면 하얗게 깜빡이지 않고 카드가 빠지거나 링크 카드가 생기며 토스트. 스크립트 끄면 지금처럼 동작
+- 리뷰 3회 반영: 타입 오류(Worker 타입의 Element.prepend와 겹침 → insertBefore), 열린 확인 레이어는 갈아 끼우기에서 뺌, `?confirm=`으로 온 확인도 모달로(취소·Esc면 원래 화면), 스크립트 없을 때 결과 토스트에 초점(Toast `focus`), 다시 만들기 뒤 링크 카드로 초점, 실패하면 누른 버튼으로 초점·건너뛴 성공 화면 먼저 그림, 연 버튼이 바뀌었으면 새 버튼으로 초점
+- 검사: `tools/e2e/famplace.py`(28개, 스크립트 있음·없음), family·members·groups·layers·badge·toast·instant 통과. 검사 도우미 layerfix는 확인 레이어(#confirm)를 건드리지 않음
+- 주의: `tools/dev.sh`·대부분 e2e 파일 경로가 `/home/claude/sweepea`로 박혀 있음 → 다른 컴퓨터에선 경로를 바꿔 실행(famplace.py는 상대 경로)
+- 디자인과 다른 점(이번 범위 밖, 그대로 둠): 새 기기 줄(디자인은 한 줄 + '내 가족 아님'만, 코드는 카드 + 승인 버튼), 그룹 목록(디자인은 그룹 상세로 가는 줄, 코드는 '링크 만들기' + 들어온 사람 목록)
+
+### 72. fix/emoji-native — 반응 이모지를 기기 기본 이모지로 (완료, dev 머지 0.4.16, 디자인 145)
+
+- 사용자: "아이콘 도트 느낌 말고 그냥 이모지로, 기본 이모지로"
+- 하트 ❤️·최고 👍·좋아 😊·감동 😭·반짝 ✨. 감동은 🥹 대신 😭(옛 폰·카톡 웹뷰에서 네모로 안 깨지게, 도트 그림도 눈물 흐르는 얼굴)
+- `src/lib/emoji.ts` 도트 svg·sprite 없앰 → 글자, `ReactRow`·홈 레이어 반짝은 글자로, 토큰 `--emoji-font`(애플·윈도·노토 컬러 이모지). 움직임은 그대로
+- 디자인: 도트 svg가 있던 보드 30개(116곳)를 같은 크기 이모지 글자로(`tools/design/emoji.py`)
+
+### 73. feature/photo-save-inplace — 사진 정보 수정 저장 그 자리에서 (완료, dev 머지 0.4.18, 디자인 146 PhotoSavedToast)
+
+- 요구사항(다음 할 일 1-2): 저장해도 크게 보기로 넘어가지 않고 이 화면 그대로 "저장했어요." 토스트(탭바 위 12px). 스크립트 없으면 지금처럼 크게 보기로
+- 구현: 저장 폼을 `x-sp-inplace: 1` 헤더로 fetch → 서버는 저장되면 204(크게 보기를 그리지 않음), 고칠 게 있으면 이 화면을 다시 그려 폼만 갈아 끼우고 고칠 칸으로 초점, 로그인 끝남 등 다른 화면이면 그 화면으로, 실패하면 오류 토스트. 결과는 늘 있는 알림 칸(#ph-live·#ph-urgent)으로 읽기, 두 번 눌러도 한 번 보냄, 누르는 동안 빠진 초점은 저장 버튼으로. 화면 안 결과 안내(`?done=error`)도 Toast(`focus`)로, `?done=`은 떼어 새로 고침해도 다시 안 뜸
+- 리뷰 반영: 처음엔 크게 보기 화면 주소로 성공을 판단했는데, 오래된 사진(최근 200장 밖)·고른 아이에서 뺀 사진은 크게 보기가 /home으로 보내 저장돼도 화면이 넘어가고 안내가 없었음 → 서버가 204로 바로 알림. 서버 저장 실패로 다시 그려지면 초점은 저장 버튼으로
+- 검사: `tools/e2e/photosave.py`(12개, 스크립트 있음·없음·서버 204/303), photo·pview·photodel·editshot 통과. photo.py의 지우기 단계(옛 #confirm)와 editshot의 반응 그림 측정(옛 도트 svg)은 예전 변경 때부터 깨져 있던 것을 같이 고침
+
+### 74. feature/home-layer-inplace — 홈 가운데 레이어 그 자리에서 (완료, dev 머지 0.4.19, 디자인 변경 없음)
+
+- 요구사항(다음 할 일 1-3): 닫기·나중에는 그 자리에서 닫히고, 다른 화면 가는 버튼(확인하기·사진 올리기·저장 용량 보기)만 이동
+- 구현: 스크립트가 레이어를 모달(showModal, `.sp-layer__modal`)로 올림 → Esc·초점 가두기. 닫기·나중에·Esc는 바로 닫고 봤음을 뒤에서 적음(`x-sp-inplace` + keepalive, 서버 204). 레이어는 한 번에 하나(들어오기 신청 → 백일/생일 → 저장 공간): 뒤 것은 서버가 숨겨(hidden) 그려 두고 앞 것을 닫으면 이어서 띄움(전에는 다음에 열 때). 다 닫으면 화면 제목으로 초점. 스크립트 없거나 dialog 모달을 모르는 옛 브라우저는 그대로 폼
+- 같이 고침: 레이어 여러 개일 때 id(layer-t·layer-d) 겹침 → join-·day-·storage-
+- 리뷰 3회: 대기 레이어가 열린 채 아래 깔림(→ 차례 전엔 숨김), 옛 브라우저에서 숨기기만 하고 멈춤(→ 지원 확인 먼저), 사파리 15.4~15.6 Esc(requestSubmit 없음 → click)
+- 검사: `tools/e2e/homelayer.py`(14개), layers·layers45(날짜를 오늘 기준으로 고침, 저장 공간은 `SWEEPEA_MOCK_USED_BYTES=4939212390`로 띄운 서버에서)·badge·family·members·install·groups·photo 통과. layerfix는 숨긴 레이어 건너뛰고 이어 뜨는 레이어도 닫음
+
+### 75. feature/member-inplace — 가족 한 명 그 자리에서 (완료, dev 머지 0.4.20, 디자인 148 MemberRemoveLayer·MemberUploadToast)
+
+- 요구사항(다음 할 일 1-4): 사진 올리기 허용 스위치는 그 자리에서 + 토스트, 내보내기 확인은 레이어
+- 구현: 스위치는 누르는 즉시 바꿔 두고 fetch → 돌아온 화면의 `.sp-p`·탭바만 갈아 끼움(가족 화면과 같은 방식, 차례로 보내기·마지막 응답만 그림). 실패하면 마지막 서버 상태로 되돌리고 오류 토스트. 내보내기는 이 화면 위 `dialog#mem-ask`(모달) → 내보내면 설정 > 가족으로 이동해 결과 토스트. 결과 안내는 Toast(`focus`), `?done=` 뗌. 스크립트 없으면 예전처럼(스위치 폼, 내보내기 → 설정 > 가족 확인 레이어)
+- 리뷰 3회: 연달아 실패하면 스위치가 서버와 반대로 남음(→ 서버 상태 기억, 그리지 않은 응답에서도 읽음), 화면이 바뀐 뒤 레이어 닫으면 초점 사라짐(→ 새 버튼으로)
+- 검사: `tools/e2e/memberplace.py`(20개), members·famplace(다른 화면에서 온 ?confirm= 모달은 주소로 직접 열어 검사)·family·groups·badge·settings2 통과
+- 확인 필요: 헤드리스 스크립트 없는 검사에서 페이지 이동 직후 잠깐 `<html>`이 누르기를 가로챔(겹쳐 넘어가기 움직임으로 보임, 0.6초 기다리면 됨). 실기기에서 스크립트 꺼진 경우는 드물어 그대로 둠
+
+### 76. feature/autosave-inplace — 바로 저장 화면들 그 자리에서 (완료, dev 머지 0.4.21, 디자인 149 Settings·TextSize·ChildHealth·GroupSaved 토스트)
+
+- 요구사항(다음 할 일 1-5 일부): 설정 첫 화면 '가족도 사진 저장하기' 스위치, 글자 크기, 아이(접종·검진 보기), 그룹(이름·새 사진 기본 포함)을 페이지 이동 없이 + 토스트
+- 구현: 공용 부품 `AutoSave`를 고침(새 부품 없음) — data-autosave 폼 제출을 fetch → 돌아온 화면의 `.sp-p`·탭바만 갈아 끼움, 알림 칸 #as-live·#as-urgent, 하던 칸으로 초점(스위치 → id → 이름+값), 고칠 곳 있으면 그 칸으로·바로 읽기, 차례로 보내기·마지막 응답만 그림, 실패하면 그리지 않은 성공 응답이나 다시 받은 화면으로 되돌리고 오류 토스트. 설정 첫 화면 스위치 폼에 data-autosave. 4개 화면 결과 안내를 Toast(`focus`)로. 스크립트 없으면 저장 버튼
+- 리뷰 3회: 고칠 곳 안내를 차분한 칸으로 읽음(→ 바로 읽는 칸), 응답 기다리는 동안 이어 쓰던 글이 지워짐(→ 글·커서 옮김), 스위치 초점 못 찾음, 이름 칸 Enter가 두 번 보냄(change + 기본 제출 → 같은 내용은 겹쳐 안 보냄)
+- 검사: `tools/e2e/autosave.py`(20개), settings2·rows·groups·health·members·subhead·chev·kidtabs 통과(옛 검사의 ?done= 기다리기를 알림 칸 기다리기로)
+
+### 77. feature/group-layer — 그룹 주소 보내기·다시 만들기 그룹 화면에서 (완료, dev 머지 0.4.22, 디자인 150 GroupLinkCard·GroupResetLayer)
+
+- 요구사항(다음 할 일 1-5b): '주소 카톡으로 보내기'·'주소 다시 만들기'가 설정 > 가족으로 넘어가지 않고 그룹 화면에서. 다시 만들기는 확인 레이어
+- 구현: 서버 변경 없음 — 그룹 화면 스크립트가 /settings/family로 보내고 돌아온 화면의 링크 카드(#link)를 가져와 목록 아래에 붙이고 제목으로 초점. 다시 만들기는 이 화면 `dialog#grp-ask`(모달). 실패하면 그 화면 토스트나 오류 토스트. 스크립트 없으면 예전처럼 설정 > 가족으로
+- AutoSave 보강: 다시 그린 뒤 `autosave:drawn` 알림(초점 찾기 전에, 그 자리에 붙인 링크 카드를 다시 붙이게), 열려 있는 `dialog[data-autosave-keep]`은 건드리지 않음(옮기면 모달이 풀림)
+- 리뷰 3회: 이름 저장 응답에 열린 확인 레이어가 사라짐(→ keep), 링크 카드 안 초점 사라짐(→ 알림 먼저), 만드는 중 확인 레이어가 안 닫힘
+- 검사: `tools/e2e/groupplace.py`(12개), groups·rows·members·settings2·autosave·famplace 통과
+
+### 78. feature/savebar — 저장 버튼 아래 고정 + 접종 바로 저장 (완료, dev 머지 0.4.23, 디자인 151)
+
+- 요구사항: 접종 체크 저장 버튼이 맨 아래라 찾기 힘듦(사용자), 저장 같은 아래 버튼은 아래 고정(사용자 제안), 다음 할 일 1-5c
+- 디자인: 접종 보드는 원래 '체크하면 완료한 날짜가 기록돼요'(저장 버튼 없음) → 디자인대로 체크하면 바로 저장 + 토스트(HealthSavedToast). 입력 화면(ChildAdd·PasswordChange·ParentPhoto와 그 레이어·토스트 보드)은 저장 버튼을 탭바 위 막대로. ChildAdd·PasswordChange 보드에 남아 있던 도트 이모지도 기본 이모지로
+- 구현: `.sp-p__savebar`(탭바 위 고정 막대, 넓은 화면은 맨 아래), Parent `savebar` → `sp-p--savebar`(막대 높이 `--savebar-h` rem만큼 아래 여백, 토스트는 막대 위 12px). 적용: 사진 정보 수정·아이 고치기/추가·그룹 추가·그룹 비밀번호. 접종은 AutoSave(data-autosave) + 바꾼 칸만 보내기(`toggle=키:on|off`, 스크립트 없으면 예전처럼 저장 버튼·전체 폼). AutoSave는 펼친 `details[id]` 유지
+- 리뷰 3회: 체크했다 바로 풀면 완료로 남음(→ 바꾼 칸만 보내기, 폼이 새것이 되면 놓치던 것도 고침), 막대 높이 px 고정(→ rem), `:has()` 없는 브라우저(→ 레이아웃 표시), 토스트 자리가 탭바 규칙에 덮임(→ 우선순위)
+- 검사: `tools/e2e/savebar.py`(22개, 지연 600ms에서 체크 후 바로 풀기, 글자 24px), health·photo·photosave·settings2·groups·editshot·autosave·groupplace 통과
+
+### 79. feature/video-multipart — 큰 영상 나눠 올리기 (완료, dev 머지 0.4.24, 화면 모양 변경 없음)
+
+- 원인(사용자 "영상 4개 크다고 안 올라갔네"): 영상 원본을 Worker로 보내는데 Worker 요청 한도가 100MB라 100MB 넘는 영상은 고를 때 빠졌음
+- 구현: `api/media/[id]/multipart`(R2 multipart: 만들기 → 50MB 조각 PUT → 합치기, 그만두면 abort). 한 편 2GB·조각 41개까지(`BIG_VIDEO`). 올리기 화면은 90MB 넘는 영상만 이 길로(조각마다 두 번까지 다시), '올리는 중… n / 전체 · 영상 38%'. 합친 키는 지금처럼 done으로
+- 리뷰 3회: 2GB 영상으로 5GB 한도를 크게 넘길 수 있음(→ 완료 때도 한도, 마이그레이션 `20261027000004_finish_quota.sql` + mock, 거절되면 올린 파일 바로 지움), 조각 번호 제한(→ 41), 동시에 완료하면 한도를 넘을 수 있음(→ 확인과 더하기를 한 문장으로, 넘으면 예외로 함께 되돌림)
+- 검사: `tools/e2e/bigvideo.py`(12개, 재생되는 130MB 파일 → 조각 3개·재생·용량·API 거절), upload, 단위 24, DB(PG18에서, 의도한 거부 62건 — run.sh를 macOS bash에서도 돌게, `LANG=C LC_ALL=C PG_BIN=/opt/homebrew/opt/postgresql@18/bin npm run test:db`)
+- 남은 것(사용자): 운영 DB에 마이그레이션 적용 확인, R2 버킷 `sweepea-media`에 '끝나지 않은 multipart는 1일 뒤 중단' 수명 주기 규칙 확인·추가(여기선 Cloudflare 로그인이 없어 못 봄. 끝내지 않은 조각은 목록에 안 나와 매일 정리 작업이 못 지움)
+- 같이 발견(이번과 무관, dev에서도 실패): upscreen.py 'EXIF 찍은 날로 월 묶음', vplay.py '한마디 보냄 토스트'. 다음에 원인 확인
+
+### 80. feature/video-shrink — 영상은 폰에서 1080p로 줄여 올리기 (완료, dev 머지 0.4.25, 디자인 152~154)
+
+- 요구사항(사용자 2026-10-27 "네 추천대로"): 영상도 사진처럼 올리기 전에 폰에서 줄인다. 무료는 줄인 사본만 올림(원본은 부모 폰에 남음, 서버 원본 보관은 유료로 나중). 3일 원본 보관·서버 변환은 하지 않기로
+- 근거: 아이폰(iOS 18.7) 시험 화면에서 4K 22초 96MB → 720p 6.6MB, 46초(영상 길이의 2배). 1080p도 시간은 비슷(원본 푸는 데 걸림) → 화질 좋은 1080p(5Mbps). 서버 변환(Cloud Run·Containers·Stream)은 비용·구성이 들어 뺌
+- 구현: `src/pages/upload.astro` video()에서 mediabunny(WebCodecs)로 짧은 변 1080·H.264 5Mbps·소리는 AAC로(같으면 그대로) mp4로 바꾼다. 이미 작으면(짧은 변 1080 이하이고 초당 6Mbps 이하) 그대로. 브라우저가 못 하거나 실패·트랙이 빠지면 원본 그대로(지금처럼 큰 것은 나눠 올리기). 줄이는 동안 상태 칸 '영상 줄이는 중… 2 / 3 · 40%' + '다 줄일 때까지 이 화면을 켜 두세요', 화면 꺼짐 막기(되면). 라이브러리는 영상을 골랐을 때만 불러온다
+- 영향받는 파일: `package.json`·`package-lock.json`(mediabunny), `src/pages/upload.astro`, `src/styles/parent.css`(필요하면), `tools/e2e/shrink.py`(새), `index.md`, `plan.md`
+- 예상 결과: 4K 1분 영상이 약 38MB로 올라가고 앨범에서 재생됨. 저장 용량도 줄인 크기로
+- 범위 밖: 유료 원본 보관·원본 다시 올리기(결제 붙일 때), 줄이기 멈추기 버튼, 올리기 화면 전체 개편(대기열 B)
+- 범위 추가(사용자, 작업 중): 사진 올릴 때도 퍼센트, 줄이기·올리기 둘 다 진행 막대(네이티브 progress, 퍼센트는 묶음 전체 기준), 원본·압축 안내('스위피는 원본을 따로 보관하지 않으니 원본은 폰에서 지우지 마세요', 크기 칸 아래 늘 보임). 보드 UploadShrink·UploadSending
+- 구현 결과: 3분(약 110MB) 넘는 영상은 원본 그대로(줄인 영상을 메모리에 통째로 둠, shortcut 주석). 줄이는 동안 영상 칸 비움·input.dispose, 멈추면(영상 길이 3배·최소 1분 진행 없음) 원본으로, 줄이기·올리기 동안 화면 꺼짐 막기(다른 앱에 다녀오면 다시), 상태 글은 10% 단위로만 바꿔 화면 읽기가 계속 읽지 않게, 고르기 칸은 바쁠 때 흐리게. 라이브러리(약 690KB)는 영상을 골랐을 때만 불러옴
+- 리뷰 3회: 긴 영상 메모리(→ 3분 상한), 화면 읽기 소음(→ 10% 단위), 원본 안내가 원본을 올릴 때 틀림(→ '줄일 수 없으면 그대로'·'따로 보관하지 않으니'), 서버에 적는 크기 ±2px(→ 가로세로 둘 다 지정), 올리는 동안 화면 꺼짐(→ 올리기에도 화면 켜기), 영상이 메모리에 두 벌(→ 영상 칸 비움), 멈춤 감시가 잘못 끊음(→ 넉넉히·돌아오면 다시 셈), 쉴 때 빈 칸(→ 막대 감싸개 숨김)
+- 검사: `tools/e2e/shrink.py`(21개, ffmpeg로 만든 세로 회전 H.264+AAC 2560x1440 → 1080x1920 h264·aac·재생, 작은 영상 원본, 줄이기 없는 브라우저·H.264 못 만드는 브라우저는 원본), bigvideo(줄이기 끈 브라우저로 나눠 올리기), editshot, 단위 24, astro check 0
+- 아이폰 시험 결과(사용자): iOS 18.7, 4K 22초 96MB → 720p 6.6MB 46초, 1080p도 시간 비슷
+- 같이 발견: upload.py '처음엔 0장'은 mock 고정 가족에 사진이 이미 있어 실패(서버 API 검사라 이번 화면 변경과 무관, 다음에 확인)
+
+### 81. fix/upload-grid-gap — 올리기 사진 칸 간격 (완료, dev 머지 0.4.26)
+
+- 원인(사용자 "사진 사이 여백 조정", "좌우 상하 달라"): 칸 안 버튼이 줄 안 요소라 칸마다 아래에 글자 여백 5px가 붙어 좌우 4px·상하 9px
+- 고침: `.sp-p__upbtn`을 block으로 → 좌우·상하 4px(디자인 보드와 같음). 다른 정사각형 칸(앨범·레이어 썸네일)은 이미 block
+- 검사: `tools/e2e/upgrid.py`(폰 4칸·PC 6칸, 고치기 전엔 실패)
+
+### 82. fix/upload-percent — 진행 글은 분수만 (완료, dev 머지 0.4.27, 디자인 155)
+
+- 요구(사용자 "사진 업로드에서 퍼센트 빼줘, 그냥 나눈 숫자 같아", "퍼센트만 빼고 분수는 두고"): 사진은 '올리는 중… 3 / 12'처럼 분수만. 퍼센트는 영상 하나의 진행일 때만('영상 줄이는 중… 1 / 3 · 40%', 큰 영상 나눠 올리기 '올리는 중… 1 / 2 · 영상 40%'). 진행 막대는 그대로(묶음 전체 기준)
+- 검사: shrink(분수만·막대 중간값), bigvideo(영상 퍼센트), upgrid 통과
+
+### 83. feature/upload-status — 올리기 파일별 상태·못 올린 안내 (완료, dev 머지 0.4.28, 디자인 156)
+
+- 요구(대기열 B): 무엇이 올라가는 중·다 됐는지·왜 못 올렸는지 파일별로 한눈에. "못 올린다" 안내가 알림처럼 안 보임
+- 지금 문제: 고를 때 못 읽은 파일은 '2개는 올릴 수 없어요'만 나오고 어느 파일인지 모름, 200장 넘게 고르면 말없이 잘림, 올리다 실패하면 진행 글과 같은 초록 칸(role=status)에 나와 눈에 안 띔, 칸마다 상태 없음
+- 방식
+  - 사진 칸 왼쪽 아래 작은 표시: '올리는 중'·'올림'(초록)·'못 올림'(빨강). 표시 바탕은 면 색(밝은/어두운 둘 다 글자 대비), 버튼 이름에도 상태를 붙임('2번째 사진 대표, 올림')
+  - 못 올린 안내는 빨간 글 칸(`sp-p__toast--error`) 하나(`#up-alert`, role=alert): 올리다 실패한 이유(로그인 끝남·5GB·연결)와 고를 때 뺀 파일 목록(파일 이름 · 이유: 지원하지 않는 형식/2GB 넘는 영상/열 수 없는 파일, 200장 넘음). 새로 고르거나 올리기를 누르면 비움
+  - 진행 글(`#up-status`)은 진행만
+- 영향: `src/pages/upload.astro`, `src/styles/parent.css`, `tools/design/upstatus.py`(보드 UploadSending 고침 + UploadRejected·UploadFailed 새로), e2e `tools/e2e/upstatus.py`
+- 예상 결과: 올리는 동안 칸에 올림/올리는 중이 보이고, 실패하면 그 칸에 못 올림 + 빨간 안내, 고를 때 뺀 파일은 이름과 이유가 보임
+- 결과: 리뷰 3회 반영(목록 10줄까지·200장 줄은 맨 앞이라 '외 N개'가 파일 수와 맞음, 올리는 동안은 칸 상태만 바꿈(새로 그리지 않음), 5GB가 차면 남은 칸 모두 못 올림, 다시 누르면 못 올림 지우고 이어서, 그룹을 고르면 그 안내만 지움, 실패 뒤 누른 버튼으로 포커스, 320px에서도 표시가 잘리지 않음(띄어쓰기에서 줄바꿈), '0장까지' 문구 없음). 검사 `tools/e2e/upstatus.py` 23개, retry(빨간 칸으로 바꿈)·shrink·bigvideo·upgrid 통과, astro check·build·단위 검사 통과
+
+### 84. feature/view-bare — 크게 보기 한 번 누르면 사진만 (완료, dev 머지 0.4.29, 디자인 157)
+
+- 요구(대기열 C): 크게 보기에서 화면을 한 번 누르면 위 메뉴·아래 판(반응·한마디)·화살표·영상 막대가 사라지고 사진만, 다시 누르면 돌아옴. 보드 PhotoView에 이미 있는 누르기 전환('메뉴 숨기기'/'메뉴 보이기', 숨기면 검은 바탕)을 따르고 숨긴 상태 보드 PhotoViewBare를 추가(157)
+- 방식
+  - `Viewer.astro` 스크립트: 사진 칸(`.sp-v__stage`)을 누르면 `.sp-v[data-bare]` 켜고 끔. CSS로 위 메뉴·화살표·재생 버튼·아래 묶음·토스트를 숨기고 바탕 검정. 넘겨 보기(스와이퍼)로 바뀌어도 그대로
+  - 사진 칸 전체를 덮는 버튼은 손가락 넘기기를 막으므로 쓰지 않고, 키보드·화면 읽기용으로 포커스하면 보이는 '메뉴 숨기기/메뉴 보이기' 버튼(스크립트가 만듦)을 둔다. Esc로도 돌아옴
+  - 영상: 재생 중엔 지금처럼 누르면 일시정지(이미 메뉴 숨김). 멈춘 상태에서 누르면 사진과 같이 전환
+  - 스크립트 없으면 지금 그대로(가족 화면 0KB 원칙의 예외인 크게 보기 스크립트 안에서만)
+  - 알고 둔 것: 넘기다 영상 칸에 멈추거나 영상 화면에서 옆으로 밀면 새 화면을 열어 메뉴가 다시 보임(영상은 페이지를 새로 여는 구조). 빠르게 두 번 누르면 두 번째는 버림(깜빡임 방지). 사진만 상태에선 화살표가 없어 PC는 한 번 눌러 메뉴를 켠 뒤 넘김. 화살표·수정 버튼 옆 빈 곳도 사진을 누른 것으로 봄
+- 영향: `src/components/Viewer.astro`, `src/styles/family.css`, `tools/design/viewbare.py`, e2e `tools/e2e/viewbare.py`
+- 예상 결과: 사진을 누르면 사진만, 다시 누르면 돌아옴. 넘겨도 사진만 상태 유지, 키보드로도 전환
+- 결과: 리뷰 3회 반영(사진만 켜면 토스트 지움·사진만 중에 온 토스트는 읽기만(숨긴 토스트가 나중에 다시 뜨지 않게), 마우스로 끌다 놓기·빠른 두 번째 누름은 버림, 일시정지 버튼은 메뉴도 돌려줌, 투명도 줄이기·포커스 테두리). 검사 `tools/e2e/viewbare.py` 19개, vswipe·comments 통과(vplay는 원래 있던 "한마디 보냄 토스트"만 실패), 가족 `/album` 화면도 직접 확인, astro check·build·단위 검사 통과
+
+### 85. feature/account-layer — 계정 탈퇴 확인 레이어·홈 화면에 두기 안내 그 자리에서 (완료, dev 머지 0.4.30, 디자인 이미 있음: Account·AccountDelete·AccountDeleteSub)
+
+- 요구(다음 할 일 1-6): 페이지 이동 줄이기 마지막. 계정의 탈퇴 확인을 다른 화면 대신 이 화면 위 레이어로, 조부모 홈 화면에 두기 안내의 부탁하기·알겠어요·다음에를 이동 없이 그 자리에서
+- 방식
+  - 계정: 보드대로 묶음 줄(로그아웃·탈퇴하기), 이름 칸에 카카오 아이콘. 탈퇴하기는 `dialog.sp-layer__modal` showModal(사진 지우기 레이어와 같은 방식). 왼쪽 정렬·우는 얼굴(`public/sad.svg`)·두 버튼 같은 너비, 체크 전엔 탈퇴하기 흐리게(눌리면 브라우저 기본 안내). 구독 중이면 같은 자리에 '구독 중이에요' 레이어. 스크립트 없으면 `?confirm=`으로 같은 레이어를 연 채 다시 그림
+  - 로그아웃은 보드에 확인이 없고 로그인 화면으로 가는 흐름이라 그대로(폼)
+  - 홈 화면에 두기: `InstallGuide.astro` 스크립트가 폼을 `x-sp-inplace`로 보내고 `/install`은 204(다 됨)·409(부탁할 곳 없음). 판을 치우고 초점은 바로 아래 탭으로, 부탁하기면 숨겨 둔 알림을 보이고 초점. 스크립트 없으면 예전처럼 폼
+  - 안내 판 배치(앨범 위 판)는 그대로, 보드의 아래 시트 모양은 이번 범위 아님
+- 영향: `src/pages/settings/account.astro`, `src/components/InstallGuide.astro`, `src/pages/install.ts`, `src/styles/base.css`, `src/styles/parent.css`, `public/sad.svg`, e2e `tools/e2e/acclayer.py`(새), `install.py`·`delete.py`(이동 대신 레이어·판 사라짐 기다리기)
+- 예상 결과: 탈퇴하기 → 주소 그대로 레이어(모달·Esc·바깥 누르기·취소로 닫힘, 체크해야 탈퇴), 설치 안내 버튼 → 이동 없이 판 사라짐
+- 결과: 리뷰 3회 반영(로그아웃 줄 초점 테두리, 체크 전 탈퇴하기는 흐림 대신 바탕색+빨간 글자·테두리로 대비 4.5:1 이상(보드와 다름), 글자 200%면 두 버튼 위아래로, 닫으면 확인 체크 풀기, 설치 안내 401이면 다시 들어오기·서버 오류는 폼으로·모르는 값 400, 카카오 아이콘 색 토큰). 검사 `tools/e2e/acclayer.py` 29개, install·delete·photodel·homelayer 통과, astro check·build·단위 검사 통과
+- 알고 둔 것: 스크립트 없이 연 레이어는 모달이 아님(사진 지우기와 같은 패턴, 뒤 화면에 inert 주기는 따로), 부탁할 곳이 없으면(409) 판이 그대로라 반응 없음(예전 폼과 같음), 구독 중 레이어의 '구독 관리' 버튼은 결제 화면이 없어 뺌, 카카오 아이콘은 mock 계정에 제공자가 없어 화면으로 못 봄
+
+## 다음 이슈 (기획서 '개발 이슈 분할' 순서)
+
+저장소는 `sweepea` 하나에 웹과 `supabase/`를 같이 둔다(혼자 개발, DB와 화면 변경을 한 PR에서 검증). iOS·안드로이드는 나중에 `sweepea-ios`, `sweepea-android`.
+
+1. 확인(보류, 실기기 필요): 카톡 인앱 브라우저에서 출입증 쿠키 유지 (작은 테스트 페이지). 같이 확인: 카톡 → 외부 브라우저 자동 넘기기(`kakaotalk://web/openExternal`), `sms:` 문자 내용 미리 채우기(iOS·안드로이드), iOS 사파리 HEIC → JPEG 변환 시 촬영 시각 유지, iOS 26 사파리에서 공유 버튼 위치(홈 화면 추가 안내 문구 확정용)
+2. supabase: 프로젝트 생성, 스키마·RLS·마이그레이션
+3. supabase: 그룹 링크, 이름 선택 입장, 새 이름 pending·승인, 출입증·해제
+4. supabase: 업로드 서명 URL, 완료 처리, 권한 필터링된 목록
+5. supabase: 하트·댓글
+6. cloudflare: 사진 전달 Worker (뷰어 전에)
+7. web: 조부모 뷰어 (누구세요 → 넘겨 보기·모아 보기 → 크게 보기, 반응·직접 쓰기)
+8. web: 화면 크기 설정 (3단계, 부모 원격 변경)
+9. web: 부모 로그인(카카오·네이버·Google·Apple, 구현 안 된 건 비노출), 가족방·아이·구성원, 그룹 링크, 승인·기기 관리 (설정 > 가족)
+10. web: 올리기 + 카톡 공유(카카오 JS SDK)
+11. web: 아이 정보 카드 + 접종·검진 페이지
+12. supabase·web: 부모 최근 반응·승인 목록 + iOS 홈 화면 추가 안내
+13. supabase: 용량 집계, 5GB 상한. 정리 작업(예약, 출시 전 필수): 탈퇴 기한 지난 가족방 지우기(`sp_purge_deleted_families`) + `r2_cleanup` 폴더 R2 삭제, 하루 지난 `uploading` 사진과 그 R2 폴더, 완료된 사진 폴더에서 기록 안 된 파일(PUT마다 새 키라 남음) 지우기. 사진 지우기는 RPC로 용량 빼고 R2 삭제 대기열에
+14. web: PC 화면 (모아 보기·크게 보기)
+
+## 결정됨
+
+- 이름: 스위피 / Sweepea (2026-10-23)
+- 도메인: sweepea.co.kr 하나만. 다른 확장자 방어 등록은 하지 않음
+- 앱 아이콘: 도트 콩이(3단계), 라이트 #E7F1F0 / 다크 #07221F 바탕 (2026-10-24)
+- 키컬러: 틸 #0F766E / 다크 #2DD4BF, 떠 있는 버튼은 유리(주요는 색 유리, 보조는 투명 유리) (2026-10-24)
+- 부모 로그인: 카카오 → 네이버 → Google → Apple. 시안엔 넷 다 두고, 구현 안 된 제공자는 버튼 비노출. Apple·Google은 공식 버튼·로고 규격 준수 (2026-10-24)
+- 가족 화면 글자 크기: 기본값은 '기본'. 할머니·할아버지 호칭을 고르면 '크게'로 자동 선택(본인이 바꿀 수 있음). 모두에게 보이는 문구엔 '조부모' 대신 실제 호칭·'가족' 사용 (2026-10-24)
+- 부모 소개 화면 3장(로그인 전 1회, 건너뛰기 가능). 조부모 쪽은 소개 없이 바로 사진 (2026-10-24)
+- 부모 알림(승인·반응): 앱 출시 전까지 없음. 부모가 스위피를 열면 보임 (2026-10-24)
+- 배우자: 별도 계정 초대 없이 가족처럼 링크 + 이름 + 비밀번호로 입장, 부모가 '올리기 가능' 권한만 추가. 모든 그룹 사진을 보고 올릴 수 있고 설정·승인은 못 함. 올리기 권한은 승인된 기기에만, 새 기기는 다시 승인 (2026-10-24)
+- 탈퇴: 가족 화면은 바로 닫히고, 3일 유예 뒤 사진·가족·아이 정보 모두 삭제. 유예 중 다시 로그인하면 되살리기 가능. 이용약관·개인정보 처리방침은 출시 전 별도 작성 (2026-10-24)
+- 올리기 권한 가족(배우자 등) 올리기 화면: 부모와 동일 (2026-10-24)
+- 가족 화면 '홈 화면에 두기' 버튼: 투명 유리 대신 채운 버튼(fill) (2026-10-24)
+- 높이 기준: 부모 입력·버튼·라디오 52, 칩·작은 탭 40, 목록 줄 56 / 가족 화면 입력·버튼·탭 56, 반응 버튼 60(이모지만, 2026-10-26 80에서 줄임) / 뒤로·탭바 44 (2026-10-24)
+- 결제: 인앱결제(App Store·Google Play)만. 웹 결제는 보류. 해지는 스토어 구독 설정으로 안내 (2026-10-24)
+- 구독 해지 뒤 원본: 남은 기간까지 그대로, 그 뒤 14일 동안 원본 내려받기 가능, 지나면 보기 좋은 크기(2048)로 줄임. 사진은 삭제하지 않음 (2026-10-24)
+- 호칭: 사진 올린 사람은 실제 호칭(처음 설정의 엄마/아빠 선택 유지, '오늘 아빠가 올렸어요'), 부모 둘 다 해당하는 말(확인·승인·부탁·앨범 닫힘)은 '엄마아빠' (2026-10-25)
+- 여러 가족방: 기기 하나가 여러 가족방에 들어갈 수 있게 DB부터 바꾼다(가족방마다 열쇠를 따로 만드는 방식 대신). 앨범은 모두 섞어 보기가 기본, 한 집만 골라 보기 가능 (2026-10-25)
+- 사진 저장소: Cloudflare R2(보는 전송비 무료). DB는 Supabase. 올리기는 Worker 경유 (2026-10-25)
+- 사진 반응: 앨범 칸에 하트·한마디 배지, 새 반응은 하트가 떠오르는 효과(한 번만, 동작 줄이기 시 끔) (2026-10-24)
+- 화면 작업 순서: 디자인 파일(캔버스)을 먼저 고친 뒤 코드에 적용 (2026-10-26)
+- 이동 표시: 왼쪽 위 뒤로가기는 글자만(‹ 없음), 오른쪽 이동은 꺾쇠 아이콘만(“확인 ›” 같은 글자 없음), 가족 크게 보기 "닫기"·"저장"도 글자만 (2026-10-26)
+- 부모 아래 탭: 앨범 · 알림 · 설정, 알림에 새 반응 수 배지. 최근 반응은 알림 탭 (2026-10-26)
+- 비밀번호 칸: 모두 가운데 정렬 (2026-10-26)
+- 가족 크게 보기: 화면 가득 + 반투명 위 메뉴·아래 판(흰 75%/검정 65%), 이 화면만 작은 스크립트 허용. 영상은 재생하면 막대 줄만 남고 화면 누르면 일시정지, 자동 숨김 없음. 옆으로 밀기 + ‹ › 버튼 (2026-10-26)
+- 반응 버튼: 이모지만(글자 없음). 넘겨 보기는 '직접 쓰기' 대신 카드마다 한마디 칸 (2026-10-26)
+- 가운데 레이어: 들어오기 신청(부모)·승인 완료·새 사진(가족), 백일·돌·생일·저장 공간 90%(부모). 같은 일은 한 번, 저절로 안 사라짐. 구독 끝남 안내는 결제 이슈에서 (2026-10-26)
+- 계정 이름: 부모 이름은 받지 않고 호칭('하린 엄마')으로 보임 (2026-10-26)
+- 바로 저장되는 켜고 끄기(가족도 사진 저장하기·사진 올리기 허용): 토글. 설정 탭에 승인 대기 수 배지 (2026-10-26)
+- 폰·PC 디자인: 같은 컴포넌트, 배치만 다르게. 아이 고르기는 한 줄 좌우 스크롤 세그먼트 탭 (2026-10-26, 34에서 적용)
+
+## 확인 필요 (멈추지 않고 기록만, 2026-10-26~)
+
+- main 머지 PR #1(dev → main) 열어 둠. 제목은 0.2.0 시절 그대로, dev는 0.4.14. 머지는 사용자 확인 뒤
+
+- 운영 Supabase·R2에 적용해 쓰는 중(2026-10-26~). 마이그레이션은 이제 새 파일로만
+- 네이버 로그인은 Supabase 기본 제공자가 아니라 제공자 이름이 '로그인'으로 보일 수 있음
+- 홈 화면에 두기 실기기: 아이폰 사파리 공유 버튼 위치(iOS 26은 ⋯ 안), 홈 화면 앱이 사파리 출입증 쿠키를 이어받는지, 안드로이드 크롬 '앱 설치' 문구. 삼성 인터넷·아이폰 크롬 등은 아직 안내 안 함
+- Cloudflare Workers 요금제(무료면 요청당 외부 호출 50개): 정리 작업은 45개 안에서 멈추고 다음 날 이어서 함. 큰 가족방 탈퇴는 며칠 걸릴 수 있음. 유료면 한도 올리기
+- 올리기 화면을 하루 넘게 열어 두었다 다시 누르면(정리 작업이 지운 사진) 끝난 것으로 보일 수 있음
+- 카톡 인앱 브라우저 → 외부 브라우저 넘기기와 출입증 이어 주기(넘어가면 쿠키가 없어 다시 이름·비밀번호). 실기기 확인 뒤 방식 결정
+- 아이폰 사진 저장(사진 앱 대신 '파일')·카톡 인앱 브라우저 `download` 무시 여부(실기기)
+- 가족 플랜 줄은 아직 화면에 없음(결제 이슈에서)
+- 설정 하위 화면 제목: 디자인은 뒤로 줄 가운데 작은 제목, 코드는 아래 큰 제목. 맞출지(35에서 발견)
+- 접종·검진 일정 데이터: 질병관리청 원문(nip.kdca.go.kr)을 자동으로 못 읽어 보건소 게시본으로 맞춤. 출시 전 원문과 대조. 구강검진 시기는 보건소마다 표기가 달라(4·6·7차 vs 18~29·30~41·42~53·54~65개월) 아직 안 넣음. A형간염 2차 간격(제품마다 6~12/18개월)·폴리오 3차(6개월 vs 6~18개월)도 원문 대조
+
+## 결정 필요
+
+- 국가 권장(유료·선택) 예방접종 추가(사용자 2026-10-26): 질병관리청 공개 API에 일정 데이터는 없어 보임(국가건강정보포털 API는 건강 정보 글, 공공누리 4유형). 지금처럼 질병관리청 표준 예방접종 일정표를 원문 대조해 앱에 넣는 방식 → 인플루엔자(매년)·HPV·로타 등 어디까지 넣을지, '국가 필수'와 '선택'을 나눠 보여 줄지
+
+
+- 화면 문구 규칙(브랜드 리뷰 2026-10-24 반영): 실제 가족 호칭 사용, "카톡" 통일, 날짜 "~부터", 접종 일정은 출시 전 질병관리청 표준 일정과 대조
+
+- Pretendard 글꼴: 동적 서브셋(CDN) vs 직접 서브셋 생성 — 첫 화면 성능 측정 후 결정
+- 최소 지원 브라우저 (카톡 인앱 브라우저 기준)
+
+### 86. feature/vt-abort — 페이지 전환 취소 오류 막기 (완료, dev 머지 0.4.31)
+- 사용자 보고(2026-10-28): 크롬 콘솔에 `Uncaught (in promise) InvalidStateError: Transition was aborted because of invalid state. ViewTransition opt-in disabled`가 자꾸 찍힘(home)
+- 원인: 다른 문서로 넘어가는 전환(`@view-transition`)을 브라우저가 건너뛰면(전환 중 화면이 가려지는 등) pageswap/pagereveal의 `viewTransition.ready`가 거부되는데 받는 곳이 없음. 이동은 정상
+- 고침: `src/layouts/Base.astro` head에 인라인 스크립트, 두 이벤트의 ready·finished·updateCallbackDone을 받아 둠
+- 검증: skipTransition을 강제로 넣어 고치기 전 이동마다 `Transition was skipped` 오류 → 고친 뒤 0, 보통 이동은 전환 그대로. acclayer e2e 통과, QA 1회(지적 2개 반영: 주석을 JS 안으로, `p?.catch`)
+- 못 한 것: 실제 '화면 가려짐' 상황은 헤드리스에서 재현 못 함, 사파리 실기기
+
+### 87. feature/taken-at — 찍은 날짜 제대로 읽기 (완료, dev 머지 0.4.32)
+- 요구: 지금은 JPEG만 EXIF 촬영 시각을 읽고 HEIC·PNG·영상은 파일 시각(`lastModified`)을 써서, 아이폰은 고른 시각·내보낸 시각이 들어가 앨범 달이 틀어질 수 있음
+- 구현
+  - 사진: 종류 표시(`file.type`) 대신 파일 앞부분 바이트로 판별. JPEG(지금대로), HEIC/HEIF(meta 상자의 iinf·iloc에서 Exif 항목 위치를 찾아 그 부분만 읽음), PNG(eXIf 덩어리). 같은 TIFF 읽기(`readTiff`)를 씀
+  - 영상: mediabunny `getMetadataTags().date`(아이폰 `com.apple.quicktime.creationdate`, 시간대 있음) → 없으면 MP4/MOV `moov/mvhd` 생성 시각(UTC, 1904 기준) → 없으면 파일 시각. 범위(아래 plausible) 밖은 버림. mediabunny date는 ©day·rldt·date·creationdate 중 먼저 읽힌 값이라 날짜만 있는 ©day가 먼저면(자정 UTC) mvhd로 넘어감
+  - 출처 값은 DB에 있는 값만 되므로 파일 안 시각은 'exif', 파일 시각은 'file'
+- 영향 파일: `src/lib/exif.ts`, `src/pages/upload.astro`(photo·video), `tests/exif.test.ts`, `tools/e2e/takenat.py`, (함께 고침) `src/lib/parent.ts` `seoulDate`, `src/pages/view/[id].astro`·`album/[id].astro`·`album/save.astro`, `tools/e2e/save.py`
+- 예상 결과: 아이폰 HEIC·영상, 안드로이드 영상이 찍은 날짜로 앨범에 묶임
+- 믿을 만한 범위(`plausible`): 2001년~지금+10분. 밖이면 파일 시각(1980년 초기화 카메라, 현지 시각을 UTC로 적은 영상이 미래가 되는 경우, 정보 수정 화면 범위 2000~오늘 밖이면 저장이 막히므로)
+- 하지 않는 것: WebP(EXIF가 보통 파일 끝이라 앞부분만 읽어서는 못 찾음), PNG 스크린샷의 XMP 날짜
+- 알려진 한계: 홈은 찍은 날 최신 200장만(album.ts shortcut). 사진 200장 넘는 가족이 옛날 사진을 올리면 올린 직후 홈에 안 보일 수 있음 → 다음 할 일 3(더 불러오기)에서 해결
+- 함께 고침: 저장 파일 이름 날짜가 UTC 날짜(`taken_at.slice(0,10)`)라 한국 아침 사진이 전날로 붙던 것 → `seoulDate`(view·album/[id]·album/save)
+
+### 86b. fix/vt-uncaught — 전환 오류가 사진 화면에서 계속 찍힘 (완료, dev 머지 0.4.33)
+- 사용자 보고(2026-10-28): 86 뒤에도 사진 크게 보기 주소에서 같은 오류. 헤드리스에선 일반 화면으로 재현 못 함(화면이 가려진 채 열릴 때 크롬이 페이지에 건네지 않은 전환을 취소하는 것으로 추정, 확실하지 않음)
+- 재현된 것: 앱에서 없는 주소로 가면 기본 404 화면(앱 바탕 아님)에서 같은 오류
+- 고침: Base에 `unhandledrejection`에서 'Transition …' DOMException만 막기(다른 오류는 그대로), `src/pages/404.astro`(Base + 안내)
+- 검증: 전환 오류 거부는 안 찍히고 다른 오류는 찍힘, 앱→없는 주소 오류 없음, 404 상태 코드·제목
+
+### 88. feature/load-more — 아래로 내리면 60장씩 끝까지 더 불러오기 (완료, dev 머지 0.4.34)
+- 요구(사용자 2026-10-28 확정): 사진이 많을 때 아래로 내리면 자동으로 60장씩 더, 상한 없음. 지금은 최근 200장까지만(홈·가족 앨범·크게 보기)
+- 디자인 먼저(캔버스에 없음): 목록 끝 줄 세 상태 보드 — 불러오는 중(콩이 작게 + '사진 불러오는 중…'), 스크립트 없을 때 '사진 더 보기' 버튼, 끝('처음 사진까지 모두 봤어요'). 부모 홈·가족 모아 보기 두 화면, 라이트·다크
+- 구현
+  - 백엔드: `listMedia`에 `before`/`after` 커서((taken_at, id), 찍은 날 내림차순 기준 더 옛날/더 최근)와 `id` 추가, `countMedia`(같은 조건 개수, PostgREST `Prefer: count=exact`) 추가. supabase·mock 둘 다
+  - 부모 홈: 처음 60장. 끝에 '사진 더 보기' 링크(`?before=<커서>`, 스크립트 없으면 그 쪽만 그린 페이지). 스크립트 있으면 끝 줄이 보이기 전(IntersectionObserver, 여유 600px) 다음 쪽 HTML을 받아 붙임. 같은 달이 이어지면 그 달에 칸을 합치고 엇갈린 배열(masonry)을 다시 계산, 달 사진 수도 갱신
+  - 가족 앨범: 모아 보기는 날짜 묶음을 같은 방식으로 이어 붙임(같은 날이면 합침). 넘겨 보기는 남은 폭이 화면 6개쯤일 때 다음 쪽 카드를 붙임. 제목 'N장'·'n / 전체'는 countMedia로 정확히
+  - 크게 보기(부모 view·가족 album/[id]): 200장 목록 대신 그 사진 앞뒤 21장(커서)과 개수로 자리·전체를 구함 → 몇 번째 사진이든 열림
+  - 붙이는 동안 화면 읽기: 늘 있는 빈 알림 칸(role=status) 하나에 '불러오는 중'·'N장을 더 불러왔어요'·'모두 봤어요'를 바꿔 씀. 키보드로 '사진 더 보기'에 와 있었으면 붙인 첫 칸으로 초점
+  - 닫으면 보던 자리로(사용자 2026-10-28 "닫기 누르면 현재 보던 상태로 돌아가는 게 중요"): 크게 보기 닫기 주소에 지금 보는 사진을 담아(`?to=<id>#c-<id>`, 넘기면 주소도 바뀜) 목록이 그 사진까지(그 쪽 끝까지) 그리고, 누를 때 칸의 화면 속 높이를 sessionStorage에 적어 두었다가 돌아오면 같은 높이에 오게 스크롤. 넘겨 보기는 그 카드가 가운데(`#p-<id>`, 지금도 쓰는 방식). 스크립트 없으면 #앵커로 그 칸이 맨 위
+- 영향 파일: `src/lib/backend/{types,supabase,mock}.ts`, `src/lib/album.ts`, `src/lib/more.ts`(새), `src/pages/home.astro`, `src/pages/album/{index,[id],save}.astro`, `src/pages/view/[id].astro`, `src/styles/base.css`, `tools/design/loadmore.py`(캔버스 v159~160), `tools/e2e/loadmore.py`
+- 하지 않는 것: 골라서 저장하기 화면(`/album/save`)은 최근 200장 그대로(여러 장 골라 저장은 최근 사진 위주, 필요하면 같은 방식으로)
+- 예상 결과: 사진 몇 장이든 끝까지 내려 볼 수 있고, 홈에서 연 옛날 사진도 크게 보기에서 앞뒤로 넘어감
+- 정한 것(구현하며): ?before=에 기준 사진 id 대신 커서 값(찍은 날~id, ISO 꼴만)을 실음(그사이 지워져도 이어짐), 순번은 전체-커서보다 옛것. 닫고 돌아올 때 한 번에 900장까지(Supabase max_rows 1000 아래), 넘으면 그 위 30장부터 한 쪽(위로 이어 붙이기 없음, shortcut). 홈 달 사진 수는 쪽 경계에 걸칠 수 있는 첫·끝 달만 따로 셈. 새 사진 레이어는 계속 최근 200장 기준. 반응 수는 DB 함수가 200장씩이라 나눠 물음(mock도 같은 상한). 가족 앨범 화면에 작은 스크립트 예외 추가(없으면 링크·#앵커)
+- 결과: 검토 3회(1회: 넘겨 보기 반응 뒤 첫 카드로 튐·900장 넘는 자리·지워진 기준 사진·화면 읽기 알림·초점·버튼 대비, 2회: 스크립트 없는 다음 쪽 제목 0장·커서 엄격 확인·순번·올라온 날, 3회: 201번째부터 반응 수 빠짐·카드 id 겹침·낡은 주석), 모두 고침. loadmore e2e 25개(130장, 달·날 걸침, 끝 줄, 닫으면 같은 높이, 넘겨 보기 반응 뒤 그 카드, 스크립트 없음), QA 커서 시험(같은 시각 여럿·지워진 기준·MAX_ROWS 1000), 운영 Supabase에 새 조회 문법 확인(anon, 0행), 기존 e2e(save·family·delete·homelayer·masonry·comments·instant·chev·kidtabs·vplay 새 부분) 통과
+- 못 한 것: 실제 사진 많은 가족 데이터·실기기(아이폰 사파리 돌아온 높이·VoiceOver 알림)·900장 넘는 자리 화면 확인. vplay '한마디 보냄 토스트'는 원래부터 실패(이번 변경과 무관)
+
+### 89. feature/family-masonry — 가족 모아 보기 2줄을 엇갈린 배열로 (완료, dev 머지 0.4.35)
+- 요구(사용자 2026-10-28 "그게 나을까?" → 추천대로): 가족 모아 보기 기본 크기(2줄, 넓은 화면 4줄)는 CSS columns라 같은 날이 쪽을 넘어 이어져 칸을 합치면 그날 사진이 줄 사이로 다시 나뉘어 보이던 칸이 옆 줄로 옮겨감(리플로우). 순서도 줄마다 위→아래로 읽힘
+- 구현: 부모 홈과 같은 엇갈린 배열(`src/lib/masonry.ts`, 가장 짧은 줄에 차례로 쌓기, 디자인 GrandList 보드도 같은 방식). 서버가 날짜 묶음마다 2줄·4줄 자리를 `--c2/--r2/--s2`·`--c4/--r4/--s4`로 내보내고, 이어 붙여 합치면 브라우저가 그 묶음만 다시 계산(앞 칸 자리는 그대로). 다시 계산하는 함수는 `src/lib/more.ts`로 옮겨 홈과 같이 씀. 1줄(columns 1)·3·5줄(정사각형 격자)은 그대로
+- 영향 파일: `src/pages/album/index.astro`, `src/styles/family.css`, `src/styles/parent.css`, `src/lib/more.ts`, `src/lib/masonry.ts`(주석), `src/pages/home.astro`, `tools/e2e/loadmore.py`
+- 예상 결과: 사진이 늦게 오거나 다음 쪽을 합쳐도 보이던 칸이 움직이지 않음
+- 범위 바뀜(검토 2회): 칸 폭 단위(cqi)·container query가 없는 옛 브라우저(iOS 15 이하) 대비 `@supports not (container-type: inline-size)` — 가족 2줄은 CSS columns, 부모 홈(이미 배포된 엇갈린 배열)은 정사각 격자
+- 결과: 검토 3회(1회: 주석·e2e 비율 섞기, 2회: 옛 브라우저 대비, 3회: 쓸모없는 대비 줄·주석·문서), loadmore e2e 28개(쪽 경계에 걸친 날을 합쳐도 움직인 칸 0, 겹침 0, 휴대폰 2줄, 비율 섞음), QA로 세 쪽에 걸친 날 두 번 합치기·폭 바꾸기·z 전환·스크립트 없는 다음 쪽 확인, 대비 규칙은 CSS를 넣어 390·1280폭 겹침 0
+- 못 한 것: 실제 iOS 15 이하 사파리, 사진 많은 실제 가족 데이터. 아주 긴 파노라마는 칸에 맞게 잘림(부모 홈·디자인과 같은 규칙, 크게 보기에선 전체)
+
+### 90. 도메인 연결 sweepea.co.kr + www (완료, dev 머지 0.4.37)
+- 요구(사용자 2026-10-28): 도메인 연결, "www도 같이 연결되어야 해"
+- 지금(2026-10-28 확인): 네임서버가 아직 가비아(ns.gabia.co.kr 등). 로컬 wrangler 로그인 안 됨(배포는 dev 푸시로 자동)
+- 사용자 할 일: ① Cloudflare `Takeaseat.cs@gmail.com's Account`에 사이트 `sweepea.co.kr`(Free) 추가 ② 가비아에서 네임서버를 Cloudflare가 준 2개로 ③ Active 될 때까지 대기 ④ 연결 뒤 Supabase > Authentication > URL Configuration에 `https://sweepea.co.kr/auth/callback`(Site URL도 새 주소) 추가
+- 진행: 사용자가 Cloudflare 사이트 추가(Free, AI 학습 크롤러 막기 추천)·가비아 네임서버 ed/jade.ns.cloudflare.com(3차 ns.gabia.net 지움)·Active(2026-10-28). 코드: wrangler.jsonc routes·vars·keep_vars, 미들웨어 www → 308. 0.4.36에서 routes 때문에 workers.dev가 꺼짐(1042, 실수) → 0.4.37 `workers_dev: true`
+- Supabase(2026-10-28): 처음엔 새 주소가 허용 목록에 없어 카카오 로그인 뒤 Site URL(workers.dev 첫 화면)로 떨어짐(인증 기록으로 확인) → 사용자가 Site URL `https://sweepea.co.kr`·Redirect URLs에 `/auth/callback` 추가, 로그인 뒤 /home 확인
+- 할 일(Active 뒤): `wrangler.jsonc`에 `routes`로 `sweepea.co.kr`·`www.sweepea.co.kr` custom_domain, `www`는 `src/middleware`에서 같은 경로로 `sweepea.co.kr`에 301(주소 하나로: 가족 링크·로그인 쿠키가 주소에 묶임), `SITE_ORIGIN=https://sweepea.co.kr`(공유 링크), 배포 뒤 두 주소·로그인·공유 링크 확인. workers.dev 주소와 이미 보낸 링크는 계속 열림
+
+### 91. feature/landing — 대표 첫 화면에 소개 노출(검색 등록용) (완료, dev 머지 0.4.38)
+- 요구(사용자 2026-10-28): 처음 온 사람이 sweepea.co.kr에 들어오면 "가족에게 받은 주소로 들어와 주세요"만 나와 엄마아빠는 막힘. "메인 진입 시 뭔가 있어야 서치 콘솔에도 등록" → "일단 루트에 컨텐츠 노출되는 걸로"
+- 디자인: 캔버스 Landing·Landing-Light(v161~, `tools/design/landing.py`). 위 콩이·스위피·한 줄 소개(로그인 보드와 같음) + '시작하기' + 가족 안내 한 줄, 가운데 소개 3장 그림·제목(h2, title-2)·설명, 아래 '시작하기'·바닥글
+- 구현: `/`에 처음 온 사람(부모 쿠키·가족 출입증 없음)은 소개 화면. 이미 들어온 기기는 지금처럼 앨범·대기로. 로그인 화면(`sp-p__brand`·`sp-p__login`)·소개 화면(`sp-p__mock*`·`sp-p__intro-*`) 스타일 재사용. 검색용: 제목·설명, 공유 미리보기(og:title·description·image), 대표 주소 canonical, `public/robots.txt`(/api/만 막음, 나머지 화면은 미들웨어 X-Robots-Tag noindex — 아래 '바뀜'), `public/sitemap.xml`
+- 영향 파일: `src/pages/index.astro`, `src/layouts/{Base,Parent}.astro`, `src/middleware.ts`, `src/styles/parent.css`, `public/robots.txt`, `public/sitemap.xml`
+- 바뀜(검토 1회): robots.txt로 첫 화면 말고 다 막으면 카톡 스크랩 봇이 가족 링크(/i/) 미리보기를 못 만들 수 있음 → robots.txt는 /api/만 막고, 첫 화면 밖 모든 응답에 `X-Robots-Tag: noindex, nofollow`(미들웨어). 글자 200%에서 소개 그림 카드가 화면을 넘던 것(/start도) → 감싼 칸 max-width·이름 줄어들기
+- 하지 않는 것: 개인정보처리방침·이용약관(따로), 서치 콘솔 소유 확인(사용자가 DNS TXT 또는 확인 코드)
+- 결과: 검토 3회(1회: robots→noindex 머리·200% 넘침, 2·3회: 소개 카드 칩 줄바꿈·문서), 로컬 Lighthouse LCP 약 1.4초·CLS 0·접근성 100·JS 0, 기존 e2e(entry·parent) 통과
+- 남은 확인: 운영에서 카카오 공유 디버거로 /i/ 미리보기(사용자 로그인 필요), 운영 robots.txt에 Cloudflare 봇 설정이 덧붙는지. 디자인과 다른 점: 소개 그림 카드는 /start 구현을 그대로 써서 보드보다 글자가 작고 셋째 카드의 콩이가 카드 안(보드는 위)
+
+### 정한 것: 게스트(로그인 없이 혼자 쓰기) 없음 (사용자 2026-10-28)
+- 사용자 "게스트 서비스 막아야겠는데": 로그인 없는 계정(익명 로그인)·기기에만 저장하는 방식 모두 만들지 않는다
+- 이유(논의): 기기를 잃으면 사진에 다시 들어올 수 없고, 누구나 저장 공간을 쓸 수 있어 한도·정리 규칙이 필요하며, 기기 저장은 사파리가 7일 뒤 지울 수 있어 '사라지지 않는 앨범'과 맞지 않음
+- 지금 상태가 곧 막힘: 올리기는 부모 로그인(카카오 등)만, 가족은 부모 링크 + 승인으로만. 첫 화면 '시작하기'도 로그인으로 감
+
+### 92. feature/landing-copy — 첫 화면 문구를 마케팅 관점으로(카피라이팅 스킬 + 리서치) (완료, dev 머지 0.4.39)
+- 요구(사용자 2026-10-28): "루트 진입 컨텐츠 마케팅 스킬 + 리서치 통해서 업데이트"
+- 리서치(2026-10-28 웹 검색): 경쟁 앱(패밀리 앨범·BabyAlbum·Bebememo)은 모두 앱 설치. 패밀리 앨범은 공개 범위 세분화가 유료(프리미엄). 카톡으로 보낸 사진은 서버 보관 기간이 지나면 만료되고(블로그는 약 30일, 공식 확인 못 함 → 숫자 안 씀) 화질 설정에 따라 줄어듦. 키워드 검색량 수치는 못 얻음(네이버 검색광고 키워드 도구 필요)
+- 구조(사람이 움직이는 세 박자: 지금 불편 → 바뀐 모습 → 시작 방법): 머리(제목에 검색어 '아기 사진'·'가족 앨범'·'조부모') → 이런 적 있으세요?(불편 3) → 이렇게 써요(3단계) → 좋은 점 3(지금 소개 그림 재사용) → 자주 묻는 질문(details/summary, FAQPage 구조화 데이터) → 마지막 시작하기
+- 사실만: 조부모 앱 설치·가입 없음(처음 한 번 이름·가족 비밀번호), 처음 들어오는 사람은 승인, 외가·친가 그룹, 무료 5GB(차면 새로 올리기만 멈춤), 보기 좋은 크기로 줄여 올림(영상 1080p, 원본 보관 안 함), 지우기 전까지 보관. 지어낸 숫자·후기 없음
+- 영향 파일: `src/pages/index.astro`, `src/styles/parent.css`, `tools/design/landing.py`(캔버스)
+- 바뀜(사용자 2026-10-28): "한 장으로 설명되면 좋겠는데" → 불편·단계·그림 카드·질문(FAQ 구조화 데이터 포함) 빼고 휴대폰 한 화면(제목·한 줄·핵심 3줄·무료로 시작하기·가족 안내). "후킹이 저 정도로밖에" + "서비스 모르는 사람 기준" → 처음 보는 사람이 내 얘기로 느끼는 제목 A(단톡방) 선택, "말투.." → '아직도'(나무람) 빼고 "아기 사진, 단톡방에 올리고 계신가요?"
+- 최종(사용자 피드백 차례로): "설명 문구가 너무 구리다" → 말 대신 장면, "카톡 대화 말고 서비스 화면" → 할머니가 링크로 보는 넘겨 보기를 휴대폰 그림에(양옆 이전·다음, 반응 5가지, 한마디, 사진 칸에 콩이 — 그린 부분만 자른 `public/kongi-crop.svg`), "디바이스 하단 그라디언트로 잘라" → 실제에 가까운 크기 + 아래 테두리만 흐림, "테두리 밝아지면 핸드폰 아님" → 몸체는 검정 그대로 + 얇은 금속선 + 다크에서 민트 빛. 화면: 콩이·스위피 / "아기 사진, 단톡방에 올리고 계신가요?" / "링크 하나만 보내세요. 할머니는 앱 설치도 가입도 없이 봐요." / 휴대폰 그림(aria-hidden) / 외가·친가 따로·하트·한마디·지우기 전엔 그대로 / 무료로 시작하기·5GB까지 무료·가족 안내. 390×844 한 화면(실제 사파리는 주소창 때문에 아래가 조금 걸릴 수 있음)
+- 검토: 4회(긴 판 사실 확인, 한 장 판 사실·말투, 서비스 화면 판: 태그 선택자 b → 클래스, '누르기만 하면'은 처음 이름·비밀번호를 넣으니 사실 문구로, 없는 색 --ph-2(보드 전용) → --fill, 그림자 잘림 → 덱 가로만 clip, 이모지 글꼴, 큰 글자에서 칩 겹침), Lighthouse 통과
+- 검토 1회(긴 판 기준)에서 나온 사실 확인: 설치·가입 없음은 조부모 얘기로, 승인은 '처음 보는 이름은 확인'(등록된 이름의 새 기기는 비밀번호만), 영상 1080p는 줄일 수 있을 때만(한 장 판에선 뺌). /start 3장 "콩이도 아이 나이에 맞춰 자라요"는 코드에 없음(콩이 그림 한 장) → 사용자에게 물음
+
+### 93. iOS 앱(전체 네이티브) 계획 (계획 검토 중)
+- 결정(사용자 2026-10-28): 조부모도 웹과 앱 둘 다로 본다 → 앱 하나에 입구 둘(엄마아빠 로그인 / 가족 링크). 화면은 **전부 네이티브(SwiftUI)**, 디자인 캔버스 그대로. 기획서의 "조부모는 앱 없음"·"웹을 감싸는 앱"은 이 결정으로 바뀜
+- 저장소: `sweepea-ios`(새로, xcodegen 프로젝트, SwiftUI, Supabase Swift SDK). 백엔드는 지금 Supabase·Worker 그대로 같이 씀
+- 웹(이 저장소)에 더할 앱용 입구: ① API가 쿠키 말고 `Authorization: Bearer` 토큰도 받기(올리기·공유·설치 등) ② 사진 주소 서명 API(볼 권한 확인 후 `/m/…` 서명 주소 묶음 발급, 서명 비밀은 서버에만) ③ 유니버설 링크용 `/.well-known/apple-app-site-association`(가족 링크 `/i/*`를 앱이 열게, 애플 Team ID 필요) ④ Supabase 로그인 돌아올 주소에 앱 주소(`sweepea://auth/callback`) 추가(사용자)
+- 단계
+  1. 바탕: 프로젝트 골격, 디자인 값(색 밝음·어두움, 글자 단계·가족 큰 글자 3단계, 간격·모서리 — tokens.css와 같은 값), Pretendard 글꼴(OFL), 콩이, 공통 부품(채운 버튼·카카오 버튼·회색 알약·칩·토스트·가운데 레이어·세그먼트 탭·아래 탭바)
+  2. 입구: 첫 화면(웹 첫 화면과 같은 소개), 엄마아빠 로그인(카카오, ASWebAuthenticationSession + PKCE), 처음 설정(아이·가족 비밀번호), 가족 링크 입장(누구세요 → 비밀번호 → 승인 대기·앨범), 유니버설 링크
+  3. 가족 화면: 앨범 넘겨 보기·모아 보기(엇갈린 배열, 60장씩 더), 크게 보기(반응·한마디·저장), 안내 화면들
+  4. 엄마아빠 핵심: 홈(달별 엇갈린 배열·레이어), 크게 보기·사진 정보 수정·지우기, 올리기(사진첩에서 고르기, 기기에서 줄이기 — 영상 AVFoundation, 백그라운드 이어 올리기), 카톡 공유(카카오 SDK)·공유 창, 최근 반응
+  5. 설정: 가족(승인·거절·새 휴대폰·링크·문자), 그룹, 아이·접종 일정, 글자 크기, 저장 용량, 계정(탈퇴·되살리기)
+  6. 앱에서만: 푸시(새 하트·한마디·승인 요청), 업로드 추천(사진첩 얼굴 감지), 앱 안 결제(나중)
+- 사용자에게 필요한 것: 애플 개발자 계정·Team ID, 번들 ID(제안 `kr.co.sweepea.app`), 최소 iOS 버전(제안 17), 카카오 개발자 콘솔 iOS 앱 등록(네이티브 앱 키), GitHub `sweepea-ios` 저장소 만들기(비공개 추천) 동의
+- 진행 방식: 단계마다 웹과 같은 규칙(디자인 캔버스 먼저, 기능마다 검토·검증 3회, dev 브랜치)
+
+### 94. 경쟁력 기능과 요금제 (정함·계획, 2026-10-29)
+- 배경(사용자 "경쟁력을 만들어야 하는데"): 국내 강자(쑥쑥찰칵·Bebememo, 평가 1.6만~1.8만)와 같은 값(월 ₩5,900 안팎)이면 엄마아빠가 고를 이유가 '조부모 설치 없이' 하나로는 약함. 돈 내는 사람은 엄마아빠라, 엄마아빠가 "다른 앱엔 없다"고 느낄 것을 만든다(research/pricing-2026-10.md)
+- 경쟁력 기능(조부모가 앱 없이 우리 웹으로 보는 구조라서 자연스럽게 되는 것)
+  1. **할머니가 보신 걸 엄마아빠에게**: 이번 주 누가 몇 번 봤는지, 어떤 사진을 여러 번 봤는지(조부모 화면이 우리 웹이라 셀 수 있음, 앱을 깔아야 하는 경쟁사는 조부모가 안 깔면 못 셈)
+  2. **조부모 음성 한마디**: 글자 대신 말로 남기고 엄마아빠는 목소리로 들음(웹 녹음). 손주가 커서도 남는 할머니 목소리. **받아 적은 글자도 같이 보임**(사용자 "텍스트로 보이긴 해야": 소리를 못 켜는 곳에서도 읽게). 말하면 자동으로 글자로 바뀌고, 보내기 전에 글자를 보여 줘 고치거나 다시 말하게. 엄마아빠 화면엔 글자 + 재생 버튼. 받아 적기 방법은 만들 때 정함: 브라우저 음성 인식(무료, 카톡 안 브라우저 지원 확인 필요) 또는 서버 음성 인식(정확, 건당 비용)
+  3. **액자 모드**(우선순위 뒤, 사용자 "있어서 나쁠 건 없어 보여서 추가"; 2026-11-01 "액자 앱에서만" → iOS 앱에서만, 웹은 안 만듦): 태블릿·TV 브라우저에 열어 두면 새 사진이 저절로 넘어가는 화면. 태블릿이 있는 댁만 쓰므로 핵심은 아님
+- 요금제(안, 아직 하나/둘 미정): 무료 = 핵심 경험 전부(설치 없이 보기·외가/친가·승인·하트·한마디·광고 없음) + 줄인 사본 5GB / '스위피 플러스' 월 ₩5,900·연 ₩59,000 = 원본 보관(사진·영상 원본, 아직 없는 기능) 100GB + 음성 한마디 계속 보관(무료는 최근 것만) + 액자 모드. 꽉 채워도 저장 비용으로 적자 없음(월 54%·연 45%, 서버·DB 비용 빠짐). 가족 플랜(월 ₩11,900·200GB)은 차별점이 생기면 추가
+- 순서(제안): 1 보신 기록 → 2 음성 한마디 → 원본 보관 → 3 액자 모드. 웹에 먼저 만들고 iOS 앱에 같은 것. 각각 디자인 캔버스 보드 먼저
+- **정함(사용자 2026-10-29)**: 스위피는 보관(클라우드)이 아니라 가족에게 보여 주는 곳(사용자 "생각해보면 클라우드가 아닌데") → **원본 보관은 안 만든다**(아이클라우드 200GB ₩4,400·2TB ₩14,000과 용량 싸움이 됨). **가족 플랜 없음**(₩11,900·200GB는 아이클라우드 2TB와 비교되면 짐). 요금제는 무료 + '스위피 플러스'(월 ₩5,900·연 ₩59,000) 하나: 가족이 보는 사본 용량 넉넉히(예: 100GB, 숨은 상한) + 음성 한마디 계속 보관 + 액자 모드. 용량 추가 상품은 실제 사용량을 보고 나중에
+- 리소스(저장 비용)가 가장 중요(사용자 "제일 중요한게 리소스") → 97: 이미 작은 사진은 다시 저장하지 않음
+- 고침(2026-10-29, 사용자가 보여 준 패밀리앨범 요금표·후기, research/pricing-2026-10.md 끝): 패밀리앨범도 가족 접속 기록('근황')·시기별 보기가 있다 → 1 보신 기록과 98은 차별점이 아니라 기본. 차별점은 '조부모 설치 없이' + 무료 화질(그쪽은 고화질 영상이 Pro ₩11,900). 스위피 무료가 그쪽 유료 수준이라 무료에서 무엇을 줄일지는 사용자 결정으로 남김
+- 새 순서: 97 작은 사진 그대로 → 98 나이별 건너뛰기(추천) → 음성 한마디(받아 적기는 브라우저 무료 기능, 안 되는 브라우저는 녹음만·직접 쓰기) → 플러스 용량·결제 → 액자 모드
+
+### 95. feature/view-log — 할머니가 보신 걸 엄마아빠에게 (진행 중, 경쟁력 기능 1)
+- 요구(94, 사용자 "기능 구현 웹으로 먼저"): 가족이 사진을 본 걸 엄마아빠가 안다. 범위(사용자 2026-10-29 "추천대로"): **이름만**. 횟수·시간·주간 요약은 뺌(감시처럼 읽히고 덜 본 사람이 비교됨). 카톡의 1이 사라지는 것과 같은 역할이라 무료 기능(94의 '보신 기록 자세히' 플러스 항목은 지움)
+- 디자인(캔버스 ParentViewViewers): 엄마아빠 크게 보기 날짜 줄 아래 눈 그림 + "외할머니·외할아버지가 봤어요"(셋 넘으면 이름 셋 + "외 N명"). 본 사람이 없으면 줄 없음
+- DB(새 마이그레이션, 운영 적용 전 사용자 확인): `views`(사진·구성원, 처음 본 때) 한 사람 한 사진 한 줄. 가족 기기가 부르는 `sp_note_views(사진 id 배열)`(볼 수 있는 사진만, 승인된 구성원만), 엄마아빠가 부르는 `sp_parent_media_viewers(사진 id)`(본 사람 이름, 처음 본 순). 엄마아빠 계정은 안 셈
+- 가족 화면: 눌러서 연 크게 보기는 페이지를 그릴 때 서버가 기록. 크게 보기에서 옆으로 넘긴 사진(영상 칸·창 끝 이동은 페이지를 열 때 기록)과 넘겨 보기 앨범은 가운데 카드에 1.5초 머물면 `/api/views`로 보냄(스크립트 없으면 크게 보기를 열 때만)
+- 알림: 가족 입장 화면('누구세요?') 안내 아래 "엄마아빠에게 누가 봤는지 보여요" 한 줄
+
+### 96. feature/bottom-bar — 주요 버튼 아래 고정·올리기 진행 칸 (완료, 0.5.1)
+- 요구(사용자 2026-10-29): "하단 버튼 픽스드 되면 좋을 버튼들은 처리, 사파리 하단 바 고려" / "올리기 하단 프로그래스바 없애고 업로드중 숫자 영역이 프로그래스바"
+- 고정: 처음 설정 다음·시작하기, 소개 다음, 올리기(버튼 둘), 문자 공유 링크 만들기(탭바 위), 가족 비밀번호 들어가기. 안 함: 바로 저장되는 화면 저장(스크립트 있으면 숨음), 내보내기·탈퇴 같은 위험 버튼
+- 사파리: viewport-fit=cover + env(safe-area-inset-bottom). iPhone 17 Pro 시뮬레이터 iOS 26 사파리에서 떠 있는 아래 바 바로 위에 놓임 확인
+- 넓은 올리기 화면은 오른쪽 칸 제자리, 높이 30rem 미만은 고정 풀림(막대가 화면 절반을 가리지 않게). 올리기 시작할 때 상태 칸을 한 번 보이게 스크롤
+- 검사: tools/e2e/bottombar.py
+
+### 97. feature/keep-small-photo — 이미 작은 사진은 다시 줄이지 않기 (완료, 0.5.2)
+- 요구(사용자 2026-10-29): "화질이 너무 저하되면 안되니까 … 아예 큰 원본의 경우는 줄이되 이미 줄어있는 사진은 줄이지 않는 걸로", "제일 중요한 게 리소스"
+- 원인: 영상은 이미 짧은 변 1080·5Mbps 이하면 그대로 올림. 사진은 크기와 상관없이 전부 캔버스로 다시 저장(긴 변 2048, JPEG 85%) → 카톡으로 받은 사진처럼 이미 줄인 JPEG는 한 번 더 화질이 깎이고, 낮은 화질 JPEG를 85%로 다시 저장하면 오히려 커지기도 함
+- 규칙(올리기 화면 `photo()`): JPEG이고 긴 변 2048 이하면 원본에서 위치·기기 정보(APP1 EXIF·XMP, 다른 APP·주석, 끝에 붙은 데이터)를 화질 손실 없이 잘라 낸 파일과 다시 저장한 파일 중 **작은 쪽**을 보기용으로(같으면 원본). 회전 정보가 있는 사진(Orientation≠1)·깨진 파일·HEIC·PNG·WebP·큰 사진은 지금처럼 다시 저장. 색 정보(ICC)·Adobe 표시는 남김. 썸네일은 그대로 캔버스
+- 구현: `src/lib/exif.ts`에 `stripJpeg(buf)`(바이트만 다룸, 단위 검사), `src/pages/upload.astro` `photo()`에서 고르기. 서버·DB 바뀜 없음
+- 예상 결과: 카톡 사진은 화질 그대로·용량은 같거나 줄어듦. 큰 사진은 지금과 같음. 위치 정보는 어떤 경우에도 안 올라감
+- 결과: 검토 3회(타입 오류·프로그레시브 스캔 사이 표지·길이 없는 표지·LONG 회전 값·JPEG 아닌 파일 통째 읽기·APP0 JFXX 반영). 단위 검사 38개, 실제 사진 20개(아이폰 원본·sips HEIC 변환·프로그레시브·CMYK·ICC·재시작 표지 등) 그림 동일·정보 없음, 화면 검사 tools/e2e/keepsmall.py 크롬·사파리 엔진(`webkit` 인자) 통과. 사파리는 다시 저장할 때 자기 작은 EXIF(해상도)를 붙임(원본 정보 아님). 알려진 차이: 원본 그대로 올린 넓은 색(P3) 사진은 썸네일(캔버스, sRGB)과 색이 조금 다를 수 있음. 아이폰 HDR 게인맵은 빠짐(다시 저장할 때도 같음). 실제 아이폰 사파리 확인은 사용자 쪽
+- 범위 밖: 화질 85% 올리기(리소스 우선이라 안 함), 3분 넘는 영상 원본 그대로 올리기(최대 2GB, 리소스 구멍 → 다음 이슈 후보), WebP 메타데이터 자르기
+
+### 98. feature/age-jump — 나이별로 건너뛰기 + 크게 볼 땐 주마다 대표 사진 (디자인 보드 완료 v176, 개발 전)
+- 요구(사용자 2026-10-29): 다른 앱 화면을 보여 주며 "이런 필터도 좋겠다" → "있는 월별·연별에 붙이기"(질문 답) → "크게보기 작게보기에서 전체 사진 보여주는 게 아니라 그 달, 그 주 그런 식으로 대표 사진 정해서 노출, 사진 전체 리스트는 3-5개 보기 됐을 때"
+- 문서·구현 차이(발견): 디자인 GrandList에는 칸 단계 1·2·3·5·월·연이 있었지만 웹은 1·2·3·5만(index.md도 1·2·3·5). 월·연 단계를 이번에 함께 만든다
+- 가족 모아 보기 칸 단계(디자인 GrandList·GrandListAge, 스크립트 tools/design/agejump.py)
+  - 1칸·2칸: 주마다 대표 사진만(1칸 1장, 2칸 4장까지) + 'N장 모두 보기'(그 주를 3칸으로). 대표 고르는 법: 하트·한마디 많은 순 → 같으면 최근(자동, 따로 고르는 화면 없음)
+  - 3칸·5칸: 사진 전부(지금과 같음)
+  - 월: 달 카드(대표 3장 + 'N일 · N장'), 누르면 그 달 3칸
+  - 마지막: 보이는 사진이 아이 하나면 나이별 카드(태어나기 전 · 태어나서 ~ 백일 · 백일 ~ 첫돌 · 첫돌 ~ 두 돌 · …, 지금 구간은 '~ 지금', 사진 있는 구간만), 여러 아이·여러 집이면 연도 카드. 누르면 그 구간 처음부터 3칸
+  - 안내 글: '크게 보면 주마다 대표 사진, 작게 보면 사진 전부 · 더 작게 하면 월별, 나이별로'. 넘겨 보기는 지금처럼 사진 전부
+- 엄빠 홈(디자인 ParentHomeAge): 아이 탭 아래 알약 '사진 · 월별 · 나이별'(전체를 고르면 '연도별'). 사진 = 지금 그대로 전부(엄빠는 관리하니까 대표만 보기 없음), 카드는 가족과 같은 모양 작은 글자
+- 구현 방향(초안): 주·달·구간 묶음과 묶음별 수·대표는 서버에서(백엔드 계약에 묶음 목록 추가, mock 먼저). 카드에서 그 구간으로 가는 건 이미 있는 '그 시점부터 불러오기'(`?before=`). 스크립트 없어도 링크로 동작
+- 보기 형식 기억(사용자 2026-10-29 "보기형식은 기억하도록"): 가족은 넘겨 보기/모아 보기와 칸 단계를, 엄빠는 사진·월별·나이별을 기기 쿠키에 남김(글자 크기 `sp_size`와 같은 방식, 서버가 읽어서 스크립트 없어도 됨). 주소에 v·z가 있으면 그게 먼저, 없으면 쿠키, 쿠키도 없으면 처음 값. 카드·'모두 보기'로 잠깐 들어간 단계는 남기지 않고 −/+·탭으로 직접 고른 것만
+- 정함(사용자 2026-10-29 "2칸보기로 가자. 일단은"): 가족 모아 보기 처음 단계는 2칸(주마다 대표). 처음 화면이 넘겨 보기(사진 전부)라 새 사진은 거기서 다 봄. 주는 월~일, 두 달에 걸치면 시작한 달
+- 함께 볼 것(발견): 승인 대기 가족은 DB에선 들어온 링크의 사진 묶음(`share_media`, `entry_share_id`)을 볼 수 있고 /wait 글도 '지금은 받은 사진만 볼 수 있어요'인데, 화면엔 사진이 하나도 안 나옴(앨범은 대기면 /wait로). 디자인 보드도 없음
+- 정함(사용자 2026-10-29 "사진 크기 보기부터 수정"): 98을 둘로 나눔 → 98a 가족 모아 보기 칸 단계(1·2칸 주마다 대표, 3·5칸 전부, 월 카드, 처음 2칸, 보기 형식 기억) 먼저, 98b 나이별·연도 카드 + 엄빠 홈 알약은 다음
+- 정함(사용자 2026-10-29 "구독은 엄마든 아빠든 정해진 대로, 둘 중 하나가 하면"): 구독은 가족방 하나에 하나(entitlements.family_id). 엄빠 둘 중 누가 결제해도 가족방 전체에 적용. 결제한 사람이 공동 관리에서 나가도 가족방은 기간 끝까지 그대로, 스토어 결제 해지는 결제한 본인이 스토어에서
+
+#### 98a. 사진 크기 보기(−/+) — 엄빠 앨범 + 가족 앨범 (완료, 0.8.0)
+- 요구(사용자 2026-10-29): "사진 크기 보기부터 수정", "엄빠 화면에도 + - 있어야지", "가족 앨범 조부모님, 부모 볼 수 있게 진행", "줄여 보는 건 단순히 사진 나열이 아니라 대표 사진 몇 장 보이는 걸로" → 아래 단계로 정함("Yes, that way")
+- 칸 단계(두 화면 같게, 사진 앱처럼 크게 = 전부, 줄이면 대표): 1칸 · 2칸(처음, 엇갈린 배열) · 3칸(정사각) = 사진 전부 → 월별(달 카드: 대표 3장 + 'N장', 누르면 그 달부터 3칸) → (98b) 나이별·연도별. 5칸은 뺌(어르신께 너무 작음). 예전 계획의 '1·2칸 주마다 대표'는 버림(사진 앱과 반대라)
+- 대표 사진: 하트·반응·한마디 많은 순 → 같으면 최근(자동). DB 함수 sp_media_months(가족방·아이 거르기, 볼 수 있는 사진만 sp_can_view_media, 서울 달). 마이그레이션 20261029000004_media_months.sql(운영 적용은 사용자 확인 뒤)
+- 엄빠 앨범(/home): 머리 오른쪽 둥근 유리 −/+ (디자인 ParentHomeZoom). 1칸은 큰 사진(view_key), 넓은 화면은 2·4·6줄
+- 가족 앨범(/album 모아 보기): 같은 단계로 −/+ (지금 1·2·3·5 → 1·2·3·월)
+- 기억: 주소 ?z=(1·2·3·m)가 있으면 그것을 그 기기 쿠키에(엄빠 sp_pz, 가족 sp_az), 없으면 쿠키 → 없으면 2. 달 카드로 들어간 쪽(?before=)은 기억 안 함
+- shortcut: 달 카드로 들어가면 그 달부터 아래로만(위 달은 탭 '앨범'으로 처음부터), 대표 점수는 사진마다 세서 아주 큰 가족방이면 느려질 수 있음 → 그때 점수 칸을 미리 모아 두기
+- 결과(0.8.0): 검토 3회(월별 함수가 서비스 전체 사진을 훑던 것 → 내 가족방으로 먼저 좁힘, 월별 기억 중 크게 보기·사진 정보 수정에서 돌아오면 자리 잃던 것 → ?to=면 칸으로·크게 보기 닫기에 z, 달 경계 커서 0 uuid, mock 시각 비교). 운영 DB에 20261029000004 적용(2026-10-29 사용자 "Yes, apply"). e2e parentzoom·familyzoom(크롬·웹킷), pview·vswipe·loadmore 맞춤. 남은 것: 98b 나이별·연도별, 큰 가족방 월별 성능
+- 영향 파일: supabase/migrations/20261029000004_media_months.sql, supabase/tests/rls.sql, src/lib/backend/{types,mock,supabase}.ts, src/lib/album.ts, src/pages/home.astro, src/pages/album/index.astro, src/styles/{parent,family}.css, tools/design/parentzoom.py, e2e parentzoom.py·familyzoom.py
+
+#### 98c. 월별·연별 카드 시안대로 + 연별 단계 + 위에 붙는 찍은 날 (완료, 0.9.0)
+- 요구(사용자 2026-10-29): "월별 보기 지금 디자인이랑 시안 안 맞음, 왼쪽에 큰 그림 하나 우측에 몇 개, 날짜가 사진 위에", "연별 보기 필요", "사진 찍은 시기 fixed 같이 이동(1·3칸은 그날, 기간으로)", "찍은 날짜 맞아, 디자인 가이드 맞춰서"
+- 단계: 1·2·3·5칸(사진 전부, 사용자 "5칸 레이아웃 추가"로 5칸 다시) → 월별 → 연별(새로) = 처음 시안 GrandList 단계 그대로. 나이별은 98b
+- 월별 카드(시안 GrandList v176): 왼쪽 큰 사진 1장(두 줄) + 오른쪽 2장 위아래, 높이 180(가족 더 큼). 달 이름·'N장'은 사진 위 왼쪽 아래에 겹침(어두운 그라데이션 위 흰 글자)
+- 연별 카드(시안): 왼쪽 큰 사진 1장(2×2) + 오른쪽 작은 4장, '2026년' + '1–10월 · 312장' 사진 위에 겹침. 대표는 달마다 대표 1번부터(최근 달 먼저), 모자라면 2·3번 — DB 새 함수 없이 sp_media_months 결과로. 누르면 그 해 마지막 달부터 3칸
+- 위에 붙는 찍은 날(엄빠 앨범 머리 작은 줄): 1·2칸은 화면 맨 위 사진의 날, 3·5칸은 화면에 보이는 사진들의 기간('10월 1일 ~ 21일'). 스크롤하면 바뀜(작은 스크립트, 서버가 첫 값을 그려 스크립트 없어도 첫 날짜). 월별·연별은 사진·영상 수. 가족 모아 보기는 날짜 제목(이미 있음)을 위에 붙게(CSS만)
+- 결과(0.9.0): 검토 3회(연별 기억 중 돌아오면 자리 잃음 → ?to=면 칸, 연별 더 보기 링크 없앰, 카드 글자 대비 → 글자 자리부터 진한 막(6.5:1 이상), 연별 대표 1~4장 배치, 가족 붙는 날짜 제목 노치·초점 가림, 기간 연도 표기). 단위 검사 months.test.ts. 남은 것: 98e 그 자리에서 크기 바꾸기, 98d 엄빠 넘겨 보기, 98b 나이별
+- 영향 파일: src/lib/album.ts(ZOOMS에 'y', 연 묶기), src/pages/home.astro, src/pages/album/index.astro, src/styles/{parent,family}.css, tools/design/parentzoom.py, e2e parentzoom·familyzoom
+
+#### 98d. feature/parent-swipe — 엄빠 앨범에도 넘겨 보기·모아 보기 (완료, 0.15.0)
+- 요구(사용자 2026-10-29 "모아보기 넘겨보기도 없고"): 가족 앨범처럼 엄빠 앨범에도 '넘겨 보기 · 모아 보기' 세그먼트. 모아 보기 = 지금 앨범(−/+ 단계), 넘겨 보기 = 큰 카드 옆으로 넘기기(가족 넘겨 보기와 같은 부품). 고른 보기는 기기에 기억
+- 순서: 보드 → 계획 자세히 → 개발 (사용자 2026-10-31 "98d 엄빠 넘겨 보기", 브랜치는 평소대로 feature → dev)
+- 디자인(보드 ParentHomeSwipe, 다크·라이트, 스크립트 tools/design/parentswipe.py): ParentHomeZoom3에서
+  - 머리 아래(알림 띠 다음, 아이 고르기 위) 세그먼트 '넘겨 보기 · 모아 보기'. 엄빠 세그먼트 모양(.sp-p__seg, 높이 40, 15px)
+  - 넘겨 보기: 가족과 같은 카드(290×360, 양옆 카드 비스듬히·반투명, 옆으로 밀기). 카드 아래 줄은 찍은 날(· 기념일 · 영상 길이), 오른쪽에 받은 하트·한마디 수. 카드 밑 'n / 전체 · 옆으로 밀거나 옆 사진을 누르세요'
+  - 넘겨 보기엔 −/+ 없음(칸 단계는 모아 보기 것). 머리 작은 줄은 사진·영상 수(월별·연별과 같게)
+  - 반응 줄·한마디 입력은 넣지 않음: 엄빠는 카드를 눌러 크게 보기에서(반응·한마디·봤어요·사진 정보 수정이 다 거기 있음). 가족 화면처럼 카드 아래 반응 줄을 두면 엄빠 탭바와 겹치고 화면이 복잡해짐
+- 구현 방식
+  - 기억: 주소 ?v=swipe|list가 있으면 기기 쿠키 sp_pv에(가족 sp_av와 같은 규칙: 이어지는 쪽·돌아온 쪽은 기억 안 함), 없으면 쿠키, 없으면 모아 보기(지금과 같게). `src/lib/album.ts`에 pickView를 만들어 가족 readQuery도 같이 씀
+  - 카드 부품 공용: family.css의 넘겨 보기 카드 규칙(.sp-a__swipe·slide·card·pos, 기울이기 애니메이션)을 `src/styles/swipe.css`로 옮겨 가족·엄빠가 같이 씀(이름 그대로). 엄빠는 글자 크기만 엄빠 글자로(.sp-p__swipe)
+  - `src/pages/home.astro`: v=swipe면 사진(영상은 포스터) 큰 카드, 링크는 크게 보기 /view/<id>(칸 단계 z는 안 붙임, 닫으면 /home?to=<id> → 기억한 넘겨 보기로, 카드 id c-<id>로 그 카드가 가운데). 다음 60장은 가족과 같은 옆 이어 붙이기(autoMore observe:false). 'n / 전체'의 전체는 고른 아이 기준 countMedia
+  - 스크립트 없어도: 옆으로 밀기는 CSS(scroll-snap), 다음 쪽은 '사진 더 보기' 링크
+- 영향받는 파일: `src/lib/album.ts`, `src/pages/home.astro`, `src/styles/swipe.css`(새), `src/styles/family.css`, `src/styles/parent.css`, `src/layouts/Family.astro`, `tools/design/parentswipe.py`(새), `tools/e2e/parentswipe.py`(새), `index.md`, `plan.md`
+- 예상 결과: 엄빠 앨범에서 넘겨 보기·모아 보기를 오가고, 고른 보기가 다시 열어도 그대로. 넘겨 보기에서 카드를 눌러 크게 보기 → 닫으면 그 카드가 가운데. 가족 넘겨 보기는 그대로(familyzoom·vswipe e2e 통과). 타입 검사·단위 검사·빌드 통과
+- 범위 밖: 엄빠 넘겨 보기에서 바로 반응 보내기, 보신 기록(엄빠는 남기지 않음)
+- 결과(0.15.0, 디자인 캔버스 v202): 검토 3회(따로 리뷰어). 1회차: −/+·달 카드 링크에 v=list(다른 창에서 넘겨 보기를 고르면 −/+가 카드를 그려 깨짐), 넘겨 보기 전체 수 실패 시 '/ 전체'만 빼기, 칸 전용 스크립트(머리 날짜·zoomInPlace·keepSpot)는 모아 보기만. 2회차: 이어지는 쪽 전체 수 두 번 세기 → `MediaPage.total`, 돌아올 때(?to=) 그 카드 둘레만 큰 사진 바로 받기, 영상 길이 반올림('0:60' → '1:00'). 3회차: 이어 붙는 쪽은 미리 받기 없음. PC(64rem~)는 가족처럼 넘겨 보기일 때 넓은 화면 끔(카드가 겹쳐 깨짐)
+- 검증: e2e parentswipe.py 24개(기억·첫 쪽 밖 카드 닫고 돌아오기·스크립트 없이 다음 쪽), vswipe·familyzoom·parentzoom·loadmore 통과, 타입·단위 44·빌드. 디자인 대조 라이트·다크·PC
+- 발견 → 고침(2026-11-01): 검사 사진 `tools/e2e/u2.jpg`에 찍은 날(EXIF)이 없어(takenat.py가 '파일 시각'을 보려고 일부러) 날짜가 바뀌면 parentzoom·familyzoom이 달 수를 틀리게 셈 → 두 검사가 시작할 때 u2.jpg 파일 시각을 2026-10-29로 고정(fix/test-photo-date). 가족 앨범 전체 수(countMedia) 실패 시 화면 전체 500 → 제목 '○장'·'/ 전체'만 빼고 열림, 이어지는 쪽은 loadPage가 센 수(0.15.1, fix/album-count). 남음: 예전 e2e 여러 개가 `/home/claude/sweepea` 경로 고정(새 환경에선 링크 필요)
+
+#### 98e. 사진 크기 바꿀 때 페이지 전환 없이 그 자리에서 (완료, 0.10.0)
+- 요구(사용자 2026-10-29): "키우고 작아지는 거 페이지 전환이라 너무 구린데 방법 없어?"
+- 방향: −/+를 누르면 스크립트가 다음 단계 화면을 받아 사진 목록만 그 자리에서 갈아 끼움(주소·기억은 그대로 바꿈, history.replaceState). 화면에 보이는 칸에 view-transition-name을 잠깐 붙여 startViewTransition으로 칸이 커지고 작아지며 자리 옮기는 애니메이션(사진 앱처럼). 보던 사진이 화면 위에 그대로 있게 스크롤 맞춤. 스크립트·View Transitions 없으면 지금처럼 링크 이동. 움직임 줄이기 설정이면 애니메이션 없이 바로
+- 더 나중: 두 손가락 오므리기·벌리기(핀치)로 단계 바꾸기
+- 엄빠 앨범·가족 모아 보기 둘 다
+- 구현: src/lib/zoomswap.ts zoomInPlace(누른 링크 주소를 받아 [data-album] 묶음과 −/+·머리 작은 줄만 갈아 끼움, 보이던 칸 80개까지 view-transition-name, 보던 칸 같은 높이, 초점은 누른 버튼, 실패하면 링크 이동). 묶음은 display: contents라 배치 그대로. 이어 붙이기는 'sp:album-swapped'로 다시 지켜봄
+- 결과(0.10.0): 검토 3회(더 불러오기 중 바꾸면 옛 단계 칸 섞임·중복 → more.ts 세대 번호로 늦은 쪽 버리고 다시 지켜봄, 가족 탭·집 칩·저장 링크의 옛 z → 같이 갈아 끼움, 알림 칸 미리 두기, 갈아 끼우기 실패면 링크 이동, −/+ 키보드 순서는 목록 뒤). e2e parentzoom·familyzoom·albumbleed·loadmore(크롬·웹킷). 남은 것: 실기기 사파리 애니메이션, 핀치
+- 0.10.1: 달 묶음 사이 큰 틈 없앰(사용자 "시기별 gap 삭제"), 사진 간격(2px)만
+- 같이 바꿈(사용자 2026-10-29): 엄빠 달 제목 줄(.sp-p__month-head) 뺌("중복 내용") → 생후 개월은 머리 날짜 줄로('10월 29일 · 생후 21개월', 1·2칸, 아이 하나거나 고른 경우), 화면 읽기용 달 제목만. −/+는 머리 오른쪽 → 오른쪽 아래 떠 있는 유리 알약(탭바 위, "우측 아래 플로팅"). 월별·연별 카드 글자 막은 사용자 값 linear-gradient(#0000, #000000a6 120%)
+
+#### 98f. 앨범 머리 오른쪽 위에 아이 오늘 나이 (완료, 0.11.0)
+- 요구(사용자 2026-10-29): "아기 정보는 항상 노출, N개월 NN일, 어디에 배치하면 좋을까" → "Top right"
+- 결과: src/lib/age.ts ageLabel('21개월 26일', 한 달 전 'N일', 달 생일 없는 달은 그 달 마지막 날, 태어나기 전 null) + 단위 검사. 엄빠 앨범 머리 오른쪽 위 '하린 · 21개월 26일'(오늘 기준, 고른 아이, 전체면 아이마다), 아이가 여럿이면 제목 아래 줄. 날짜 줄의 '생후 N개월'은 뺌(그때 나이와 오늘 나이가 헷갈리지 않게). 사진 위 유리 머리에서 진한 글자·번짐. 0.10.1 달 묶음 틈 없앰(사용자 "시기별 gap 삭제")도 함께. 검토 3회(아이 여럿이면 제목 눌림·200% 가로 넘침 → 제목 제 폭·여럿이면 아래 줄, 달 말 생일 계산, 유리 머리 대비, 구분점)
+
+#### 98g. 기념일 이벤트 + 달 카드에서 들어가도 최근 달이 위에 (완료, 0.12.0)
+- 요구(사용자 2026-10-29): 나이별 카드(98b) 대신 "100일 이벤트, 200일 이벤트 이런 식으로" → "1, 2, 3 셋 다", "1000일까지는 백 단위로(50일 100일 … 1000일), 그다음에는 돌만", "월별에서 클릭해서 들어가면 이전 달은 안 보이는데 의도된 구현인가?"
+- 기념일: src/lib/age.ts dayMark(50·100~1000일 백 단위, 첫돌·두 돌…) + milestone(레이어 문구). 98b 나이별 카드는 하지 않음
+  1. 엄빠 앨범 가운데 레이어: 이미 있던 100일·생일 레이어를 위 기념일 모두로(문구 '태어난 지 200일이에요', '두 돌이에요')
+  2. 엄빠 앨범: 그날 찍은 칸 왼쪽 위 '100일' 알약(5칸은 숨김), 머리 날짜 줄 '10월 29일 · 100일'. 아이가 여럿·전체면 '하린 100일'
+  3. 가족 앨범: 오늘이면 맨 위 '오늘은 하린이 태어난 지 100일이에요', 날짜 제목 '10월 29일 · 하린 100일'. 가족에게 아이 생일이 필요해 DB sp_me에 children(이름·생일, 승인된 가족 기기만) — 마이그레이션 20261029000005_me_children.sql(운영 적용은 사용자 확인 뒤)
+- 달·해 카드 → 그 달: ?at=YYYY-MM이면 처음부터 그 달까지 그려(900장까지) #m-YYYY-MM으로. 위로 올리면 최근 달도 보임. 너무 아래면 예전처럼 그 달부터. 기억 안 함
+- 결과(0.12.0): 검토 3회(전체 탭 '서이'의 '이'를 떼던 것 → 이름 그대로·쌍둥이 둘 다, 아이 여럿이면 달 이동 여백 9rem, 승인 대기 기기 생일 안 줌 검사). 운영 DB에 20261029000005 적용(2026-10-29 사용자 "넣고 배포")
+- e2e tools/e2e/milestones.py(오늘 100일 아이·오늘 찍은 사진), parentzoom·familyzoom 달 카드 검사 바꿈
+
+#### 103e. fix/viewer-prefetch — 크게 보기에서 넘기면 '누가 봤어요'가 늦게 뜸 (완료, 0.14.5)
+- 신고(사용자 2026-10-29): "누가 본 게 너무 늦게 떠, 그 부분만"
+- 원인: 옆으로 넘기면 사진은 바로 바뀌지만 아래 판('봤어요'·반응)은 다음 사진 화면 전체를 서버에서 받은 뒤에야 바뀜(DB 조회 자체는 40ms, 화면 한 장 받기가 몇백 ms)
+- 고침: Viewer 스크립트가 지금 사진의 양옆 화면을 미리 받아 두고(30초 안이면 다시 씀, x-sp-slide라 보신 기록 안 남김), 넘기면 바로 갈아 끼움. 반응·한마디를 보내면 미리 받은 화면은 버림. 넘긴 뒤 판 바뀜 11ms(mock)
+
+#### 103d. feature/save-to-photos — 사진 저장은 휴대폰 사진 앱 앨범으로 (완료, 0.14.1)
+- 요구(사용자 2026-10-29): "사진 저장 누르니까 다운로드로 가는데 앨범으로 가는 게 맞는데", "모바일이 중요해"
+- 원인: 크게 보기 '저장'과 골라서 저장하기의 한 장 '저장'이 a[download]라 휴대폰은 '다운로드' 폴더(아이폰은 파일 앱)로 감. 여러 장 저장은 이미 공유 창
+- 고침: src/lib/savephoto.ts wireSave — 휴대폰(터치)은 누르는 순간 파일을 받아 navigator.share({files}) 공유 창('이미지 저장' → 사진 앱). 그만두면 아무 일 없음, 공유를 못 하면 예전처럼 내려받기. PC는 그대로 내려받기. 큰 영상을 미리 받지 않게 누르기 시작할 때만 받음
+- 0.14.2(실기기 "다운로드로 들어가는디"): 누를 때 파일을 받느라 늦어 공유 창이 막히고 예비 동작(내려받기)으로 넘어감 → 사진은 화면을 열 때 미리 받아 두고(data-kind=photo), 덜 받았거나 막히면 내려받기 대신 '한 번 더 눌러 주세요' 토스트
+- 0.14.3(사용자 "애플은 저장 뜬다, 안드로이드는 공유하기 뜨는데"): 공유 창은 아이폰·아이패드만(sharesToPhotos), 안드로이드는 내려받기(갤러리 'Download'에 보임). 여러 장 저장도 같게
+- 확인(사용자 2026-10-29): 남편(안드로이드) 폰은 갤러리에 보임, 조부모님 폰은 못 찾음 → 0.14.4 안드로이드 저장 뒤 "갤러리의 'Download' 앨범에서 볼 수 있어요" 토스트 영상은 파일이 커서 늦으면 내려받기로 넘어갈 수 있음
+
+#### 103c. feature/member-rename — 가족 구성원 이름 바꾸기 (완료, 0.14.0)
+- 요구(사용자 2026-10-29): "이름 바꿀 수 있게 해줘 ㅋㅋ 접속한 사람"(가족이 스스로 적은 이름을 엄빠가 바꾸기)
+- 방식: 설정 › 가족 › 그 사람 화면에 '부르는 이름' 칸 + [이름 바꾸기](디자인 MemberDetail). 앞뒤·겹친 공백 정리, 1~12자, 같은 그룹 같은 이름은 '같은 이름이 있어요'. 바꾸면 토스트, 그분 휴대폰·반응에도 새 이름(members.display_name). DB 변경 없음(엄빠 members 수정 권한·display_name 열 권한이 이미 있음)
+- 검토: 거절·내보낸 분의 예전 이름도 같은 그룹에선 막혀 문구를 '쓰고 있거나 예전에 쓴 이름'으로, 오류는 칸 아래에도(aria-describedby)
+- 영향 파일: src/lib/backend/{types,supabase,mock}.ts(renameMember), src/lib/familyAdmin.ts(do=rename), src/pages/settings/family/member/[id].astro, tools/design/membername.py, tools/e2e/membername.py
+
+#### 103b. feature/coparent-notice — 함께 관리 시작 알림 (완료, 0.13.0)
+- 요구(사용자 2026-10-29): "아빠 접속했다고 알람은 안 뜨네?"
+- 방식: 먼저 있던 엄빠가 다음에 앨범을 열면 가운데 레이어 한 번 '아빠가 앨범을 함께 관리하기 시작했어요 · 이제 사진 올리기·가족 승인·설정을 같이 할 수 있어요 [좋아요]'(디자인 LayerCoParentJoined). 나보다 나중에 들어온 엄빠만(들어온 쪽엔 안 뜸), 30일 안, 기기 쿠키 sp_coparent_seen. 레이어 순서: 들어오기 신청 → 함께 관리 시작 → 기념일 → 저장 공간
+- 한계(기기 쿠키): 기기마다 한 번, 내보낸 뒤 다시 초대하면 다시 뜸(맞는 동작). 앱 푸시 알림은 앱이 나오면
+- 영향 파일: src/pages/home.astro, src/lib/layers.ts, tools/design/coparentnotice.py, tools/e2e/coparent.py
+
+#### 103a. fix/join-login — 엄빠 초대 화면에서 카카오 로그인이 안 넘어감 (완료, 0.12.1)
+- 신고(사용자 2026-10-29): "아빠 초대 카카오 로그인 안 됨". 운영 로그: 초대 화면은 열렸는데 Supabase authorize 요청이 없음
+- 원인: /join 폼 POST → 303 /login/kakao → 302 Supabase → 카카오. CSP form-action 'self'가 폼 제출의 리다이렉트 끝(다른 사이트)까지 막음(크롬·사파리 둘 다 재현). 첫 로그인 화면은 링크(GET)라 괜찮았음
+- 확인(사용자 2026-10-29 "로그인 성공"): 실제 카카오로 아빠 초대 받기 끝까지 됨
+- 고침: POST는 쿠키만 두고 같은 사이트 작은 화면(meta refresh + 링크)으로 응답 → 거기서 새로 이동(폼 제출이 아니라 막히지 않음). coparent.py 크롬·웹킷 통과
+
+### 99. feature/wait-photos — 승인 대기 화면에 받은 사진 보여 주기 (완료, 0.5.5)
+- 요구(사용자 2026-10-29 "먼저 고치기"): 기억하신 규칙 '승인 안 받은 사람은 받은 링크의 사진만'이 화면에 없음
+- 원인: DB는 이미 됨(`sp_can_view_media`: 승인 대기 구성원은 들어온 링크의 `share_media`만, rls.sql '승인 전엔 공유 묶음 2장만'). 올리기 화면이 만든 링크엔 방금 올린 사진이 묶임(`/api/shares` mediaIds). 그런데 /wait는 글('지금은 받은 사진만 볼 수 있어요')만 있고 사진을 안 그림, 앨범은 대기면 /wait로 보냄. mock은 공유 묶음 규칙을 흉내 내지 않음
+- 화면(/wait, 대기 상태일 때만): 안내 상자 아래 '받은 사진 N장' + 사진을 한 줄에 한 장 크게(원래 모양, 영상은 기본 재생 막대). 누르기·반응·한마디·저장 없음(승인 전이라 DB도 막음). 스크립트 0KB 유지
+  - 묶음이 비었으면(설정에서 만든 그룹·문자 링크) 사진 칸 없이 글을 '엄마아빠가 확인하면 사진을 볼 수 있어요'로
+  - 비밀번호 10번 틀림(기기 대기)은 지금처럼 사진 없음(DB가 기기 대기는 안 보여 줌)
+- 구현: /wait에서 `listMedia(pass, { familyId: 대기 가족방, limit: 200 })`(RLS가 묶음만 줌) → 서명 주소. mock: 공유에 사진 id를 담고, 새 이름 대기 구성원은 들어온 공유의 사진만 보이게(DB와 같게)
+- 디자인: 캔버스 새 보드 WaitPhotos(라이트·다크) 먼저
+- 검사: e2e(엄빠 올리기 → 링크 → 새 이름 → 대기 화면에 그 사진만, 다른 사진 안 보임, 빈 묶음 글), 기존 entry 검사
+- 결과: 검토 3회(못 불러오면 '불러오지 못했어요' 안내, 크기 모르는 것만 4:3 자리, 영상 섞이면 '사진·영상 N개', 대체 글 순번, mock 공유도 다른 가족방 사진은 거절). tools/e2e/waitphotos.py 크롬·사파리 엔진(`webkit` 인자), entry·bottombar·members·groups·family e2e, DB 검사(거절 63) 통과. 디자인 WaitPhotos v180. 남은 것: 영상 섞인 묶음·불러오기 실패는 e2e 없음(코드로만), 실제 아이폰·실제 DB 화면 확인은 안 함
+
+### 109. feature/kid-stage — 자라는 아기 그림 (완료, 0.17.0)
+- 요구(사용자 2026-11-01): "콩이 자라나는거 왜 없어? 개월수에 맞춰서 변하는거 아뇨?" → 기획서는 콩이 7단계(콩알 0–100일 … 만개 20세~, 가운데 나이는 안 정함)였고 그림 7장도 캔버스에 있었지만 앱엔 3단계 한 장만 씀. 사용자가 보낸 그림(가족 캐릭터 45 + 아기 9단계 + 강아지, `tools/design/avatar-sheet.png`)으로 바꾸기로: "아이 표시만 아기로"(콩이는 앱 아이콘·안내 화면 마스코트로 남김), 그림은 잘라 그대로(직접 그린 시안은 투박해서 안 씀, 사용자 "너가 보내준 거 어떻게 써")
+- 단계(사용자 "이대로"): 1 강보 ~100일 · 2 누운 아기 ~6개월 · 3 앉기 ~8개월 · 4 기기 ~첫돌 · 5 서기 ~18개월 · 6 만세 ~2세 · 7 걸음마 ~3세 · 8 어린이 ~6세 · 9 어린이 7세~ (만 나이, 태어나기 전은 1)
+- 보일 곳(아이를 나타내는 곳, 생일을 아는 화면): 가족 앨범 제목 옆(고른 집, 전체면 첫 집의 첫 아이), 접종 화면 머리, 설정 › 아이 목록(아이마다). 생일을 모르는 승인 대기·비밀번호 화면과 안내 화면(주소 없음·탈퇴·빈 앨범·레이어)은 콩이 그대로
+- 구현: `tools/design/avatars.py`가 그림을 칸마다 원으로 잘라 `public/kid/1~9.png`(128px). `src/lib/age.ts` kidStage(단위 검사). 사진처럼 줄여 보이는 그림이라 image-rendering은 auto(.sp-kid)
+- 디자인: 캔버스에 아기 그림 올려 GrandHome·GrandList·GrandMulti·GrandListPC·Health·ChildSettings 보드의 콩이를 그 나이(13개월 = 5 서기) 아기로
+- 결과(0.17.0, 캔버스 v208): 단위 검사에서 7세 이상이 1단계로 나오던 버그를 잡음. e2e entry·health·kidtabs·layers 통과, 리뷰 1회(작은 변경: 경계·시간대·CSS 우선순위 이상 없음). 그대로 둔 것: 가족 앨범 제목 옆 아기도 콩이처럼 톡 뜀(기획서 '움직임 있음', 움직임 줄이기면 멈춤), 백일·첫돌 레이어는 콩이(안내 레이어)
+- 다음(110): 가족 캐릭터 고르기(각자 자기 것만, 사용자 "각자만"). DB 칸 필요 → 운영 적용 전 확인
+
+### 164. feature/ops-dashboard — 운영자 화면 1단계: 숫자 현황 + 가족방 목록·상세 (기획 확정 2026-11-04, 디자인 보드부터)
+- 요구(사용자 2026-11-04): "스위피 관리자용 페이지". 엄빠용이 아니라 **운영자(PIKAWORKS) 전용**. 원하는 것 넷(숫자 현황·가족방 목록·조치하기·오류 기록) + "추가할 수 있는 데이터 추천" → 세 단계로 나눔(사용자 "1단계부터")
+  - 1단계(이 이슈): 숫자 현황 + 가족방 목록·상세, 읽기만, 지금 DB에 있는 것만
+  - 2단계: 조치하기(용량 늘리기·되살리기·막기) + 운영자 열람·조치 기록, 확인 레이어
+  - 3단계: 오류·기기 기록 새로 쌓기(올리기 실패·영상 못 엶 단계/오류 번호·카톡 안 브라우저 여부) + **처리방침 '모으는 정보' 고치기 필수**
+- 화면(디자인: 스위피 토큰 그대로·차분하게 — 콩이·유리 효과 없음, 숫자 잘 읽히게. 배치는 사용자 고름 **B 옆 메뉴 + 두 단**, 64rem 미만은 위 메뉴 한 단으로)
+  - `/ops` 현황: 카드 줄(가족방·엄빠·가족 기기·사진/영상·전체 용량) / 이번 주(새 가족방·새 가족 입장·올린 사진, 지난주 대비 ±) / 가족이 실제로 보는지(7일 안 본 기기 ÷ 승인된 기기, 반응·한마디 수) / 들어오다 멈춘 곳(공유 링크 → 입장 → 승인 대기 → 승인, 비밀번호 틀림) / 살펴볼 것(승인 대기 2일 넘음·용량 80% 넘음·탈퇴 예정·7일 아무도 안 봄 → 상세로) / 로그인 방법 비율·홈 화면 두기 부탁 수
+  - `/ops/families` 목록: 표(만든 날·엄빠 수·가족 승인/대기·사진 수·용량·마지막 올림·마지막 봄·상태), 머리 링크로 정렬. 가족방은 이름 대신 id 앞 8자리
+  - `/ops/families/<id>` 상세: 그 집 숫자만, 그룹별 구성원 수, 최근 30일 올리기·보기 막대, 아이 수(이름·생일 없음)
+  - 사진·이름·한마디 내용은 어디에도 안 보임. 스크립트 0KB 서버 그림
+  - **새 컴포넌트 1개: 옆 메뉴(OpsNav)** — 이유: 지금은 엄빠 위 메뉴·아래 탭바뿐이고 옆 메뉴가 없음. 사용자가 B를 고르며 새로 만드는 것 알고 정함(2026-11-04). 나머지(카드·표·막대)는 기존 토큰·`.sp-p*` 재사용 우선, 새로 필요하면 개발 전에 이유 보고
+- 막기(사용자 고름 **B: 처음부터 Cloudflare 문지기 포함**) — 셋 다 통과해야 그림, 하나라도 없으면 404
+  1. Cloudflare Access: `sweepea.co.kr/ops*` 앞 이메일 번호 인증(설정은 사용자가 대시보드에서, 단계 안내 줌)
+  2. Access 도장(`Cf-Access-Jwt-Assertion`) 서버에서 서명·기한·받는 쪽(aud) 확인 — **workers.dev 주소는 Access를 안 거쳐서 이게 뒷문을 막음**(`workers_dev: true`는 유지)
+  3. 엄빠 로그인 계정 id가 비밀 값 `OPS_USER_IDS`(쉼표)에 있음
+  - 응답에 `Cache-Control: no-store`, noindex(지금 미들웨어)
+- 데이터: 새 마이그레이션 하나, `sp_ops_summary`·`sp_ops_families`·`sp_ops_family` — 실행 권한은 service_role만(정리 작업이 쓰는 서버 열쇠), 숫자·날짜만 돌려줌(이름·사진 키·내용 열 자체가 없음). 용량은 DB에 쌓인 값. **운영 DB 적용은 사용자에게 물은 뒤**
+- **방문 기록 추가(사용자 2026-11-04 "방문기록 방문횟수 이런거 추가해서 데이터 볼 수 있게")**: 지금 DB엔 없음(devices.last_seen_at 한 칸뿐) → 1단계에서 새로 쌓음. 방문 = 30분 넘게 쉬었다 다시 연 것(30분 쿠키가 없을 때만 한 번 셈 → 화면마다 DB 호출 안 함). 하루 한 줄 표(날짜·가족방·엄빠 계정 또는 가족 기기·횟수), 주소·기기 정보·IP는 안 남김. 링크로 처음 방문(/i/<code>)도 같이 셈 → '들어오다 멈춘 곳' 첫 칸. 보관: **가족방이 있는 동안 계속**(사용자 2026-11-04), 가족방이 지워질 때 같이 지움(cascade)
+  - 보이는 곳: 현황 '방문' 카드(오늘 방문한 사람·오늘 방문 횟수·7일 방문한 사람 엄빠/가족, 14일 막대 가족·엄빠 쌓기), 목록 '방문 7일'·'마지막 방문' 칸, 상세 '최근 30일 방문' 막대·'사람별 방문'(엄빠 1·가족 기기 3처럼 이름 없이, 그룹·상태·30일 횟수·마지막 방문)
+- 처리방침: 방문 기록을 새로 쌓으므로 **1단계에서 '모으는 정보'(방문 날짜·횟수)·보관 기간 고침 필요**(원래 3단계 일을 당김). 나머지 숫자는 이미 모은 정보(법률 판단은 확실하지 않음)
+- 막대 숫자(사용자 2026-11-04 "hover하면 수치 다 보이나?" → 말풍선 + 숫자로 보기): 막대마다 title 말풍선(마우스, 스크립트 없음), 그래프 아래 접힌 details '숫자로 보기' 날짜별 표(휴대폰·키보드·화면 읽기). 캔버스 v264
+- 기간 필터(사용자 2026-11-04 "기간 필터 넣어야하지않을까?"): 세 화면 모두 기간 줄 — 오늘·7일(기본)·30일·90일 알약 링크 + 직접 고르기(날짜 칸 둘 ~ 보기, GET 폼, 스크립트 없음). 주소 ?p= 또는 ?from=&to=, 화면을 옮겨도 링크에 달고 다님. 기간 안 숫자는 '직전 N'(바로 앞 같은 길이 기간)과 비교. 지금 전체(가족방·엄빠·기기·사진 수·용량 카드, 살펴볼 것, 로그인 방법)는 기간을 안 타서 기간 줄 위나 오른쪽에 '지금 기준'·'엄빠 전체'로 둠. '이번 주' 카드는 '새로 생긴 것'으로. 막대는 하루 단위, 12px보다 안 가늘어지고 넘치면(90일 등) **좌우로 밀기**(사용자 2026-11-04 "좌우 스크롤 넣어줘": 처음엔 오늘 쪽 오른쪽 끝, rtl로 스크립트 없이, 밀기 칸은 Tab으로 갈 수 있게, '옆으로 밀면 지난 날짜가 보여요'). 상세 보드는 90일 고른 모습. 캔버스 v266
+- 디자인 보드(캔버스 v263, 2026-11-04, 생성기 `tools/design/ops.py`): 맨 아래 '운영자 화면 1단계' 줄 — OpsHome·OpsFamilies·OpsFamily(PC 1440)·OpsHomeMobile(390), 위 다크 아래 라이트. 가족방 번호·숫자는 예시
+- 검사: test:db(엄빠·가족·익명이 sp_ops_* 부르면 거절, service_role 숫자 맞음, 결과에 이름·내용 열 없음) · 단위(도장 확인: 서명 틀림·기한 지남·aud 다름 거절) · e2e mock(운영자 열림, 일반 엄빠·가족·로그인 안 함·도장 없음 404, 정렬·상세 이동) · Lighthouse 접근성 100·JS 0KB
+- 순서: ① 캔버스에 운영자 보드 3장(현황·목록·상세, 밝은/어두운, PC·휴대폰) → 사용자 확인(시안 다듬는 동안 개발 재촉 안 함) ② 브랜치에서 마이그레이션·서버·화면 ③ 리뷰·검증·기능검증 3회 → 보드와 실제 화면 대조 → dev 머지(0.41.0) ④ 운영 DB 적용 확인 · Cloudflare Access 설정 안내
+- 영향 파일(예상): `supabase/migrations/2026110x_ops.sql`, `supabase/tests/rls.sql`, `src/lib/backend/{types,supabase,mock}.ts`, `src/lib/ops.ts`(도장·명단 확인), `src/pages/ops/**`, `src/layouts/Ops.astro`, `src/components/OpsNav.astro`, `src/styles/ops.css`, `tests/ops.test.ts`, `tools/e2e/ops.py`, `index.md`, `plan.md`
+
+- 결과(0.41.0 준비, 2026-11-04): 마이그레이션 `20261104000001_ops.sql`(visits·sp_note_visit·sp_note_link_visit·sp_ops_devices·sp_ops_summary/families/family·나간 엄빠 방문 지우기 트리거), 미들웨어 방문 세기, 화면 3장 + 부품 OpsNav·OpsPeriod·OpsBars(사용자 승인 2026-11-04), 처리방침(방문 기록 수집·목적·보관·쿠키, 시행일 11월 4일). 검사: DB 시나리오(권한 거절·승인 대기·기한 지남·나간 엄빠·이름 없음), 단위 tests/ops.test.ts(도장 서명·발급처·aud·기한·바꿔치기, 기간), e2e tools/e2e/ops.py(41개, 개발 서버 OPS_USER_IDS=parent-ops·검사 브라우저는 아이폰 이름 — HeadlessChrome은 봇으로 걸러짐)
+  - 리뷰 3회: ① 기기 승인 판정(새 이름 기기는 승인 전에도 devices.active → 구성원 상태로), 기한 지난 대기, 열쇠 받기 실패 500→404·kid 바뀌면 다시 받기, 방문 세기 오류가 화면을 깨지 않게, 틀린 기간 안내 ② 가족방 2천·기기 5만·방문 100만에서 현황 90일 16.5초·목록 9.5초 → 묶어 세기로 1.6초·0.23초, 살펴볼 것 종류마다 50곳, '탈퇴 예정' 배지 대비, 표 키보드로 밀기, 살펴볼 것 읽는 순서, 엄빠 막대 속 빈 모양 ③ 예전/새 함수 결과 같음 확인, 50곳 잘림 안내·동률 순서
+  - 보드는 화면에 맞춤(캔버스 v268): 퍼널 '링크로 들어온 방문'·'비밀번호 화면까지'(이름 고름은 셀 수 없어서), '들어와 본 가족 기기'(사진 본 것 대신 방문), 홈 화면 '그 뒤 연 가족' 뺌(서버가 알 수 없음)
+  - 운영 DB 적용(2026-11-04, 사용자 "둘 다 해"), 권한 확인(sp_ops_*는 service_role만)
+  - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
+  - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
+
+### 184. fix/alerts-empty-copy — 알림 빈 글을 사진이 있을 땐 다르게 (완료, 0.53.1)
+- 요구(웹 UX 점검 2026-11-03 남은 것, 사용자 2026-11-07 "웹 UX 남은 것" 고름): 알림 화면 '아직 반응이 없어요. 사진을 올리고 카톡으로 보내 보세요.'가 사진을 올린 뒤에도 같아서, 이미 올린 엄빠에겐 맞지 않음
+- 구현 방식: 서버가 이미 받는 sp_parent_home의 photo_count·video_count로 나눔(새 호출 없음). 사진·영상이 0이면 지금 글 그대로, 있으면 '아직 반응이 없어요. 가족이 사진을 보고 하트나 한마디를 남기면 여기에 모여요.'
+- 보드: 알림 빈 화면 보드는 원래 없음(ParentReactions는 반응 있는 모습), 글자만 바뀌어 보드는 안 만듦
+- 영향 파일: `src/pages/reactions.astro`, 검사 tools/e2e/alertsempty.py
+- 예상 결과: 처음 가입한 엄빠는 지금 글, 사진을 올린 뒤엔 새 글
+- 결과(0.53.1): 그대로. 검토 2회: 1회차 — 사진은 있는데 아직 들어온 가족이 없을 때도 새 글이 맞는지(가족 수는 홈 정보에 없어 새 호출이 필요) → '가족이 … 남기면 모여요'는 그때도 틀리지 않아 그대로. 2회차 — 예전 글을 확인하는 검사 없음, 타입 검사 통과. 검사 tools/e2e/alertsempty.py(올리기 전후) 크롬 통과
+- 앱(iOS ReactionsView·안드로이드 ReactionsScreen)도 같은 글이라 다음에 같이
+
+### 183. feature/empty-upload — 엄빠 앨범이 비었을 때 가운데 '사진 추가하기' (완료, 0.53.0)
+- 요구(웹 UX 점검 2026-11-03 남은 것, 사용자 2026-11-07 "웹 UX 남은 것" 고름): 사진이 하나도 없을 때 올리는 길이 오른쪽 아래 둥근 + 뿐이라 처음 온 엄빠가 못 찾을 수 있음
+- 문서·구현 차이(발견): 보드 ParentEmpty엔 탭바 위에 떠 있는 '사진 추가하기' 알약이 있지만, 102(유리 탭바)에서 떠 있던 버튼을 일부러 뺐고 ParentEmpty 보드는 옛 탭바 그대로였음
+- 구현 방식: 떠 있는 버튼은 다시 만들지 않고 빈 화면 안내 글 아래에 채운 버튼 '사진 추가하기'(/upload) 하나. 이미 있는 `.sp-p__btn`·`.sp-p__empty-btn`(SendSetupEmpty와 같은 모양) 그대로. 거르기로 비었을 땐 넣지 않음(사진이 있는 집)
+- 보드: ParentEmpty·ParentEmpty-Light를 유리 탭바(tools/design/glasstab.py glass())로 바꾸고 떠 있던 알약 대신 안내 아래 버튼
+- 영향 파일: `src/pages/home.astro`, 보드 ParentEmpty(-Light), 검사 tools/e2e/emptyupload.py
+- 예상 결과: 사진 없는 엄빠 홈에 콩이·제목·안내 아래 '사진 추가하기' → 누르면 올리기, 거르기로 빈 화면엔 없음
+- 결과(0.53.0): 빈 앨범 안내 아래 '사진 추가하기'(→ /upload), 거르기로 빈 화면엔 없음. 보드 ParentEmpty·-Light를 유리 탭바 + 안내 아래 버튼 + 웹에 있던 비밀번호 안내 줄로(캔버스 v275, tools/design/emptyupload.py)
+- 검토 2회: 1회차 — 넓은 화면(64rem~)에서 버튼이 1112px로 늘어남 → `.sp-p__empty-btn` 최대 22rem·가운데(문자 공유 빈 화면도 같은 클래스라 같이, 390 폰에선 그대로). 2회차 — 예전 검사 glasstab·upscreen이 둥근 '사진 추가'를 이름 일부로 찾아 '사진 추가하기'와 둘이 잡힘 → 이름 그대로(exact). 검사 emptyupload.py(밝게·어둡게·넓은 화면)·glasstab·upscreen·smsempty·parent 크롬 통과
+- 그대로 둔 것: glasstab.py 41줄(접종·검진 체크)은 건강 정보 동의(152)가 생긴 뒤로 원래 깨짐(이번 변경과 무관). 사파리 엔진(webkit)은 이 작업 공간에 없어 못 돌림
+- 앱(iOS·안드로이드)도 같은 빈 화면이라 다음에 같이(이 작업 공간은 iOS 빌드가 안 됨)
+
+### 182. fix/terms-approval — 약관 제3조 승인 문구를 실제대로 (완료, 0.52.1)
+- 요구(사용자 2026-11-06): 181 검토에서 약관 "보호자가 승인해야 사진을 볼 수 있습니다"가 실제보다 강함(그룹에 있는 이름은 비밀번호만으로 들어오고, 새 이름은 승인 전에도 그 링크로 보낸 사진은 봄) → "약관도 고쳐"
+- 구현: 제3조 둘째 줄을 '새 이름은 승인해야 앨범, 승인 전엔 그 링크 사진만, 링크·비밀번호는 믿는 가족에게만'으로. 약관 시행일 2026년 11월 6일, 동의 버전 terms 2026-11-06 — 179처럼 7일 전 고지 대신 다시 동의로 갈음(엄빠는 다음 방문에 /agree 한 번)
+- 영향 파일: `src/pages/terms.astro`, `src/lib/consent.ts`
+- 남은 것: iOS·안드로이드 앱의 동의 버전(Consent 2026-11-05)도 2026-11-06으로 올려야 웹과 같음(앱 저장소, 앱은 아직 출시 전)
+
+### 181. feature/guide — 자주 묻는 질문 화면 `/guide` (완료, 0.52.0)
+- 요구(사용자 2026-11-06): 180 뒤 "안내 화면 어디 만들지?" → `/guide` 따로, 첫 화면 맨 아래 작은 링크 줄에 더하기로 "응 좋아"
+- 왜: 답변 엔진(AEO)·AI 검색은 화면에 보이는 질문·답을 인용한다. 첫 화면은 한 장(92)으로 두고 따로 만든다
+- 구현: `src/pages/guide.astro` — Parent 뼈대 + 처리방침 글 모양(`.sp-doc`) 재사용, 질문마다 네이티브 details/summary, 맨 아래 무료로 시작하기. 질문·답은 한 배열에서 화면과 FAQPage JSON-LD 둘 다 만듦(화면과 같은 글). 첫 화면 맨 아래 줄·설정 '이용약관' 위에 링크. 검색: 미들웨어 noindex에서 `/guide` 빼기, canonical, sitemap에 더함. 뒤로는 `backHref`
+- 질문 8개(약관·처리방침 사실만, 카톡 보관 기간 같은 확인 못 한 숫자 없음): 설치·가입 / 링크가 새면 / 외가·친가 / 무료 / 화질 / 카톡과 다른 점 / 엄빠 둘·가족 올리기 / 탈퇴
+- 디자인: 캔버스 Guide·Guide-Light 보드(첫 화면 옆), Landing 보드에 맨 아래 작은 링크 줄(앱엔 이미 있음)
+- 영향 파일: `src/pages/guide.astro`, `src/pages/index.astro`, `src/pages/settings/index.astro`, `src/middleware.ts`, `src/lib/ops.ts`(방문 기록 화면 이름), `src/styles/parent.css`, `public/sitemap.xml`, `public/llms.txt`, `tools/design/guide.py`, `index.md`
+- 예상 결과: `/guide` 200·noindex 없음·FAQPage JSON-LD, 첫 화면 한 장 모양 그대로, 접근성 100
+- 결과: 캔버스 v271·v273(Guide·Guide-Light, Landing 맨 아래 링크 줄), 개발 서버에서 다크·라이트 보드와 같음·펼침·가로 넘침 없음, `/guide`만 색인 허용(다른 화면 noindex 그대로), 단위 69·타입 0·빌드 통과
+- 검토(qa): 답 둘이 실제보다 강했음 → 고침(새 이름은 승인 전까지 그 링크로 보낸 사진만 보임, 있는 이름은 비밀번호만으로 바로 — 1번 '바로 봐요'·2번 '승인해야 들어와요'), 같은 브라우저에서만 다음부터 바로, 포커스 테두리가 판 밖으로 잘림 → 안쪽(-2px, `.sp-body` 붙여 base보다 우선), VoiceOver용 role=list, 운영 방문 기록 화면 이름에 '자주 묻는 질문'
+- 남은 것(사용자 결정): 약관 34행 "처음 보는 이름은 보호자 승인"도 같은 이유로 덜 정확(승인 전 그 링크 사진은 보임) — 고치면 약관 시행일 문제. FAQ 리치 결과는 구글이 정부·건강 사이트로만 보여서 검색 화면에 펼침 표시는 안 나옴(AI 답변·네이버용)
+
+### 180. feature/seo-geo — 검색(SEO)·AI 검색(GEO)·답변 엔진(AEO) 손보기 (완료, 0.51.0)
+- 요구(사용자 2026-11-06): "스위피 GEO, SEO, AEO 개선"
+- 지금 상태(점검): 검색에 보이는 곳은 첫 화면 `/`뿐(나머지는 X-Robots-Tag noindex, 의도). 제목·설명·og·canonical·sitemap·네이버 소유 확인은 있음. 없는 것: 구조화 데이터(JSON-LD), AI용 요약 `llms.txt`(운영 404), `og:locale`. 운영 robots.txt에는 Cloudflare 관리 목록이 앞에 붙어 AI 학습 봇(GPTBot·ClaudeBot·Google-Extended 등)만 막고 검색·답변용 봇(OAI-SearchBot·PerplexityBot·Googlebot 등)은 열려 있음 → 그대로(학습 허용 여부는 Cloudflare 설정, 사용자 결정)
+- 구현: ① 첫 화면에 JSON-LD(Organization PIKAWORKS + WebSite + WebApplication 무료 5GB) — 화면에 안 보이는 정보라 '한 장' 결정(92)과 안 부딪힘. FAQPage는 화면에 질문이 없으면 검색 규칙 위반이라 안 넣음 ② `public/llms.txt`: 서비스 사실만(92의 사실 목록·약관·처리방침 기준) ③ Base에 `og:locale` ko_KR ④ Base에 head 이름 칸(slot) 하나, Parent가 넘김
+- 영향 파일: `src/layouts/Base.astro`, `src/layouts/Parent.astro`, `src/pages/index.astro`, `public/llms.txt`, `index.md`
+- 범위 밖(사용자 결정): 질문·답 글이 있는 안내 화면(AEO에 가장 큰 효과지만 첫 화면 한 장 결정과 별개의 새 화면), AI 학습 봇 허용
+- 예상 결과: 운영 `/` HTML에 JSON-LD 한 개(검증 통과), `/llms.txt` 200, 빌드·타입 검사 통과, 화면 모양 그대로
+- 결과: 개발 서버에서 `/`만 JSON-LD 1개(head 안, 파싱 OK)·다른 화면(Parent·Family) 0개·og:locale 모두, llms.txt 200. 검토: llms.txt가 약관보다 지나친 말 고침(긴 영상은 원본 보관, 탈퇴는 함께 관리면 나만 빠짐·3일 안 되살리기, '용량을' 줄임, '그룹 비밀번호'), 회사 로고 자리에 앱 아이콘이라 logo 뺌
+- 남은 것(사용자): 서치 콘솔·서치어드바이저 리치 결과 테스트, AI 학습 봇 허용 여부(Cloudflare), 질문·답 안내 화면을 만들지
+
+### 179. feature/ops-visit-log — 운영자 가족방 상세에 방문 기록(시각·머문 시간·본 화면) (완료, 0.50.0 — 운영 DB 적용·배포 2026-11-06 사용자 "응 배포 바로 해쥬면 될거갘아", 다시 동의로 사전 고지를 갈음, 사용자 2026-11-05 "관리자에 방문기록 시간까지 좀 남겨줘 자세히")
+
+- 정한 것(사용자 2026-11-05): 남길 것 = 방문 시각·머문 시간·본 화면(앱·웹 구분·기기·IP는 안 남김). 개인정보 처리방침을 고치고 약관 버전을 올려 다시 동의받음. 자세한 기록은 90일 보관(날짜별 횟수는 지금처럼 가족방이 있는 동안)
+- 요구사항: ① 방문 한 번(30분 넘게 쉬었다 다시 연 것, 지금 세는 방식 그대로)마다 한 줄: 누가(엄빠·가족 기기·가족 링크 단계), 처음 연 시각, 마지막으로 화면을 연 시각, 연 화면 이름 차례(같은 화면 연달아는 한 번, 100개까지). ② 운영자 가족방 상세(/ops/families/[id])에 '방문 기록' 표: 시각('11월 5일 오후 3:12'), 누구, 머문 시간('1분 미만'·'12분'·'1시간 5분'), 본 화면('앨범 → 크게 보기 → 설정'). 고른 기간 안, 최근 것부터 200줄. ③ 90일 지난 자세한 기록은 지움. 엄빠가 나가거나 내보내지면 그 사람 기록도 바로 지움(지금 날짜별 기록과 같음), 가족방이 지워지면 같이 지움. ④ 처리방침 '방문 기록'·보관 항목 고침, 약관·처리방침 시행일과 동의 버전(CONSENT.terms)을 2026-11-05로 → 다음에 들어올 때 다시 동의(앱 두 개의 Consent도 같이 올림)
+- 구현 방식: 새 표 visit_sessions(id·key·family_id·kind·visitor·started_at·last_at·screens text[]). 웹 미들웨어가 방문마다 무작위 열쇠(uuid)를 만들어 30분 쿠키(sp_v)에 담고, 첫 화면은 sp_visit_start(p_key, p_screen)(지금 sp_note_visit 일 + 줄 만들기, 1분 안 다시 시작은 안 셈), 다음 화면부터는 sp_visit_touch(p_key, p_screen)(내 줄이고 30분 안이면 마지막 시각·화면, 고친 줄이 없으면 그 열쇠로 시작). 답을 기다리지 않으려고 열쇠는 웹이 만든다. 가족 링크 단계는 sp_note_link_visit이 같은 링크·단계 30분에 한 줄. 90일 지난 줄은 매일 정리(sp_cleanup_visits, src/jobs/cleanup.ts)가 지우고 운영 화면도 90일 안 것만. sp_ops_visit_log(p_id, p_from, p_to)는 서버만, 내보낸 기기는 이름 없이. 화면 이름은 lib/ops.ts screenName(주소 대신 이름만). 옛 쿠키 값 '1'은 다음 방문부터. sp_note_visit은 배포 사이 옛 코드용으로 남김(추가만이라 웹보다 DB 먼저 적용)
+- 영향 파일: supabase/migrations/새 파일, src/middleware.ts, src/lib/ops.ts(화면 이름·머문 시간 글), src/lib/backend(types·supabase·mock), src/pages/ops/families/[id].astro, src/pages/privacy.astro·lib/consent.ts(약관 본문은 그대로라 terms.astro 시행일은 안 바꿈), src/jobs/cleanup.ts, 앱 두 개 Consent, 검사
+- 예상 결과: 화면 이름·머문 시간 글 검사, mock으로 운영 상세 화면 확인. 운영 DB 적용·dev 머지(=운영 배포)는 사용자 확인 뒤
+- 알아 둔 것: 지금 iOS·안드로이드 앱은 방문을 아예 안 셈(sp_note_visit을 안 부름) — 앱 방문 기록은 따로(이번엔 웹만)
+
+- 결과(2026-11-05, 브랜치): 마이그레이션 `20261105000001_visit_sessions.sql`, 미들웨어 열쇠 쿠키, 운영 가족방 상세 '방문 기록' 표(시각·누구·머문 시간·본 화면), 매일 정리에 90일 지우기, 처리방침(시행 11월 5일)·동의 버전 2026-11-05. 검사: DB 시나리오(남의 줄·30분·1분 막기·없는 열쇠·30분 지난 열쇠·링크 30분 한 줄·90일·나간 엄빠·내보낸 기기 이름 없음·가족방 삭제), 단위(화면 이름·시각·머문 시간·정리 단계), e2e tools/e2e/ops.py 82개
+- 리뷰 3회: 1회차 — 링크를 쿠키 없이 계속 열면 줄이 끝없이 쌓이던 것(→ 같은 링크·단계 30분에 한 줄), 새 열쇠로 계속 불러 부풀리기(→ 1분 안 다시 시작 막기), 90일 지우기가 방문이 있을 때만 돌던 것(→ 매일 정리 + 운영 화면 90일 조건), 첫 기록이 빠지면 방문이 통째로 비던 것(→ 없는 열쇠로 이어 쓰면 시작). 2회차 — 첫 화면 기록 전에 다음 화면이 오면 두 줄·두 번 세던 것(→ 사람·링크마다 잠금), 쿠키만 살아 있고 줄은 30분 지나면 기록이 사라지던 것(→ 새 방문), 정리는 마지막 기록 기준, 처리방침에 링크 열린 시각. 3회차(직접) — 운영 화면 표·처리방침 글 확인
+- 정한 것(사용자 2026-11-06): 미리 알리기 대신 다시 동의로 갈음하고 바로 배포. 운영 DB 먼저 적용(권한 확인: 시작·이어 쓰기는 로그인 사용자, 운영·정리는 서버만, 표는 직접 못 읽음). 앱 두 개 동의 버전도 2026-11-05로
+
+### 178. feature/app-upload-bearer — 올리기 API가 앱 출입증도 받기 (완료, 0.49.0 — 운영 배포 2026-11-05 사용자 "Deploy it")
+- 요구(사용자 2026-11-05 "Go to 3-4"): iOS·안드로이드 앱이 웹과 같은 올리기 API(POST /api/media, PUT /api/media/<id>/<부분>, POST …/done, …/multipart)를 쓰게
+- 구현: lib/media.ts uploaderPasses가 요청 머리 `Authorization: Bearer <Supabase 출입증>`이 있으면 그 출입증만 쓴다(쿠키는 안 봄). 없으면 지금과 같음(엄빠 세션 → 가족 기기 출입증). withUploader에 request를 넘긴다. 토큰 글자 검사는 177과 같음
+- 영향 파일: src/lib/media.ts, src/pages/api/media/index.ts, [id]/[part].ts, [id]/done.ts, [id]/multipart.ts
+- 예상 결과: Bearer로 만들기·넣기·끝내기가 되고, 다른 사람 출입증이면 404/403, 쿠키 흐름은 그대로(e2e upload 계열 통과)
+- 결과(2026-11-05): tools/e2e/appupload.py 9개 통과(출입증 없음·글자 틀림 401, 만들기·넣기·끝내기, 남의 출입증 404, 올린 사진 주소 받기, 웹 쿠키 올리기 그대로), 177 appurls 그대로. 토큰 글자 검사를 lib/media.ts bearerPass 하나로(177 media-urls도 같이 씀)
+
+### 177. feature/app-media-urls — 앱용 사진 주소 받기 API (완료, 0.48.0 — 운영 배포 2026-11-05 사용자 "Deploy it")
+- 요구(사용자 2026-11-05 "3단계 엄빠 홈"): iOS·안드로이드 앱이 사진을 보려면 서명된 파일 주소(/m/…)가 필요한데 서명 비밀은 서버에만 있다
+- 구현: `POST /api/app/media-urls`, `Authorization: Bearer <Supabase 출입증>`(엄빠·가족 익명 둘 다), 본문 `{ ids }`(사진 id 1~100개) → `{ urls: { <id>: { view, thumb, poster } } }`(절대 주소, 서명은 웹과 같은 signedMediaUrl). 볼 수 있는 사진만: 그 출입증으로 media를 읽어 DB 권한(RLS)이 거른다. 못 보는·없는 id는 빠짐. 쿠키는 안 씀(앱 전용 입구)
+- 백엔드: MediaQuery에 `ids`(여러 장) 더함 — supabase `id=in.(…)`, mock 같은 거르기
+- 영향 파일: `src/pages/api/app/media-urls.ts`(새), `src/lib/backend/{types,supabase,mock}.ts`
+- 예상 결과: 출입증 없음 401, 형식 틀림 400, 만료 출입증 401, 볼 수 있는 사진만 주소. 타입·단위·빌드 통과
+- 범위 밖: 앱용 다른 API(올리기·공유는 3단계 뒤 조각에서)
+- 결과(2026-11-05): 개발 서버(mock) 검사 tools/e2e/appurls.py 8개 통과(출입증 없음 401·형식 400·볼 수 있는 사진만·겹친 id 한 번·절대 주소·주소로 그림 열림). 리뷰(따로): 막을 것 없음 — anon 키로는 사진 0장(media 읽기는 authenticated만), id는 UUID만이라 in.() 끼워 넣기 없음, 키 칸은 사용자가 못 바꿈. 고침: 토큰 글자 아닌 값이 500 → 401, 8KB 넘는 본문 413
+
+### 176. feature/ops-media-families — 운영 사진을 가족방별 요약 → 눌러서 사진 (완료, 0.47.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 30일 가족방 1곳 bc4aaeea 사진 384·영상 6·멈춤 0, 서버만)
+- 요구(사용자 2026-11-04): "사진은 그냥 다 보이는 거여? 가족방별로 묶어 주면 안 되나" → 두 안 중 **가족방 요약 표 → 눌러서 사진** 고름(계정처럼 머리줄 아래 안은 안 고름)
+- `/ops/media` 처음 화면: 가족방마다 한 줄(가족방·사진 수·영상 수·크기·마지막 올림·멈춤 수), 최근에 올린 가족방부터 50곳씩(쪽 번호 '곳'), 줄 어디를 눌러도 `?f=그 가족방`(기간·거르기 유지) → 지금까지의 사진·영상 목록(가족방 칸은 뺌). 거르기(종류·상태·올린 사람)는 요약 숫자에도 똑같이
+- DB `20261104000007_ops_media_families.sql`: sp_ops_media_families(새 함수, service_role만). **운영 적용을 웹보다 먼저**, 적용 전 사용자 확인. 처리방침은 그대로(이미 적은 정보의 합계)
+- 영향 파일: 마이그레이션, src/lib/backend/{types,supabase,mock}.ts, src/pages/ops/media.astro, supabase/tests/rls.sql, tools/e2e/ops.py
+- 검사: DB(사진·영상 수·크기·영상만 거르기·줄 합 = 전체·서버만), e2e 77(요약 한 줄 → 그 가족방 목록), 단위 67, astro check 0, 1280·390
+
+### 175. fix/ops-pager-numbers — 쪽 넘기기를 쪽 번호로 (완료, 0.46.1)
+- 요구(사용자 2026-11-04): "페이징 넘버링으로는 안 될까"
+- OpsPager: ‹ 1 … 5 [6] 7 … 20 › (첫·끝·지금 앞뒤 1쪽, 사이는 …), 아래 '251–300 / 987개'. 지금 쪽은 진한 칸 + aria-current=page, 번호마다 'n쪽' 이름, 끝을 넘은 쪽 주소면 이전은 마지막 쪽. 쪽 번호 계산은 src/lib/ops.ts pageList(단위 검사)
+- 휴대폰 360px 한 줄: 번호 칸 2.5rem·화살표 2rem·… 1.25rem·간격 2px(누르는 칸 24px 넘음), 3자리 번호(100쪽대)까지 한 줄 확인(임시 화면으로 찍고 지움)
+- 영향 파일: src/components/OpsPager.astro, src/lib/ops.ts, src/styles/ops.css, tests/ops.test.ts, tools/e2e/ops.py
+- 검사: 단위 67, e2e 76, astro check 0
+
+### 174. feature/ops-filters — 운영 목록 거르기 + 쪽 넘기기 공용 (완료, 0.46.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 30일 사진 384·영상 6, 엄빠 390 + 가족 기기 0 = 전체 390, 서버만)
+- 요구(사용자 2026-11-04): "리스트 나오면 필터 좀" → 어느 목록이냐 묻자 "다 넣어 주고, 페이징 필요한 부분 페이징 공통 디자인 만들어서 적용"(새 공용 컴포넌트 만들기 요청 = 승인)
+- 새 공용 컴포넌트 2개(사용자 요청): **OpsFilter**(네이티브 select + '거르기' 버튼 GET 폼, 기간·정렬·가족방은 숨은 칸, 거르면 첫 쪽, '거르기 지우기'), **OpsPager**(이전 50 · 51–100 / 전체 · 다음 50, 없는 쪽 버튼은 자리만, nav '쪽 넘기기'). 예전 '다음 50개' 링크를 대신함
+- 거르기: 가족방 = 요금제(무료/유료)·상태(승인 대기 있음/용량 80% 넘음/탈퇴 예정), 계정 = 로그인 방식(카카오/네이버/구글/애플/이메일)·가족방(있음/없음), 사진 = 종류·상태(올림/올리는 중·멈춤)·올린 사람(엄빠/가족 기기). 값 목록은 src/lib/ops.ts OPS_FILTERS 한 곳, 주소의 모르는 값은 무시(Object.hasOwn — __proto__ 같은 것도)
+- 정렬·기간·거르기·가족방(f)이 서로 링크에 달려 다님(withKeep)
+- DB `20261104000006_ops_filters.sql`: 세 함수에 p_filter jsonb 받는 판 추가(같은 이름 + 받는 값 하나, 옛 판은 남고 웹은 새 판만 부름, DROP 없음, service_role만). **운영 적용을 웹보다 먼저**, 적용 전 사용자 확인
+- 영향 파일: 마이그레이션, src/lib/ops.ts, src/lib/backend/{types,supabase,mock}.ts, src/components/{OpsFilter,OpsPager}.astro(새), src/pages/ops/{media,accounts}.astro, src/pages/ops/families/index.astro, src/styles/ops.css, supabase/tests/rls.sql, tests/ops.test.ts, tools/e2e/ops.py
+- 리뷰 1회 반영: 올린 사람 거르기 '가족 기기'는 엄빠가 아닌 것 전부(올린 사람이 지워진 사진 포함, '가족 기기·알 수 없음') → 엄빠 + 가족 기기 = 전체, 끝을 넘은 쪽의 '이전'은 마지막 쪽으로, 로그인 방식 글자 표와 같게(Google·Apple), 안 쓰는 .sp-o__more 지우고 거르기 칸은 날짜 칸 규칙 같이 씀. 옛 4개 인자 함수 3개는 운영 적용 뒤 정리 대상(DROP은 사용자 확인 후)
+- 검사: DB(영상만·엄빠만·유료 없음·탈퇴 예정만·전체·카카오+가족방·이메일만·서버만), 단위 66(아는 값만·쪽 값 자르기·주소), e2e 76(고르고 거르기·기간 유지·지우기·모르는 값·정렬 유지·이전 쪽 링크), 1280·390 넘침 없음, astro check 0
+
+### 173. feature/ops-media — 운영 올린 사진·영상 목록(정보만) (완료, 0.45.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 30일 390개·파일 주소 없음·service_role만)
+- 요구(사용자 2026-11-04): "사진 업로드된 거 리스트 뿌려줘" → 처리방침('운영자는 사진을 보지 않는다')을 알리고 두 안 중 **정보만** 고름(작은 사진까지 안은 안 고름)
+- 화면 `/ops/media`(메뉴 '사진'): 고른 기간에 올린 것 최근 순 50개씩. 한 줄 = 올린 때(날짜·시각)·가족방(→ 상세)·종류·크기(1MB 아래는 KB)·가로×세로·영상 길이·올린 사람(엄마/아빠, 가족 기기는 구성원 이름)·상태(올림/올리는 중(1시간 안)/올리다 멈춤). 사진·영상 자체와 파일 주소는 안 내보냄
+- `?f=<가족방>`이면 그 가족방만(가족방 상세 사진·영상 숫자에서 옴, '모든 가족방 보기'). 현황 사진·영상 숫자도 이 목록으로(172의 '사진 많은 순' 대신)
+- DB `20261104000005_ops_media.sql`: sp_ops_media(service_role만, 새 함수). **운영 적용을 웹보다 먼저**, 적용 전 사용자 확인
+- 처리방침 2항: 운영자가 보는 것에 '올린 사진·영상마다 올린 때·크기·가로세로·영상 길이·올린 사람', '사진·영상 자체는 안 봄'. 시행일 그대로
+- 영향 파일: 마이그레이션, src/lib/backend/{types,supabase,mock}.ts, src/components/OpsNav.astro, src/layouts/Ops.astro, src/pages/ops/{media,index}.astro, src/pages/ops/families/[id].astro, src/pages/privacy.astro, supabase/tests/rls.sql, tools/e2e/ops.py
+- 리뷰 1회 반영: 목록 머리말에 '고른 기간'·다 올라감/올리는 중·멈춤 수와 '현황·상세 숫자는 전체 기간 다 올라간 것' 안내(숫자가 달라 보이는 것), 0바이트는 0KB, 틀린 가족방 번호는 안내, e2e가 실제로 한 장 올려 줄·거르기까지 확인, DB 검사 보강(로그인 없이 거절·가족 기기 이름·지운 사진 빠짐)
+- 검사: DB, e2e ops.py 67개, 단위 65, astro check 0, 1280·390 화면
+
+### 172. fix/ops-num-links — 운영 숫자 카드 누르면 그 목록으로 (완료, 0.44.1)
+- 요구(사용자 2026-11-04): "숫자 누르면 링크 연결되게"
+- 현황: 가족방 → 가족방 목록, 엄빠 → 계정 목록, 사진·영상 → 가족방 목록 사진 많은 순, 저장 용량 → 용량 큰 순(고른 기간 유지). 가족 기기는 따로 목록이 없어 그대로
+- 가족방 상세: 엄빠·아이 → 엄빠·아이 칸, 가족 기기 → 가족·방문 칸, 사진·영상 → 올린 사진·영상 칸(#제목)
+- 숫자에 밑줄(색만으로 구분 안 함), 카드 어디를 눌러도(링크를 카드 전체로 늘림), 올리면 카드가 회색. 제목으로 갈 때 위 여백(scroll-margin)
+- 영향 파일: src/pages/ops/index.astro, src/pages/ops/families/[id].astro, src/styles/ops.css, tools/e2e/ops.py
+- 검사: e2e ops.py 62개(현황 숫자 링크 4개·카드 빈 곳 눌러도 이동), 상세 링크 4개·칸 이동 확인, astro check 0
+
+### 171. feature/ops-accounts-group — 운영 계정 목록을 가족방별로 묶기 (완료, 0.44.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저. 운영 확인: 가족방 1·엄마→아빠 순, 권한 service_role만)
+- 요구(사용자 2026-11-04): "계정 앨범별로 묶어야 할 것 같은데.. 대시보드에서" → 두 안 중 '계정 목록을 가족방별로' 고름(가족방 목록에 엄빠 칸 더하기 안은 안 고름)
+- 화면 `/ops/accounts`: 가족방 묶음마다 머리줄(가족방 번호 → 상세 링크 · 엄빠 N명 · 방문 합) 아래 그 가족방 엄빠(엄마 먼저). 가족방 없는 계정은 맨 뒤 '가족방 없음' 한 묶음. '가족방' 칸은 머리줄로 옮겨 뺌, '역할'을 계정 바로 옆으로. 표는 묶음마다 tbody + th scope=rowgroup
+- 정렬·쪽: 묶음 단위(가입·마지막 로그인·마지막 방문은 묶음 안 가장 최근, 방문은 합), 50묶음씩('다음 가족방 50곳'). 가족방 없는 계정은 하나씩 한 묶음으로 세서 맨 뒤
+- DB `20261104000004_ops_accounts_group.sql`: sp_ops_accounts create or replace(받는 값 + groups, 같은 이름·권한, DROP 없음). **운영 적용을 웹보다 먼저**, 적용 전 사용자 확인
+- 영향 파일: 마이그레이션, src/lib/backend/{types,mock}.ts, src/pages/ops/accounts.astro, src/styles/ops.css(.sp-o__group — 바탕은 --bg, --fill 위 틸 링크는 4.5:1 미달), supabase/tests/rls.sql, tools/e2e/ops.py
+- 검사: DB(같은 가족방 엄마·아빠 순으로 붙어 나옴, 가족방 없는 계정은 가장 최근 가입이어도 맨 뒤, 묶음 수 < 계정 수), e2e ops.py 60개(머리줄·역할), 단위 65, astro check 0, 1280·390 화면
+
+### 170. fix/e2e-one-account — 실제 DB 검사는 테스트 계정 하나만 (완료, 0.43.1)
+- 요구(사용자 2026-11-04): "테스트 계정 하나만 썼으면 좋겠는데" → "응, 고쳐줘". 원인: tools/e2e/real.py·prod.py가 돌 때마다 이메일 계정을 새로 가입(qa+시각@…, 비밀번호도 매번 무작위·저장 안 함) → 10-26에 하린·도윤 가족방 3곳이 남음(169에서 지움)
+- 고침: real.py는 prod.py와 주소·파일 이름만 달라서 지움(같은 일은 `B=` 주소로). prod.py는 `.dev.vars.supabase`(git 제외)의 **E2E_EMAIL·E2E_PASSWORD 한 계정만** 씀
+  - 시작과 끝에 치우기: 그 계정의 가족방을 sp_purge_family(service_role)로 지움(가족 기기·사진·계정까지, R2는 정리 대기열) → 가족방 없이 남은 계정은 관리자 API로 지움
+  - 계정 만들기는 관리자 API(메일 확인 없이, 이메일 가입이 꺼져 있어도 됨) → 비밀번호 로그인 → 쿠키
+  - 중간에 실패해도 다음 실행 시작에 치움. 운영 숫자엔 검사 도는 동안만 잠깐 보임
+  - 경로는 /home/claude 고정 대신 스크립트 폴더 기준
+- 영향 파일: tools/e2e/prod.py, tools/e2e/real.py(삭제), plan.md
+- 확인할 수 없는 것: 이 컴퓨터엔 .dev.vars.supabase가 없어 실제 DB로 돌려 보지 못함(키를 채팅으로 받지 않음)
+- 검사: 가짜 Supabase 서버로 치우기·만들기 흐름(계정 없음 → 만들고 로그인, 지난 가족방 남음 → 계정까지 지움, 계정만 남음 → 관리자 API로 지움), 값이 없으면 필요한 이름을 알려 주고 멈춤
+
+### 169. feature/ops-more — 운영 현황에 실제로 확인할 것 더하기 (완료, 0.43.0 — 운영 DB 적용 2026-11-04 사용자 "응, 적용하고 배포", 웹보다 먼저)
+- 요구(사용자 2026-11-04): "실제 확인 필요한 데이터들 있을텐데.. 추가 필요해 보이는 부분 추가해줘" → 고른 것(운영하며 손이 가야 하는 신호 위주)
+  - **가입하고 멈춘 곳**(현황 카드): 고른 기간에 가입한 엄빠 계정이 지금 어디까지 — 가입 → 처음 설정 마침 → 첫 사진 올림 → 가족이 들어옴(승인 기기 1+). 아래에 지금 가족방 없는 엄빠 계정 수 + 계정 목록 링크(어머니 계정처럼 설정만 하고 멈춘 경우)
+  - **예약 정리 작업**(오른쪽 칸): 하루 한 번 작업이 밀렸는지 — 지울 기한 이틀 지난 가족방, 이틀 넘은 R2 정리 대기, 이틀 넘은 올리다 멈춘 사진. 0이면 '밀린 것 없어요', 있으면 빨강 + Cron 기록 보라는 안내
+  - **살펴볼 것에 '올리다 멈춘 사진'**: 1시간 넘게 uploading인 사진이 있는 가족방(올리기 실패 신호, 하루 지나면 정리 작업이 지움)
+  - **가족방 칸 아래 유료 수**(구독 중 가족방)
+- 안 넣은 것: 오류 로그(3단계, 서버 로그 저장소가 따로 필요), 테스트 계정 빼고 세기(테스트 계정 정리 결정 대기)
+- DB `20261104000003_ops_more.sql`: sp_ops_summary create or replace(본문 000001 + 위 값, 같은 이름·권한, DROP 없음). **운영 적용을 웹 배포보다 먼저**(옛 응답이면 현황이 깨짐), 적용 전 사용자 확인
+- 영향 파일: 마이그레이션, src/lib/backend/{types,mock}.ts, src/pages/ops/index.astro, src/styles/ops.css(.sp-o__link), supabase/tests/rls.sql, tools/e2e/ops.py
+- 개인정보: 숫자만(계정 번호·이름·메일 없음) → 처리방침 그대로
+- 운영 데이터 정리(2026-11-04, 사용자 "테스트 계정 삭제해 주렴, 우리 엄마 계정도"): sp_purge_family로 가족방 4곳 지움 — 하린·도윤 테스트 3곳(a3a1acde·ee31405e·1824285a, 이메일 가입, tools/e2e/real.py·prod.py가 10-26에 만듦)과 사용자 어머니 체험 계정(0bf7eda2, 카카오). 엄빠 로그인 계정·가족 기기·사진 행까지 지워짐, R2 폴더 4개는 r2_cleanup 대기(다음 새벽 정리 작업). 남은 것: 가족방 1, 엄빠 계정 4(그중 네이버 2개는 가족방 없음, 11-03·11-04 가입). **real.py·prod.py는 돌릴 때마다 새 계정을 만듦** — 고정 테스트 계정으로 바꿀지 결정 대기 → 170에서 고침
+- 네이버 계정 2개도 지움(2026-11-04, 사용자 "응, 지워줘" — 사용자 본인 로그인 테스트, 가족방·동의 기록 없음). 네이버 고유번호가 서로 달라 같은 계정이면 11-03~04 사이 네이버 앱(Client ID)이 바뀐 것으로 추정(확인 못 함). 남은 것: 가족방 1, 엄빠 계정 2
+- 리뷰 1회 반영: 가족이 들어옴은 첫 사진까지 온 것 중에서만(막대가 차례로 줄게), 초대받은 엄빠는 그 가족방 상태대로 센다는 안내, R2 대기는 하루 처리 수가 정해져 있어 한꺼번에 지우면 밀릴 수 있다는 안내를 따로(가족방·올리기 밀림만 'Cron 확인'), 올리다 멈춘 사진 밀림 기준 사흘(정상이어도 이틀 가까이 남음), 유료 기준 주석, 검사 정리 범위
+- 검사: DB(가입 ≥ 설정 ≥ 첫 사진 ≥ 가족 들어옴·멈춘 사진 2장·밀림·유료), e2e ops.py 59개, 단위 65, astro check 0. 운영 DB에 같은 계산을 읽기만 해 봄(30일: 가입 8·설정 6·첫 사진 5·가족 5, 가족방 없는 계정 2, 밀림 0). 밀렸을 때 화면은 e2e가 안 다룸
+
+### 168. fix/ops-readable — 운영자 화면 글씨·대비 키우기 (완료, 0.42.1)
+- 요구(사용자 2026-11-04): "대시보드 좀 더 가독성 키울 수 없나? 너무 잘 안 보여"
+- 원인: 운영 화면 본문이 subhead 15px, 이름표·설명·표 머리·범례가 footnote 13px, 카드 제목 17px. 이름 칸(kv·숫자 카드 이름표)도 회색(--label-2)이라 넓은 화면에서 흐림. 막대 그래프 높이 120px
+- 고침(ops.css만, 화면 코드·컴포넌트 안 건드림): `.sp-o` 안에서만 글자 단계를 한 칸씩 올림(subhead 15→17, footnote 13→15, headline 17→20 — 카드 제목·브랜드), 숫자 카드 숫자 28→34px, 카드 안쪽 여백 16→20px, 이름 칸 글자색 진하게(--label), 막대 그래프 120→160px. 엄빠·가족 화면 토큰은 그대로
+- 영향 파일: src/styles/ops.css
+- 예상 결과: 데스크톱·휴대폰 모두 운영 화면 글씨가 한 단계 크고 진함, 칸 넘침·가로 밀림 없음(휴대폰 390px 확인)
+- 같이: 휴대폰 폭(30rem 이하)에선 날짜 칸 글자를 15px로(17px면 연도가 잘림)
+- 검사: 390·768·1024·1440 가로 넘침 없음, e2e ops.py 통과(새 서버), 단위 통과, 전후 화면 비교
+
+### 167. feature/ops-accounts — 운영 계정 목록 + 가족방 상세에 지금 설정된 정보 (완료, 0.42.0 — 운영 DB 적용 2026-11-04 사용자 "둘 다 해", 웹보다 먼저)
+- 요구(사용자 2026-11-04): "계정 리스트도 보게 해줘", "거기에 가족방 연결하고", "가족방 명 뭔지도 노출" → 가족방 이름 칸은 없음(모두 '우리 가족', 앱은 첫 아이 이름으로 부름)을 알리자 사용자 "번호는 그대로 진입해도 상관없는데 진입하면 현재 설정된 정보가 보여야지"
+- 정함: 목록(가족방·계정)은 번호 앞 8자리 그대로, **상세에 들어가면 지금 설정된 정보**: 엄빠(역할·부르는 이름·로그인 방식·계정 번호·함께한 날), 아이(이름·생일·접종 보기), 설정(요금제·가족도 저장·그룹 나누기·가족 글자 크기), 그룹(이름·새 사진 기본 제외·인원), 가족·방문 표(구성원 이름·그룹 이름·상태·사진 올리기 허용·방문). 안 보임: 그룹 비밀번호·힌트, 사진·영상, 한마디 내용, 이메일
+- 계정 목록 `/ops/accounts`(메뉴 '계정'): 엄빠 계정만(익명 가족 기기·지운 계정 제외), 계정 번호·로그인 방식·가입·마지막 로그인·역할·가족방(누르면 상세, 처음 설정 전·나간 계정은 '없음')·방문·마지막 방문, 정렬 가입·마지막 로그인·방문·마지막 방문
+- DB `20261104000002_ops_accounts.sql`: sp_ops_accounts(service_role만) + sp_ops_family create or replace(설정 정보 추가, 같은 이름·권한). **운영 적용을 웹 배포보다 먼저**(옛 응답이면 상세가 깨짐)
+- 처리방침: 2항 운영자가 보는 것(숫자, 계정 로그인 방식·가입일·마지막 로그인, 가족방 설정 정보 — 이름·아이 생일·설정값, 사진·한마디·비밀번호는 안 봄), 1항 보호자에 가입·마지막 로그인 때. 시행일 11월 4일 그대로
+- 검사: DB(엄빠 거절·나간 엄빠 가족방 없음·지운 계정 빠짐·익명 빠짐·힌트 없음·설정 이름), e2e ops.py(상세 설정 정보·비밀번호/힌트 없음·계정 목록 이름 없음·처음 설정한 엄빠가 목록에·가족방 칸 → 상세), 리뷰 1회(처리방침 항목·열 이름 '로그인 방식'·빈 쪽 안내·검사 보강 반영). 보드는 아직 안 맞춤(계정 화면·상세 설정 칸)
+
+### 166. fix/ops-tip-above — 막대 말풍선을 막대 바로 위로 (완료, 0.41.2)
+- 요구(사용자 2026-11-04): "말풍선 이상한 데로 가 ㅋㅋㅋ"(165의 그래프 오른쪽 위 고정 자리) → 두 안 중 사용자 고름 '막대 바로 위'. 그래프 위 한 줄 자리 안은 안 고름
+- 고침: **운영 화면에 처음으로 작은 스크립트**(OpsBars 안, 막대 가운데 위·보이는 그래프 칸 안으로 맞춤·0인 날은 바닥 위, 휴대폰은 누르면 뜨고 밖을 누르거나 Escape·옆으로 밀면 닫힘). 스크립트가 없으면 CSS 말풍선이 그래프 위 빈 줄에(막대 위 2rem 자리). 0KB 원칙은 운영 화면만 예외(엄빠·가족 화면 아님)
+- 같이: 고른 기간이 방문 기록 시작(src/lib/ops.ts VISITS_SINCE 2026-11-04) 전을 포함하면 '방문 기록은 …부터예요' 안내(현황·상세), 로그인 방법 'email'은 '이메일'로(운영 화면에서만, PROVIDER_NAMES는 안 건드림)
+- 사용자 질문 "현황 왜 하나뿐이지?": 방문 기록을 11-04부터 쌓아서 막대가 오늘 하나(설명함)
+- 검사: e2e ops.py(막대 바로 위·칸 안·밀어 둔 상태·마우스 나가면 숨김·누르면 뜸·Escape·밖 누르기), 리뷰 1회
+
+### 165. fix/ops-hover — 운영 목록 줄 전체 링크·막대 말풍선 바로 (완료, 0.41.1)
+- 요구(사용자 2026-11-04): "자세히 정보 볼려면 링크 같은 거 안 걸려 있고, hover도 하나도 안 나오네" → 원인: 목록은 번호 글자만 링크(줄 hover 없음), 막대는 title 말풍선이라 1초 늦고 0인 날은 올릴 데가 안 보임
+- 고침: 목록 줄 어디를 눌러도 상세(번호 링크를 줄 전체로 늘림, 올리면 칸마다 회색 — WebKit 줄 배경 1px 틈 피함), 막대는 올리면 그날 칸 회색 + CSS 말풍선(그래프 figure 오른쪽 위 고정 자리 — 밀어 둔 30·90일에서도 안 잘림, 리뷰 1회). 휴대폰 탭은 기존대로 '숫자로 보기' 표. 줄 링크라 목록 글자 끌어 복사는 안 됨(받아들임)
+- 검사: e2e ops.py(말풍선 바로·칸 안·밀어 둔 상태, 줄 hover 회색·가운데 칸 눌러 상세), 보드는 안 바꿈(말풍선 모양은 보드에 없던 것)
+
+### 163. fix/video-open-reason — 영상이 안 열리면 멈춘 단계를 안내에 (완료, 0.40.2 — 실기기에서 다시 생기면 안내 줄로 원인 찾기)
+- 요구(사용자 2026-11-04 "원인은?" → 원인을 확실히 아는 방법 1번 "1 추가"): '열 수 없는 파일'은 어느 단계 실패든 같은 글이라 원인을 모름
+- 구현 방식: video()가 단계(열기·첫 장면으로 넘기기·썸네일·장소 지우기)와 시간 초과 여부를 담은 VideoError를 던짐. 저절로 다시 해도 안 되면 안내 줄 끝에 "(처음: … / 다시: …)" 또는 "(…, 다시 해도 같음)". 처음만 실패하고 다시 해서 되면 안내 없음(지금처럼)
+- 영향 파일: src/pages/upload.astro, tools/e2e/vidretry.py
+- 리뷰 반영: 같은 단계·같은 종류면 "20초·8초 안에 영상을 못 엶, 다시 해도 같음", 브라우저가 알려 준 영상 오류 번호(1 중단·2 네트워크·3 디코드·4 지원 안 함)를 괄호로, 장소 지우기 단계는 실제로 나는 실패인 "파일을 끝까지 못 읽음", 문구는 "영상을 여는 중 오류"·"미리보기 그림을 못 만듦"
+- 예상 결과: 예) "IMG_2455.mov · 열 수 없는 파일(20초·8초 안에 영상을 못 엶, 다시 해도 같음)", "…(영상을 여는 중 오류(3), 다시 해도 같음)"
+
+### 162. fix/video-first-open — 영상이 처음엔 '열 수 없는 파일', 다시 고르면 됨 (완료, 0.40.1 — 실기기 확인 대기)
+- 요구(사용자 2026-11-04, 아이폰 스크린샷 IMG_2455.mov "영상 올릴 때 처음에 안된다고했다가 다시 올리면 돼")
+- 원인(확인 못 함, 가장 그럴듯한 것): 영상 첫 장면을 그리려고 video 요소의 loadeddata를 8초만 기다린다(wait 기본 8000ms). 아이폰은 큰 .mov를 처음 열 때 첫 장면이 늦게 나올 수 있고, 두 번째는 이미 열어 둔 파일이라 빠르다 → 처음에만 시간 초과로 '열 수 없는 파일'. 실기기 없이 재현 못 함
+- 구현 방식: 첫 장면 기다림을 20초로, 영상이 '열 수 없는 파일'(형식·2GB 아님)로 실패하면 한 번 더 저절로 시도. 사진은 그대로
+- 영향 파일: src/pages/upload.astro, e2e(첫 시도만 영상이 안 열리게 해 저절로 다시 되는지)
+- 예상 결과: 처음 실패해도 다시 고르지 않고 올라감. 두 번 다 안 되면 지금처럼 안내
+- 결과(0.40.1): 첫 장면 기다림 20초(다시 할 때 8초), 영상이 못 열리면 한 번 더 저절로. 리뷰에서 실패한 첫 시도의 video 요소가 src를 쥔 채 남는 것을 찾아 성공·실패 모두 비우게 함(다시 할 때 디코더·메모리 경합이 원인이라면 이것도 필요). e2e vidretry(첫 시도만 error → 저절로 올라감, 두 번 다면 안내)·shrink·videoloc·upflow·upstatus 통과
+- 확인 못 함: 진짜 원인(아이폰 실기기 필요). 시간 초과로 멈추는 경로는 검사가 덮지 않음. 또 생기면 실패 단계(시간 초과·열기 오류)를 남기는 진단을 넣을 것
+
+### 161. feature/upload-flow — 올리기 화면 다시 짜기(사진 전부 보이게·아래 유리 막대·진행은 가운데 레이어·그만 올리기) (완료, 0.40.0)
+- 요구(사용자 2026-11-03 "사진 올릴 때 한 화면에 안 보여서 불편", 시안 B 흐름 확정 "응 적용"): 디자인 캔버스 '올리기 흐름 (시안 B)' 줄(v259) 1·2·3·4·4-1·4-2·5
+- 원인: 고른 사진 칸이 장수만큼 길어져 아이·보여줄 그룹·크기 칸과 진행 표시가 화면 밖으로 밀림(8장부터 그룹이 가려짐, 24장이면 안 보임). 줄이기와 올리기가 차례로라 기다림이 두 번. 한 장만 빼거나 멈출 방법이 없음
+- 정한 것(사용자 2026-11-03)
+  - 사진은 위에 전부(4칸), 아이·그룹은 아래 막대에서 바로 누름(눌러 들어가는 창 없음), 한 줄씩·넘치면 옆으로 밀림
+  - 아래 막대: 가로 가득, 위 선 없음, 위 모서리 둥글게, 유리(밝게 0.42·어둡게 0.48, 흐림 8px·채도 180%), 막대 글자는 앨범 머리처럼 진한 글자 + 화면색 50% 번짐. 투명도 줄이기면 단색
+  - 줄이기(최적화)는 따로 보여 주지 않음: 고르면 뒤에서 한 장씩 줄이며 칸이 하나씩 채워지고 보내기는 바로 켜짐. 보내기를 누르면 줄이기와 올리기를 같이(올리는 동안 다음 것을 줄임, 영상 줄이기는 한 번에 하나)
+  - 올리는 중은 가운데 레이어 하나(웹은 화면을 떠나면 멈추므로 기다리는 동안 덮음): "올리는 중이에요", "15 / 24", 진행 줄(끝난 양만큼), 지금 하는 일 한 줄("16번째 영상 줄이는 중 · 40%"), 켜 두세요 안내, '그만 올리기'
+  - 그만 올리기: 한 번 더 물음("지금까지 올린 15장은 가족 앨범에 남아요") → 지금 올리던 것은 끊음(반쯤 올라간 행은 앨범에 안 보이고 하루 뒤 정리 작업이 지움), 올린 것은 남김, 카톡 주소는 안 만듦 → 화면을 '남은 사진 9장'(✕ 있음)·'이미 올린 사진 15장 · 가족 앨범에 보여요'(흐리게 ✓)로 나눔, 버튼은 "나머지 9장 올리고 카톡으로 보내기"·"나머지 9장 올리기만"(보낼 주소는 모두 포함)
+  - 칸마다 ✕(누르는 자리 44px 칸 안, 동그라미는 오른쪽 위 4px 안): 보내기 전·멈춘 뒤 남은 사진만. 빼면 아래 막대에 "1장 뺐어요 · 되돌리기"
+  - '크기 · 21MB' 줄과 줄이는 중 막대는 없앰. 못 여는 파일은 찾는 대로 안내
+  - 다 올림 화면: "24장 다 올렸어요", "외가 · 친가 가족 앨범에 보여요. 카톡으로 보내면 바로 알 수 있어요.", 보낼 주소·카톡으로 보내기·주소 복사·앨범으로
+- 구현 방식(나눠 커밋, 한 번에 dev 머지 — 중간 상태가 운영에 나가지 않게)
+  - a 화면: 아이·그룹 fieldset을 #up-actions 막대 안으로(알약 줄 .sp-p__upchips, 네이티브 체크박스 그대로), 크기 줄 삭제. 막대 유리는 올리기 전용 변형 클래스(다른 화면 막대는 그대로), 토큰 --glass-bar 추가. 막대 높이가 알림·알약에 따라 바뀌므로 ResizeObserver로 --savebar-h를 실제 높이로. 원본 안내·올리기 기준은 사진 칸 아래 그대로
+  - b ✕·되돌리기: 칸마다 버튼(aria-label "n번째 사진 빼기"), 막대 안 알림 줄(role=status) + 되돌리기 버튼, 6초 뒤 사라짐(다음 동작에도)
+  - c 줄이기·올리기 같이: 고를 때 파일마다 준비 약속(promise)을 만들어 한 줄로 차례 실행, 칸은 빈 자리로 먼저 그리고 끝나면 채움. 보내기는 준비를 기다리며 끝난 것부터 올림. 뺀 파일은 준비 건너뜀
+  - d 가운데 레이어: 네이티브 dialog(showModal), 진행은 progress 요소, 지금 하는 일 한 줄은 화면 읽기에 10% 단위로만. 그만 올리기는 같은 dialog 안 확인 단계(alertdialog 문구), AbortController로 지금 요청을 끊음
+  - e 멈춘 뒤·실패 뒤 화면: 남은/올린 두 묶음 제목과 칸, 막대 안내 문구, 버튼 글자에 남은 장수. 그룹은 지금처럼 첫 올리기 뒤 잠금(묶음 안 공개 범위가 섞이지 않게) — 보드 4-2는 그룹 알약을 흐리게 고침
+  - f 다 올림 카드 문구·콩이
+  - 넓은 화면(64rem+): 막대는 지금처럼 오른쪽 칸 안 제자리(유리 없음), 알약 줄 그대로
+- 디자인: 캔버스 '올리기 흐름 (시안 B)' 보드가 기준. 개발하며 바뀌는 곳은 보드 먼저(4-2 그룹 잠금, 1에 원본 안내, 넓은 화면 ParentUploadPC 보드)
+- 영향 파일: src/pages/upload.astro, src/styles/parent.css(올리기 부분), src/styles/tokens.css(--glass-bar), e2e(upscreen·upload·upstatus·shrink·upgrid·filterchips 올리기 부분 등 맞춤 + 새 검사), 보드
+- 예상 결과: 24장을 골라도 사진 전부 + 아이·그룹 + 보내기가 한 화면, 진행은 가운데 레이어 하나, 중간에 멈추고 이어 올리기, 한 장 빼기·되돌리기
+- 결과(0.40.0, 캔버스 v261): 리뷰 3회(1·2회 별도 검토, 3회 직접). 1회차: 못 연 파일만 보내면 잠김, ✕가 role=img 칸 안(화면 읽기), 빼고 되돌리면 두 번 준비, Esc 거듭에 레이어 닫힘(다시 엶), 남은 걸 다 빼면 카톡 못 함, 화면 켜 두기 겹침, 막대가 화면 넘침(막대 안 밀림), 초점이 막대 뒤(scroll-padding), 되돌리기 초점·메모리·200장 우회. 2회차: 줄이는 중 뺀 영상 메모리, Esc 단계 유지, 올린 것만이면 레이어 없이, 진행 수 거듭 읽기, 200장 넘친 줄 합침, 안내 목록만 밀림. 3회차: 진행 전체 수는 못 연 파일 빼고. 보드 대조로 고르기 전 큰 칸·다 올림에도 머리(닫기)를 앱에 넣음
+- 검사: astro check 0, 단위 60, e2e upflow(새)·upscreen·upstatus·retry·shrink·bottombar·bigvideo(조각 3개·퍼센트)·upload·filterchips·photo·layers·takenat·upgrid 외 업로드를 쓰는 30여 개 통과. 원래부터 깨진 것(dev에서도 같게): keepsmall, bigvideo '50MB 조각 거절'(서버 API), masonry '넓은 화면 4줄 폭', waitphotos, subhead, savebar, pc
+- 그대로 둔 것: 줄이는 중 뺀 영상은 끝까지 줄임(되돌리면 다시 줄이지 않게), 첫 올리기 뒤 아이·그룹·더 고르기 잠금(예전과 같음), 멈춘 뒤 하루 지나 이어 올리면 정리 작업이 지운 행을 끝난 것으로 볼 수 있음(예전부터). 유리 막대 위 작은 글자 대비는 실제 사진 위에서 재 보지 못함(글자 그림자로 보정)
+
+### 160. feature/family-top-slim — 조부모 앨범 위 버튼 줄 줄이기 (완료, 0.39.0)
+- 요구(사용자 2026-11-03 웹 UX 점검 1번 "일단 할머니 할아버지꺼부터", 위치는 "앨범 맨 아래로"): 넘겨 보기에서 사진 위에 '내 캐릭터·글자 크기' / '넘겨·모아 보기' / '전체·사진·영상' 세 줄이 쌓여 사진이 화면 1/3쯤 내려가서 시작함
+- 원인: '내 캐릭터·글자 크기'(149)는 머리 아래 고정, '사진 종류'(117c)는 보기 방식과 상관없이 늘 보임. 디자인 보드 GrandHome에는 사진 종류 줄이 없음(앱만 다름)
+- 구현 방식
+  - '사진 종류'(전체·사진·영상)는 모아 보기에서만 보이고 거름: `readQuery`가 넘겨 보기면 t를 버림(옛 주소 ?v=swipe&t=video도 전체로, 줄이 없는데 걸러져 보이는 일 없게)
+  - '내 캐릭터·글자 크기' 줄은 넘겨 보기에서만 앨범 맨 아래('처음 사진까지 모두 봤어요'/'사진 더 보기' 아래, 사진 없을 때는 안내 아래)
+  - 고침(리뷰 1회차, 사용자 2026-11-03 "모아 보기는 위에 그대로"): 모아 보기는 맨 아래가 60장씩 계속 붙어(autoMore) 사진이 많으면 그 줄에 닿지 않음 → 모아 보기는 머리 아래 그대로. 떠 있는 −/+ 자리(sp-a__zoom-space)는 모아 보기 목록 뒤 그대로
+  - 바뀌는 것(알림): 모아 보기에서 '영상'을 고르고 넘겨 보기에 갔다 오면 '전체'로 돌아옴(넘겨 보기가 t를 버림)
+  - 디자인 보드: GrandHome·GrandHome-Light는 알약 줄을 아래로(v242). GrandList·GrandList-Light엔 원래 알약 줄이 없어(앱은 149부터 있었음) 머리 아래에 넣어 앱과 맞춤. Multi·Age·PC 보드는 그대로
+- 영향 파일: src/lib/album.ts(readQuery), src/pages/album/index.astro, 보드 4장, e2e familytop(새). family.css는 그대로(.sp-a__mine 위 여백 12px가 아래 자리에서도 맞음)
+- 예상 결과: 넘겨 보기에서 사진 위엔 머리 + 보기 방식 한 줄(약 70px 위로, 알약 줄과 사진 종류 줄이 빠짐). 모아 보기는 예전처럼 알약 + 보기 방식 + 사진 종류. 글자 크기·캐릭터는 두 보기 모두에서 닿음
+- 결과(0.39.0, 캔버스 v243): 리뷰 3회(1·2회 별도 검토, 3회 직접). 2회차: 넘겨 보기 맨 아래 줄은 카드가 계속 붙어 키보드 Tab으로는 멀다 → 줄을 이름 있는 영역(nav '내 설정')으로 해 화면 읽기 영역 목록에서 바로 가게(손가락 스크롤은 문제없음). astro check 0, 단위 60, e2e familytop(새)·entry·family·layers·famsize·avatar·rows·familyzoom·loadmore·save·views·vswipe·pview·react·comments·milestones·waitphotos 통과. 밝게·어둡게·크게·아주 크게 화면이 보드와 같음
+- 원래부터 깨져 있던 검사(dev에서도 같게 실패, 이번 범위 밖): subhead.py(get_attribute 시간 초과), savebar.py(check 시간 초과), pc.py('부모 앨범 6칸') — 화면이 바뀐 뒤 검사를 안 고친 것으로 보임
+- 맥에서 e2e 돌리기: tools/e2e를 임시 폴더로 통째 복사하고 /home/claude/sweepea·/home/user 경로를 바꿔 실행(검사끼리 import·그림 파일을 같은 폴더에서 찾음). familytop은 Harin001에 사진 2장을 남기므로 upload.py보다 뒤에
+
+### 159. 애플 로그인 (진행 중, 새 세션에서 이어서)
+- 요구(사용자 2026-11-03 "애플은 이미 개발자계정 있어"). 코드 변경 없음 예상: PROVIDERS에 apple 있음, PARENT_PROVIDERS에 apple만 더하면 버튼
+- 순서(Supabase 문서 auth-apple, 웹 OAuth 흐름):
+  1. App ID `kr.co.sweepea.app` + Sign In with Apple (사용자가 만들었는지 확인 안 됨, 나중 iOS 앱 ID로 그대로 씀)
+  2. Services ID `kr.co.sweepea.web` → Sign In with Apple Configure: Primary App ID 위, Domain `aemzbelwyyweugxuqgoh.supabase.co`, Return URL `https://aemzbelwyyweugxuqgoh.supabase.co/auth/v1/callback`
+  3. Keys에서 Sign in with Apple 키(.p8) 만들기 → Supabase 문서의 도구(크롬·파이어폭스)로 비밀값 생성(Team ID·Key ID·Services ID)
+  4. Supabase Apple 제공자: Client IDs 첫 칸 `kr.co.sweepea.web`, Secret Key 넣기
+  5. Cloudflare `PARENT_PROVIDERS`에 apple 추가 → 로그인 시험
+  6. 비밀값 6개월마다 새로 → 예약 알림 걸기
+- 사용자 안내는 한 단계씩, 짧게
+
+### 158. fix/naver-userinfo — 네이버 로그인 실패 (완료 0.38.6~0.38.7, 운영 로그인 성공 07:51)
+- 요구(사용자 2026-11-03 "로그인실패")
+- 원인: 네이버까지는 성공(Supabase 기록에 네이버가 code를 돌려줌). 네이버 사용자 정보는 `{resultcode, message, response:{id,…}}`처럼 response 안에 감싸 오는데, Supabase 직접 설정(OAuth2) 제공자는 맨 위 칸(sub·email)만 읽고 속을 펴는 설정이 없음(supabase/auth custom_oauth.go applyAttributeMapping은 맨 위 이름만) → 사용자를 못 알아봐 실패
+- 고침: `/auth/naver-me` — Supabase가 보내는 네이버 토큰으로 네이버에 물어 `{sub: 네이버 id}`만 돌려줌(이메일은 앱이 안 써서 안 넘김). Supabase custom:naver의 UserInfo URL을 이 주소로, '이메일 없이 허용' 켬(사용자가 대시보드에서)
+- 영향 파일: src/pages/auth/naver-me.ts(새), plan.md, index.md
+- 1차 설정 뒤에도 실패(07:46): why="error missing provider id" → UserInfo URL이 저장 안 돼 네이버 주소 그대로였음. 다시 저장 뒤 성공(token pkce 200). 네이버 검수 신청 완료(2026-11-03, 사용자). 결과 대기 거절 이유가 버려져서 /auth/callback이 error_description을 /login?e=1&why=로 넘기게(0.38.7, 화면엔 안 보임·주소에만)
+- 확인: fetch를 바꿔 끼워 정상 → {sub}, 네이버 거절·토큰 없음 → 401, 네이버 안 닿음 → 502. astro check 0 errors. 실제는 사용자 로그인으로
+
+### 157. fix/layer-seen — '아빠가 함께 관리하기 시작했어요'가 계속 뜸 (완료 0.38.4, 실기기 확인 대기)
+- 요구(사용자 2026-11-03 "아빠가 관리하기 시작했다고 계속 뜨네")
+- 조사: 운영 DB 정상(아빠 10-29 들어옴 → 30일 동안 엄마 기기에 한 번). '좋아요'는 그 자리에서 닫고 뒤에서 POST(keepalive)로 '봤음' 쿠키를 적는데, 크롬에선 다시 안 뜸(coparent 통과). 이 환경엔 webkit이 없어 아이폰 사파리 재현 못 함 → 사파리가 keepalive 요청 응답의 Set-Cookie를 안 남기는 것으로 추정
+- 고침: 가운데 레이어 '봤음' POST에서 keepalive 뺌(기념일·저장 공간·들어오기 '나중에'도 같은 길). 바로 다른 화면으로 가면 적기가 끊길 수 있음(그러면 다음에 한 번 더 뜸)
+- 확인: e2e coparent·layers·homelayer 통과. 사용자 아이폰에서 '좋아요' 뒤 다시 안 뜨는지 확인 필요(계속 뜨면 원인 다시 찾음)
+
+### 155. 보드 맞추기 — 0.33~0.38 앱 화면을 디자인 캔버스에 (완료, 캔버스 v240)
+- 요구(사용자 2026-11-03 "보드 맞추기부터 진행", 정해 둔 규칙 "남은 차이는 보드를 앱에 맞춘다")
+- 캔버스 실물(보드 221장, 저장소 tools/canvas는 137장뿐인 옛 사본)을 받아 고침. 62장 고침·새 6장
+- 앨범 칸 보드(Bleed·Glass·Zoom1·3·5): 제목 줄 오른쪽 유리 '선택', 아이 줄 '하린 · 13개월 4일 ›'(KidDetail로), Zoom3 보기 줄 '선택' 뺌. 카드·넘겨 보기(Zoomm·Zoomy·Swipe)는 아이 링크만
+- ParentHomeSelect: 위 유리 '수정'·닫기, 아래 탭바 모양 '3장 선택됨'·휴지통, 체크 칸 32px 네모
+- 유리 '+'(사진 추가): 유리 탭바가 있는 22장(나머지는 옛 탭바 보드라 그대로)
+- 문구: Who(새 이름 안내·처리방침 안내), GrandPassword, GrandPending·WaitPhotos(알림 안 감·전화), ParentLogin·JoinParent(동의는 처음에), ParentOnboard(필수 동의 둘), Settings·SettingsGlass·SettingsDownloadToast(휴대폰 N대), MemberDetail·MemberRemoveLayer·MemberUploadToast(모든 그룹 사진 보기), Storage(지우면 다시), ParentUpload·PC(보여줄 그룹·올리기만 안내·올리기 기준 자세히), ReactionsHealth(주사기 → 아기 그림), GrandHome('내 캐릭터'·'글자 크기' 알약 줄)
+- 새 보드(다크·라이트): KidDetail(153), Agree(152), FamilyTextSize(149) — 캔버스 맨 아래 '0.33~0.38 새 화면' 줄
+- 안 한 것: Health 보드의 건강 정보 동의 칸(처음 한 번 보이는 상태라 기본 보드는 동의한 뒤 모습 그대로), 처리방침·약관 페이지(보드 없음), PC 앨범 보드('+'·선택 배치가 달라 다음에), 옛 탭바 보드
+- 확인: 규칙대로 렌더 검사는 하지 않음(사용자가 캔버스에서 확인)
+
+### 154. fix/legal-2 — 리걸 점검 남은 것: 국외 이전 항목·책임 조항 (완료, 0.38.1)
+- 요구(사용자 2026-11-03 "응 진행해줘", 다음 순서 3번)
+- 처리방침 5항: 「개인정보 보호법」 28조의8 항목을 회사마다(Supabase·Cloudflare) 맡기는 일·옮겨지는 정보·나라·때와 방법·보관 기간·연락처로, 거부 방법·결과. 연락처는 각 회사 처리방침 원문에서 확인(2026-11-03: Supabase privacy@supabase.com·미국·싱가포르 운영, Cloudflare 101 Townsend St·dpo@cloudflare.com)
+- 약관 제9조: '무료 이용 중 손해는 고의·중과실 없으면 책임 안 짐' 삭제 → 고의·과실 손해는 법령대로 배상(무료도), 불가항력·이용자 잘못·이용자 사이 다툼은 고의·과실 없으면 면책
+- 시행일 11월 3일, CONSENT.terms 2026-11-03 → 이미 동의한 엄빠도 다시 동의('약관이 바뀌었어요' 문구)
+- 0.32.1 전에 올린 영상 4개(2026-11-01 올림)의 위치 정보: 운영 저장소(R2)를 여기서 못 열어 실제로 들었는지 모름. 사용자 결정(2026-11-03 "내 꺼라 상관없는데"): 운영자 가족 영상이고 이용자가 우리 집뿐이라 그대로 둠(다른 이용자 데이터 아님). 출시 전 다른 가족이 생기기 전이라 다시 볼 일 없음
+- 확인: e2e privacy(+국외 이전 연락처·거부)·consent·coparent 통과. 법률 자문 아님
+
+### 153. feature/kid-detail — 아기 자세히 보기 (완료, 0.38.0)
+- 요구(사용자 2026-11-03 "아기 이름 나온 데에 아기 자세히 보기 되게 해 주고", 다음 순서 1번)
+- 엄빠 앨범 머리 '하린 · 13개월 17일 ›'(아이마다 링크) → /kid/[id](엄빠만): 아기 그림·이름, 생일·오늘 나이·태어난 지 N일, 오늘 기념일 또는 다음 기념일(50일~1000일·돌, 앨범 표시와 같은 규칙)과 남은 날, 다음 접종·검진(일정 보기를 켠 아이만, /health로 · 돌아오면 이 화면), '하린 사진 보기'(/home?k=), '이름·생일 고치기'(설정 › 아이)
+- 개월별 발달: 사용자가 www.cdc.gov를 허용(2026-11-03) → CDC 'Learn the Signs. Act Early.' 시기별 페이지 10개(2·4·6·9·12·15·18·24·30·36개월)를 받아 항목을 쉬운 우리말로 옮김(src/lib/milestones.ts, 영역 마음·관계/말/생각/몸, 항목 수 원문과 대조 0건 차이). 지금 나이 바로 다음 시기를 보여 줌(13개월 → 15개월), 출처·원문 링크·'아이마다 달라요, 영유아 건강검진에서' 안내. 리서치 에이전트 안(WHO 운동 발달 포함)은 절반이 원문 미확인이라 안 씀. 3살 넘으면 안 보임(4·5살은 필요해지면)
+- 새 함수 nextMark(birth, today)·nextCheckpoint + 단위 검사(60), e2e 새 kid.py(8)
+- 고침(0.38.3, 사용자 실기기 캡처 "깨집니다"): 다음 일정 이름이 길면(일본뇌염 3차(불활성화) · 생백신 2차) 오른쪽 값이 자리를 차지해 '접종·검진 일정'이 한 글자씩 쪼개짐(내 실수, 짧은 이름으로만 확인) → 값을 제목 아래 줄로. 보드 KidDetail은 짧은 이름이라 그대로
+- 예약 작업(2026-11-03 사용자 "예약작업 걸어줘", 매달 대신 연 1회 추천을 받아들임): '스위피 발달·검진 기준 연 1회 확인' 매년 11월 3일 10:17(서울), 새 세션에서 CDC 원문·접종/검진 기준과 milestones.ts·health.ts 대조 → 바뀌면 chore/standards-review-<연도> 브랜치에만 올리고 보고(dev 합치기·PR 안 함), 휴대폰 알림. 커넥터는 안 붙음(새 세션이 add_repo로 저장소를 붙여 씀)
+
+### 152. feature/consent — 약관·처리방침·건강 정보 동의 받기 (완료, 0.37.0)
+- 요구(사용자 2026-11-03 "SNS 로그인할 때 동의 받고 있나?" → 1~3 진행)
+- 지금: 로그인·초대 화면 작은 글 "시작하면 … 동의하게 돼요"만, 동의 기록 없음. 가족 입장 화면엔 안내 없음. 접종·검진 완료 기록(민감정보, 개인정보 보호법 23조)에 따로 동의 없음
+- ① 엄빠: 처음 설정 1단계에 체크 칸 둘([필수] 이용약관, [필수] 개인정보 처리방침 확인·만 14세 이상, 기본 required). 가족방을 만들 때 동의 기록(terms:버전). 이미 가족방이 있는데 기록이 없으면(기존 가입자·초대받아 들어온 엄빠) 어느 엄빠 화면이든 /agree로 → 같은 체크 칸 → 기록 → 앨범. 동의 안 하면 로그아웃 링크
+- ② 건강 정보: 접종·검진 화면에서 처음 체크하기 전에 '[필수] 예방접종·검진 완료 기록(건강 정보) 수집·이용 동의'(기록 health:버전). 동의 전엔 체크 칸 꺼짐, 서버도 동의 없으면 저장 안 함. 일정 보기(생일로 계산)는 그대로
+- ③ 가족 입장(누구세요): "들어오면 부르는 이름과 휴대폰 정보가 개인정보 처리방침에 따라 쓰여요" + 링크
+- DB: 새 마이그레이션 consents(user_id·kind·version·agreed_at, 본인 것만 select) + sp_agree(kind, version) + sp_parent_home에 'agreed'(['terms:2026-11-02', …]) 붙임(create or replace, 같은 모양). 계정이 지워지면 같이 지워짐(cascade)
+- 순서: 앱·DB 검사 → 캡처 시안 → 사용자에게 운영 DB 적용 물음 → 적용·지문 확인 → dev(코드가 먼저 나가면 새 함수가 없어 깨짐)
+- 버전: src/lib/consent.ts CONSENT.terms·health = 약관·처리방침 시행일. 약관을 바꾸면 버전을 올려 다시 동의를 받음
+- 결과: 초대받아 들어온 엄빠는 /agree?joined=1을 거쳐 '함께 관리해요' 안내까지(auth/callback·join). DB 검사(+9, 의도된 거부 79), 단위 58, e2e 새 consent(8)·coparent·health(+3)·가입 단계 체크를 넣은 84개 중 parent·layers·famplace·filterchips·multiedit·reactions·members·privacy·photoexif·acclayer·homelayer·milestones·settings2·upscreen 통과
+- 운영 DB(2026-11-03 사용자 "응 운영 DB 적용해줘"): 적용 전 sp_parent_home 지문 f479fb58…(= 저장소 직전), 적용 뒤 sp_parent_home 8a18e90e…·sp_agree 7c290656…(= 저장소), consents RLS 켜짐·anon 읽기·authenticated 직접 넣기 불가, sp_agree anon 실행 불가
+
+### 151. fix/soon-kid-avatar — 다가오는 일정에 주사기 대신 아기 그림 (완료, 0.36.2)
+- 요구(사용자 2026-11-03 "다가오는 일정에 주사기 대신 그냥 아기 아바타 넣어줘")
+- 알림 탭 '다가오는 일정' 줄 앞 24px 주사기 선 그림 → 그 아이 개월에 맞는 아기 그림(kidImage, 40px, alt 빈 값: 옆에 이름). 확인: reactions 통과, 캡처
+
+### 150. fix/doc-back — 이용약관·처리방침 맨 위 '뒤로' (완료, 0.36.1)
+- 요구(사용자 2026-11-03 "이용약관에서 뒤로가기 없음", "개인정보 처리방침에서 뒤로가기 없음")
+- 처음엔 referer로 온 곳을 알려 했으나 이 사이트는 referrer-policy no-referrer(middleware)라 비어 있음 → 링크에 ?from=경로를 붙이고(로그인·엄빠 초대·설정·서로), 두 문서 맨 위 '뒤로'(.sp-p__back)가 그 경로로. 같은 사이트 경로만(//, \, 다른 주소, 자기 자신은 첫 화면) — src/lib/back.ts backHref·docHref, 단위 검사
+- 확인: 단위 58, e2e privacy(+3: 처리방침→설정, 약관→로그인, 바로 열면 첫 화면)·settings2 통과
+
+### 149. feature/family-text-size — 조부모 화면에서 글자 크기 바꾸기 (완료, 0.36.0)
+- 요구(사용자 2026-11-03 점검 A-3 결정 "조부모 화면에 버튼 넣기"): 지금은 처음 '누구세요' 화면에서만 고를 수 있고, 들어온 뒤엔 바꿀 곳이 없음(엄빠 설정 문구 "가족이 자기 화면에서 직접 바꾼 크기가 먼저"와 어긋남)
+- 바꿈: 가족 앨범 머리 '내 캐릭터' 옆에 '글자 크기'(같은 알약) → /me/text-size: 누구세요 화면과 같은 기본·크게·아주 크게 라디오 + 보기 글 + 저장(쿠키 sp_size, 폼 POST·PRG·토스트, 스크립트 없이). 저장하면 바로 그 크기로 보임
+- 엄빠 설정 › 가족 화면 글자 크기 문구: "이미 들어온 가족은 자기 앨범 › '글자 크기'에서 바꿀 수 있고, 그게 먼저예요"
+- 덤: 148에서 누구세요 그룹 질문 legend를 sp-f__label로 했는데 같은 화면 '글자 크기'는 sp-f__legend → 맞춤
+- 확인: e2e 새 famsize(앨범 → 글자 크기 → 아주 크게 저장 → 앨범이 아주 크게), 캡처(세 크기)
+- 결과: 알약 줄은 머리 아래 전체 폭(아주 크게여도 한 줄, 옆 여백 1rem). famsize(스크립트 있음·없음, 없음은 headless 화면 전환이 클릭을 가로채 주소로 엶)·avatar·vplay·entry·family 통과. 사용자 캡처 확인 "dev에 올려줘"
+
+### 148. fix/guide-copy — 설명 부족한 곳 안내 문구 채우기 (완료, 0.35.3)
+- 요구(사용자 2026-11-03 "설명 부족한 부분들 좀 더 설명이나 문구 안내 채워갔으면", "내가 정할 거 있으면 알려주고 수정 진행")
+- 점검: 코드 읽기 점검 25곳(scratchpad copy-audit.md), 문구와 실제 동작이 다른 5곳은 직접 확인(공유 글 "바로 볼 수", 올리기 허용, 글자 크기, 힌트 없는데 "힌트를 보고", 새 휴대폰 = 10번 틀림)
+- 사용자 결정(2026-11-03): ① '사진 올리기 허용'은 문구만 고침(모든 그룹 사진 보기) ② 조부모 화면에 글자 크기 버튼 넣기(149에서 따로, 캡처 시안 먼저) ③ 용어는 '그룹'으로 통일
+- 이번(문구만): 공유 글·안내에 비밀번호, 올리기 허용 문구, 비밀번호 틀림(힌트 있을 때만 힌트)·모르면 엄마아빠, 기기 대기 = 비밀번호 여러 번 틀림, 승인 기다리기 화면 다음 할 일, 누구세요 새 이름 = 확인 필요·그룹 질문 보이게, 새 그룹(예전 사진 안 보임·기본 포함 뜻), 올리기 '보여줄 그룹'·'올리기만', 저장 공간 다 참·지우기, '○○ 앨범' → '○○ 그룹', 카톡이라던 문자 버튼, 링크 두 종류, 로그인 풀림, 60장·200장 한도, 처리방침 기기 이름
+- 확인: astro check, 관련 e2e(문구를 찾는 검사 고침)
+- 결과: 17개 화면 문구. e2e groups·rows·layers·reactions·memberplace·members·multiedit·upscreen·privacy 통과. groupplace는 만든 주소(sweepea.co.kr)를 여는데 이 환경 네트워크가 막아 실패(바꾸기 전 코드도 같음). 그대로 둔 것: 한 사람 문자 링크 글(비밀번호를 묻는지 확인 못 함), 거절/내 가족 아님/내보내기 말 통일(18), 가족방이라는 말(앨범 전체)
+
+### 147. fix/senior-xlarge — 조부모 화면 '아주 크게' 손보기 (완료 0.38.2, 2026-11-03 사용자 "1번 진행해줘")
+- 결과: 제목 장 수를 앞 낱말과 붙임(아주 크게에서 '하린이 / 사진 12장'), 넘겨 보기 사진 카드 높이를 '크게'(360px)에서 멈춤(아주 크게에서 사진이 첫 화면에 거의 다 보임), 안내 줄은 카드 폭 안에서 줄 바꿈, 한마디 칸은 한 줄 전체·'보내기' 아래. e2e family·vplay·famsize·entry 통과, 세 크기 캡처 확인
+- 사용자 2026-11-03 글자 크기별 캡처 확인 뒤 "일단 됐어" → 지금은 안 고침. 나중에 할 것: 제목 '하린이 사진 12장'이 아기 캐릭터 때문에 '사진/12장'으로 끊김, 넘겨 보기 카드가 첫 화면에 다 안 들어옴, 한마디 칸이 좁아 안내 글 '하린이에게 한마디'가 잘림(칸을 한 줄 전체로·보내기를 아래로)
+
+### 146. fix/kid-crop — 아기 캐릭터 아래 '그림자' (완료, 0.35.1)
+- 요구(사용자 2026-11-03 조부모 화면 캡처 보고 "아기 캐릭터 밑에 그림자 뭐야?", "저기 원래 그림자 있어?")
+- 원인(내 실수, 109): 원본(tools/design/avatar-sheet.png)은 평평한 동그라미인데, 자를 때 가운데 y 935·반지름 72로 잡아 원(실제 가운데 y 923·반지름 약 70)보다 아래·크게 잘림 → 원 밖 배경이 아래에 띠로 들어가 그림자처럼 보임
+- 고침: 원 가장자리를 재서(양옆 ±52px 현 위 875·아래 971, 원 맞추기로도 중심 922~924·반지름 69~71) y 923·반지름 67로 다시 자름(public/kid/1~9.png)
+- 가족 캐릭터 45개도 오른쪽·아래에 얇은 테두리가 보이는 것이 있으나 자동 측정이 들쭉날쭉(반지름 75~91)하고 눈 맞춤 SHIFT가 있어 이번엔 안 고침(사용자에게 알림)
+- 가족 캐릭터(0.38.5, 사용자 "몇 개 있네, 정리해줘"): 자를 반지름 78 → 72(눈 맞춤 SHIFT 그대로), 45개 모두 2배 확대로 테두리 없음·잘림 없음 확인. public/avatar/1~45.webp 다시 만듦
+
+### 145. feature/selbar-tabs — 고르기 막대를 탭바 모양으로 + 버튼 유리 디자인 통일 (완료, 0.35.2)
+- 요구(사용자 2026-11-03 "하단 왼쪽 메뉴 영역에 몇 장 선택인지, 우측 업로드 버튼을 쓰레기통으로", "동일한 UI에서 내용만 바뀌면 헷갈릴려나?", "선택 버튼 하단 버튼이랑 디자인 맞춰줘", "수정 버튼도", "더하기 버튼도 글라스 디자인")
+- 고르기 막대: 탭바와 같은 자리·모양(왼쪽 유리 캡슐 'N장 선택됨', 오른쪽 4rem 둥근 휴지통). 습관대로 '+' 자리를 누를 걱정 → 휴지통은 빨간 아이콘, 지우기는 확인 화면을 거침, 안 고르면 꺼짐(사용자에게 안내)
+- 위 '선택'·'수정'·닫기, 아래 '+': 모두 탭 캡슐과 같은 유리(--glass-nav, 같은 테두리·그림자). '수정'·'+'는 글자/아이콘만 초록(--pea-ink). 투명도 줄이기 설정이면 --fill
+- 확인: multiedit·parent 통과, astro check 0, 캡처 보드
+
+### 144. feature/select-top — 고르기를 아이폰 사진 앱처럼 (완료, 0.35.0)
+- 요구(사용자 2026-11-03 "선택 버튼 불편" → "넘겨보기 모아보기랑 다른 줄로", "상단 고정이면 더 좋고", 아이폰 사진 앱 캡처 + "아이폰 느낌으로", "하단에 쓰레기통 아이콘 추가", "체크는 지금처럼 보이는 게 더 직관적, 크기만 키워", "sp-p__selbar가 체크박스보다 아래로")
+- 평소: '선택'을 제목 '앨범' 줄 오른쪽(위에 붙는 머리 안이라 내려도 보임). 아이 이름·나이 줄은 제목 아래로(다음 작업: 누르면 아기 자세히 보기), 날짜 줄은 그 아래
+- 고르는 중: 머리 오른쪽에 '수정'(꺼짐/켜짐)·닫기(✕, '고르기 끝내기'). 탭바 자리에 떠 있는 유리 캡슐 'N장 선택됨' + 오른쪽 휴지통(고른 사진 지우기). 체크 칸은 모든 칸에 그대로, 1.5 → 2rem. 머리 겹침 순서 2 → 3(체크 칸이 머리 위로 지나가던 문제)
+- 폼은 숨은 값만(#sel-form), 버튼은 form 속성으로. 성능은 체크 칸 보이기/숨기기 차이 없음(사용자 물음에 답함)
+- 확인: e2e multiedit(위 수정·닫기, 아래 막대·지우기, 체크 칸 32px)·filterchips·parentzoom·kidtabs·loadmore·closefast 통과, astro check 0. 보드는 실제 화면 캡처 4장
+
+### 143. fix/photo-size — 사진 용량을 품질 값 대신 목표 용량으로 (완료 0.34.1, 실기기 확인 끝)
+- 문제(사용자 2026-11-03 아이폰으로 올린 사진 두 장: 4032×2688 1,844KB·1,797KB, "1.8메가인데..?", "편차가 너무 큰데"): 둘 다 화소당 0.17바이트로 일정 → 사진 탓이 아니라 아이폰 사파리의 JPEG 0.8이 크롬 어림(142)보다 덜 압축함. 패밀리앨범은 0.071(2268×4032 648KB)
+- 바꿈: 0.8로 줄인 뒤 화소당 0.08바이트를 넘으면 같은 그림을 0.7 → 0.6으로 다시 저장(다시 그리지 않음), 0.6이 바닥(사용자에게 안내한 화질 하한). 1,200만 화소 약 1MB
+- 확인: e2e photoexif·upscreen, 사용자가 같은 두 장 다시 올린 뒤 운영 bytes(0.6에서도 0.08을 못 맞추면 그때 숫자로 다시 정함)
+- 결과: e2e photoexif(노이즈 사진 5,596KB → 4,064KB, 0.6 바닥까지 내려감)·upscreen·upload·vplay 통과. 영상 첫 장면(poster)도 같은 함수라 같은 기준. 브라우저별 분기는 안 함(아이폰 브라우저는 모두 사파리 엔진, 버전마다 달라짐 → 목표 용량이 알아서 맞춤). 화질은 사용자가 패밀리앨범과 눈으로 비교
+- 실기기(2026-11-03): 같은 밝은 사진 4032×2688이 1,797KB(0.170) → 781KB(0.074, 패밀리앨범 0.071). 사용자 "비슷한 거 같아 이대로 진행" → 화소당 0.08 확정
+
+### 142. feature/photo-fullres — 사진 해상도 유지 + 사진 정보는 위치만 빼고 그대로 (완료 0.34.0, 용량은 143에서 확정)
+- 요구(사용자 2026-11-03 패밀리앨범 비교: 원본 RAW 17MB 2268×4032 → 패밀리앨범 JPEG 2268×4032 648KB, 날짜·위치 그대로. "출시 안 했으니 교체하면 되지", "위치정보만 지우고 찍은날 정보는 두면", "몇에서 몇으로 줄었는지 보내줬잖아")
+- 기준: 패밀리앨범 수준. 채팅 사본(1450×2576)을 크롬 JPEG 0.8로 줄이면 261KB → 화소 비율(×2.45)로 약 640KB ≈ 648KB. 한 장 어림이라 바꾼 뒤 운영 DB bytes로 확인
+- ① 해상도: 긴 쪽 최대 4032(48MP는 아이폰 브라우저 캔버스 한도 때문에 줄임, 한도 수치는 기억이라 실기기 확인)·JPEG 0.8. 썸네일 480 그대로. 기존 사진은 그대로(출시 전)
+- ② 사진 정보: 원본의 EXIF(JPEG APP1, HEIC Exif 항목)를 새 JPEG에 옮기되 GPS IFD는 지우고 Orientation=1(이미 돌려 그림), 미리보기 썸네일(IFD1)도 뺌. 내려받으면 그 파일 그대로라 사진첩에 찍은 날로 들어감(실기기 확인 필요). 엄빠가 찍은 날을 고쳐도 파일 속 날짜는 그대로(드묾, 사용자 확인)
+- ③ 문구: 올리기 안내·처리방침·약관의 '2048'·'파일 속 정보 지움'
+- 확인: 단위(옮긴 EXIF에 GPS 없음·날짜 그대로·exifTakenAt이 읽음), e2e 올리기, 사용자 실기기 업로드 뒤 운영 용량
+- 결과: exif.ts photoExif(남길 태그만 골라 새 TIFF: 제조사·기종·소프트웨어·시각·시간대·노출·렌즈, GPS·MakerNote·IFD1 없음)·withExif(JFIF 뒤). 단위 57(+2), e2e photoexif(새: 4032×3024 그대로·날짜·기종·GPS 없음), upscreen·privacy·upload·parent 통과, astro check 0. 남은 것: 사용자가 아이폰으로 몇 장 올린 뒤 운영 DB bytes로 실제 용량 확인, 아이폰 사진첩에 찍은 날로 저장되는지 실기기 확인
+- 사용자(2026-11-03): 지금 쓰는 집은 우리 집뿐이라 편하게 바꿔도 됨. 교훈: 방향(기준·방식)부터 정하고 들어갔어야 함
+
+### 141. feature/upload-rules — 올리기 기준 정확히 알리기 (완료, 0.33.4)
+- 요구(사용자 2026-11-03 "업로드할 때 기준 정확하게 고지해줘. 영상 용량, 길이 얼마나 제한인지 / 사진 어떻게 저장되는지")
+- 코드의 실제 기준(upload.astro·lib/media.ts): 사진은 긴 변 2048px JPEG(품질 85%)로 다시 저장, 이미 작은 JPEG는 정보만 빼고 그대로, 파일 속 정보(장소·기종 등)는 지우고 찍은 날짜는 앨범 정보로만. 영상은 mp4·mov, 한 편 2GB, 길이 제한 없음, 3분 이하는 짧은 변 1080·5Mbps로 줄임, 3분 넘거나 폰이 못 줄이면 원본 그대로(위치만 지움). 한 번에 200개, 무료 5GB
+- 지금 안내 문구는 "줄여서 올려요(영상은 1080p, 줄일 수 없으면 그대로)"뿐이고, 처리방침·약관은 "원본은 보관하지 않습니다"라 3분 넘는 영상이 원본 그대로 올라가는 것과 어긋남
+- 바꿈: 올리기 안내 아래 네이티브 details '올리기 기준'(사진·영상·한 번에·저장 공간) 추가. 처리방침 1항·약관 제4조에 같은 기준과 '3분 넘는 영상 등은 원본 그대로' 반영. 숫자는 코드 상수와 맞춤
+- 파일: src/pages/upload.astro, src/styles/parent.css, src/pages/privacy.astro, src/pages/terms.astro, tools/e2e/privacy.py(문구 확인)
+- 결과: e2e privacy·upscreen(+2: 처음엔 접힘·펼치면 기준 숫자) 통과, astro check 0 errors. 용량 안내의 1MB·40MB/분은 운영 실측(사진 평균 0.68MB)·5Mbps 계산
+
+### 140. fix/privacy-contact + feature/naver-login — 보호책임자·로그인 네 곳 (코드 완료 0.33.3, 제공자 설정은 사용자)
+- 요구(사용자 2026-11-02 "강지우 010 7188 0987 / 사업자등록되어있어", "구글 카카오 네이버 애플 네 군데", "지금은 카카오만 되어있는데 경로 더 추가")
+- ① 처리방침(0.33.2): 보호책임자 이름·전화, 로그인 문구를 네 곳으로·애플 '이메일 가리기'. e2e privacy 통과
+- ② 앱은 이미 네 버튼(PARENT_PROVIDERS로 켬). 구글·애플은 Supabase 기본 제공자라 설정만. 네이버는 Supabase 'Custom OAuth/OIDC Providers'(식별자 custom: 접두사, 무료 3개까지)로 연결 → /login/naver가 Supabase에 provider=custom:naver로 보내고, 로그인 기록 provider(custom:naver)도 '네이버'로 표시
+- 유료(사용자 2026-11-03): 통신판매업 신고 완료. 결제는 스토어 구독(플러스·패밀리, 안은 research/pricing-2026-10.md). 돌 영상은 구독에서 빼고 나중에 앱 안 단품으로(패밀리 연간 1회 무료도 빠짐). 푸터 사업자 정보는 주소(집 → 남편 미용실로 옮길지 검토 중)·등록번호·신고번호 받으면. 사업자정보 확인 링크는 ftc.go.kr/bizCommPop.do?wrkr_no= 형식으로 기억 — 이 환경에서 ftc.go.kr이 막혀 확인 못 함, 사용자가 브라우저로 확인
+- 확인 못 한 것: 네이버 사용자 정보 응답이 response 안에 한 번 더 싸여 있어 Supabase 수동 OAuth2가 id·이메일을 읽는지 — 실제 연결해 봐야 앎
+
+### 139. feature/terms — 이용약관 + 리걸 점검 (완료, 0.33.1 — 점검 결과 고칠 것 남음)
+- 요구(사용자 2026-11-02 "이용약관 추가해줘, 리걸 스킬 돌려서 확인도")
+- /terms(로그인 없이): 용어, 효력·변경(7일/불리하면 30일 전), 이용 자격(보호자 만 14세 이상·가족은 링크+비밀번호+승인), 서비스(무료 5GB·원본 보관 안 함·유료는 따로 동의), 변경·중단(종료 30일 전·내려받기 안내), 이용자 의무, 게시물 권리(서비스 제공 범위만), 탈퇴(3일)·이용 제한, 책임(고의·중과실 제외 면책), 분쟁(대한민국 법·민사소송법 관할), 연락처. 링크: 첫 화면·로그인·가족 입장 문구·설정·처리방침
+- 리걸 스킬(legal:compliance-check) 결과는 사용자에게 보고(아래 '고칠 것'), e2e privacy(+2) 통과
+
+### 138. 개인정보 처리방침 준비 (완료, 0.33.0 — 법률 검토 전 초안)
+- 요구(사용자 2026-11-02 "개인정보 처리방침." → 운영 PIKAWORKS, pikaworks.help@gmail.com, Supabase 서울 리전, 시행일 미정)
+- 조사(코드 전수): 모으는 정보 정리 + 처리방침 전에 고칠 것 두 가지 — ① 영상은 원본 그대로 올라가거나(못 줄이거나 줄일 필요 없을 때) 줄여도 mediabunny가 원본 태그를 복사해 아이폰 위치(©xyz, com.apple.quicktime.location)가 남을 수 있음(사진은 이미 지움) ② 탈퇴·정리 때 Supabase 로그인 계정(auth.users: 카카오 이메일·닉네임·프로필, 가족 기기 익명 계정)은 안 지움
+- 순서: ① fix/video-location → ② 탈퇴 때 로그인 계정 지우기 → ③ /privacy 페이지(+로그인·입장 화면 링크). 시행일은 배포일로 넣고 한 곳에서 바꿈. 법률 검토는 사용자에게 권함
+- ①: 줄일 때 tags: {}(태그 안 옮김). 올리기 직전 모든 영상(줄인 것·원본)의 moov만 읽어 위치 항목(©xyz 상자, mdta keys의 location 키와 ilst 값)을 0으로 지우고 상자 이름을 free로(크기·구조 그대로, 큰 파일도 moov만 메모리). src/lib/videometa.ts + 단위 검사
+- ① 결과(0.32.1): ffmpeg로 위치 넣은 h264 mov로 확인 중 3GPP loci 상자(숫자 좌표)도 위치를 담는 걸 찾아 함께 지움. ffprobe로 위치 태그 없음·영상/소리 그대로·끝까지 디코딩 OK. e2e videoloc(새: 앱으로 올린 뒤 서버 저장 파일에 위치 없음·재생 가능), 단위 55, vplay·bigvideo·upstatus·upscreen 통과, upload는 새 서버에서 통과(처음 상태를 가정하는 검사). 아이폰 실제 영상으로는 확인 못 함
+- ② 결과(0.32.2): 20261102000002_auth_cleanup — sp_purge_family(가족방 지울 때 엄빠·가족 기기 로그인 계정도, 다른 가족방 기록·기기가 있거나 지금 로그인한 본인은 남김), sp_unlink_parent(기록 없이 빠진 엄빠 계정), sp_cleanup_auth(기기 없이 7일 지난 익명 계정·7일 지난 틀린 비밀번호 기록, 매일 정리 작업에 연결). DB 검사(+5: 정리 1개만·7일 안 된 것 남김·틀린 기록·가족방 지우면 계정도·기록 없이 나간 엄빠·기록 남은 엄빠 남김), 단위 55
+- 운영 DB(2026-11-02 사용자 "응 운영 DB 적용해줘"): 적용 전 운영 sp_purge_family(6b844649…)·sp_unlink_parent(c14788da…) = 저장소, 당장 지워질 계정 0. 적용 도구가 사용자 확인 질문에 답이 없어 두 번 시간 초과(바뀐 것 없음 확인) → 세 번째 사용자 승인으로 적용. 세 함수 지문 저장소와 같음(377d5eb0…·276198fd…·7d645542…), anon·authenticated 실행 불가, service_role만
+- ③ 결과(0.33.0): /privacy(로그인 없이) — 운영자 PIKAWORKS·책임자 연락 pikaworks.help@gmail.com, 모으는 정보(보호자·아이·가족·사진/활동), 목적, 보관·파기(탈퇴 3일·사진·나간 보호자·익명 계정 7일), 제3자 제공 없음, 위탁·국외 이전(Supabase 미국 회사·서울 보관, Cloudflare 미국 회사·국내외 데이터센터), 아이·민감 정보(접종 기록은 보호자만), 쿠키(광고·분석 없음), 권리, 안전 조치, 구제 기관, 변경 고지. 시행일은 privacy.astro 맨 위 EFFECTIVE 한 줄(지금 배포일 2026년 11월 2일, 사용자 미정). 링크: 첫 화면 아래·로그인·가족 입장 문구·설정 > 계정. e2e privacy(새, 7개)
+- 남은 것: 이용약관 페이지 없음(로그인 문구엔 '이용약관' 있음), 법률 전문가 검토, R2 실제 보관 지역 확인(대시보드)
+
+### 137. feature/just-uploaded — 엄빠 앨범 '방금 올림' 알약 (완료, 0.32.0)
+- 요구(사용자 2026-11-02 "신규 배지가 안 뜨네" → 엄마 폰·내가 올린 영상 → "'방금 올림' 표시 따로")
+- 조사: 운영 DB 최신 영상(엄마가 올림)은 아빠·가족 6명에게 안 본 사진으로 잡힘 — 엄마 폰엔 '내가 올린 건 신규 아님' 규칙대로 표시 없었음(버그 아님)
+- 엄빠 앨범(칸·넘겨 보기)만: 올린 지 3시간 안인데 나한테 신규가 아닌 사진에 어두운 반투명 '방금 올림' 알약(읽어 주는 글도). 누가 올렸는지는 목록에 없어 이렇게 가늠 — 상대 엄빠가 올려 내가 이미 본 사진에도 붙음(문구는 맞음). 안 본 사진을 못 받으면 표시 안 함. 크게 보고 돌아와도 안 빠짐(dropSeen 제외). 가족 앨범은 그대로. 보드 NewBadge F(캔버스 v238)
+- 검사: newbadge(+3: 방금 올림 2장·신규 없음·읽는 글·넘겨 보기), 영상에도 붙음(따로 확인), parent·milestones·closefast·parentzoom·multiedit 통과, 단위 53
+- 사용자 결정(2026-11-02): '내가 올린 것에만' 정확히 붙이기(DB 함수 추가)는 안 함 — "두어도 될 것 같아"(상대가 올려 내가 본 사진에 붙는 것 그대로)
+
+### 136. fix/pick-clash — 올리기 '사진·영상 고르기' 버튼 잘림 + react 검사 혼자 돌게 (완료, 0.31.1)
+- 요구(사용자 2026-11-02 아이폰 스크린샷: 올리기 화면 오른쪽 위 '사진·영상 고르기'가 화면 밖으로 잘리고 두 줄, "이거 버튼좀 그리고 혼자 돌아가게")
+- 원인(내 실수, 126): 여러 장 고르기 체크 칸에 .sp-p__pick을 붙였는데 올리기 버튼 이름과 같아, 뒤에 쓴 체크 칸 모양(오른쪽 위 1.5rem 상자, absolute)이 올리기 버튼에도 먹음 → 체크 칸을 .sp-p__selbox로 바꿈
+- react 검사: 예전엔 visual.py가 mock '하린' 가족에 올린 사진이 있어야 돌아감 → 스스로 가족방 만들고 사진 3장·가족 둘(이모·외할머니) 들여보냄. 오래된 기준 둘 고침(한마디는 이제 그 자리에서 보내 주소에 #say 없음, 돌아온 쪽에서 카드가 가운데로 오는 동안 잠깐 기다림). 올리기 버튼 폭(>200px) 확인 추가 — 이번 겹침을 잡는 검사
+- upscreen: 117b부터 달 제목이 없어 늘 실패하던 '10월·9월 제목' 확인을 달 첫 칸 표식으로
+- 검사: react 2번 연속·multiedit·upload·upscreen·upstatus 통과, astro check
+
+### 135. feature/media-cache — 사진 주소 캐시 시간 늘리기 (완료, 0.31.0)
+- 요구(사용자 2026-11-02 "1 > 3 > 4 진행", 4번 = 사진 캐시 시간. 앞서 안내: 6시간이면 막은 기기가 이미 받은 주소로 볼 수 있는 시간도 최대 2시간 → 최대 12시간)
+- 지금: 서명 주소 만료를 1시간 단위로 맞춰 1시간 동안 같은 주소, 만료 1~2시간 → 매시간 주소가 바뀌어 폰이 사진을 다시 받음
+- 바꿈: 6시간 단위·만료 6~12시간(src/lib/signed.ts). 만료 계산은 부수 효과 없는 mediattl.ts로 빼 단위 검사. 이미 나간 2시간 주소도 그대로 열림(남은 시간 ≤ 12시간). 지운 사진은 파일이 지워져 주소가 있어도 안 열림(그대로)
+- 검사: 단위(만료 단위·범위·너무 먼 만료 거부), e2e(사진 주소가 같은 6시간 안에서 같음, /m 응답 max-age ≤ 12시간)
+- 1회차 리뷰에서 찾음(사용자에게 처음 안내 때 빠뜨림): 막은 기기만이 아니라 '사진을 그룹에서 뺐을 때'·'탈퇴로 닫은 가족방'도 이미 받은 사진 주소가 최대 12시간(예전 2시간) 열림(예전 남은 위험 plan 191·328·369와 같은 종류). 앨범 목록에서는 바로 사라짐. → dev 올리기 전 사용자 확인
+- 1회차 검증: 단위 53(만료 3개 추가), astro check, e2e mediacache(새, 3개) 통과
+- 사용자 확인(2026-11-02, 그룹 빼기·탈퇴 영향 안내 뒤): "3시간(최대 6시간)로 절충" → 3시간 단위·만료 3~6시간으로 바꿈(사진 다시 받기는 지금의 1/3, 이미 받은 주소가 열리는 시간 최대 2시간 → 6시간)
+- 2회차: 리뷰(만료 값 비거나 숫자 아니면 0, 다른 곳에 옛 시간 값 없음) 이상 없음, e2e mediacache·upload·photo·family·vplay·bigvideo·savephoto·delete 통과
+- 3회차: 리뷰 이상 없음, 단위 53·astro check·mediacache 통과
+
+### 134. refactor/cleanup — 코드리뷰 정리 거리(복사 코드·그룹 거르기 왕복) (완료, 0.30.3)
+- 요구(사용자 2026-11-02 "1 > 3 > 4", 3번 = 정리)
+- '봤음' 남기기 fetch(/api/views) 세 곳(크게 보기 미리 받은 화면·넘겨 본 사진, 가족 넘겨 보기 머문 카드)을 한 함수(postViews)로
+- '최근 사진 더 보기'([data-less]) 네 곳(엄빠·가족 × 칸·넘겨 보기)을 작은 컴포넌트(LessLink.astro)로
+- 그룹 거르기(?g=) 때 그룹 목록을 먼저 따로 기다리던 것(엄빠 앨범·크게 보기)을 다른 호출과 같은 차례로: 값 모양만 보고 바로 거르고, 그룹 목록으로 확인해 내 가족방 그룹이 아니면 g를 뺀 주소로 다시
+- 화면·동작은 그대로. 검사: 단위·astro check, e2e filterchips·closefast·prefetch·newbadge·family·parent 등
+- 1회차: 리뷰 이상 없음(가족 넘겨 보기 머문 카드도 이제 noteSeen — 돌아온 앨범 배지 정리에 더 맞음). e2e 14개(filterchips·prefetch·newbadge·family·parent·multiedit·kidtabs·parentzoom·familyzoom·viewbare·views·photo·closefast·loadmore) 통과
+- 2회차: 리뷰에서 찾음 — 그룹을 고른 채 이어지는 쪽(?before·?after)·넘기기 미리 받기(x-sp-slide)에서 그룹 목록을 일시적으로 못 받으면 g 뺀 주소로 돌려보내 받는 스크립트가 거르지 않은 사진을 이어 붙일 수 있음 → 이어지는 쪽·넘기기는 확인하지 않고 g 그대로(DB 권한이 내 가족방만 보장). filterchips·closefast·loadmore·prefetch·pview 통과
+- 3회차: 리뷰 이상 없음, 크게 보기 '모르는 그룹이면 g 빼고' 검사 추가. filterchips(+2)·newbadge·family·views·multiedit, 단위 50, astro check 통과
+
+### 133. fix/prefetch-auth — 미리 받기 중 로그인 갱신 막기 (완료, 0.30.2)
+- 요구(사용자 2026-11-02 "1 > 3 > 4 진행, 각 번호 마무리 후 코드리뷰+검증+기능리뷰 3회차"): 코드리뷰 4번 '미리 받기가 로그인 표를 갱신하다 버려지면 로그아웃 위험'
+- 조사: 서버는 액세스 토큰이 만료(60초 전)면 요청 처리 중 갱신하고 새 갱신 토큰을 쿠키에 씀(pass.ts currentPass). Supabase는 쓴 갱신 토큰을 다시 쓰면(재사용 간격 밖) 세션을 끊을 수 있음. 실험(헤드리스 크롬, 같은 출처 speculationrules prefetch): 버려진 미리 받기 응답의 Set-Cookie도 저장됨 → 크롬에선 위험 낮음. 다른 크롬 계열·이후 버전은 모름
+- 고침(안전장치): 미들웨어에서 미리 받기 요청(Sec-Purpose: prefetch)인데 엄빠·가족 출입증이 갱신할 때가 됐으면 503(no-store)으로 미리 받기만 그만둠 → 갱신은 늘 실제로 연 화면에서. 액세스 토큰 1시간이라 미리 받기를 거르는 일은 드묾
+- 검사: 단위(갱신할 때 판단), e2e prefetch에 '만료된 출입증 + 미리 받기 → 503, 그냥 열기 → 정상'
+- 1회차: 리뷰 이상 없음. 단위 50, astro check, e2e 17개 중 16 통과 — react는 이번과 무관한 오래된 검사(2026-10-28부터 반응 뒤 주소가 '?to=…#p-'인데 '/album#p-'만 봄)라 확인 줄을 고침. 다만 react는 미리 올라간 '하린' 가족 사진이 있어야 돌아가 새 서버에선 혼자 못 돌려 끝까지 통과는 확인 못 함
+- 2회차: 리뷰(서비스 워커 없음, 사파리 옛 Purpose 헤더와 안 섞임, 503이면 크롬이 그냥 열어 서버가 '봤음' 남김) 이상 없음. prefetch·newbadge·parent·family 통과
+- 3회차: 리뷰에서 찾음 — 엄빠 폰에 안 쓰는 가족 출입증이 오래돼 있으면 엄빠 미리 받기가 늘 꺼짐 → 화면이 쓰는 출입증만 봄(/view = 엄빠, /album = 가족). prefetch(+1)·newbadge·parent·family·views 통과
+
+### 132. fix/review-128 — 코드리뷰 1·2·3 고침 (완료, 0.30.1)
+- 요구(사용자 2026-11-02 "1, 2, 3 먼저 픽스. 코드리뷰 + 검증 + 기능검증 3회차")
+- ① 넘겨 보기 순서·번호: 주변만 그린 쪽(위에 더 최근 사진 있음)에선 맨 위 '방금 올라왔어요' 묶음을 만들지 않고 그 사진들을 제자리에(신규 알약). 이어지는 쪽(?before·?after)도 nb=1로 같은 규칙(제자리에서 빼지 않음). 엄빠·가족 둘 다. 칸 보기도 같은 규칙(앞에 붙는 칸이 묶음 아래에 끼던 것 같이 정리)
+- ② 가족 모아 보기 '○월 ○일에 올라왔어요': 맨 위 쪽일 때만(page.prev 없을 때)
+- ③ 달·해 카드가 그룹·사진/영상 거르기를 따름: 새 DB 함수 sp_media_months_f(p_family, p_child, p_reps, p_kind, p_group) — 본문은 sp_media_months + 조건 두 줄(이름이 달라 지우는 문 없음, 운영 적용은 사용자 확인 뒤). 엄빠 카드 보기 알약 줄도 사진/영상·그룹을 보여 줌(지금 거르기가 보이게)
+- 검사: 회차마다 코드리뷰 → 고침 → e2e(closefast에 '방금 올라온 사진 + 깊은 사진' 경우 추가, parentzoom·familyzoom 카드 거르기)·DB 검사
+- 1회차: 수정분 리뷰(새 버그 없음, 함수 설명 '1~4' → '1~5'), astro check·단위 48·DB(거부 79) 통과. e2e는 도중 파일을 고쳐(개발 서버 다시 읽음) milestones·family가 흔들려 무효 → 2회차에 다시
+- 2회차: 리뷰에서 찾음 — 그 자리에서 크기(−/+)를 바꾸면 엄빠 거르기 알약 줄·'선택'(오늘 넣은 것)과 가족 둘째 탭 줄('사진 종류', 예전부터) 링크가 옛 칸 단계로 남음 → zoomswap이 같은 덩어리를 모두 차례로 바꾸고, 엄빠는 .sp-p__chips·.sp-p__viewrow도 바꿈. 검사 15개 통과
+- 3회차: 리뷰에서 찾음 — 크기를 바꿔 알약 줄을 새로 받으면 고른 알약이 줄 밖으로 → sp:album-swapped 때도 보이게 밀어 둠. 검사 15개(familyzoom·parentzoom·milestones·family·parent·kidtabs·filterchips·multiedit·newbadge·photo·prefetch·viewbare·pview·closefast·loadmore) 통과, 단위 48, DB 통과
+- 운영 DB(2026-11-02 사용자 "운영 DB 적용해줘"): 적용 전 운영엔 sp_media_months만 있음 확인 → 20261102000001_months_filter 그대로 적용 → sp_media_months_f 지문(md5 01e86f00…)이 저장소와 같음, anon 실행 불가·로그인 사용자 실행 가능
+
+### 131. feature/viewer-prefetch — 크게 보기 미리 받기 (완료, 0.30.0)
+- 요구(사용자 2026-11-02 속도 개선 후보 1번 "응")
+- 앨범(엄빠 /home·가족 /album)에 speculationrules prefetch(eagerness conservative = 누르기 시작할 때). 크롬 계열만, 사파리는 무시(그대로)
+- '봤음' 보호: 미리 받기 요청(Sec-Purpose: prefetch)은 서버가 '봤음'을 안 남기고 화면에 data-unnoted → 실제로 열리면 스크립트가 /api/views로 남김(성공하면 돌아갈 앨범 배지도 sp-seen으로)
+- 확인: 헤드리스 크롬에서 열린 크게 보기 deliveryType = navigational-prefetch(cache-control no-store여도 쓰임), 누르기만 하고 안 열면 신규 그대로, 열면 빠짐
+- 검사: prefetch(새, 4개)·newbadge·pview·vplay·viewbare·photo·family·parent·multiedit·filterchips·closefast·loadmore 통과, 단위 48
+
+### 130. fix/viewbare-test — 오래 실패하던 '사진만 켜면 토스트 지움' 검사 (완료, 검사만)
+- 원인: 검사가 사진 주소에 붙은 칸 단계를 떼지 않고 '?done=saved'를 붙여 '/view/<id>?z=2?done=saved'(물음표 둘) → done이 안 읽혀 저장 안내 자체가 없었음(had=0). 화면 문제 아님(직접 열면 '사진 정보를 저장했어요.' 뜨고 사진만을 켜면 지워짐)
+- 고침: 검사에서 id의 '?…'를 떼고 붙임. viewbare 전체 통과(had=1). 앱 코드 바뀐 것 없음(버전 그대로)
+
+### 129. feature/family-close-fast — 가족 앨범·넘겨 보기도 닫기 빠르게 (완료, 0.29.0)
+- 요구(사용자 2026-11-02 "1번 진행"): 128의 '그 사진 주변만 + 앞으로 이어 붙이기'를 가족 앨범(칸·넘겨 보기)과 엄빠 넘겨 보기에도
+- loadPage around는 이제 넘겨 보기도(count: 'n / 전체'의 n·전체를 함께 셈, 주변 쪽·앞 쪽 모두). 앞으로 이어 붙이기는 공통 lessMore(src/lib/more.ts): 칸은 위로 올리면(세로 보정·달 표식 옮김), 넘겨 보기는 맨 앞에서 카드 여섯 장쯤 남으면 받아 앞에 붙이고 가로 스크롤 보정(보던 카드 그대로). 넘겨 보기의 '최근 사진 더 보기' 버튼은 스크립트 있으면 숨김(카드를 밀어내지 않게), 없으면 링크
+- 검사: closefast(+8개: 엄빠·가족 넘겨 보기 101번째 카드 주변 60장·자리 101, 앞으로 밀면 130장 순서대로·맨 앞 1번째, 가족 칸 보기 주변 60장·위로 130장). 앞에 40장 붙여도 가운데 카드 그대로(따로 확인). loadmore(하트 뒤 to=는 주변만 그려 91번째 카드를 미리 적어 둔 목록에서)·familyzoom·family·milestones·newbadge·vplay·parent·parentzoom·kidtabs·filterchips·multiedit·photo·delete·pview·bottombar 통과, 단위 48
+
+### 128. feature/close-fast2 — 닫기 더 빠르게 ②·첫 화면 서버 왕복 줄이기 (완료, 0.28.0)
+- 요구(사용자 2026-11-02 "닫기 더 빠르게 개선, 지금 속도 개선 방법 있는지도 고려")
+- 원인: 크게 보기를 닫을 때 앨범이 그 사진을 못 들고 있으면(첫 쪽 밖·사파리가 앨범을 새로 받음·알림에서 연 크게 보기) 닫기 주소 ?to=로 앨범을 처음부터 그 사진까지 다시 그림(최대 900칸, 칸마다 반응 수·서명 주소). 달 카드(?at=)도 같음
+- 고침(엄빠 칸 보기): ?to=·?at=는 그 사진(달) 위 30장 + 아래 한 쪽 남짓(60장 이하)만 그리고, 위에 '최근 사진 더 보기'(?after=). 위로 올리면 스크립트가 그 쪽을 받아 격자 앞에 붙이고 보던 칸이 안 움직이게 스크롤 보정, 달 표식은 더 최근 칸으로 옮김. 그 사진이 앞 30장 안이면 처음부터(이어 붙이기 없음). 칸 보기 이어지는 쪽(?before=)은 개수 세기 2번 건너뜀('n / 전체'는 넘겨 보기만 씀)
+- 첫 화면 서버 왕복: 최근 200장(새 사진 판단)·달 카드를 쪽 받기와 같은 차례에, 반응 수를 '안 본 사진'과 같은 차례에(반응 대상 = 이 쪽 + 올린 지 3시간 안). 차례 대기 2번 줄임
+- 그대로 둔 것: 넘겨 보기·가족 앨범의 ?to=(예전처럼 처음부터, 900장까지)
+- 검사: closefast(새, 12개: 101번째 사진 닫기 60장, 위로 이어 붙여 130장 순서·중복·달 표식, 보던 칸 안 튐, 앞쪽 사진, 4월 카드, 스크립트 없음 링크)·loadmore(예전 '120칸 이상 그림' 기대를 '중복 없음'으로, 닫으면 같은 높이 274 → 274 그대로)·parentzoom·milestones·parent·filterchips·multiedit·kidtabs·photo·newbadge·pview·bottombar 통과, 단위 48
+
+### 127. fix/selbar-top — 고르기 막대를 위로 (완료, 0.27.1)
+- 요구(사용자 2026-11-02 "수정 버튼이 저 밑에 가 있으면 안 될 것 같아" → 물음에 "위 '취소' 옆으로")
+- 고르기 막대(N장 고름 · 지우기 · 수정 · 취소 + 안내 한 줄)를 앨범 머리 안 제목 아래로. 폰은 머리가 위에 떠 있어 내려도 따라옴(흐린 바탕 카드). 아래 고정 막대·위 안내 줄 뺌. 보드 ParentHomeSelect(캔버스 v237)
+- 검사: multiedit(막대 위치 추가)·parentzoom·filterchips·loadmore 통과
+
+### 126. feature/multi-edit — 여러 장 고르기 → 그룹 한꺼번에 고치기·지우기 (완료, 0.27.0)
+- 요구(사용자 2026-11-02): "사진 수정하기 멀티로" → 바꿀 것 = 보여줄 그룹·지우기, 고르는 법 = '선택' 버튼. 그룹 방식은 사용자 제안 "설정 화면을 새로 만들어 사진별로 지금 그룹을 체크해 두고 각 사진별로 보이는 화면", "수정 진입 시 수정 화면 보인다". 웹은 브라우저 기본 기능으로(사용자 "앱 개발에서는 네이티브 기능")
+- 앨범(엄빠, 칸 보기 1·2·3·5칸): 머리에 '선택' → 주소 ?sel=1(스크립트 없어도 됨). 칸마다 기본 체크 칸(name=id), 칸 링크 대신 고르기. 아래 막대 'N장 고름 · 수정 · 지우기 · 취소'(form GET /photos/edit). 60장까지(넘으면 막고 안내). 다음 쪽 이어 붙이기도 고르기 상태로. 넘겨 보기·달/해 카드에는 '선택' 없음
+- 수정 화면 /photos/edit?id=…: 맨 위 '한꺼번에' 줄(그룹마다 체크 칸, 사진들이 섞이면 '일부'(indeterminate), 누르면 아래 전부 켜기/끄기 — 스크립트), 아래 사진마다 작은 사진 + 날짜 + 그룹 체크 칸(지금 설정이 체크된 채). 저장: 바뀐 사진만 sp_update_media(찍은 날·아이는 그대로) → 변경 내역은 사진마다 남음. 그룹 없는 사진이 있으면 저장 안 하고 그 줄 안내. 저장 뒤 앨범(거르기 그대로)에 'N장 저장했어요'
+- 지우기: /photos/edit?do=delete&id=… 확인 화면('N장을 지울까요?' 되돌릴 수 없음) → 사진마다 sp_delete_media. DB 새 함수 없음(마이그레이션 없음)
+- 순서: 보드(ParentHomeSelect, ParentPhotosEdit) → 앱 → e2e(새 multiedit.py) → dev
+- 보드(캔버스 v236): ParentHomeSelect(-Light)·ParentPhotosEdit(-Light) 새로, ParentHomeZoom3에 '선택'. 앱은 고르기 막대를 기존 '탭 없는 화면 + 아래 막대'(savebar)로
+- 앱: home ?sel=1(칸 링크 → label + 기본 체크 칸 name=id form=sel-form, 고른 칸 테두리, 다음 쪽도 sel 유지, −/+ 숨김), 막대 form GET /photos/edit(k·t·g·z 넘김). /photos/edit: 6개씩 나눠 updateMedia·deleteMedia, 그룹 없는 사진은 그 줄에 '그룹을 골라 주세요', 저장 뒤 /home?…&done=saved&n=바뀐 수('사진 N장을 저장했어요'), 지우기 뒤 done=deleted. 61장 이상은 막음
+- 검사: multiedit(새, 17개)·parentzoom·loadmore·kidtabs·filterchips·parent·photo·milestones·newbadge 통과
+
+### 125. feature/viewer-filter — 엄빠 크게 보기도 거르기 안에서만 (완료, 0.26.1)
+- 요구(사용자 2026-11-02 "외가 사진만 보는 게 맞지 않나?"): 앨범에서 그룹·사진/영상을 거른 채 크게 보면 그 안에서만 넘김
+- 크게 보기(/view)가 ?t·?g를 받아(그룹은 내 가족방 그룹일 때만) 앞뒤 사진·'n / 전체'·닫기 주소에 반영. 앨범 칸·넘겨 보기 카드가 거르기를 넘김. 사진 정보 수정도 돌아갈 때 거르기 유지. 사진 정보에서 그 그룹을 빼면 그 크게 보기는 앨범으로 돌아감(이제 그 그룹 사진이 아니라서)
+- 가족 앨범 크게 보기는 이미 사진/영상 거르기를 따름(그대로)
+- 검사: filterchips(+7개: 친가만 1 / 2, 수정 화면 닫기·크게 보기 닫기 뒤 거르기 유지, 넘겨 보기 카드)·photo·pview·kidtabs·newbadge·parent 통과
+
+### 124. fix/new-badge-close — 신규 사진 보고 닫아도 배지 남음 (완료, 0.26.0에 같이)
+- 요구(사용자 2026-11-02): "신규 사진 확인하고 닫기 누르면 신규 배지 안 없어지는데 확인"
+- 조사: 크롬(헤드리스)은 닫기(뒤로 가기) 때 앨범을 새로 받아 배지가 빠짐(재현 안 됨, `tools/e2e/newbadge.py`). 서버는 크게 보기를 열 때 '봤음'을 남김. 폰(사파리)은 뒤로 가기 때 앨범을 메모리(bfcache)에서 그대로 꺼낼 수 있어 화면이 옛 상태로 남는 것으로 봄 — 아이폰에서 직접 확인은 못 함(추정)
+- 고침: 크게 보기가 '봤음'을 남긴 사진 id를 sessionStorage(sp-seen)에 적고(눌러 연 사진은 바로, 넘겨 본 사진은 1.5초 기록이 성공했을 때), 앨범이 pageshow에서 그 칸의 '신규' 알약과 읽어 주는 글의 '신규, '를 뺌(기념일 알약은 그대로). 맨 위 '방금 올라왔어요' 묶음은 다음에 새로 받을 때 제자리로
+- 검사: newbadge(4개, 메모리에서 꺼낸 앨범 흉내 포함)·pview·vplay·loadmore·parent·filterchips 통과
+
+### 123. feature/media-history-group-filter — 사진 변경 기록 + 엄빠 그룹 거르기 + 거르기 알약 줄 (완료, 0.26.0)
+- 요구(사용자 2026-11-01): "(수정 기록이) 남지 않는 게 이상한 거 아냐?" → "DB에는 넣어 두고 사진엔 비노출, 수정 진입 시 내역 보이도록", "필터에 엄빠는 누구네 집에 어떤 사진 보이는지 추가", "필터 많아지면 좌우 스크롤 되는 배지 느낌으로 UI 변경"
+- DB(새 마이그레이션, 운영 적용은 사용자 확인 뒤): `media_changes`(사진·가족방·올림/고침·누가(엄빠/가족)·그룹·아이·찍은 날 전/후·때). sp_create_media·sp_update_media를 create or replace(본문 그대로 + 기록 한 줄, 고친 게 없으면 안 남김). 읽기 `sp_media_changes(사진)` 엄빠만(내 가족방 사진), 이름은 지금 그룹·아이 이름(지운 그룹은 '지운 그룹'), 누가 = 엄마/아빠/가족 이름. 지우는 문 없음
+- 앱: 사진 정보 수정 화면 아래 '변경 내역'(크게 보기에는 안 보임). 엄빠 앨범 거르기: 주소 ?g=그룹, 목록·개수 조건에 그룹. 아이·사진/영상·그룹 거르기를 좌우로 밀리는 알약 한 줄로(같은 줄 안에서 묶음마다 하나씩, 누른 걸 다시 누르면 풀림, '전체'는 다 풂). 가족 앨범은 지금 큰 탭 그대로(어르신, 거르기 하나뿐)
+- 순서: 계획 → 보드(ParentHomeZoom3 알약 줄, ParentPhoto 변경 내역) → DB + 로컬 DB 검사 → 앱 → 검사 → 사용자 확인 뒤 운영 DB → dev
+- 보드(캔버스 v235): ParentHomeZoom3(-Light) 알약 줄(전체·아이 | 사진·영상 | 집 아이콘 그룹), ParentPhoto-Light 변경 내역
+- DB `20261101000004_media_changes.sql`: 표 media_changes(RLS 켬, 직접 읽기·쓰기 권한 없음), sp_create_media·sp_update_media 본문 그대로 + 기록 한 줄(고친 게 없으면 안 남김), sp_media_changes(엄빠만, 50줄). 로컬 DB 검사 통과(의도된 거부 79건 그대로, 기록 6개 검사 추가). 예전 사진은 기록 없음('아직 남은 기록이 없어요')
+- 앱: 사진 정보 수정 아래 '변경 내역'(엄마/아빠/가족 이름 · 올림/고침 · 때, 그룹·아이·찍은 날 전 → 후), 그 자리 저장하면 내역 칸만 새로. 엄빠 앨범 ?g=그룹(그룹 둘 이상일 때만 알약), 아이·사진/영상·그룹 알약 한 줄(폰은 화면 끝까지, 옆으로 밀림, 고른 알약이 밖이면 보이게 밀어 둠), 달·해 카드에선 아이 알약만
+- 검사: e2e filterchips(새, 15개)·photo(변경 내역 3개 추가)·kidtabs(알약으로 갱신)·parentzoom·loadmore·parent·milestones·vplay·bottombar·familyzoom·pview 통과, 단위 48, astro check 0. prod.py·real.py도 '거르기'로 이름만 바꿈(돌려 보진 않음)
+- 운영 DB 적용 전 지문: 운영 sp_create_media(md5 2fd51629…)·sp_update_media(e6d32940…)가 저장소와 같음
+- 운영 DB(2026-11-02 사용자 "응"): 실수로 내용 없는 마이그레이션 `media_changes`(주석 한 줄, DB 변경 없음)가 기록에 먼저 남음 → 실제 내용은 `media_changes_body`로 적용. 적용 뒤 세 함수 지문이 저장소와 같음(sp_create_media a4145e3d…, sp_update_media a62bd5af…, sp_media_changes d5664d1b…), anon 실행 불가, 표 RLS 켬·직접 읽기 불가
+- 크게 보기도 거르기 안에서만 넘길지 → 사용자 답 '외가만 보는 게 맞다'(125에서 함)
+
+### 122. fix/badge-colors-months — 배지 색 바꿈·5칸 글자 다 보이기·월별 5장 (완료, 0.25.0)
+- 요구(사용자 2026-11-01 "내가 보낸 채팅 꼼꼼하게 다 확인", "두 돌 배지 컬러는 왜 달라졌지, 신규랑 이벤트랑 배지 색 바꿔", "5장 화면에서도 두 돌 텍스트 다 노출", "월별 보기 레이아웃 3장 말고 5장으로")
+- 잘못 읽은 것: 119의 "이벤트 있는 경우 배지랑 컬러만 다르게"를 기념일 색을 바꾸라는 뜻으로 읽음 → 기념일은 원래 틸, 신규를 분홍으로
+- 배지: 신규 = 분홍(blossom), 기념일 = 틸(pea, 원래). 칸보다 길면 잘리지 않고 줄바꿈(keep-all), '두 돌'은 붙는 공백으로 안 갈라짐('하린 / 두 돌'). 가족 5칸 글자 크기는 어르신 글자 설정(rem)을 따름
+- 월별: 카드 사진 큰 1장 + 4장(연별과 같은 모양, 장 수가 적으면 4·3·2·1장 모양). 서버 대표 상한이 4라 `20261101000003_months5.sql`(sp_media_months create or replace, 상한 숫자만 5, 지우는 문 없음) — 운영 적용 전엔 큰 1장 + 3장으로 보임. 보드 NewBadge·ParentHomeZoom3·ParentHomeZoomm·GrandList(캔버스 v234)
+- 검사: DB(의도된 거부 79건 그대로), e2e familyzoom·parentzoom(월별 5장 기준으로 고침)·milestones 통과, mock 월별 카드 5장, 화면 `tools/shots/badge-colors-months.png`·`z5-wrap.png`(git 제외)
+- 운영 DB(2026-11-01 사용자 "적용"): 적용 전 운영 sp_media_months 지문(md5 091b5565…)이 저장소와 같음 확인 → 20261101000003_months5 적용 → 상한 5·권한(로그인한 사용자만, anon 안 됨) 그대로 확인
+
+### 121. feature/close-fast — 닫기 빠르게 ①(뒤로 가기) + 배지 '신규' (완료, 0.24.0)
+- 요구(사용자 2026-11-01): 닫기 속도 "두 가지 다"(① 뒤로 가기 ② 서버가 그 사진 주변 한 쪽만), 배지 문구 "신규"
+- 원인(닫기): 닫기 주소 ?to=는 앨범을 처음부터 그 사진까지 다시 그림(300번째면 360칸, 칸마다 반응 수·서명 주소) + DB 순서대로 세 번
+- ①: 앨범이 사진 칸·카드를 누를 때 그 id를 적고(sp-open, referrer는 서버 Referrer-Policy: no-referrer라 못 씀), 크게 보기가 같은 id면 '앨범에서 옴' → 닫기 = history.back(), 앨범은 pageshow에서 마지막에 본 사진 칸(#c-·#p-)으로, 없으면 닫기 주소로 새로(closeReturn). 크게 보기에서 영상으로 넘기기·영상 화면 화살표·영상 밀기는 기록을 쌓지 않고(replace) 표시를 넘김. 다른 곳(알림·주소)에서 온 크게 보기는 지금처럼 닫기 주소
+- 확인: 2장 넘긴 뒤 닫기 → to= 없이 앨범, 본 사진 칸이 화면 안(mock 0.58초), 영상에서 밀어 넘긴 뒤 닫기도 같음, 뒤로 한 번 더 가도 크게 보기 안 쌓임, 주소로 연 크게 보기는 닫기 주소. 이 브라우저(헤드리스 크롬)는 앨범을 들고 있지 않아(no-store) 새로 받음 — 그래도 첫 쪽만이라 빠름. 사파리는 들고 있을 가능성(확인 못 함)
+- 배지: '새 사진' → '신규'(5칸도 작은 '신규' 알약, 기념일 5칸은 분홍 점), 보드(캔버스 v232)
+- ②(서버가 그 사진 주변 한 쪽만 + 위로 올리면 최근 사진 이어 붙이기)는 다음(122)
+- 고침(0.24.1, 사용자 폰 스크린샷 "•••? 두 돌 잘 나오던 걸 왜"): 119에서 5칸 기념일을 분홍 점으로 바꿔 뜻을 알 수 없게 됐던 것 → 5칸도 '두 돌' 글자 알약(분홍), '신규'와 같은 작은 크기. 스크린샷의 '새' 동그라미(글자 어긋남)는 0.24.0 전 모습, 지금은 '신규' 알약. 화면 `tools/shots/z5-pills.png`(git 제외)
+
+### 120. fix/viewer-swipe — 크게 보기 넘기기·영상 넘기기·배지 테두리 (완료, 0.23.3)
+- 요구(사용자 2026-11-01): "사진 한 장 눌러서 넘겨 보는데 안 넘어가는 문제", "크게 보기 들어갔을 때 영상 위에서 스와이퍼 안 됨", "테두리 뭐야", "두 돌이라 나올걸, 세 살은 세 돌, 네 살은 네 돌", "새 사진 말고 신규로 바꿀까?", "닫기 눌렀을 때 속도가 너무 느린데 속도 개선 방법 고려"
+- 넘기기: 넘긴 칸을 '칸 폭 × 번호'로 찾고 2px만 어긋나도 멈춰서, 화면 폭이 소수점이면 뒤로 갈수록 넘어가지 않을 수 있었음 → 실제 칸 위치(offsetLeft)로, 4px까지 봐줌. 영상 화면은 넘겨 보기 줄이 없어 손가락 넘기기가 없었음 → 화면을 옆으로 확실히 밀면(60px 넘게, 가로가 세로의 1.5배, 0.8초 안) 이전·다음(replace). 검사: 사진 12장 연속 넘김 주소 모두 바뀜, 영상 화면 밀면 다음, pview·vplay 통과. 소수점 폭은 재현 못 함(코드로만)
+- 배지 흰 테두리(box-shadow) 뺌, 보드 NewBadge·ParentHomeZoom3(캔버스 v231)
+- 기념일 이름: 앱은 이미 '첫돌·두 돌·세 돌·네 돌…'(dayMark). 지난 화면의 '은우 2살 생일'은 모양 보려고 임시로 넣은 글자였음
+- 남은 것: viewbare '사진만을 켜면 토스트는 지움' 실패 → 130에서 원인(검사 주소) 고침
+- 사용자에게 물음: 닫기 빠르게 하는 방법, '새 사진' → '신규'
+
+### 119. fix/swipe-badges-tabs — 그룹 확인·두 장 넘김·배지·탭 여백 (완료, 0.23.2)
+- 요구(사용자 2026-11-01): ① "한 번에 올린 사진인데 어떤 사진은 노출 그룹 잘 설정, 어떤 사진은 안 된 경우, 테스트 한 번" ② "넘겨 보기에서 한 번씩 두 장씩 넘어감" ③ "새 사진 배지 조정: 이벤트 있는 경우 배지랑 컬러만 다르게, 배지 위아래 센터 정렬" ④ "상단 탭 모바일에서 상하 여백 조절"
+- ① 조사: DB sp_create_media는 사진 행과 그룹을 한 번에 넣어 그룹 없는 사진이 생길 길이 없음(운영 그룹 없는 사진 0장). 운영에서 11/1 22:07 엄빠가 한 번에 올린 5장 중 첫 장(22:07:16)만 '은이네' 하나, 나머지 4장은 '지우네·은이네' — 올리기 화면은 한 번 고른 그룹을 모든 장에 같이 보냄. mock 시험: 그룹 둘 고르고 6장(영상 포함)×2번(올리고 카톡으로 보내기·올리기만) = 12장 모두 두 그룹. 원인 못 찾음 → 그 사진을 나중에 '사진 정보 수정'에서 바꿨는지 사용자에게 확인(수정 기록은 DB에 안 남음)
+- ② scroll-snap에 scroll-snap-stop이 없어 빠르게 튕기면 관성이 다음 멈춤을 지나침 → 카드마다 scroll-snap-stop: always(손가락 튕김은 자동 검사로 재현 못 함)
+- ③ 기념일 배지(엄빠 sp-p__cell-mark, 가족 새로 칸에)도 '새 사진'과 같은 알약에 분홍(blossom), 둘 다면 왼쪽 위에 위아래로(5칸은 '새' 동그라미 + 분홍 점), 길면 오른쪽만 잘림. 보드 NewBadge E(캔버스 v229). 위아래 가운데: 이 환경 글꼴로 재면 엄빠·가족 칸 배지 ±0.25px. text-box(trim cap alphabetic)·줄 높이 1은 한글이 2px 내려가 되돌림. 앱이 Pretendard를 웹 글꼴로 안 불러 아이폰은 기본 글꼴(Apple SD Gothic Neo) — 폰 화면을 받아 맞추기로
+- ④ 모바일(≤512px): 가족 탭 56→48px, 탭 위아래 간격 24→16px·두 줄 사이 8px(탭 묶음 60→52px). 엄빠 탭 위아래 −4px씩. 보드 GrandList·ParentHomeZoom3(캔버스 v230)
+- 검사: e2e milestones·familyzoom·parentzoom·vswipe·kidtabs 통과, 화면 `tools/shots/badges-tabs.png`(git 제외)
+
+### 118. feature/view-groups-swipe-play — 크게 보기 '보이는 그룹' + 엄빠 넘겨 보기 ▶ (완료, 0.23.1)
+- 요구(사용자 2026-11-01 "사진 수정 들어가기 전에 엄빠 화면에서는 어느 그룹에 노출되게 설정되어 있는지 보이게", "넘겨 보기에서 영상인지 잘 안 보여서 넘겨 보기에도 재생 아이콘")
+- 바꿈(보드 ParentView·ParentHomeSwipe, 캔버스 v228): 엄빠 크게 보기 아래 판 '○○가 봤어요' 밑에 '가족 · 친가에 보여요'(그룹이 둘 이상인 가족방만, mediaInfo·familyAdmin, 못 받으면 줄만 뺌). 엄빠 넘겨 보기 카드에 사진 가운데 ▶(72px)·오른쪽 아래 길이 — 사진 자리(.sp-p__card-media)로 묶어 아래 글자 줄 말고 사진 가운데에(▶ 중심 = 사진 중심 확인)
+- 검사: 그룹 하나면 줄 없음·둘이면 '가족 · 친가에 보여요', e2e pview·parentzoom·photo·vplay 통과. photo는 117b(달 제목 없앰) 뒤 '1월' 제목을 찾던 검사가 실패하던 것 → 달 표식(#m-2026-01)으로 고침(0.20.3 때 이 검사를 안 돌려 놓쳤음)
+
+### 117d·117e. feature/seen-per-person — '확인'을 사람마다 + 엄빠 앨범 새 사진 (완료, 0.23.0)
+- 요구(사용자 2026-11-01 "1, 2는 진행, 3번은 필요 없어"): 1 엄빠 앨범에도 새 사진 맨 위, 2 '확인'을 기기가 아니라 사람마다. 3 하트·한마디 받은 사진 거르기는 안 함
+- DB `20261101000002_seen.sql`(운영 적용은 사용자 확인 뒤): `parent_views`(엄빠 본 기록), `sp_note_parent_views(ids)`, `sp_unseen_media(ids)` = 볼 수 있는 사진 중 그 사람이 들어온 뒤 올라왔고 내가 안 올렸고 본 기록 없는 것(가족은 views, 엄빠는 parent_views). 지우기 문 없음
+- 앱: 가족은 쿠키(sp_new_from) 대신 서버 목록, 본 것 = 넘겨 보기 가운데 1.5초·크게 보기. 엄빠 앨범도 맨 위 '방금 올라왔어요 · N장'(틸 띠)·3시간 지난 것 '새 사진' 알약(5칸 '새')·넘겨 보기 맨 앞 + 알약, 본 것 = 크게 보기(눌러 연 것 바로, 옆으로 넘긴 것은 1.5초 머문 뒤 /api/views {parent:true}). 보드 ParentHomeZoom3(캔버스 v227)
+- 검사: DB(의도된 거부 79건 그대로, 새 확인: 들어온 뒤 사진만·본 것 빠짐·가족 기기는 엄빠 기록 못 남김·엄빠가 올린 건 아님·가족이 올린 건 엄빠에게 새 사진·보면 빠짐), e2e 시나리오(엄빠 자기 사진 아님, 가족 들어오기 전 사진 아님, 새로 올리면 맨 위·다시 열어도 그대로, 크게 보면 없어짐, 같은 사람 다른 브라우저도 본 걸로), layers·loadmore·familyzoom·vswipe·vplay·pview·parentzoom 통과
+- 함수를 못 부르면(운영 DB 적용 전) 새 사진 표시만 안 보이고 화면은 그대로
+- 운영 DB(2026-11-01 사용자 "적용하고 배포"): 적용 전 새 함수가 쓰는 sp_device_member·sp_can_view_media·sp_parent_media 지문(md5)이 저장소와 같음 확인 → 20261101000002_seen 적용 → parent_views 잠금(RLS)·직접 읽기 막힘, 새 함수는 로그인한 사용자만(anon 안 됨) 확인. 배포 순서 DB 먼저
+
+### 117z. fix/bigger-play — 재생 아이콘 더 크게 (완료, 0.21.1)
+- 요구(사용자 2026-11-01 "재생 아이콘 좀 더 크게, 잘 안 보이네"): 엄빠·가족 모아 보기 ▶ 동그라미를 칸 크기에 맞춰 — 칸 폭의 60%(최대 80px), 5칸 75%, ▶는 동그라미의 절반. 가족 칸 ▶ 글자를 그림(svg)으로. 보드 ParentHome·ParentHomeZoom5·NewBadge(캔버스 v225)
+- 잰 크기(390px 폰): 엄빠 3칸 77px·5칸 57px, 가족 2칸 80px·3칸 68px·5칸 51px. e2e parentzoom·familyzoom 통과, 화면 `tools/shots/bigger-play.png`(git 제외)
+
+### 117y. fix/senior-new-marks — 어르신용으로 크게 (완료, 0.20.2)
+- 요구(사용자 2026-11-01 "어른들 생각해서 티 나게, 어른들 보이려나: 1 영상 아이콘은 작을 때 꽉 채워도 될 듯 2 새 사진 배지 3 방금 올라왔어요")
+- 바꿈(보드 NewBadge D, 캔버스 v223 → 가족 앨범): ① ▶ 56px, 5칸은 칸의 70%, 넘겨 보기 카드 72px + 길이 17px ② '새 사진' 17px 굵게 + 흰 테(5칸은 '새' 동그라미, 카드는 21px) ③ '방금 올라왔어요 · N장' 틸 띠 + 21px 굵게. e2e familyzoom·vswipe 통과, 화면 `tools/shots/senior-marks.png`(git 제외)
+- 엄빠 앨범(117x)은 그대로(44px)
+
+### 117x. fix/video-center-play — 영상 칸 가운데 ▶ (완료, 0.20.1)
+- 요구(사용자 2026-11-01 폰 스크린샷 "제일 최근 거 영상인데 영상 표시 없음, 데탑은 시간 나와 있는데 분별 잘 안 됨, 영상인 경우 티 나게"): 스크린샷(22:01)은 0.19.4 배포(22:05) 전이라 5칸 표시가 없었음. 0.19.4의 오른쪽 아래 작은 알약도 큰 칸(PC 3칸)에선 잘 안 띔
+- 바꿈(보드 ParentHome·ParentHomeZoom5·NewBadge, 캔버스 v222): 엄빠·가족 모아 보기 영상 칸 = 사진 가운데 어두운 ▶ 동그라미(44px, 5칸 24px) + 엄빠는 오른쪽 아래 길이(5칸은 숨김). 가족 넘겨 보기 카드는 117w 그대로. e2e parentzoom·familyzoom 통과, 화면 `tools/shots/video-center-play.png`(git 제외)
+
+### 117w. fix/family-video-mark — 가족 앨범 모바일에서 영상인지 알기 (완료, 0.19.5)
+- 요구(사용자 2026-11-01 "지금 리스트에서 모바일에서 영상일 경우 확인 안 되는데"): 가족 넘겨 보기 카드는 아래 작은 글자 '· 영상'뿐, 5칸 모아 보기는 ▶(28px)가 작은 칸을 거의 가림
+- 보드 NewBadge(캔버스 v220) A: 카드 사진 가운데 큰 ▶(56px) + 오른쪽 아래 길이 '0:24', 5칸 ▶ 20px → 앱 같게. e2e familyzoom·vswipe 통과, 모바일 화면 `tools/shots/family-video-mark.png`(git 제외)
+- 같은 보드 B·C에 '3시간 지났지만 안 본 사진' 배지 후보 ①점 ②'새 사진' 알약(추천) ③'5시간 전' ④틸 테두리, 맨 위 묶음 제목 후보 — 사용자 고르기 기다림(117a에 씀)
+
+### 117v. fix/video-badge — 엄빠 앨범 영상 표시가 안 보이는 것 (완료, 0.19.4)
+- 요구(사용자 2026-11-01 "영상 표시 안 보이는 건?"): 엄빠 모아 보기 칸의 영상 표시는 길이 글자('0:24', 흰 글자+그림자)뿐 → ① 5칸에선 아예 없음 ② 길이를 모르는 영상은 없음 ③ 밝은 사진 위 흰 글자가 잘 안 보임(보드도 다크에서 검은 글자로 그려져 있었음)
+- 바꿀 것: 보드 ParentHome·ParentHomeZoom5(다크·라이트) 먼저 → 칸 오른쪽 아래 어두운 알약 '▶ 0:24'(길이 모르면 '▶'만), 5칸은 작은 ▶ 동그라미. 가족 앨범은 이미 ▶ 동그라미가 늘 보임(그대로)
+- 결과(0.19.4, 캔버스 v219): 3칸 '▶ 0:06' 알약·5칸 ▶ 동그라미 확인(`tools/shots/video-badge.png`, git 제외). 5칸은 CSS로만 줄여서 그 자리 크기 바꾸기에도 맞음. e2e parentzoom·vplay 통과(vplay '한마디 보냄 토스트'는 전부터 실패 — 토스트에서 role을 빼고 알림 칸이 읽게 바꾼 뒤 검사가 안 따라옴 → 검사 고침)
+
+### 117. 새 사진 맨 위 · 빈칸 없는 앨범 · 거르기 (계획, 사용자 확인 기다림)
+- 요구(사용자 2026-11-01): "사진 업로드하고 확인 전까지 새로운 사진이라고 제일 위에 뜨기. 업로드한 지 3시간 지나면 업로드 일자에 맞춰서 이동, 지금 일자별로 사진 리스트 나오고 공간 비면 공백으로 나오는데 이전 일 사진이 바로 붙어서 보이도록 레이아웃 수정, 필터도 추가"
+  - 정함: 맨 위에서 내려가는 때 = 확인하거나 올린 지 3시간 중 먼저(사람·기기마다 따로), 내려간 자리 = 찍은 날(지금 정렬 그대로), 날짜는 "어차피 기간으로 나오지 않나?" → 칸 사이 날짜 제목 줄 없이 이어 붙이고, 화면 위 기간 줄(엄빠 앨범에 이미 있는 '10월 1일 ~ 21일')로, 필터 = 추천 요청
+- 지금: 가족 앨범(모아 보기)은 날마다 제목 줄 + 칸, 엄빠 앨범은 달마다 칸이 끊겨 줄 끝이 빔. 새 사진은 가족 앨범 가운데 레이어 '하린이 새 사진 N장이 왔어요'(한 번)만, 앨범 안에선 어느 게 새 건지 표시 없음
+- 나눠서(각각 feature 브랜치, 보드 먼저)
+  - 117a 새 사진 맨 위(가족 앨범): 넘겨 보기·모아 보기 맨 앞에 '새 사진 N장' 묶음. 3시간 지났는데 아직 안 본 사진은 제자리에서 '최근 올라온 사진' 배지(사용자 2026-11-01 추가, 모양은 보드 NewBadge 후보에서 고름). 새 사진 = 올린 지 3시간 안 + 이 기기에서 아직 확인 안 함. 확인 = 새 사진 레이어 '보기'를 누르고 그 앨범을 본 것(지금 레이어가 쓰는 '본 때' 쿠키를 그대로, DB 안 바꿈). 3시간이 지나거나 확인한 다음 열 때부터 찍은 날 자리로
+    - 정함(사용자 2026-11-01): 배지 = ② '새 사진' 틸 알약(왼쪽 위, 5칸은 점), 맨 위 묶음 제목 = '방금 올라왔어요 · N장'
+    - 구현: '안 본 사진' = 올린 때가 이 기기의 '본 때' 쿠키(sp_photos_seen)보다 뒤. 새 사진 레이어 '보기'를 누르면 '본 때'를 지금으로 옮기되, 그 전 값을 1시간짜리 쿠키(sp_new_from)에 남겨 이번에 보는 동안은 표시가 그대로(눌러도 바로 사라지지 않게). 다음에 열면 없어짐
+    - 올린 지 3시간 안 + 안 본 사진 → 맨 위 묶음(넘겨 보기는 맨 앞 카드들, 모아 보기는 맨 위 '방금 올라왔어요 · N장' 칸 묶음)으로 옮기고 제자리에서는 뺌(다음 쪽에서도 빼서 두 번 안 나옴). 3시간 지난 안 본 사진 → 제자리에서 '새 사진' 알약
+    - 결과(0.20.0, 캔버스 v220·v221 NewBadge): 확인 — 처음 들어온 기기는 표시 없음, 엄빠가 새로 올리면 레이어 + 맨 위 '방금 올라왔어요 · 1장', '보기' 눌러도 이번엔 그대로, 넘겨 보기 첫 카드 '새 사진' 알약, 다음에 열면 없어짐. 3시간 지난 알약(3칸 글자·5칸 점)은 시각을 못 바꿔 칸에 붙여서 모양만 확인. e2e layers·loadmore·coparent·familyzoom·vswipe 통과. 화면 `tools/shots/new-photos-top.png`·`new-photos-badge.png`(git 제외)
+    - 알린 위험: 확인은 기기마다(쿠키). 1시간 안에 새 사진이 또 와서 '보기'를 다시 누르면 앞 묶음 표시는 그때 없어짐
+  - 117b 빈칸 없는 앨범(가족·엄빠 모아 보기): 날·달마다 끊지 않고 한 격자로 이어 붙임. 날짜는 화면 위 기간 줄(가족 앨범에도 엄빠와 같은 줄을 새로), 기념일(첫돌·100일)은 칸 위 작은 표시(엄빠처럼). 60장씩 더 불러오기·크기 바꾸기 스크립트도 한 격자에 맞게
+    - 구현(2026-11-01): 엄빠 먼저 — 달 묶음(section)마다 끊던 격자를 하나로, 달로 바로 가기(#m-YYYY-MM)는 그 달 첫 칸 안 표식으로, 달별 사진 수 세기(countMedia, 화면 읽기 제목용)는 뺌. 다음 쪽은 한 격자에 붙이고 엇갈린 배열 다시 계산. 가족은 그다음(날 제목 줄 → 화면 위 기간 줄)
+    - 엄빠 결과(0.20.3): 한 격자 + 달 첫 칸 표식(.sp-p__anchor, 다음 쪽을 붙일 때 이미 있는 달 표식은 뺌). e2e loadmore(3칸으로 130장 끝까지: 마지막 줄 말고 줄마다 3칸)·parentzoom·albumbleed 통과
+    - 가족 결과(0.21.0, 보드 GrandList 캔버스 v224): 날 묶음 → 한 격자('all'), 붙는 날 제목 줄이 기간 줄(3·5칸 '9월 3일 ~ 11월 1일', 1·2칸 맨 위 날 + 기념일, 스크롤 따라 바뀜), 기념일은 칸 data-mark, 달 표식 .sp-a__anchor. '방금 올라왔어요' 묶음은 따로 그대로. 날마다 장 수는 없어짐. e2e loadmore·milestones·familyzoom 통과, 화면 `tools/shots/album-continuous.png`(git 제외)
+  - 117c 거르기: 추천 = 사진·영상(전체/사진/영상) 먼저 — 서버 목록에 종류 조건만 더하면 돼서 DB 안 바꿈. '하트·한마디 받은 사진'은 반응 표를 함께 봐야 해서 DB 함수가 바뀜(운영 적용 확인 필요) → 다음에. 아이별은 엄빠 앨범에 이미 있음(아이 고르기), 가족 앨범은 집 고르기 있음
+    - 결과(0.22.0, 보드 GrandList·ParentHomeZoom3 캔버스 v226): 보기 방식 아래 '전체·사진·영상'(가족 큰 버튼, 엄빠 기존 버튼 모양), 주소 ?t=photo|video(가족 albumHref, 엄빠 kq). 칸 크기·넘겨 보기·가족 크게 보기·다음 쪽까지 유지, 달·해 카드 단계에선 숨김, 0장이면 '영상은 아직 없어요'. DB 안 바꿈(목록 조건 kind). 확인: 엄빠 영상 1장·사진 3장, 크기 바꿔도 유지, 가족 제목 '은우 영상 1장', 크게 보기 1 / 1. e2e parentzoom·familyzoom·kidtabs 통과
+    - 남은 것: 엄빠 크게 보기(/view)는 거르기를 안 따라감(앞뒤로 넘기면 전체)
+- 알릴 위험: 117a의 '확인'은 기기마다(쿠키). 같은 사람이 폰·태블릿 둘이면 각각 따로 맨 위에 뜸. 사람마다로 하려면 보신 기록(views) 표를 읽는 DB 함수가 필요
+
+### 116. feature/landing-login-note — 첫 화면에 '엄마·아빠는 로그인' 안내 (완료, 0.19.2)
+- 요구(사용자 2026-11-01 "엄마나 아빠는 로그인 스텝 있다고 안내해 줘"): 엄빠(처음 시작하는 분·함께 관리하는 분)는 각자 SNS 계정 로그인, 링크 받은 가족은 로그인 없음 — 이 차이를 첫 화면에서
+- 바꿀 것(보드 Landing 다크·라이트 → `src/pages/index.astro`): '무료로 시작하기' 아래 작은 글 '5GB까지 무료' → '엄마·아빠는 SNS 계정으로 로그인해요 · 5GB까지 무료', 그 아래 '링크 받으셨나요? 받은 링크를 눌러 주세요' → '링크 받으셨나요? 로그인 없이 받은 링크를 눌러 주세요'
+- 이미 있는 것: 함께 관리 초대 문자·링크 카드는 '로그인하면 바로 함께'라고 말하고 있음(그대로)
+- 결과(0.19.2, 캔버스 v215): 390·320px 라이트·다크에서 줄바꿈 자연스럽고 가로로 안 넘침(`tools/shots/landing-login-note.png`, git 제외)
+- 고침(0.19.3, 사용자 "폰트 크기 맞춰야지", 캔버스 v216~v218): 로그인 안내(13px)를 아래 '링크 받으셨나요?'와 같은 15px(.sp-p__note)로, '로그인해요' 뒤에서 줄바꿈('무료'만 떨어지던 것). 보드 줄 간격 21px → 앱과 같은 20px
+
+### 115. feature/setup-one-parent — 처음 설정에 '엄마·아빠 중 한 분만' 안내 (완료, 0.19.1)
+- 요구(사용자 2026-11-01 "엄빠 중에 한 명은 SNS 로그인 해야 하지? 그 부분도 체크… 안내?" → "처음 설정에 한 줄"): 엄마아빠는 SNS 로그인. 한 분이 앨범을 만들고, 다른 분은 설정 › 가족의 초대 링크로 들어옴. 지금은 이걸 어디서도 안 알려 줘서 두 분이 각자 시작하면 앨범이 둘 생기고, 그 뒤 초대 링크는 '이미 다른 앨범을 관리하고 있어요'에서 막힘
+- 바꿀 것: 처음 설정 1/2(`/setup`, 보드 ParentOnboard 다크·라이트) 머리 아래 틸 연한 안내 한 줄 — "**앨범은 엄마·아빠 중 한 분만 만들어요.** 이미 만들었다면 그분께 초대 링크를 받아 주세요." 새 클래스 `.sp-p__tip`(pea-tint 바탕, pea-deep 글자)
+- 범위 밖: 첫 화면 안내, 이미 앨범을 만든 사람이 초대를 받을 때 빈 앨범 지우고 합치기(사용자가 이번엔 안 고름)
+- 결과(0.19.1, 캔버스 v214): 라이트·다크 화면이 보드와 같음(`tools/shots/setup-tip.png`, git 제외). e2e parent 통과
+
+### 114. feature/no-start — 소개 3장(/start) 없애고 첫 화면으로 (완료, 0.19.0)
+- 요구(사용자 2026-11-01 "/start는 언제 진입?" → "첫 화면이 떠야지 스타트 왜 떠"): 로그인 안 한 엄마아빠가 엄빠 화면(/home 등)을 열면 소개 3장(/start, 처음 한 번)이 떴음. 첫 화면(sweepea.co.kr)의 '무료로 시작하기'는 /login으로 바로 가서 새로 온 엄마아빠는 소개를 거의 못 봄 → 소개는 첫 화면 하나로
+- 바꿀 것
+  - 로그인 안 했으면 엄빠 화면 → 첫 화면 `/`(지금: 소개를 봤으면 /login, 아니면 /start). `loadParent`, 소개 쿠키 `sp_intro` 없앰
+  - `/start`는 옛 주소·북마크용으로 첫 화면에 넘기기만(301). 소개 화면 코드·CSS(.sp-p__intro·mock·skip·dots) 지움
+  - '처음으로'(탈퇴 끝 `/goodbye`, 초대 오류 `/join/…`)와 초대 주소 형식 오류 → `/`
+  - 디자인 보드 ParentIntro1~3(다크·라이트 6장) 지움, 묶음 제목 '소개 → 로그인 → …'에서 소개 빼기
+  - e2e parent·delete·bottombar
+- 따라오는 것: 3장의 '콩이도 아이 나이에 맞춰 함께 자라요'(지금 기능과 다른 문구)도 같이 없어짐. 로그인이 끊긴 엄마아빠도 첫 화면으로 감('무료로 시작하기' 한 번 더 누르면 로그인)
+- 결과(0.19.0, 캔버스 v212·v213): 보드 ParentIntro 6장 지우고 그 줄을 왼쪽으로 당김, 흐름도 '부모 · 시작' 첫 칸 '소개 3장' → '첫 화면'. 로그아웃(/logout)·폼 저장 중 로그인이 끊긴 경우는 지금처럼 /login
+- 리뷰에서 고친 것: 첫 화면이 엄빠 쿠키가 '있는지'만 보고 /home으로 보내서, 깨진 쿠키면 /home ↔ / 이 계속 돌았음(재현함) → 실제 로그인인지 확인(`currentParent`, 갱신이 잠깐 실패하면 첫 화면)
+- 검사: e2e parent·delete·bottombar·entry·install 통과(install은 이번과 상관없이 전부터 실패 — 앨범에 화면 읽기용 빈 알림 칸이 늘어 알림 수를 세던 검사가 틀림 → 글로 찾게 고침), 단위 48, astro check 오류 0
+
+### 113. feature/og-image — 카톡 미리보기 그림 (완료, 0.18.3)
+- 요구(사용자 2026-11-01, 112 뒤 "카톡 미리보기 그림 만들기"): 카톡·검색 미리보기 그림이 512px 정사각형 아이콘이라 카드에서 작게 보일 수 있음 → 가로 그림 1200×630
+- 모양: 연한 틸 바탕(pea-tint, 아이콘과 같은 바탕), 가운데 콩이(픽셀 그대로) + '스위피' + 첫 화면 제목 문구 '아기 사진, 단톡방 말고 가족 앨범에'. 카톡이 가운데를 정사각형으로 자를 수도 있어(확인 못 함) 모두 가운데 세로로 쌓음. 글꼴은 앱과 같은 Pretendard
+- 바꿀 것: `tools/design/og.py`(HTML을 Playwright로 찍어 `public/og.png`) → 캔버스에 보드(그림 확인용) → `Base.astro` og:image를 `/og.png`로 + `og:image:width/height/alt`
+- 범위 밖: 화면마다 다른 그림(가족 링크마다 아이 이름 등)
+- 결과(0.18.3, 캔버스 v211 보드 OgImage): `public/og.png`(16KB), 모든 화면(가족 링크 `/i/…` 포함) og:image + 크기·대체 글. 카톡은 미리보기를 캐시하므로 이미 보낸 주소는 예전 아이콘이 남을 수 있음 → 카카오 공유 디버거에서 캐시 지우기(사용자 쪽)
+
+### 112. feature/upload-no-cover — 카톡 대표 사진 고르기 빼기 (완료, 0.18.2)
+- 요구(사용자 2026-11-01 "카카오톡 공유하기에 사진 미리 정하고 보내잖아? 그냥 스위피 사진으로 가"): 올리기 화면에서 카톡 카드 대표 사진을 고르지 않는다. 카톡 미리보기는 스위피 그림
+- 확인한 것: 대표 사진 고르기는 올리는 순서만 바꿨고, 저장(`shares.cover_media_id`)·미리보기에는 쓰인 적이 없음. 카톡 미리보기 그림은 원래부터 모든 화면이 스위피 아이콘(`Base.astro` og:image = `/icons/icon-512.png`). 그래서 화면에서 빼면 실제로 보내지는 것과 맞게 됨
+- 바꿀 것: 디자인 보드 ParentUpload(다크·라이트·PC 다크·라이트)에서 대표 테두리·안내 글 빼기 → `src/pages/upload.astro`(칸은 누르는 버튼 대신 그림만, 이름 'N번째 사진/영상' + 상태, 올리는 순서는 고른 순서), `parent.css`(.sp-p__upbtn 눌림 모양 빼기), e2e upscreen·upstatus
+- 범위 밖: `shares.cover_media_id` 칸(안 씀, 지우기 문은 운영 적용 도구가 막으니 그대로 둠), 카톡 미리보기 전용 큰 그림(1200×630) 만들기
+- 결과(0.18.2, 캔버스 v210): 보드 4장(ParentUpload 다크·라이트·PC 다크·라이트)에서 대표 테두리·안내 글을 뺌 → 앱도 같게. 검사: e2e upscreen·upstatus·upgrid·upload 통과, 단위 48, astro check 오류 0
+
+### 111. fix/avatar-center — 캐릭터 그림 가운데 맞추기 (완료, 0.18.1)
+- 요구(사용자 2026-11-01 "캐릭터 중앙 안 맞는 경우 있는데 확인"): 원본 칸 가운데로 자르니 얼굴이 옆으로 치우친 그림이 있었음
+- 고침: `tools/design/avatars.py`에 그림별 가로 옮김(`SHIFT`) — 두 눈 가운데를 원 가운데로(눈 사이 30~40px인 검은 점 짝으로 찾고, 21·30·31은 눈으로 봄). 18개(8·17·18·20~23·28·30·31·34~36·39·42~45) 다시 자름. 21·30·31·44는 옆에 비치던 원본 원 테두리도 사라짐. 확인 그림 `tools/shots/avatars/center-before-after.png`(git 제외)
+- 남은 것: 9·19·26 등 몇 개는 원 가장자리에 원본 원 테두리가 아주 조금 비침(가운데는 맞음). 캔버스 보드 그림은 예전 자른 것 그대로
+
+### 110. feature/avatar-pick — 가족 캐릭터 고르기 (완료, 0.18.0)
+- 요구(사용자 2026-11-01): 보낸 그림(가족 캐릭터 45, 강아지는 빼기 — 사용자 2026-11-01)으로 "캐릭터 선택할 수 있게 기능 추가". 고르는 사람은 **각자 자기 것만**(사용자 "각자만"). 그림은 잘라 그대로(`public/avatar/1~45.webp`, 96px, 합쳐 약 190KB)
+- 고르는 곳
+  - 가족(조부모 등): 가족 앨범 맨 위 '내 캐릭터' 알약 → `/me/avatar` 고르기 화면(가족방마다 따로: 그 가족방에서의 나). 처음 들어올 때 따로 묻지 않음(어르신 입장 단계를 늘리지 않게) — 사용자 2026-11-01 확인: "허들 늘리지 말자"(들어온 뒤 한 번 권하는 레이어도 넣지 않음)
+  - 엄빠: 설정 맨 위 내 이름 줄 → `/settings/avatar`
+  - 고르기 화면: 네이티브 라디오 45개(4~5칸 격자, 그림이 라벨), 지금 고른 것 틸 테두리, 아래 고정 '저장'(스크립트 있으면 그 자리 저장 + 토스트, 없으면 폼). '고르지 않음'도 하나(지금처럼 이름 첫 글자)
+- 보이는 곳: 누구세요 이름 목록(이름 왼쪽), 설정 › 가족 구성원 줄·구성원 상세, 크게 보기 한마디 목록(쓴 사람 이름 왼쪽). 고르지 않았으면 지금 모양 그대로
+- DB(새 마이그레이션, 운영 적용은 사용자 확인 뒤): `members.avatar`·`parents.avatar` smallint(1~45, null = 안 고름). 읽기: 누구세요(`sp_entry_info` 구성원), 가족 관리 목록, 한마디 목록에 avatar. 쓰기: 가족 기기는 자기 구성원만(`sp_set_member_avatar`, 승인된 구성원), 엄빠는 자기 행만. 함수는 이름을 바꾼 새 함수로(적용 도구가 DROP을 막음)
+- 순서: 디자인 보드(고르기 화면 가족·엄빠, 누구세요·설정 › 가족·한마디에 캐릭터) → DB 마이그레이션 + 로컬 DB 검사 → 사용자 확인 뒤 운영 적용 → 개발(mock 먼저) → 리뷰 3회 → 보드 대조 → dev
+- 범위 밖: 아이 캐릭터 고르기(아이는 나이별 아기 그림, 109), 사진으로 내 얼굴 올리기
+- 결과(0.18.0, 캔버스 v209): 리뷰 3회(1: 여러 집 기기가 보낸 집을 못 쓰면 다른 집에 저장하던 것 막음, 함께 관리 엄빠 줄 상대 캐릭터 sp_family_parents, 구성원 상세 56px 고정 / 2: 여러 집 '모두'에선 내 캐릭터 알약 숨김, 누구세요 목록 정렬·안 고른 사람 첫 글자 / 3: 첫 글자를 글자 단위로). DB 검사 의도된 거부 79건, 단위 48, e2e avatar.py·entry·members·coparent·kidtabs 통과
+- 운영 DB(2026-11-01 사용자 "적용하고 배포"): 적용 전 운영 함수 5개(sp_entry_info·sp_me·sp_parent_home·sp_family_parents·sp_comment_list) 정의 지문(md5)이 저장소와 같음을 확인 → 20261101000001_avatar 적용 → 칸·권한(저장 함수는 로그인한 사용자만, sp_entry_info는 링크만 연 사람도 그대로) 확인. 배포 순서: DB 먼저, 코드 나중(코드가 새 함수를 부름)
+- 개발(2026-11-01, 운영 DB 적용 전): 마이그레이션 `20261101000001_avatar.sql`(avatar 칸 둘, `sp_set_member_avatar`·`sp_set_parent_avatar`, `sp_entry_info`·`sp_me`·`sp_parent_home`에 avatar, 새 `sp_comment_list2`), rls.sql 시나리오(의도된 거부 79건). 고르기는 폼 POST만(스크립트로 그 자리 저장은 안 함), 공용 `AvatarPick`·`src/lib/avatar.ts`. 누구세요 그림은 2.5rem(글자 '크게'에서 40px, 기본 33px), 설정 › 가족 줄은 보드대로 32px, 구성원 상세는 원래 자리 56px. e2e `tools/e2e/avatar.py`. 남은 것: 운영 DB 적용(사용자 확인), 리뷰·보드 대조
+
+### 108. 조부모 음성 한마디 (보류: iOS 앱 한마디 화면 때, 2026-11-01)
+- **정함(사용자 2026-11-01 "이거 앱에서만 지원이야" → "웹엔 아무것도 없음")**: 녹음·듣기 모두 iOS 앱에서만. 웹(카톡 링크 화면)은 지금 그대로(앱으로 남긴 한마디는 받아 적은 글자가 한마디로 보임). 서버(DB 음성 칸·받아 적기 API·정리 작업)는 쓸 곳이 앱뿐이라 앱 한마디 화면을 만들 때 같이 만든다(미리 만들면 앱에 맞춰 다시 고칠 가능성). 아래 계획·보드는 그때 참고
+- 알린 위험: 조부모가 앱을 깔아야만 쓸 수 있어 '설치 없이'가 핵심인 서비스에서 쓰는 분이 적을 수 있음
+- 요구(94 경쟁력 기능 2): 가족이 글자 대신 말로 한마디. 받아 적은 글자도 같이 보이고(사용자 "텍스트로 보이긴 해야"), 보내기 전에 글자를 보여 줘 고치거나 다시 말하기. 엄마아빠 화면엔 글자 + 재생
+- 정함(사용자 2026-11-01): 받아 적기는 **내부(Cloudflare Workers AI Whisper)** — 외부 업체 계약·키 없이 지금 Cloudflare 안에서, 어느 브라우저든 같게(카톡 안 브라우저 포함). 한 개 **최대 10초**(처음 5초 → 사용자 2026-11-01 "그럼 10초"), **유료(스위피 플러스)만**
+- 비용(확인 2026-11-01, Cloudflare 공식 가격표): whisper-large-v3-turbo 음성 1분 $0.0005(46.63 뉴런) → 10초 한 개 약 $0.00008, 하루 무료 사용량 안에서 수천 개. 한국어 정확도·무료 사용량 정확한 크기는 첫 실제 호출에서 확인
+- 알려 둔 위험(사용자에게 말함): 결제(플러스)가 아직 없어 만들어도 결제를 만들 때까지 쓸 사람 없음(시험은 가족방 entitlements에 기간을 직접 넣어서). 10초에 저절로 멈추고 녹음 중 남은 초 표시
+- 구현 방향(초안, 보드 뒤 자세히)
+  - DB(새 마이그레이션, 운영 적용은 사용자 확인 뒤): `comments`에 `voice_key text`·`voice_ms int`(10000 이하). 한마디 함수는 이름을 바꾼 새 함수로(적용 도구가 DROP을 막음): 음성 키는 `voice/<가족방 id>/<uuid>` 꼴만, 그 가족방이 유료(entitlements 기간 안)일 때만. 가족 기기가 유료인지 알게 `sp_me` 가족방 정보에 plan 여부
+  - 녹음: 크게 보기 한마디 시트에 마이크 버튼(유료 가족방만). 네이티브 MediaRecorder, 10초에 멈춤, 녹음 중 남은 초. 마이크 권한 거절·지원 안 함이면 버튼 대신 안내(글자 한마디는 그대로)
+  - 받아 적기: `POST /api/voice`(가족 출입증·엄빠 세션, 유료 확인, 크기 상한) → R2 `voice/…`에 저장 → Workers AI(바인딩 `AI`, 한국어) → {key, 글자}. 글자는 입력칸에 넣어 고치게, '다시 말하기'
+  - 보내기: 지금 한마디 폼에 voice_key를 같이. 목록·엄빠 화면은 글자 + 재생 버튼(서명된 /m/ 주소, 네이티브 audio)
+  - 정리: 녹음만 하고 안 보낸 파일·지운 한마디의 음성은 매일 정리 작업에서 R2 삭제(r2_cleanup)
+  - 스크립트 없으면 음성 없이 글자 한마디만(지금과 같음). mock은 받아 적기를 정해진 글자로
+- 디자인(보드 VoiceSay 다크·라이트, 캔버스 v204, 웹 시트 모양으로 그렸으나 앱 화면 참고용, 스크립트 tools/design/voicesay.py, 속성 step으로 단계 바꿔 보기): 한마디 시트 아래 칸이
+  - 말하기 전: 입력 줄 왼쪽 둥근 마이크(틸 연한 바탕, '말로 한마디(10초)'), 입력칸 안내 '글로 쓰기'(마이크 옆에서 '하린이에게 한마디'가 잘려서)
+  - 녹음 중: ● 듣고 있어요 · 'N초 남았어요' + 지난 시간 막대 + '다 말했어요'(10초면 저절로)
+  - 받아 적는 중: '글자로 바꾸는 중이에요…'
+  - 글자 확인: '이렇게 받아 적었어요. 틀린 곳은 고쳐 주세요' + 여러 줄 칸(10초 말이 한눈에) + 들어 보기·다시 말하기 + 보내기(넓게)
+  - 목록: 음성 한마디는 글자 아래 '▶ 목소리 0:04' 알약(엄빠·가족 모두 들음)
+  - 유료가 아닌 가족방은 마이크 없음(지금 시트 그대로, 어르신께 결제 안내는 안 띄움)
+- 순서: 디자인 보드(완료) → 계획 자세히 → DB 마이그레이션(사용자 확인) → 개발 → 리뷰 3회 → 보드 대조 → dev
+- 범위 밖: 결제(플러스) 자체, 무료 체험
+
+### 107. fix/album-head-values — 앨범 머리 값 사용자 지정 (완료, 0.7.5~0.7.6)
+- 요구(사용자 2026-10-29): 작은 줄 text-shadow 제거, ::before 흐림 2px, 배경 35% → 52% 지점 13% → 투명
+- 0.7.6: 큰 제목·작은 줄에 text-shadow 0 0 10px 화면색 50%(밝은 테마 흰색, 어두운 테마 검은색, 사용자 지정)
+- 결과: 그대로 적용. 잰 대비(크롬): 큰 제목 9.96:1 이상. 작은 줄은 중간 밝기 사진 3.6~5.1:1, 순흰·순검정 사진 위 1:1 근처(거의 안 보임). 투명도 줄이기 켜면 단색. 사용자 결정으로 둠
+
+### 106. chore/naver-verify — 네이버 서치어드바이저 소유 확인 (완료, 0.7.4)
+- 요구(사용자 2026-10-29): naver-site-verification 메타 태그. 결과: src/layouts/Base.astro head에 넣음(모든 화면, 첫 화면 포함). 구글 서치 콘솔은 사용자가 Cloudflare DNS TXT로 확인 중
+
+### 105. fix/album-head-lighter — 앨범 머리 막을 옅게(레퍼런스 사진 앱처럼) (완료, 0.7.3)
+- 요구(사용자 2026-10-29): "헤더 레퍼런스 이미지랑 비슷하게, 지금도 배경 너무 짙어. 접근성 때문에 못 맞추는 건가"
+- 결과: 막 위 55% → 70% 지점 30% → 투명, 흐림 24px(위 60%까지). 큰 제목은 번짐 없이 대비 10:1 이상. 작은 줄은 굵게 + 화면색 번짐(text-shadow 겹침)
+- 트레이드오프(결정): 사진이 거의 순흰·순검정으로 머리 밑을 덮는 극단에서는 작은 줄 바로 둘레 밖 배경 대비가 2:1 안팎(번짐이 글자 가장자리를 받쳐 읽히긴 함, WCAG 수치로는 미달). 보통 사진(중간 밝기)은 5.8:1 이상. 투명도 줄이기 켠 사람은 단색. 실제 사파리 흐림은 확인 못 함
+
+### 104. fix/album-head-glass — 앨범 머리 흰 띠 → 비치는 유리, 저장 막대 위 선 없앰 (완료, 0.7.2)
+- 요구(사용자 2026-10-29): "fixed 영역에 흰 배경 뭐야?"(103 머리가 대비 때문에 단색 흰 띠가 됨), "sp-p__savebar border-top도 삭제"
+- 결과: 머리는 화면색 75% 막 + 흐림 20px(아래 띠에서 투명), 작은 줄도 진한 글자 → 사진이 흐리게 비치면서 대비 최저 8.48:1(크롬, 밝은 모드 검은 사진·어두운 모드 흰 사진). color-mix 모르는 옛 브라우저는 @supports로 단색. 저장 막대 위 선 없앰(--savebar-h에서 1px 뺌, 고대비 모드만 선), 보드 10개도. 낡은 검사 savebar.py(탭바 위 0.5rem·접종 링크는 설정 › 아이) 맞춤. 남은 것: 실제 사파리 흐림(웹킷 헤드리스는 backdrop-filter를 안 그림)
+
+### 103. feature/album-bleed — 앨범 위 고정 머리 + 사진 좌우 꽉 (완료, 0.7.1)
+- 요구(사용자 2026-10-29, 아이폰 사진 앱 보관함 화면 캡처): "헤더 고정 영역 디자인 맞춰 주고, 사진 영역은 좌우 여백 없이 채워 줘"
+- 방식: 64rem 미만 앨범. '앨범' 큰 제목 + 작은 줄(사진 N · 영상 M, 아이 고르면 숨김)을 위에 붙는 머리(sticky)로, 배경은 글자 자리까지 화면색, 아래 여백 띠만 투명해지며 흐림(대비 4.5:1, 투명도 줄이기면 단색). 폰 폭(32rem 이하)은 달 묶음을 좌우 여백 없이, 사진 간격 2px·모서리 없음(사진 앱처럼). 달 제목·안내 카드·아이 고르기는 지금 여백 그대로. 넓은 화면(PC)은 위 메뉴가 있어 그대로
+- 영향 파일: src/pages/home.astro, src/styles/parent.css, tools/design/albumbleed.py(보드 ParentHomeBleed), e2e tools/e2e/albumbleed.py
+- 예상 결과: 스크롤해도 제목이 위에 남고 사진이 그 밑으로 흐리게 지나감, 사진은 화면 끝까지
+- 결과(0.7.1): 검토 3회(작은 줄 대비 → 글자 자리 단색·흐림은 아래 띠만(5.99:1), 태블릿 가운데 띠 → 좌우 꽉은 32rem 이하만, 투명도 줄이기 단색, 키보드 이동 때 칸 가림 → .sp-p__cell-link scroll-margin, 0인 수 생략). gaps.py 폰 폭 2px로. 남은 것: 실제 아이폰 safe-area·흐림 렌더링, 웹킷 키보드 이동은 확인 못 함
+- 결정(2026-10-29): 공동 관리 내보내기는 0.7.0 그대로(바로·조용히 처음 설정으로). 앨범 지우기 막기·휴지통은 안 함(사진은 한 장씩도 지울 수 있고, 원본은 올린 사람 휴대폰에 있음)
+
+### 100. feature/co-parent — 엄마아빠 공동 관리자 (완료, 0.7.0)
+- 요구(사용자 2026-10-29): "승인은 무조건 엄마만 할 수 있는 거야? 아빠가 가입하는 경우도 있지 않을까" → 세 안(그대로 / 승인만 나눠 주기 / 공동 관리자) 중 "권한은 공동으로"
+- 지금: 처음 가입한 한 명(엄마 또는 아빠)만 엄빠 계정(`parents.family_id unique`). 배우자는 링크로 들어온 구성원 + '사진 올리기 허용'이라 승인·설정 못 함
+- 하려는 것: 가족방마다 엄빠 계정 둘까지. 둘 다 같은 엄빠 화면(앨범·올리기·승인·설정·알림), 각자 자기 로그인(카카오·네이버·구글). 가족 화면엔 각자 이름(엄마/아빠)으로 '오늘 아빠가 올렸어요'
+- 초대: 설정 › 가족에 '공동 관리자' 줄 → '초대 링크 만들기'(한 번만, 72시간, 카톡·문자로 보냄) → 받은 사람이 링크 `/join/<코드>` → 엄마·아빠 고르기 → 로그인 → 같은 가족방 엄빠 화면. 이미 다른 가족방의 엄빠 계정이면 들어오지 않고 안내
+- 내보내기·나가기: 엄빠 둘 중 누구나 상대를 내보낼 수 있음(확인 레이어). 탈퇴는 '나만 나가기', 마지막 한 명이 탈퇴할 때만 지금처럼 가족방 3일 뒤 삭제(구독 중이면 막음)
+- 배우자가 이미 '올리기 허용' 구성원이면: 초대받아 엄빠가 된 뒤 예전 구성원은 그대로 둠(반응·한마디 기록 보존), 엄빠 화면에 '예전 가족 이름 내보내기' 안내만
+- DB(새 마이그레이션, 운영 적용 전 사용자 확인): `parents.family_id` unique 풀기(가족방당 2명은 함수에서 확인), 초대 표 `parent_invites`(코드·가족방·만든 사람·만료·쓴 때), `sp_create_parent_invite`·`sp_accept_parent_invite(code, role)`·`sp_remove_coparent`, `sp_request_delete`는 남은 엄빠가 있으면 나만 빠지게. 반응·한마디·최근 반응 읽음(activity_seen_at)은 이미 사람마다라 그대로
+  - 주의: unique를 푸는 건 `drop constraint`라 적용 도구가 막음 → 이 한 줄은 사용자가 Supabase SQL 편집기에서 직접 실행
+- 디자인 보드(v182, 스크립트 tools/design/coparent.py): FamilyCoParent(설정 › 가족 맨 위 '엄마아빠 · 함께 관리', 속성 state 초대 전/링크 만듦/함께 관리 중/내보내기 확인)·FamilyCoParentInvite(링크 카드, GroupLinkCard 모양)·CoParentRemoveLayer(FamilyRevokeLayer 모양)·JoinParent(/join, 나는 엄마/아빠 고르기 + ParentLogin 버튼, 이미 다른 앨범·기간 지남)·AccountLeave(엄빠 둘일 때 탈퇴 레이어 = '이 앨범에서 나갈까요?', 확인 체크 없음, 다크 버튼 글자 대비 맞춤)
+- 화면 구현(초안): `/settings/family` 맨 위 줄(스크립트 있으면 그 자리에서, 없으면 폼), `/join/[code]`(코드·역할을 쿠키에 담아 `/login` → `/auth/callback`에서 `sp_accept_parent_invite`), 계정 탈퇴는 엄빠 수에 따라 레이어 글·동작만 갈라짐. 가족 화면 '오늘 아빠가 올렸어요'는 올린 엄빠의 역할로(지금은 가족방 첫 엄빠 기준인지 확인 필요)
+- 검사: DB 검사(초대 만들기는 엄빠만·하나만 살아 있음·3일·한 번, 셋째 엄빠 거절, 다른 가족방 엄빠 거절, 내보내면 그 계정은 가족방 못 봄, 한 명 탈퇴는 가족방 유지·마지막은 3일 뒤 삭제), e2e(초대 링크 → 로그인 → 같은 앨범·승인 가능, 내보내기, 나가기)
+- iOS 앱(sweepea-ios)도 같은 흐름은 웹 다음
+- 정함(사용자 2026-10-29 "응"): 엄빠 최대 둘, 둘 다 상대를 내보낼 수 있음, 한 명 탈퇴는 나만 나가기(마지막 한 명일 때만 가족방 삭제)
+- 결과(개발): DB `20261029000002_coparent_unique.sql`(사용자가 SQL 편집기에서 직접: 가족방당 한 명 unique 풀기, parents.family_id null 허용 + 가족방 지우면 set null) → `20261029000003_coparent.sql`(적용 도구: removed_at, parent_invites, sp_family_parents·sp_create_parent_invite·sp_parent_invite_info(anon)·sp_accept_parent_invite·sp_remove_coparent, sp_request_delete는 함께 관리면 나만 빠짐, sp_parent_family·sp_parent_home·sp_parent_activity·sp_mark_activity_seen·sp_create_family·sp_purge_family 교체, 000002 먼저 했는지 가드). 화면: 설정 › 가족 #parents, /join/[code](역할·제공자 → sp_join 쿠키 → 로그인 → /auth/callback에서 받기), 계정 '이 앨범에서 나가기', /goodbye?left=1, 홈 '함께 관리해요' 안내. BackendError.reason(DB raise 글)·joinError
+- 정한 동작: 기록(반응·한마디) 있는 엄빠를 내보내거나 나가면 행은 removed_at으로 남고, 다시 초대받거나 새 가족방을 만들면 그 행을 옮겨 씀(예전 한마디 이름은 새 역할로 보임). 가족방이 지워져도 다른 가족방 기록이 있는 엄빠 행은 family_id만 빔. 같은 역할(엄마 둘)은 막음. 초대는 가족방당 하나, 3일, 한 번
+- 검토 3회: 나간 엄빠의 최근 반응 읽기(높음)·나간 엄빠 막다른 길(높음)·운영 오류 이유 구분·같은 역할·잠금(엄빠 셋·교착·동시에 서로 내보내 0명)·새 가족방 삭제 때 예전 기록 연쇄 삭제·적용 도구 DROP 이름 회피(sp_unlink_parent)·000002 다시 실행 안전. 검사: DB rls.sql(의도된 거부 69), supabase/tests/race.sh(동시 처리 3가지), tools/e2e/coparent.py 크롬·사파리 엔진, glasstab 회귀
+- 남은 것: 운영 DB 적용(000002 직접 → 000003 승인 후 도구, 매일 정리 작업 시각 피해 연달아), 실제 카카오·구글 로그인으로 초대 받기 확인, 결제한 엄빠가 나가면 구독 해지 주체(결제 붙일 때 결정), iOS 앱
+
+### 101. fix/copy-link — 링크 '주소 복사' 버튼 (완료, 0.5.6)
+- 요구(사용자 2026-10-29 "길게 눌러도 복사 안 되던데"): 원인은 아이폰 사파리가 읽기 전용 칸을 길게 눌러도 복사 메뉴를 안 띄움 + 링크 카드에 복사 버튼이 없었음
+- 고침: `src/lib/copy.ts`(wireCopy·revealCopy·copyText) — 설정 › 가족·그룹 화면 링크 카드에 '주소 복사'(스크립트 있을 때만 보임), 복사 못 하면 칸을 골라 두고 "휴대폰은 칸을 길게 눌러 복사를, 컴퓨터는 Ctrl+C" 안내(벗어나면 다시 읽기 전용). 올리기 화면도 같은 함수. 칸 이름의 '(길게 눌러 복사)' 지움, 디자인 GroupLinkCard·공동 관리자 카드 v183
+- 검사: tools/e2e/copylink.py 크롬·사파리 엔진, groups·family·bottombar e2e. 검토 1회(3관점) 반영. 남은 것: 실제 아이폰 사파리·카톡 안 브라우저 확인(사용자), 비동기 실패 뒤 칸 선택이 아이폰에서 보이는지 모름
+- 0.5.7(사용자 2026-10-29): 주소 복사하면 '주소를 복사했어요.' 토스트("토스트 하나만"), 화면 글 '고치기'는 '변경'으로(아이 설정, 보드 ChildSettings·ChildHealthToast)
+
+### 102. feature/glass-tabbar — 엄빠 아래 탭바를 떠 있는 유리 캡슐로 (완료, 0.6.0)
+- 요구(사용자 2026-10-29 "애플에서 사용하는 원형 유리배경 … 배너 말고 네비게이션", "보드부터 바꾸기"): iOS 26 리퀴드 글래스 탭바처럼 화면 끝에 붙은 막대 대신 양옆 20px·아래 여백(safe-area 위)을 둔 둥근 캡슐
+- 디자인(보드 ParentHomeGlass·SettingsGlass 라이트·다크, 스크립트 tools/design/glasstab.py): 기존 유리 토큰 `sp-glass-clear`(흐림·반투명·테두리 빛, 투명도 줄이기면 단색), 고른 탭은 캡슐 안 둥근 강조(--fill), 배지는 아이콘 오른쪽 위, 내용이 탭바 밑으로 비침. 캡슐 오른쪽에 둥근 유리 '사진 추가(+)' 버튼(사용자 "하단 네비에 사진추가 버튼 하나", iOS 26 탭바 옆 원형 버튼처럼, 탭 있는 모든 엄빠 화면), 앨범 위에 떠 있던 '사진 추가하기'는 뺌
+- 구현 방향: `src/layouts/Parent.astro` 탭 nav와 parent.css 탭바만 바꿈(마크업 거의 그대로), 아래 고정 막대(`.sp-p__savebar`·토스트 자리)와 겹치지 않게 높이 변수 정리, 넓은 화면(64rem~ 메뉴 위)은 그대로. 웹은 빛 굴절 효과는 못 냄
+- 나머지 보드(탭바 있는 엄빠 보드 수십 장)는 구현 뒤 한꺼번에 같은 모양으로
+- 접종·검진 이관(사용자 2026-10-29 "상단에 접종정보 영역 너무 공간 차지" → "알림 탭+설정으로 이관"): 홈 맨 위 아이 카드(콩이·생후·다음 접종) 뺌. 알림 탭 맨 위 '다가오는 일정' 카드(다음 접종·검진이 2주 안일 때만, 보드 ReactionsHealth), 설정 › 아이 각 아이 아래 '접종·검진 일정 · DTaP 4차 12/17' 줄(보드 ChildSettings), 스위치 이름 '알림 탭에 다가오는 일정 보기'. 지금 /health로 가는 길은 홈 카드뿐이라 두 길을 먼저 만든 뒤 홈 카드를 뺀다. 홈 카드에 있던 콩이 자라는 그림·백일/생일은 어디로 갈지 따로 확인 필요
+- 결과(0.6.0): Parent.astro 탭 nav를 캡슐(.sp-p__tabs-pill) + 둥근 사진 추가(.sp-p__tab-add)로, 탭바 높이는 `--tabbar-top` 한 변수(아래 막대·토스트·여백), 넓은 화면은 위 메뉴(지금 탭 밑줄), 캡슐 최대 30rem, 탭바 전용 유리 토큰 `--glass-nav`(다크 0.8), 고르지 않은 탭도 --label, 고대비 테두리. 홈 아이 카드·떠 있던 사진 추가하기 지움. `src/lib/kidHealth.ts`(nextHealth)·health.ts(nextOf·monthDay) → 알림 탭 '다가오는 일정'(2주 안), 설정 › 아이 '접종·검진 일정 · ○○ M월 D일부터', 접종 화면 돌아가기는 ?from=alerts|settings(바로 저장해도 유지 — AutoSave가 done만 지우게). 검토 2회(두 번째 저장 뒤 돌아가기 버그·대비·고대비·가로 폭·넓은 화면 구분) + 전체 e2e 재실행. 검사 tools/e2e/glasstab.py(크롬·사파리 엔진), 예전 화면 기준 e2e 6개 맞춤. 남은 것: 실제 아이폰 safe-area·주소창 접힘, 나머지 엄빠 보드의 옛 탭바 그림, 홈에서 빠진 '자라는 콩이' 그림 둘 곳

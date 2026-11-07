@@ -1,0 +1,986 @@
+---
+// 올리기(부모): 고르기(뒤에서 한 장씩 줄임) → 아래 막대에서 아이·그룹 → 올리고 카톡으로 보내기(줄이기·올리기를 같이, 가운데 레이어). 부모 화면이라 JS를 쓴다
+import Parent from '../layouts/Parent.astro';
+import { getBackend } from '../lib/backend';
+import { callName } from '../lib/ko';
+import { loadParent } from '../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const { groups } = await getBackend().familyAdmin(a.pass);
+const kids = a.home.children ?? [];
+const kid = callName(kids[0]?.name ?? '아이');
+---
+
+<Parent title="사진 올리기 · 스위피" wide savebar={2}>
+  <nav class="sp-p__bar sp-p__bar--title" aria-label="올리기">
+    <a class="sp-p__back sp-p__back--cancel" href="/home" id="up-back">취소</a>
+    <h1 class="sp-p__bar-title" id="up-title">사진 올리기</h1>
+    <span class="sp-p__bar-space"></span>
+  </nav>
+  <form class="sp-p__form" id="up-form" data-family={a.home.family_id} data-kid={kid} novalidate>
+
+    <noscript><p class="sp-p__error">올리기는 자바스크립트를 켜야 쓸 수 있어요.</p></noscript>
+
+    <div class="sp-p__up-main">
+    <label class="sp-p__pick sp-p__pick--big" id="up-pick">
+      <input class="sp-vh sp-p__pick-input" id="up-files" type="file" multiple accept="image/*,video/mp4,video/quicktime" />
+      <svg class="sp-p__pick-plus" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg>
+      <span class="sp-p__pick-text" id="up-pick-text">사진·영상 고르기</span>
+      <span class="sp-p__pick-sub">한 번에 200개까지</span>
+    </label>
+    {/* 고른 사진 전부(161). 멈추거나 실패한 뒤엔 '남은 사진'과 '이미 올린 사진' 두 묶음으로 나눈다 */}
+    <div class="sp-p__uplists" id="up-lists" hidden>
+      <h2 class="sp-p__upgroup-title" id="up-left-title" hidden></h2>
+      <ul class="sp-p__upgrid" id="up-grid" aria-label="고른 사진"></ul>
+      <h2 class="sp-p__upgroup-title" id="up-sent-title" hidden></h2>
+      <ul class="sp-p__upgrid" id="up-grid-sent" aria-labelledby="up-sent-title" hidden></ul>
+    </div>
+    <p class="sp-p__note sp-p__up-note">사진·영상은 앨범에서 보기 좋은 크기로 줄여서 올려요. <strong class="sp-p__note-strong">스위피는 원본을 따로 보관하지 않으니 원본은 폰에서 지우지 마세요.</strong></p>
+    <!-- 숫자는 아래 스크립트의 MAX_ITEMS·VIDEO_MAX·SHRINK·SHRINK_MAX_SEC, PHOTO와 같게(바꾸면 처리방침·약관도) -->
+    <details class="sp-p__up-rules" id="up-rules">
+      <summary class="sp-p__up-rules-title">올리기 기준 자세히</summary>
+      <ul class="sp-p__up-rules-list">
+        <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">사진</strong>: 해상도는 그대로(긴 쪽 최대 4032픽셀) 두고 용량만 줄인 JPEG로 저장해요. 찍은 날짜·기종 같은 사진 정보는 그대로 두고, 찍은 장소(위치)만 지워요.</li>
+        <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">영상</strong>: mp4·mov, 한 편 2GB까지예요. 길이 제한은 없어요. 3분 이하는 1080p로 줄여 올리고, 3분이 넘거나 폰이 줄이지 못하면 원본 그대로 올라가요(찍은 장소 정보만 지워요).</li>
+        <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">한 번에</strong>: 200개까지 고를 수 있어요.</li>
+        <li class="sp-p__up-rules-item"><strong class="sp-p__note-strong">저장 공간</strong>: 가족방마다 무료 5GB예요. 줄인 크기 기준으로 사진은 한 장에 1MB 안팎, 1080p 영상은 1분에 40MB쯤이에요. 다 차면 새로 올리기만 멈춰요.</li>
+      </ul>
+    </details>
+    </div>
+
+    <div class="sp-p__up-side">
+    {/* 아래 유리 막대(161): 안내·아이·보여줄 그룹·보내기. 넓은 화면은 오른쪽 칸 제자리 */}
+    <div class="sp-p__bottom sp-p__savebar sp-p__savebar--glass" id="up-actions">
+      <div class="sp-p__toast sp-p__toast--error sp-p__toast--live" id="up-alert" role="alert"></div>
+      <p class="sp-p__toast sp-p__toast--live" id="up-status" role="status"></p>
+      <div class="sp-p__upundo" id="up-undo" hidden>
+        <p class="sp-p__upundo-text" id="up-undo-text" role="status"></p>
+        <button class="sp-p__upundo-btn" type="button" id="up-undo-btn">되돌리기</button>
+      </div>
+      {
+        kids.length > 0 && (
+          <fieldset class="sp-p__fieldset sp-p__uprow">
+            <legend class="sp-p__uprow-label">아이</legend>
+            <div class="sp-p__uprow-list">
+              {kids.map((c) => (
+                <label class="sp-p__check sp-p__uprow-check">
+                  <input class="sp-p__checkbox" type="checkbox" name="child" value={c.id} checked={kids.length === 1} />
+                  {c.name}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )
+      }
+      <fieldset class="sp-p__fieldset sp-p__uprow">
+        <legend class="sp-p__uprow-label">보여줄 그룹</legend>
+        <div class="sp-p__uprow-list">
+          {
+            groups.map((g) => (
+              <label class="sp-p__check sp-p__uprow-check">
+                <input class="sp-p__checkbox" type="checkbox" name="group" value={g.id} checked={g.include_by_default} />
+                {g.name}
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+      <button class="sp-p__btn sp-p__btn--kakao" type="submit" value="share" disabled>올리고 카톡으로 보내기</button>
+      <button class="sp-p__btn sp-p__btn--text" type="submit" value="only" disabled aria-describedby="up-only-hint">보내지 않고 올리기만</button>
+      <p class="sp-p__hint sp-p__fine" id="up-only-hint">올리기만 해도 가족 앨범에는 바로 보여요. 카톡 알림만 안 가요.</p>
+    </div>
+    </div>
+  </form>
+
+  {/* 올리는 중(161): 웹은 화면을 떠나면 멈추므로 가운데 레이어로 덮는다. 그만 올리기는 같은 레이어 안에서 한 번 더 묻는다 */}
+  <dialog class="sp-layer__box sp-layer__modal sp-p__uplayer" id="up-layer" aria-labelledby="up-l-title">
+    <div class="sp-p__uplayer-step" id="up-l-run">
+      <img class="sp-layer__kongi sp-layer__kongi--sm" src="/kongi.svg" width="40" height="40" alt="" />
+      <h2 class="sp-layer__title" id="up-l-title" tabindex="-1">올리는 중이에요</h2>
+      <p class="sp-p__uplayer-count" id="up-l-count" role="status"></p>
+      <p class="sp-p__uplayer-now" id="up-l-now"></p>
+      <progress class="sp-p__uplayer-bar" id="up-bar" max="100" value="0" aria-label="올리기 진행"></progress>
+      <p class="sp-layer__text">다 올릴 때까지 이 화면을 켜 두세요.<br />화면을 끄거나 다른 앱으로 가면 멈춰요.</p>
+      <div class="sp-layer__actions">
+        <button class="sp-p__btn sp-p__btn--quiet" type="button" id="up-l-stop">그만 올리기</button>
+      </div>
+    </div>
+    <div class="sp-p__uplayer-step" id="up-l-ask" hidden>
+      <h2 class="sp-layer__title" id="up-l-ask-title" tabindex="-1">그만 올릴까요?</h2>
+      <p class="sp-layer__text" id="up-l-ask-text"></p>
+      <div class="sp-layer__actions">
+        <button class="sp-p__btn" type="button" id="up-l-go">계속 올리기</button>
+        <button class="sp-p__btn sp-p__btn--quiet" type="button" id="up-l-halt">그만 올리기</button>
+      </div>
+    </div>
+  </dialog>
+
+  <section class="sp-p__card" id="up-done" aria-labelledby="up-done-title" hidden>
+    <div class="sp-p__updone-head">
+      <img class="sp-layer__kongi sp-layer__kongi--sm" src="/kongi.svg" width="40" height="40" alt="" />
+      <h2 class="sp-p__card-title" id="up-done-title" tabindex="-1">다 올렸어요</h2>
+    </div>
+    <p class="sp-p__lead" id="up-done-lead"></p>
+    <p class="sp-p__toast sp-p__toast--live" id="up-done-status" role="status"></p>
+    <label class="sp-p__label" for="up-link">보낼 주소</label>
+    <input class="sp-p__input" id="up-link" type="url" readonly />
+    <button class="sp-p__btn sp-p__btn--kakao" type="button" id="up-share">카톡으로 보내기</button>
+    <button class="sp-p__btn sp-p__btn--quiet" type="button" id="up-copy">주소 복사</button>
+    <a class="sp-p__btn sp-p__btn--text" href="/home">앨범으로</a>
+  </section>
+  <section class="sp-p__card" id="up-noshare" aria-labelledby="up-noshare-title" hidden>
+    <h2 class="sp-p__card-title" id="up-noshare-title" tabindex="-1">다 올렸는데 보낼 주소를 못 만들었어요</h2>
+    <p class="sp-p__lead">사진은 앨범에 올라갔어요. 설정 > 가족에서 링크를 만들어 보내 주세요.</p>
+    <a class="sp-p__btn" href="/home">앨범으로</a>
+  </section>
+</Parent>
+
+<script>
+  import { fitSize, mp4CreatedAt, photoExif, photoTakenAt, plausible, stripJpeg, withExif } from '../lib/exif';
+  import { stripVideoLocation } from '../lib/videometa';
+  import { copyText } from '../lib/copy';
+
+  type Item = {
+    kind: 'photo' | 'video';
+    view: Blob;
+    thumb: Blob;
+    poster?: Blob;
+    width: number;
+    height: number;
+    durationSec?: number;
+    takenAt: string;
+    takenAtSource: 'exif' | 'file';
+    url: string;
+  };
+  /** 고른 파일 하나. 고르자마자 칸을 만들고(빈 자리) 뒤에서 차례로 준비(줄이기)한다 */
+  type Entry = {
+    key: number;
+    file: File;
+    kind: 'photo' | 'video';
+    /** 준비가 끝나면(성공·실패 모두) 풀린다 */
+    ready: Promise<void>;
+    started?: boolean;
+    /** 뺀 채로 차례가 지나감(되돌리면 다시 줄에 세운다) */
+    passed?: boolean;
+    item?: Item;
+    /** 못 여는 파일 이유(칸에서 빼고 안내) */
+    error?: string;
+    /** ✕로 뺌(되돌리기 전까지) */
+    removed?: boolean;
+    /** 영상 줄이기 진행 0~1 */
+    prog?: number;
+    /** 올리기 중 만든 사진 행. 실패·멈춘 뒤 다시 누르면 같은 행에 이어서 넣는다 */
+    id?: string;
+    done?: boolean;
+    state?: 'sending' | 'fail';
+  };
+  const MB = 1024 * 1024;
+  const MAX_ITEMS = 200;
+  const VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
+  // 영상 원본은 이보다 크면 나눠 올린다(Worker 요청 한도 100MB), 한 편 최대 2GB(lib/media BIG_VIDEO)
+  const SINGLE_MAX = 90 * MB;
+  const VIDEO_MAX = 2048 * MB;
+  // 영상은 폰에서 짧은 변 1080·5Mbps로 줄여 올린다(무료는 사본만, 원본은 폰에 남음)
+  const SHRINK = { side: 1080, bitrate: 5e6 };
+  // shortcut: 줄인 영상을 통째로 메모리에 두므로(아이폰은 탭이 꺼질 수 있음) 3분(약 110MB) 넘는 영상은 원본 그대로 나눠 올린다.
+  // 긴 영상도 줄이려면 StreamTarget(fragmented)으로 만들면서 조각 올리기로 바로 흘려보낸다
+  const SHRINK_MAX_SEC = 180;
+  // 사진(142, 패밀리앨범 기준: 2268×4032 원본 → 같은 해상도 648KB): 해상도는 그대로 두고 긴 쪽 4032까지(48MP는 아이폰 브라우저 캔버스 한도 때문에 줄임), JPEG 0.8
+  // 143: 같은 품질 값도 브라우저마다 결과가 달라(아이폰 사파리 0.8 = 화소당 0.17바이트, 패밀리앨범 0.071) 목표 용량(화소당 0.08바이트)을 넘으면 품질을 낮춰 다시 저장, 0.6이 바닥
+  const PHOTO = { side: 4032, qualities: [0.8, 0.7, 0.6], bytesPerPixel: 0.08 };
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const form = $<HTMLFormElement>('up-form');
+  const input = $<HTMLInputElement>('up-files');
+  const lists = $('up-lists');
+  const grid = $<HTMLUListElement>('up-grid');
+  const sentGrid = $<HTMLUListElement>('up-grid-sent');
+  const status = $<HTMLParagraphElement>('up-status');
+  const buttons = [...form.querySelectorAll<HTMLButtonElement>('#up-actions .sp-p__btn')];
+  const LABEL = Object.fromEntries(buttons.map((b) => [b.value, b.textContent ?? '']));
+  let entries: Entry[] = [];
+  let seq = 0;
+  let busy = false;
+  // 영상 줄이기가 마지막으로 진행된 때(멈춤 감시)
+  let beat = 0;
+  let lastMode = 'share';
+  // 그만 올리기로 멈춘 뒤(막대 안내를 지금 장수로 다시 쓴다)
+  let stopped = false;
+  // 한 번 올리기 시작하면 아이·그룹을 고정(이어 올릴 때 묶음 안에서 공개 범위가 섞이지 않게)
+  let locked: { groupIds: string[]; childIds: string[] } | null = null;
+  const choices = [...form.querySelectorAll<HTMLInputElement>('.sp-p__checkbox')];
+  const NO_GROUP = '보여줄 그룹을 하나 이상 골라 주세요.';
+  const live = () => entries.filter((e) => !e.removed && !e.error);
+  const what = (e: Entry) => (e.kind === 'video' ? '영상' : '사진');
+
+  // 상태 칸은 늘 있고(화면 읽기가 바로 읽게) 비었을 때만 CSS로 숨긴다
+  const say = (text: string) => (status.textContent = text);
+  // 못 올린 안내는 진행 글과 따로 빨간 칸에(role=alert). 고를 때 뺀 파일은 이름·이유 목록
+  const alertBox = $('up-alert');
+  const warn = (head = '', rows: string[] = []) => {
+    if (!head) return alertBox.replaceChildren();
+    const p = document.createElement('p');
+    p.className = 'sp-p__up-alert-head';
+    p.textContent = head;
+    const ul = document.createElement('ul');
+    ul.className = 'sp-p__up-alert-list';
+    // 화면 읽기가 끝없이 읽지 않고 버튼이 밀려나지 않게 10줄까지
+    for (const r of rows.length > 10 ? [...rows.slice(0, 9), `외 ${rows.length - 9}개`] : rows) {
+      const li = document.createElement('li');
+      li.className = 'sp-p__up-alert-item';
+      li.textContent = r;
+      ul.appendChild(li);
+    }
+    alertBox.replaceChildren(p, ...(rows.length ? [ul] : []));
+  };
+  // 그룹을 고르면 '그룹을 골라 주세요'만 지운다(고를 때 뺀 파일 목록 같은 다른 안내는 둔다)
+  for (const c of choices) if (c.name === 'group') c.addEventListener('change', () => alertBox.textContent === NO_GROUP && warn());
+
+  // 캔버스 하나를 돌려쓴다(아이폰은 캔버스 메모리가 금방 찬다)
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingQuality = 'high';
+  async function draw(src: CanvasImageSource, w: number, h: number, max: number, q: number) {
+    const s = fitSize(w, h, max);
+    canvas.width = s.width;
+    canvas.height = s.height;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, s.width, s.height);
+    return { blob: await encode(q), ...s };
+  }
+  const encode = (q: number) => new Promise<Blob>((ok, no) => canvas.toBlob((b) => (b ? ok(b) : no(new Error('encode'))), 'image/jpeg', q));
+  /** 보기용을 그린 뒤 그 결과로 썸네일(원본을 두 번 그리지 않게) */
+  async function viewAndThumb(src: CanvasImageSource, w: number, h: number, viewMax: number) {
+    let small: ImageBitmap | undefined;
+    try {
+      const [first, ...lower] = PHOTO.qualities;
+      const view = await draw(src, w, h, viewMax, first);
+      // 캔버스에 그린 그림 그대로 품질만 낮춰 다시 저장
+      for (const q of lower) {
+        if (view.blob.size <= PHOTO.bytesPerPixel * view.width * view.height) break;
+        view.blob = await encode(q);
+      }
+      small = await createImageBitmap(view.blob);
+      const thumb = await draw(small, small.width, small.height, 480, 0.8);
+      return { view, thumb };
+    } finally {
+      small?.close();
+      canvas.width = canvas.height = 0;
+    }
+  }
+
+  async function photo(file: File): Promise<Item> {
+    // 끌어다 놓기는 아무 파일이나 올 수 있다(종류를 모르는 파일은 열어 보고 판단)
+    if (file.type && !file.type.startsWith('image/')) throw new Error('type');
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const { view, thumb } = await viewAndThumb(bmp, bmp.width, bmp.height, PHOTO.side);
+    const small = Math.max(bmp.width, bmp.height) <= PHOTO.side;
+    bmp.close();
+    const [exif, info] = await Promise.all([photoTakenAt(file).catch(() => null), photoExif(file).catch(() => null)]);
+    // 이미 작은 JPEG(카톡으로 받은 사진 등)는 다시 저장하면 화질만 깎이고 커지기도 한다 → 정보만 뺀 원본이 작거나 같으면 그대로
+    const head = small ? new Uint8Array(await file.slice(0, 2).arrayBuffer()) : null;
+    const jpeg = head?.[0] === 0xff && head[1] === 0xd8; // 앞 2바이트 FF D8(PNG·HEIC는 통째로 안 읽게)
+    const kept = jpeg ? stripJpeg(await file.arrayBuffer()) : null;
+    const useOriginal = kept !== null && kept.byteLength <= view.blob.size;
+    // 찍은 날·기종 등은 위치만 빼고 다시 넣는다(142): 가족이 저장해도 사진첩에 찍은 날로 들어가게
+    const body = useOriginal ? kept : new Uint8Array(await view.blob.arrayBuffer());
+    return {
+      kind: 'photo', view: new Blob([info ? withExif(body, info) : body], { type: 'image/jpeg' }), thumb: thumb.blob, width: view.width, height: view.height,
+      takenAt: exif ?? new Date(file.lastModified).toISOString(), takenAtSource: exif ? 'exif' : 'file',
+      url: URL.createObjectURL(thumb.blob),
+    };
+  }
+
+  /** 이벤트를 기다리되 오래 걸리면 포기(아이폰은 화면 밖 영상 이벤트가 안 올 때가 있다) */
+  const wait = (el: HTMLVideoElement, ev: string, ms = 8000) =>
+    new Promise<void>((ok, no) => {
+      const done = () => (clearTimeout(timer), el.removeEventListener(ev, onOk), el.removeEventListener('error', onErr));
+      const onOk = () => (done(), ok());
+      const onErr = () => (done(), no(new Error('media')));
+      const timer = setTimeout(() => (done(), no(new Error('timeout'))), ms);
+      el.addEventListener(ev, onOk);
+      el.addEventListener('error', onErr);
+    });
+
+  /** 영상을 줄인 mp4. 못 줄이거나(브라우저가 못 함·실패·소리나 화면이 빠짐) 줄일 필요가 없으면 null → 원본 그대로 */
+  async function shrink(file: File, sec: number, progress: (p: number) => void) {
+    if (typeof VideoEncoder !== 'function' || typeof VideoDecoder !== 'function' || !(sec > 0) || sec > SHRINK_MAX_SEC) return null;
+    let input: import('mediabunny').Input | undefined;
+    try {
+      const mb = await import('mediabunny');
+      input = new mb.Input({ source: new mb.BlobSource(file), formats: mb.ALL_FORMATS });
+      const [video, audio] = await Promise.all([input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack()]);
+      if (!video) return null;
+      const [w, h] = await Promise.all([video.getDisplayWidth(), video.getDisplayHeight()]);
+      // 이미 작은 영상은 그대로(다시 줄이면 화질만 나빠진다)
+      if (Math.min(w, h) <= SHRINK.side && (file.size * 8) / sec <= SHRINK.bitrate * 1.2) return null;
+      const scale = Math.min(1, SHRINK.side / Math.min(w, h));
+      const width = Math.round((w * scale) / 2) * 2, height = Math.round((h * scale) / 2) * 2;
+      const output = new mb.Output({ format: new mb.Mp4OutputFormat({ fastStart: 'in-memory' }), target: new mb.BufferTarget() });
+      const conv = await mb.Conversion.init({
+        input, output, tracks: 'primary',
+        // 가로·세로를 둘 다 정해 서버에 적는 크기와 실제 영상 크기를 맞춘다
+        video: { width, height, fit: 'fill', codec: 'avc', bitrate: SHRINK.bitrate },
+        audio: { codec: 'aac' },
+        // 원본 정보 태그(아이폰 찍은 장소 등)는 옮기지 않는다(138 개인정보)
+        tags: {},
+      });
+      if (!conv.isValid || conv.discardedTracks.some((d) => d.track === video || d.track === audio)) return null;
+      beat = Date.now();
+      conv.onProgress = (p) => ((beat = Date.now()), progress(p));
+      // 인코더가 응답 없이 멈추면 그만두고 원본으로. 소리가 먼저 끝난 영상은 남은 화면을 만드는 동안 진행이 안 오르므로
+      // 넉넉히(영상 길이의 3배, 최소 1분) 기다린다. 다른 앱에 다녀오면 다시 센다(visibilitychange)
+      const limit = Math.max(60_000, sec * 3000);
+      const dog = setInterval(() => Date.now() - beat > limit && void conv.cancel(), 5000);
+      try {
+        await conv.execute();
+      } finally {
+        clearInterval(dog);
+      }
+      const buf = output.target.buffer;
+      if (!buf || buf.byteLength >= file.size) return null;
+      return { blob: new Blob([buf], { type: 'video/mp4' }), width, height };
+    } catch {
+      return null;
+    } finally {
+      input?.dispose();
+    }
+  }
+
+  /** 영상 안 촬영 시각: 아이폰 creationdate(시간대 있음, mediabunny가 읽음) → mvhd 만든 시각 → 없으면 null */
+  async function videoTakenAt(file: File): Promise<string | null> {
+    let input: import('mediabunny').Input | undefined;
+    try {
+      const mb = await import('mediabunny');
+      input = new mb.Input({ source: new mb.BlobSource(file), formats: mb.ALL_FORMATS });
+      const d = (await input.getMetadataTags()).date;
+      // 날짜만 적힌 태그(©day '2024' 등)는 자정 UTC가 되어 시각이 틀리므로 mvhd로 넘긴다
+      const t = d?.getTime() ?? NaN;
+      if (plausible(t) && t % 86_400_000 !== 0) return new Date(t).toISOString();
+    } catch {
+      // 못 읽으면 아래 mvhd로
+    } finally {
+      input?.dispose();
+    }
+    return mp4CreatedAt(file).catch(() => null);
+  }
+
+  /** 영상이 어느 단계에서 안 열렸는지(163: 아이폰에서 처음만 안 되는 원인을 찾으려고 안내에 같이 보여 준다) */
+  class VideoError extends Error {
+    /** code: 브라우저가 알려 준 영상 오류 번호(1 중단·2 네트워크·3 디코드·4 지원 안 함) */
+    constructor(readonly step: 'open' | 'seek' | 'thumb' | 'strip', readonly timeout: boolean, readonly ms: number, readonly code?: number) {
+      super('video');
+    }
+    /** 같은 단계·같은 종류로 실패했는지(다시 해도 같음) */
+    same(o: VideoError) {
+      return o.step === this.step && o.timeout === this.timeout && o.code === this.code;
+    }
+    /** sec: 시간 초과일 때 앞에 붙는 말(두 번 다 시간 초과면 '20초·8초 안에') */
+    reason(sec = `${Math.round(this.ms / 1000)}초 안에`) {
+      const code = this.code ? `(${this.code})` : '';
+      return {
+        open: this.timeout ? `${sec} 영상을 못 엶` : `영상을 여는 중 오류${code}`,
+        seek: this.timeout ? `${sec} 첫 장면으로 못 넘김` : `첫 장면으로 넘기는 중 오류${code}`,
+        thumb: '미리보기 그림을 못 만듦',
+        // 이 단계에서 실제로 나는 실패는 파일 읽기(줄이기·찍은 날 읽기는 같은 실패를 조용히 넘김)
+        strip: '파일을 끝까지 못 읽음',
+      }[this.step];
+    }
+  }
+  /** ms: 첫 장면 기다림(처음 20초, 저절로 다시 할 때는 8초 — 정말 깨진 파일이면 안내가 너무 늦지 않게) */
+  async function video(file: File, progress: (p: number) => void, ms = 20_000): Promise<Item> {
+    if (!VIDEO_TYPES.includes(file.type)) throw new Error('type');
+    if (file.size > VIDEO_MAX) throw new Error('too_large');
+    const v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    // 첫 장면이 실제로 디코딩돼야 그릴 수 있다(아이폰은 metadata만으론 검은 화면)
+    v.preload = 'auto';
+    const src = URL.createObjectURL(file);
+    let step: VideoError['step'] = 'open';
+    try {
+      v.src = src;
+      // 아이폰은 큰 .mov를 처음 열 때 첫 장면이 늦게 나와 8초로는 모자란다(162: 처음엔 실패, 다시 고르면 됨)
+      await wait(v, 'loadeddata', ms);
+      step = 'seek';
+      v.currentTime = Math.min(0.1, v.duration / 2 || 0);
+      await wait(v, 'seeked', ms);
+      step = 'thumb';
+      const { view: poster, thumb } = await viewAndThumb(v, v.videoWidth, v.videoHeight, 1280);
+      const { duration, videoWidth, videoHeight } = v;
+      // 줄이는 동안 영상 칸이 같은 영상을 따로 풀고 있지 않게 비운다(아이폰 메모리)
+      release(v);
+      const [small, taken] = await Promise.all([shrink(file, duration, progress), videoTakenAt(file)]);
+      step = 'strip';
+      return {
+        // 줄였든 원본이든 찍은 장소는 지우고 올린다(138 개인정보, 사진은 그리기·stripJpeg로 이미 지움)
+        kind: 'video', view: await stripVideoLocation(small?.blob ?? file), poster: poster.blob, thumb: thumb.blob,
+        width: small?.width ?? videoWidth, height: small?.height ?? videoHeight,
+        durationSec: Math.round(duration * 100) / 100,
+        // 파일 안 시각은 DB 출처 값 중 'exif'로 적는다
+        takenAt: taken ?? new Date(file.lastModified).toISOString(), takenAtSource: taken ? 'exif' : 'file',
+        url: URL.createObjectURL(thumb.blob),
+      };
+    } catch (err) {
+      // 영상 오류 번호는 칸을 비우기 전에 읽는다
+      throw new VideoError(step, err instanceof Error && err.message === 'timeout', ms, v.error?.code);
+    } finally {
+      // 실패해도 영상 칸을 비운다(다시 할 때 앞 칸이 디코더·메모리를 쥐고 있지 않게)
+      release(v);
+      URL.revokeObjectURL(src);
+    }
+  }
+  const release = (v: HTMLVideoElement) => {
+    if (!v.hasAttribute('src')) return;
+    v.removeAttribute('src');
+    v.load();
+  };
+
+  /** 칸 하나. 준비 전은 빈 자리, 올린 것은 흐리게 ✓, 보내기 전·남은 것은 ✕ */
+  function cell(e: Entry) {
+    const li = document.createElement('li');
+    li.className = 'sp-p__upcell';
+    li.dataset.key = String(e.key);
+    if (e.item) {
+      const img = document.createElement('img');
+      img.className = 'sp-p__upimg';
+      img.src = e.item.url;
+      img.alt = '';
+      li.appendChild(img);
+    } else {
+      li.classList.add('sp-p__upcell--wait');
+      li.appendChild(Object.assign(document.createElement('span'), { className: 'sp-vh sp-p__upcell-name' }));
+    }
+    paint(e, li);
+    return li;
+  }
+  const TAG = { sending: '올리는 중', fail: '못 올림' } as const;
+  /** 칸 표시(이름·✓·✕·상태 글)만 바꾼다. 사진(img)은 그대로 둬서 아이폰에서 깜빡이지 않게 */
+  function paint(e: Entry, li = lists.querySelector<HTMLLIElement>(`[data-key="${e.key}"]`)) {
+    if (!li) return;
+    const n = live().indexOf(e) + 1;
+    const state = e.done ? '올림' : e.state ? TAG[e.state] : e.item ? '' : '준비 중';
+    const name = `${n}번째 ${what(e)}${state ? `, ${state}` : ''}`;
+    const img = li.querySelector('img');
+    if (img) img.alt = name;
+    else li.querySelector('.sp-p__upcell-name')!.textContent = name;
+    li.classList.toggle('sp-p__upcell--sent', !!e.done);
+    li.querySelector('.sp-p__uptag')?.remove();
+    li.querySelector('.sp-p__upcheck')?.remove();
+    li.querySelector('.sp-p__upx')?.remove();
+    if (e.done) {
+      const c = document.createElement('span');
+      c.className = 'sp-p__upcheck';
+      c.setAttribute('aria-hidden', 'true');
+      c.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>';
+      li.appendChild(c);
+    } else if (e.state) {
+      const t = document.createElement('span');
+      t.className = `sp-p__uptag sp-p__uptag--${e.state}`;
+      t.setAttribute('aria-hidden', 'true');
+      t.textContent = TAG[e.state];
+      li.appendChild(t);
+    }
+    if (!e.done && !busy) {
+      // 누르는 자리 44px는 칸 안, 보이는 동그라미는 오른쪽 위
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'sp-p__upx';
+      x.dataset.x = String(e.key);
+      x.setAttribute('aria-label', `${n}번째 ${what(e)} 빼기`);
+      x.innerHTML = '<span class="sp-p__upx-dot" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg></span>';
+      li.appendChild(x);
+    }
+  }
+
+  function render() {
+    const all = live();
+    const sent = all.filter((e) => e.done);
+    const left = all.filter((e) => !e.done);
+    // 멈추거나 실패해 일부만 올린 뒤: 남은 것·올린 것 두 묶음
+    const split = !busy && sent.length > 0 && left.length > 0;
+    lists.hidden = all.length === 0;
+    $('up-title').textContent = all.length ? `${all.some((e) => e.kind === 'video') ? '사진·영상' : '사진'} ${all.length}장` : '사진 올리기';
+    $('up-pick-text').textContent = all.length ? '사진·영상 더 고르기' : '사진·영상 고르기';
+    $('up-pick').classList.toggle('sp-p__pick--big', !all.length);
+    const leftTitle = $('up-left-title');
+    const sentTitle = $('up-sent-title');
+    leftTitle.hidden = sentTitle.hidden = sentGrid.hidden = !split;
+    leftTitle.textContent = `남은 ${left.some((e) => e.kind === 'video') ? '사진·영상' : '사진'} ${left.length}장`;
+    sentTitle.replaceChildren(`이미 올린 ${sent.some((e) => e.kind === 'video') ? '사진·영상' : '사진'} ${sent.length}장 `, Object.assign(document.createElement('span'), { className: 'sp-p__upgroup-sub', textContent: '· 가족 앨범에 보여요' }));
+    grid.setAttribute('aria-label', split ? leftTitle.textContent : '고른 사진');
+    grid.replaceChildren(...(split ? left : all).map(cell));
+    sentGrid.replaceChildren(...(split ? sent : []).map(cell));
+    const rest = sent.length > 0 && left.length > 0 ? `나머지 ${left.length}장 ` : '';
+    // 남은 걸 다 빼면: 올린 것으로 카톡 주소만 만들거나 앨범으로
+    const onlySent = sent.length > 0 && left.length === 0;
+    for (const b of buttons) {
+      b.textContent = onlySent ? (b.value === 'share' ? '카톡으로 보내기' : '앨범으로') : rest ? (b.value === 'share' ? `${rest}올리고 카톡으로 보내기` : `${rest}올리기만`) : LABEL[b.value];
+      b.disabled = busy || all.length === 0;
+      if (b.value === 'only') onlySent ? b.removeAttribute('aria-describedby') : b.setAttribute('aria-describedby', 'up-only-hint');
+    }
+    $('up-only-hint').hidden = onlySent;
+    if (stopped) say(left.length ? `${sent.length}장까지 올렸어요. 남은 ${left.length}장은 아래 버튼으로 이어서 올려요. 아이·그룹은 처음 고른 그대로예요.` : sent.length ? `${sent.length}장을 올렸어요. 카톡으로 보내면 가족이 바로 알 수 있어요.` : '');
+    input.disabled = busy || !!locked;
+    choices.forEach((c) => (c.disabled = busy || !!locked));
+  }
+
+  // ✕로 빼기·되돌리기(마지막 한 장). 되돌리기 알림은 6초 뒤, 또는 다음 동작에 사라진다
+  const undoBox = $('up-undo');
+  let undone: Entry | null = null;
+  let undoTimer: ReturnType<typeof setTimeout> | undefined;
+  const hideUndo = () => {
+    clearTimeout(undoTimer);
+    const had = undoBox.contains(document.activeElement);
+    undoBox.hidden = true;
+    $('up-undo-text').textContent = '';
+    // 되돌릴 수 없게 됐으니 뺀 사진의 썸네일 주소·줄인 파일을 놓는다(아이폰 메모리)
+    if (undone?.item) URL.revokeObjectURL(undone.item.url), (undone.item = undefined);
+    undone = null;
+    if (had) (lists.querySelector<HTMLElement>('.sp-p__upx') ?? input).focus();
+  };
+  lists.addEventListener('click', (ev) => {
+    const x = (ev.target as Element).closest<HTMLButtonElement>('.sp-p__upx');
+    const e = x && entries.find((it) => String(it.key) === x.dataset.x);
+    if (!e || busy || e.done) return;
+    if (undone && undone !== e) hideUndo();
+    e.removed = true;
+    undone = e;
+    warn();
+    render();
+    $('up-undo-text').textContent = '1장 뺐어요';
+    undoBox.hidden = false;
+    clearTimeout(undoTimer);
+    // 지운 칸 대신 되돌리기로 초점(키보드·화면 읽기가 길을 잃지 않게). 6초 뒤 닫히면 초점은 칸의 ✕로
+    $('up-undo-btn').focus();
+    undoTimer = setTimeout(hideUndo, 6000);
+  });
+  $('up-undo-btn').addEventListener('click', () => {
+    const e = undone;
+    undone = null;
+    hideUndo();
+    if (!e || busy) return;
+    if (live().length >= MAX_ITEMS) return warn(`한 묶음에 ${MAX_ITEMS}장까지라 되돌릴 수 없어요.`);
+    e.removed = false;
+    // 빼 둔 동안 차례가 지나가 준비하지 못했으면 다시 줄에 세운다(아직 줄에 있으면 그대로)
+    if (e.passed) {
+      e.passed = false;
+      prepare(e);
+    }
+    render();
+    lists.querySelector<HTMLElement>(`[data-key="${e.key}"] .sp-p__upx`)?.focus();
+  });
+
+  // PC: 사진을 고르기 칸에 끌어다 놓아도 고른 것과 같게
+  const pick = $<HTMLLabelElement>('up-pick');
+  // 고르기 칸 밖에 떨어뜨려도 브라우저가 파일을 열고 이 화면을 떠나지 않게
+  for (const t of ['dragover', 'drop']) window.addEventListener(t, (e) => e.preventDefault());
+  const canDrop = () => !busy && !input.disabled;
+  pick.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = canDrop() ? 'copy' : 'none';
+    pick.classList.toggle('sp-p__pick--over', canDrop());
+  });
+  pick.addEventListener('dragleave', () => pick.classList.remove('sp-p__pick--over'));
+  pick.addEventListener('drop', (e) => {
+    e.preventDefault();
+    pick.classList.remove('sp-p__pick--over');
+    if (!e.dataTransfer?.files.length || !canDrop()) return;
+    input.files = e.dataTransfer.files;
+    input.dispatchEvent(new Event('change'));
+  });
+  // 줄이거나 올리는 동안 화면이 꺼지면 멈출 수 있어 켜 둔다(안 되는 브라우저는 그냥 둔다). 응답을 기다리지 않는다(헤드리스 등에서 끝나지 않을 수 있음)
+  let awake: Promise<WakeLockSentinel | undefined> | undefined;
+  const keepAwake = () => (awake ??= navigator.wakeLock?.request('screen').catch(() => undefined));
+  const letSleep = () => {
+    awake?.then((l) => l?.release()).catch(() => undefined);
+    awake = undefined;
+  };
+  // 다른 앱에 다녀오면 브라우저가 풀어 버리므로 다시 건다
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    beat = Date.now();
+    if (awake) {
+      awake = undefined;
+      keepAwake();
+    }
+  });
+  // 준비(줄이기)는 한 줄로 하나씩(캔버스·영상 인코더를 돌려쓴다). 고르자마자 칸을 만들고, 끝난 것부터 채운다
+  let chain: Promise<void> = Promise.resolve();
+  let pending = 0;
+  let skipped: string[] = [];
+  // 200장을 넘어 뺀 개수(목록에는 한 줄로만 들어가므로 머리글 개수는 따로 센다)
+  let overN = 0;
+  /** 레이어가 기다리는 영상 줄이기 진행을 알린다(올리는 중일 때만 쓴다) */
+  let onPrep: ((e: Entry) => void) | null = null;
+  const why = (err: unknown) =>
+    err instanceof Error && err.message === 'type' ? '지원하지 않는 형식' : err instanceof Error && err.message === 'too_large' ? '2GB 넘는 영상' : '열 수 없는 파일';
+  function prepare(e: Entry) {
+    pending++;
+    e.ready = chain = chain.then(async () => {
+      try {
+        if (e.started) return;
+        if (e.removed) return void (e.passed = true);
+        e.started = true;
+        if (e.kind === 'video') keepAwake();
+        try {
+          const load = (ms?: number) => (e.kind === 'video' ? video(e.file, (p) => ((e.prog = p), onPrep?.(e)), ms) : photo(e.file));
+          let first: VideoError | undefined;
+          try {
+            e.item = await load();
+          } catch (err) {
+            // 영상이 열리지 않으면 한 번 더(처음엔 안 되고 다시 하면 되는 아이폰 사례, 162). 형식·크기 문제는 다시 해도 같으므로 그대로
+            if (!(err instanceof VideoError)) throw err;
+            first = err;
+            try {
+              e.item = await load(8000);
+            } catch (again) {
+              // 안내에 멈춘 단계를 붙인다(163, 두 번 다른 단계면 둘 다)
+              const f = first;
+              (again as Error & { detail?: string }).detail = !(again instanceof VideoError)
+                ? `처음: ${f.reason()}`
+                : again.same(f)
+                  ? `${f.reason(`${Math.round(f.ms / 1000)}초·${Math.round(again.ms / 1000)}초 안에`)}, 다시 해도 같음`
+                  : `처음: ${f.reason()} / 다시: ${again.reason()}`;
+              throw again;
+            }
+          }
+        } catch (err) {
+          e.error = why(err);
+          const detail = (err as { detail?: string } | null)?.detail;
+          if (!e.removed) {
+            skipped.push(`${e.file.name} · ${e.error}${detail ? `(${detail})` : ''}`);
+            warn(`${skipped.length - (overN ? 1 : 0) + overN}개는 올릴 수 없어서 뺐어요.`, skipped);
+          }
+        }
+        // 줄이는 동안 빼고 되돌리기 기간도 지났으면 줄인 파일·썸네일을 바로 놓는다(아이폰 메모리)
+        if (e.removed && e !== undone && e.item) URL.revokeObjectURL(e.item.url), (e.item = undefined);
+        // 다 준비된 칸만 바꿔 끼운다(나머지 칸의 사진은 그대로)
+        if (!e.removed) {
+          const old = lists.querySelector(`[data-key="${e.key}"]`);
+          if (e.error) render();
+          else if (old) old.replaceWith(cell(e));
+        }
+      } finally {
+        pending--;
+        if (!pending && !busy) letSleep();
+      }
+    });
+  }
+  input.addEventListener('change', () => {
+    if (busy) return;
+    const all = [...(input.files ?? [])];
+    if (!all.length) return;
+    const files = all.slice(0, Math.max(0, MAX_ITEMS - live().length));
+    const over = all.length - files.length;
+    hideUndo();
+    if (!pending) (skipped = []), (overN = 0);
+    if (over) {
+      if (overN) skipped.shift();
+      overN += over;
+      skipped.unshift(`뒤의 ${overN}개 · 한 묶음에 ${MAX_ITEMS}장까지`);
+    }
+    if (skipped.length) warn(`${skipped.length - (overN ? 1 : 0) + overN}개는 올릴 수 없어서 뺐어요.`, skipped);
+    else warn();
+    for (const f of files) {
+      const e: Entry = { key: ++seq, file: f, kind: f.type.startsWith('video/') ? 'video' : 'photo', ready: Promise.resolve() };
+      entries.push(e);
+      prepare(e);
+    }
+    input.value = '';
+    render();
+  });
+
+  class HttpError extends Error {
+    constructor(readonly status: number) {
+      super(String(status));
+    }
+  }
+  async function api<T>(url: string, init: RequestInit): Promise<T> {
+    const r = await fetch(url, init);
+    if (!r.ok) throw new HttpError(r.status);
+    return r.json() as Promise<T>;
+  }
+  // signal: '그만 올리기'를 누르면 지금 보내던 요청을 끊는다
+  const put = async (id: string, part: string, blob: Blob, progress?: (done: number) => void, signal?: AbortSignal) =>
+    part === 'view' && blob.size > SINGLE_MAX
+      ? putBig(id, blob, progress, signal)
+      : (await api<{ key: string }>(`/api/media/${id}/${part}`, { method: 'PUT', body: blob, headers: { 'content-type': blob.type || 'application/octet-stream' }, signal })).key;
+
+  // 큰 영상: 조각마다 보내고(실패한 조각은 두 번까지 다시) 끝에 합친다. 그만두면 올리던 조각은 버린다
+  async function putBig(id: string, blob: Blob, progress?: (done: number) => void, signal?: AbortSignal): Promise<string> {
+    const url = `/api/media/${id}/multipart`;
+    const json = { 'content-type': 'application/json' };
+    const { key, uploadId, partSize } = await api<{ key: string; uploadId: string; partSize: number }>(url, {
+      method: 'POST', headers: json, body: JSON.stringify({ action: 'create', type: blob.type, size: blob.size }), signal,
+    });
+    try {
+      const parts: { partNumber: number; etag: string }[] = [];
+      for (let n = 1, at = 0; at < blob.size; n++, at += partSize) {
+        const q = new URLSearchParams({ key, upload: uploadId, n: String(n) });
+        for (let tries = 0; ; tries++) {
+          try {
+            const { etag } = await api<{ etag: string }>(`${url}?${q}`, { method: 'PUT', body: blob.slice(at, at + partSize), headers: { 'content-type': 'application/octet-stream' }, signal });
+            parts.push({ partNumber: n, etag });
+            break;
+          } catch (err) {
+            if (signal?.aborted || tries >= 2 || (err instanceof HttpError && err.status !== 400 && err.status < 500)) throw err;
+          }
+        }
+        progress?.(Math.min(1, (at + partSize) / blob.size));
+      }
+      return (await api<{ key: string }>(url, { method: 'POST', headers: json, body: JSON.stringify({ action: 'complete', key, uploadId, parts }), signal })).key;
+    } catch (err) {
+      fetch(url, { method: 'POST', headers: json, body: JSON.stringify({ action: 'abort', key, uploadId }) }).catch(() => {});
+      throw err;
+    }
+  }
+
+  // 오래된 사파리는 e.submitter가 없어 누른 버튼을 따로 기억한다
+  buttons.forEach((b) => b.addEventListener('click', () => (lastMode = b.value)));
+
+  // 막대 높이가 안내·알약에 따라 바뀌므로 아래 여백을 실제 높이로(마지막 칸이 막대 밑에 숨지 않게)
+  const page = form.closest<HTMLElement>('.sp-p');
+  const barEl = $('up-actions');
+  if (page && 'ResizeObserver' in window)
+    new ResizeObserver(() => {
+      const h = barEl.offsetHeight;
+      page.style.setProperty('--savebar-h', `${h}px`);
+      document.documentElement.style.scrollPaddingBottom = getComputedStyle(barEl).position === 'fixed' ? `${h + 16}px` : '';
+    }).observe(barEl);
+
+  // 올리는 중 레이어
+  const layer = $<HTMLDialogElement>('up-layer');
+  const run = $('up-l-run');
+  const ask = $('up-l-ask');
+  const bar = $<HTMLProgressElement>('up-bar');
+  const pct = (f: number) => Math.max(0, Math.min(100, Math.floor(f * 100)));
+  let nowText = '';
+  /** 지금 하는 일 한 줄: 화면 읽기가 계속 읽지 않게 바뀔 때만, 퍼센트는 10% 단위 */
+  const now = (text: string, p?: number) => {
+    const t = p === undefined ? text : `${text} · ${p >= 1 ? 100 : Math.floor(pct(p) / 10) * 10}%`;
+    if (t !== nowText) $('up-l-now').textContent = nowText = t;
+  };
+  // 전체 수는 지금 올릴 수 있는 장수(줄이다 못 연 파일은 빠진다)
+  const count = (done: number, total: number, part = 0) => {
+    const t = `${done} / ${total}`;
+    if ($('up-l-count').textContent !== t) $('up-l-count').textContent = t;
+    bar.value = pct((done + part) / Math.max(1, total));
+  };
+  const showStep = (which: 'run' | 'ask') => {
+    run.hidden = which !== 'run';
+    ask.hidden = which !== 'ask';
+    layer.setAttribute('role', which === 'ask' ? 'alertdialog' : 'dialog');
+    layer.setAttribute('aria-labelledby', which === 'ask' ? 'up-l-ask-title' : 'up-l-title');
+    if (which === 'ask') layer.setAttribute('aria-describedby', 'up-l-ask-text');
+    else layer.removeAttribute('aria-describedby');
+    $(which === 'ask' ? 'up-l-ask-title' : 'up-l-title').focus();
+  };
+  let halted = false;
+  let ctrl = new AbortController();
+  let haltNow: () => void = () => {};
+  const askStop = () => {
+    const all = live();
+    const sent = all.filter((e) => e.done).length;
+    const left = all.length - sent;
+    $('up-l-ask-text').textContent = `${sent ? `지금까지 올린 ${sent}장은 가족 앨범에 남아요. ` : ''}남은 ${left}장은 나중에 이어서 올릴 수 있어요.`;
+    showStep('ask');
+  };
+  $('up-l-stop').addEventListener('click', askStop);
+  // Esc도 바로 닫지 않고 한 번 묻는다
+  layer.addEventListener('cancel', (ev) => {
+    ev.preventDefault();
+    if (!ask.hidden) showStep('run');
+    else askStop();
+  });
+  $('up-l-go').addEventListener('click', () => showStep('run'));
+  $('up-l-halt').addEventListener('click', () => {
+    halted = true;
+    ctrl.abort();
+    haltNow();
+  });
+  const HALT = new Error('halt');
+  let layerOn = false;
+  const closeLayer = () => {
+    layerOn = false;
+    if (layer.open) layer.close();
+  };
+  layer.addEventListener('close', () => {
+    if (!layerOn) return;
+    const asking = !ask.hidden;
+    layer.showModal();
+    if (asking) askStop();
+    else showStep('run');
+  });
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    if (busy) return;
+    const mode = (ev.submitter as HTMLButtonElement | null)?.value ?? lastMode;
+    // 실패하면 누른 버튼으로 포커스를 돌려준다(누르는 순간 잠겨 포커스가 빠진다)
+    const pressed = buttons.find((b) => b.value === mode);
+    const { groupIds, childIds } = locked ?? {
+      groupIds: choices.filter((x) => x.name === 'group' && x.checked).map((x) => x.value),
+      childIds: choices.filter((x) => x.name === 'child' && x.checked).map((x) => x.value),
+    };
+    if (!groupIds.length) return warn(NO_GROUP);
+    warn();
+    say('');
+    hideUndo();
+    const all = live();
+    if (all.length && all.every((e) => e.done)) {
+      if (mode !== 'share') return location.assign('/home');
+      return share(groupIds);
+    }
+    stopped = false;
+    // 지난번 못 올림 표시는 지우고 다시(이어 올리는 동안 남은 칸이 실패로 보이지 않게)
+    for (const e of all) if (e.state === 'fail') e.state = undefined;
+    locked = { groupIds, childIds };
+    busy = true;
+    halted = false;
+    ctrl = new AbortController();
+    const stop = new Promise<never>((_, no) => (haltNow = () => no(HALT)));
+    stop.catch(() => {});
+    keepAwake();
+    render();
+    showStep('run');
+    count(all.filter((e) => e.done).length, live().length);
+    now('');
+    layerOn = true;
+    layer.showModal();
+    showStep('run');
+    try {
+      for (const [n, e] of all.entries()) {
+        if (e.done) continue;
+        if (halted) throw HALT;
+        const label = `${n + 1}번째 ${what(e)}`;
+        const sent = () => all.filter((x) => x.done).length;
+        // 아직 줄이는 중이면 기다린다(영상은 줄이는 진행을 같이 보여 준다)
+        if (!e.item && !e.error) {
+          onPrep = (x) => x === e && now(`${label} 줄이는 중`, x.prog ?? 0);
+          // 퍼센트는 줄이기가 실제로 진행을 알릴 때만(줄이지 못하는 폰은 원본 그대로라 퍼센트 없음)
+          now(`${label} ${e.kind === 'video' ? '줄이는 중' : '준비 중'}`, e.prog);
+          await Promise.race([e.ready, stop]);
+          onPrep = null;
+        }
+        if (e.error || e.removed || !e.item) continue;
+        const it = e.item;
+        e.state = 'sending';
+        paint(e);
+        now(`${label} 올리는 중`);
+        const signal = ctrl.signal;
+        e.id ??= (
+          await api<{ id: string }>('/api/media', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              familyId: form.dataset.family, kind: it.kind, takenAt: it.takenAt, takenAtSource: it.takenAtSource,
+              width: it.width, height: it.height, durationSec: it.durationSec, groupIds, childIds,
+            }),
+            signal,
+          })
+        ).id;
+        try {
+          const keys: Record<string, string> = {
+            view: await put(e.id, 'view', it.view, (p) => (now(`${label} 올리는 중`, p), count(sent(), live().length, p)), signal),
+          };
+          keys.thumb = await put(e.id, 'thumb', it.thumb, undefined, signal);
+          if (it.poster) keys.poster = await put(e.id, 'poster', it.poster, undefined, signal);
+          await api(`/api/media/${e.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(keys), signal });
+        } catch (err) {
+          // 지난번에 완료까지 됐는데 응답만 못 받았으면: 이제 '올리는 중'이 아니라 404·409. 끝난 것으로 본다
+          if (!(err instanceof HttpError && (err.status === 404 || err.status === 409))) throw err;
+        }
+        e.done = true;
+        e.state = undefined;
+        paint(e);
+        count(sent(), live().length);
+      }
+      // 준비하다 못 연 파일만 남았으면 올린 게 없다
+      if (!all.some((e) => e.done)) throw new Error('nothing');
+    } catch (err) {
+      onPrep = null;
+      letSleep();
+      busy = false;
+      if (!live().some((x) => x.id)) locked = null;
+      closeLayer();
+      for (const e of all) if (e.state === 'sending') e.state = undefined;
+      const n = live().filter((x) => x.done).length;
+      const left = live().length - n;
+      // 그만 올리기: 올린 것은 남기고 나머지는 나눠 보여 준다
+      if (halted) {
+        stopped = n > 0;
+        render();
+        if (!n) say('올리기를 멈췄어요. 아래 버튼으로 다시 올려요.');
+        pressed?.focus();
+        return;
+      }
+      if (err instanceof Error && err.message === 'nothing') {
+        render();
+        (buttons.find((b) => !b.disabled) ?? input).focus();
+        return;
+      }
+      // 용량이 다 차면 남은 것도 못 올라가므로 모두 못 올림
+      const full = err instanceof HttpError && err.status === 507;
+      for (const e of all) if (!e.done && (full || e === all.find((x) => !x.done && !x.error && !x.removed))) e.state = 'fail';
+      render();
+      const upTo = n ? `${n}장까지 올렸어요. ` : '';
+      warn(
+        err instanceof HttpError && err.status === 401
+          ? `로그인이 풀렸어요. ${upTo}다시 로그인한 뒤 나머지를 올려 주세요.`
+          : err instanceof HttpError && err.status === 507
+          ? `저장 용량 5GB가 다 찼어요. ${upTo}가족은 지금까지 올린 사진을 계속 볼 수 있어요. 안 쓰는 사진·영상을 지우면 그만큼 다시 올릴 수 있어요(영상이 가장 많이 차지해요).`
+          : `${err instanceof TypeError ? '인터넷 연결이 끊겼어요. ' : ''}${n ? `${upTo}다시 누르면 나머지를 이어서 올려요.` : '다시 누르면 처음부터 올려요.'}`,
+      );
+      // 안내를 넣은 뒤 포커스(화면 읽기가 알림과 버튼 이름을 섞어 읽지 않게)
+      pressed?.focus();
+      return;
+    }
+    onPrep = null;
+    letSleep();
+    closeLayer();
+    if (mode !== 'share') return location.assign('/home');
+    await share(groupIds);
+  });
+
+  /** 보낼 주소 만들기: 이번에 올린 것만이 아니라 이 묶음에서 올린 것 모두(멈췄다 이어 올린 것까지) */
+  async function share(groupIds: string[]) {
+    const ids = live().filter((e) => e.done).map((e) => e.id!);
+    say('보낼 주소를 만드는 중…');
+    try {
+      const { url } = await api<{ url: string }>('/api/shares', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ groupIds, mediaIds: ids }),
+      });
+      form.hidden = true;
+      // 막대가 없어졌으니 그 자리 아래 여백도 뺀다
+      form.closest('.sp-p')?.classList.remove('sp-p--savebar', 'sp-p--savebar2');
+      const done = $('up-done');
+      done.hidden = false;
+      $('up-back').textContent = '닫기';
+      $('up-title').textContent = '사진 올리기';
+      $('up-done-title').textContent = `${ids.length}장 다 올렸어요`;
+      const names = choices.filter((c) => c.name === 'group' && groupIds.includes(c.value)).map((c) => c.parentElement?.textContent?.trim() ?? '');
+      // 기본 그룹 하나('가족')면 '가족 가족 앨범'이 되지 않게
+      $('up-done-lead').textContent = `${names.length === 1 && names[0] === '가족' ? '가족' : `${names.join(' · ')} 가족`} 앨범에 보여요. 카톡으로 보내면 바로 알 수 있어요.`;
+      $<HTMLInputElement>('up-link').value = url;
+      $('up-done-title').focus();
+      const text = `${form.dataset.kid} 새 사진 ${ids.length}장이에요. 누르면 볼 수 있어요.`;
+      const tell = (t: string) => ($('up-done-status').textContent = t);
+      const copy = (what: string, ok: string) => copyText($<HTMLInputElement>('up-link'), what, tell, ok);
+      $('up-share').addEventListener('click', () => {
+        // 휴대폰 공유 창(카톡 포함). 카카오 카드 공유는 앱 키를 받은 뒤
+        if (navigator.share) navigator.share({ text, url }).catch(() => undefined);
+        else copy(`${text}\n${url}`, '주소를 복사했어요. 카톡에 붙여 넣어 주세요.');
+      });
+      $('up-copy').addEventListener('click', () => copy(url, '주소를 복사했어요.'));
+    } catch {
+      form.hidden = true;
+      form.closest('.sp-p')?.classList.remove('sp-p--savebar', 'sp-p--savebar2');
+      $('up-noshare').hidden = false;
+      $('up-noshare-title').focus();
+    }
+  }
+</script>

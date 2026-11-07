@@ -1,0 +1,23 @@
+---
+// 운영자 화면 뼈대(164): 넓으면 옆 메뉴 + 본문, 좁으면 위 메뉴 한 줄. 엄빠 화면 토큰·세그먼트·카드 스타일을 같이 쓴다
+import Base from './Base.astro';
+import OpsNav from '../components/OpsNav.astro';
+import '../styles/parent.css';
+import '../styles/ops.css';
+
+interface Props {
+  title: string;
+  current: 'home' | 'families' | 'accounts' | 'media';
+  query: string;
+}
+const { title, current, query } = Astro.props;
+---
+
+<Base title={`${title} · 스위피 운영`}>
+  <div class="sp-o">
+    <OpsNav current={current} query={query} />
+    <main class="sp-o__main">
+      <slot />
+    </main>
+  </div>
+</Base>

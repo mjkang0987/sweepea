@@ -1,0 +1,208 @@
+// 운영자 화면(164) 순수 함수: 기간 읽기, Cloudflare Access 도장 확인, 방문으로 셀 요청 고르기. 부수 효과 없이 단위 검사로 본다
+
+export const PERIODS = { today: '오늘', '7d': '7일', '30d': '30일', '90d': '90일' } as const;
+export type PeriodKey = keyof typeof PERIODS | 'custom';
+export interface Period {
+  key: PeriodKey;
+  /** 직접 고른 기간이 틀려서(거꾸로·미래·400일 넘음) 기본으로 보여 줌 */
+  fixed?: boolean;
+  /** 서울 날짜 YYYY-MM-DD, 끝 포함 */
+  from: string;
+  to: string;
+  days: number;
+}
+const DAYS: Record<keyof typeof PERIODS, number> = { today: 1, '7d': 7, '30d': 30, '90d': 90 };
+/** DB 함수가 받는 최대 길이(sp_ops_*의 400일) */
+export const MAX_DAYS = 400;
+
+const DAY = 86400_000;
+const t = (d: string) => Date.parse(`${d}T00:00:00Z`);
+const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+export const addDays = (d: string, n: number) => iso(t(d) + n * DAY);
+const validDate = (d: string | null): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d) && iso(t(d)) === d;
+
+/** 주소의 ?p= 또는 ?from=&to=. 틀린 값·미래·너무 긴 기간은 기본 7일 */
+export function parsePeriod(q: URLSearchParams, today: string): Period {
+  const from = q.get('from'), to = q.get('to');
+  if (validDate(from) && validDate(to) && from <= to && to <= today && (t(to) - t(from)) / DAY < MAX_DAYS) {
+    return { key: 'custom', from, to, days: (t(to) - t(from)) / DAY + 1 };
+  }
+  const p = q.get('p');
+  const key = p && p in DAYS ? (p as keyof typeof PERIODS) : '7d';
+  const fixed = from !== null || to !== null || (p !== null && !(p in DAYS));
+  return { key, from: addDays(today, 1 - DAYS[key]), to: today, days: DAYS[key], ...(fixed && { fixed }) };
+}
+
+/** 링크에 달고 다닐 기간 주소 조각(기본 7일이면 빈 값) */
+export function periodQuery(p: Period): string {
+  if (p.key === 'custom') return `from=${p.from}&to=${p.to}`;
+  return p.key === '7d' ? '' : `p=${p.key}`;
+}
+export const withPeriod = (path: string, p: Period, extra = '') => {
+  const q = [periodQuery(p), extra].filter(Boolean).join('&');
+  return q ? `${path}?${q}` : path;
+};
+/** 기간 + 달고 다닐 값(정렬·거르기·가족방)으로 주소. 빈 값은 뺀다 */
+export const withKeep = (path: string, p: Period, keep: Record<string, string>) =>
+  withPeriod(path, p, new URLSearchParams(Object.entries(keep).filter(([, v]) => v)).toString());
+
+/** 목록 거르기(174): 이름 → 칸 이름과 고를 값(값 → 보이는 말). 주소 값은 이 값만 받는다 */
+export type FilterSpec = Record<string, { label: string; options: Record<string, string> }>;
+export const OPS_FILTERS = {
+  families: {
+    plan: { label: '요금제', options: { free: '무료', paid: '유료' } },
+    state: { label: '상태', options: { pending: '승인 대기 있음', full: '용량 80% 넘음', closing: '탈퇴 예정' } },
+  },
+  accounts: {
+    provider: { label: '로그인 방식', options: { kakao: '카카오', 'custom:naver': '네이버', google: 'Google', apple: 'Apple', email: '이메일' } },
+    fam: { label: '가족방', options: { yes: '있음', no: '없음' } },
+  },
+  media: {
+    kind: { label: '종류', options: { photo: '사진', video: '영상' } },
+    status: { label: '상태', options: { ready: '올림', uploading: '올리는 중·멈춤' } },
+    by: { label: '올린 사람', options: { parent: '엄빠', device: '가족 기기·알 수 없음' } },
+  },
+} satisfies Record<string, FilterSpec>;
+/** 주소에서 아는 거르기 값만 */
+export const parseFilter = (q: URLSearchParams, spec: FilterSpec): Record<string, string> =>
+  Object.fromEntries(Object.keys(spec).flatMap((k) => (Object.hasOwn(spec[k].options, q.get(k) ?? '') ? [[k, q.get(k)!]] : [])));
+/** 쪽 번호 줄: 첫 쪽·끝 쪽·지금 쪽 앞뒤 1쪽, 사이가 비면 null(…). 1부터. 휴대폰 한 줄(최대 7칸 + 화살표)에 들어가게 */
+export function pageList(cur: number, pages: number): (number | null)[] {
+  const keep = new Set([1, pages, ...[-1, 0, 1].map((d) => cur + d)].filter((n) => n >= 1 && n <= pages));
+  const sorted = [...keep].sort((a, b) => a - b);
+  return sorted.flatMap((n, i) => (i && n - sorted[i - 1] > 1 ? [null, n] : [n]));
+}
+/** 쪽 넘김 o 값(0 ~ 100만) */
+export const parseOffset = (q: URLSearchParams) => Math.max(0, Math.min(1_000_000, Number.parseInt(q.get('o') ?? '0', 10) || 0));
+
+const b64urlBytes = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+const b64urlJson = (s: string) => JSON.parse(new TextDecoder().decode(b64urlBytes(s)));
+
+/** 도장 머리의 열쇠 번호(열쇠를 다시 받을지 정할 때만, 확인은 verifyAccessJwt) */
+export function jwtKid(token: string): string | undefined {
+  try {
+    return (b64urlJson(token.split('.')[0]) as { kid?: string }).kid;
+  } catch {
+    return undefined;
+  }
+}
+
+export interface AccessJwk {
+  kid: string;
+  kty: string;
+  n: string;
+  e: string;
+  alg?: string;
+}
+
+/** Cloudflare Access가 붙여 보내는 도장(Cf-Access-Jwt-Assertion) 확인: RS256 서명, 발급처(팀 주소), 받는 쪽(aud), 기한.
+ *  workers.dev 주소처럼 Access를 안 거친 요청은 도장이 없어서 여기서 막힌다 */
+export async function verifyAccessJwt(token: string | null, o: { team: string; aud: string; keys: AccessJwk[]; nowSec?: number }): Promise<boolean> {
+  if (!token) return false;
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+  try {
+    const head = b64urlJson(parts[0]) as { alg?: string; kid?: string };
+    const body = b64urlJson(parts[1]) as { iss?: string; aud?: string | string[]; exp?: number; nbf?: number };
+    if (head.alg !== 'RS256') return false;
+    const jwk = o.keys.find((k) => k.kid === head.kid);
+    if (!jwk) return false;
+    const key = await crypto.subtle.importKey('jwk', { kty: jwk.kty, n: jwk.n, e: jwk.e, alg: 'RS256', ext: true }, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+    const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64urlBytes(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
+    if (!ok) return false;
+    const now = o.nowSec ?? Date.now() / 1000;
+    const auds = Array.isArray(body.aud) ? body.aud : [body.aud];
+    return body.iss === `https://${o.team}` && auds.includes(o.aud) && typeof body.exp === 'number' && body.exp > now && (body.nbf === undefined || body.nbf <= now + 60);
+  } catch {
+    return false;
+  }
+}
+
+/** 운영자 명단(쉼표로 적은 사용자 id) */
+export const inList = (list: string | undefined, id: string | null) => !!id && (list ?? '').split(',').map((x) => x.trim()).filter(Boolean).includes(id);
+
+// 카톡·검색·메신저 미리보기 봇은 방문으로 세지 않는다
+const BOT = /bot|crawl|spider|scrap|preview|facebookexternalhit|slurp|kakaotalk-scrap|whatsapp|telegram|discord|slack|headless|lighthouse/i;
+export const isBot = (ua: string | null) => !ua || BOT.test(ua);
+
+/** 이 요청을 방문으로 셀까: 가족 링크면 그 단계, 앨범·엄빠 화면이면 'user', 아니면 null(운영·API·사진 전달·로그인 오가기 등) */
+export function visitTarget(method: string, path: string): { kind: 'link'; code: string; step: 'link' | 'link_pw' } | { kind: 'user' } | null {
+  if (method !== 'GET') return null;
+  const m = path.match(/^\/i\/([A-Za-z0-9]{8})(\/password)?\/?$/);
+  if (m) return { kind: 'link', code: m[1], step: m[2] ? 'link_pw' : 'link' };
+  if (/^\/(ops|api|m|auth|login|logout|install|_)(\/|$)/.test(path) || path === '/' || /\.[a-z0-9]+$/i.test(path)) return null;
+  return { kind: 'user' };
+}
+
+/** 방문 기록을 쌓기 시작한 날(0.41.0 배포). 이보다 앞 날짜가 들어간 기간은 안내 */
+export const VISITS_SINCE = '2026-11-04';
+/** 자세한 방문 기록(시각·머문 시간·본 화면, 179)을 쌓기 시작한 날 */
+export const VISIT_LOG_SINCE = '2026-11-05';
+
+/** 숫자 1,234 */
+export const nf = (n: number) => n.toLocaleString('ko-KR');
+/** 가족방 번호 앞 8자리(이름 대신) */
+export const shortId = (id: string) => id.slice(0, 8);
+/** 서울 날짜 → '오늘'·'어제'·'11월 4일' */
+export function dayLabel(day: string | null, today: string): string {
+  if (!day) return '없음';
+  if (day === today) return '오늘';
+  if (day === addDays(today, -1)) return '어제';
+  const [, m, d] = day.split('-').map(Number);
+  return `${m}월 ${d}일`;
+}
+
+/** 자세한 방문 기록(179)에 남길 화면 이름. 주소·사진 번호는 남기지 않고 이름만(처리방침: '본 화면') */
+const SCREENS: [RegExp, string][] = [
+  [/^\/home$/, '앨범'],
+  [/^\/guide$/, '자주 묻는 질문'],
+  [/^\/view\/[^/]+$/, '크게 보기'],
+  [/^\/photo\/[^/]+$/, '사진 정보'],
+  [/^\/photos\/edit$/, '여러 장 고치기'],
+  [/^\/upload$/, '올리기'],
+  [/^\/reactions$/, '알림'],
+  [/^\/kid\/[^/]+$/, '아이 자세히'],
+  [/^\/health\/[^/]+$/, '접종·검진'],
+  [/^\/settings$/, '설정'],
+  [/^\/settings\/avatar$/, '설정 · 내 캐릭터'],
+  [/^\/settings\/text-size$/, '설정 · 글자 크기'],
+  [/^\/settings\/storage$/, '설정 · 저장 용량'],
+  [/^\/settings\/account$/, '설정 · 계정'],
+  [/^\/settings\/children(\/|$)/, '설정 · 아이'],
+  [/^\/settings\/family\/groups(\/|$)/, '설정 · 그룹'],
+  [/^\/settings\/family(\/|$)/, '설정 · 가족'],
+  [/^\/album$/, '가족 앨범'],
+  [/^\/album\/save$/, '골라서 저장'],
+  [/^\/album\/[^/]+$/, '가족 크게 보기'],
+  [/^\/me\/avatar$/, '내 캐릭터'],
+  [/^\/me\/text-size$/, '글자 크기'],
+  [/^\/wait$/, '승인 대기'],
+  [/^\/setup(\/|$)/, '처음 설정'],
+  [/^\/agree$/, '약관 동의'],
+  [/^\/restore$/, '되살리기'],
+  [/^\/join\/[^/]+$/, '함께 관리 초대'],
+  [/^\/goodbye$/, '작별'],
+  [/^\/terms$/, '이용약관'],
+  [/^\/privacy$/, '개인정보 처리방침'],
+];
+export function screenName(path: string): string {
+  const p = path.length > 1 ? path.replace(/\/+$/, '') : path;
+  return SCREENS.find(([re]) => re.test(p))?.[1] ?? '그 밖의 화면';
+}
+
+/** 방문 시각 '오늘 오후 3:12'·'어제 오전 9:05'·'11월 3일 오후 8:40'(서울) */
+export function timeLabel(iso: string, today: string): string {
+  const d = new Date(iso);
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(d);
+  const t = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: 'numeric', minute: '2-digit' }).format(d);
+  return `${dayLabel(day, today)} ${t}`;
+}
+
+/** 머문 시간: 처음 연 시각 ~ 마지막으로 화면을 연 시각. '1분 미만'·'12분'·'1시간 5분' */
+export function stayLabel(from: string, to: string): string {
+  const min = Math.floor((Date.parse(to) - Date.parse(from)) / 60000);
+  if (!(min >= 1)) return '1분 미만';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h ? `${h}시간${m ? ` ${m}분` : ''}` : `${m}분`;
+}

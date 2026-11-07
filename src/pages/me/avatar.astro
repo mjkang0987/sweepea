@@ -1,0 +1,59 @@
+---
+// 내 캐릭터 고르기(110, 디자인 AvatarPick): 가족 기기가 그 가족방의 자기 캐릭터를 고른다(가족방마다 따로, ?f=).
+// 앨범 머리 '내 캐릭터'에서 온다. 스크립트 없이 폼 POST → 같은 화면으로(PRG) + 토스트
+import Family from '../../layouts/Family.astro';
+import Toast from '../../components/Toast.astro';
+import AvatarPick from '../../components/AvatarPick.astro';
+import { BackendError, getBackend } from '../../lib/backend';
+import { currentPass } from '../../lib/pass';
+import { isOpen } from '../../lib/families';
+import { callName } from '../../lib/ko';
+import { initialOf, parseAvatar } from '../../lib/avatar';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const pass = await currentPass(Astro.cookies);
+if (!pass) return Astro.redirect('/');
+const { families } = await getBackend().me(pass);
+const open = families.filter(isOpen);
+if (open.length === 0) return Astro.redirect(families.length ? '/wait' : '/');
+const form = Astro.request.method === 'POST' ? await Astro.request.formData().catch(() => null) : null;
+const f = String(form?.get('f') ?? Astro.url.searchParams.get('f') ?? '');
+const fam = open.find((x) => x.family_id === f) ?? open[0];
+const here = `/me/avatar?f=${fam.family_id}`;
+if (Astro.request.method === 'POST') {
+  const avatar = parseAvatar(form?.get('avatar'));
+  let done = 'error';
+  // 보낸 가족방을 이제 쓸 수 없으면(그사이 막힘·닫힘) 다른 가족방에 저장하지 않는다(리뷰 2026-11-01)
+  if (avatar !== undefined && fam.family_id === f) {
+    try {
+      await getBackend().setMemberAvatar(pass, fam.family_id, avatar);
+      done = 'saved';
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+    }
+  }
+  return Astro.redirect(`${here}&done=${done}`, 303);
+}
+const done = Astro.url.searchParams.get('done');
+const toast = done === 'saved' ? '캐릭터를 저장했어요' : done === 'error' ? '저장하지 못했어요. 다시 눌러 주세요' : null;
+const name = fam.name ?? '';
+const kid = callName(fam.child_name ?? '아이');
+---
+
+<Family title={done === 'error' ? '다시 눌러 주세요 · 내 캐릭터 고르기' : '내 캐릭터 고르기'} bar>
+  {toast && <Toast text={toast} tone={done === 'error' ? 'error' : 'ok'} focus />}
+  <nav class="sp-s__bar" aria-label="뒤로">
+    <a class="sp-s__back" href="/album"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>앨범</a>
+  </nav>
+  <div class="sp-f__head">
+    <h1 class="sp-f__title">내 캐릭터 고르기</h1>
+    <p class="sp-f__lead">{open.length > 1 ? `${kid}네 앨범` : '가족 앨범'}에 내 이름과 함께 보여요</p>
+  </div>
+  <form class="sp-f__form" method="post">
+    <input type="hidden" name="f" value={fam.family_id} />
+    <AvatarPick initial={initialOf(name)} current={fam.avatar ?? null} />
+    <div class="sp-f__bottom sp-f__bottom--fixed">
+      <button class="sp-f__btn" type="submit">저장</button>
+    </div>
+  </form>
+</Family>

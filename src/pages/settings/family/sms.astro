@@ -1,0 +1,81 @@
+---
+// 문자로 공유하기: 누구 폰인지 고르면 그 사람 전용 링크(한 번만 쓰는 문자 링크)와 미리 쓴 문자
+import Parent from '../../../layouts/Parent.astro';
+import { BackendError, getBackend } from '../../../lib/backend';
+import { shareUrl, smsHref } from '../../../lib/familyAdmin';
+import { callName } from '../../../lib/ko';
+import { loadParent } from '../../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const b = getBackend();
+const admin = await b.familyAdmin(a.pass);
+const active = admin.members.filter((m) => m.status === 'active');
+const groupName = (id: string) => admin.groups.find((g) => g.id === id)?.name ?? '가족';
+const kid = callName(a.home.children?.[0]?.name ?? '아이');
+
+let made: { name: string; url: string } | null = null;
+let error: string | null = null;
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData().catch(() => null);
+  const m = active.find((x) => x.id === form?.get('member'));
+  if (!m) error = '누구 폰인지 골라 주세요.';
+  else {
+    try {
+      made = { name: m.display_name, url: shareUrl(Astro.url.origin, await b.createShare(a.pass, [m.group_id], m.id)) };
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+      error = '링크를 만들지 못했어요. 다시 눌러 주세요.';
+    }
+  }
+}
+const message = made && `${made.name}, ${kid} 사진 바로 보시게 주소 보내요. 누르고 '홈 화면에 두기'만 해주세요.\n${made.url}`;
+---
+
+<Parent title={made ? `${made.name}에게 보낼 문자 · 문자로 공유하기` : '문자로 공유하기'} tab="settings" alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0} savebar={!made && active.length > 0}>
+  <div class="sp-p__nav">
+    <a class="sp-p__back" href="/settings/family">가족</a>
+    <h1 class="sp-p__nav-title">문자로 공유하기</h1>
+  </div>
+  <p class="sp-p__lead">내 폰 문자로 설치 링크를 보내요. 내 번호로 가서 할머니도 안심하고 누르실 수 있어요.</p>
+  {error && <p class="sp-p__error" role="alert">{error}</p>}
+  {
+    made ? (
+      <section class="sp-p__card" aria-labelledby="msg-title">
+        <h2 class="sp-p__card-title" id="msg-title">보낼 문자</h2>
+        <p class="sp-p__bubble">{message}</p>
+        <a class="sp-p__btn" href={smsHref(message!)}>문자로 공유하기</a>
+        <p class="sp-p__hint">이 링크는 {made.name} 한 분만, 3일 안에 한 번 쓸 수 있어요.</p>
+        <a class="sp-p__btn sp-p__btn--quiet" href="/settings/family/sms">다른 사람에게 보내기</a>
+      </section>
+    ) : active.length === 0 ? (
+      <section class="sp-p__empty" aria-labelledby="empty-title">
+        <img class="sp-p__empty-kongi" src="/kongi.svg" width="128" height="128" alt="" />
+        <h2 class="sp-p__empty-title" id="empty-title">아직 들어온 가족이 없어요</h2>
+        <p class="sp-p__lead">가족 링크로 한 분이라도 들어오면<br />그분께 전용 링크를 문자로 보낼 수 있어요.</p>
+        <a class="sp-p__btn sp-p__empty-btn" href="/settings/family">가족 링크 보내러 가기</a>
+      </section>
+    ) : (
+      <form class="sp-p__form" method="post">
+        <fieldset class="sp-p__fieldset sp-p__field">
+          <legend class="sp-p__label">누구 폰인가요</legend>
+          <div class="sp-p__radios">
+            {active.map((m, i) => (
+              <label class="sp-p__radio-row">
+                <input class="sp-p__radio" type="radio" name="member" value={m.id} checked={i === 0} />
+                <span class="sp-p__radio-text">
+                  <span class="sp-p__who-name">{m.display_name}</span>
+                  <span class="sp-p__hint">{groupName(m.group_id)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <div class="sp-p__bottom sp-p__savebar">
+          <button class="sp-p__btn" type="submit">링크 만들기</button>
+        </div>
+      </form>
+    )
+  }
+</Parent>

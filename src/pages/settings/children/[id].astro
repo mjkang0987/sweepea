@@ -1,0 +1,62 @@
+---
+// 아이 추가(id=new)·고치기: 이름·생일. 폼 POST + PRG
+import Parent from '../../../layouts/Parent.astro';
+import { BackendError, getBackend } from '../../../lib/backend';
+import { loadParent, seoulToday, validBirth } from '../../../lib/parent';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const a = await loadParent(Astro.cookies);
+if ('redirect' in a) return Astro.redirect(a.redirect);
+const isNew = Astro.params.id === 'new';
+const kids = a.home.children ?? [];
+const kid = isNew ? undefined : kids.find((k) => k.id === Astro.params.id);
+if (!isNew && !kid) return Astro.redirect('/settings/children');
+
+let name = kid?.name ?? '';
+let birth = kid?.birth_date ?? '';
+let e: 'name' | 'birth' | 'limit' | 'error' | null = null;
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  name = String(form.get('name') ?? '').trim();
+  birth = String(form.get('birth') ?? '');
+  if (name.length < 1 || name.length > 12) e = 'name';
+  else if (!validBirth(birth)) e = 'birth';
+  else {
+    try {
+      const b = getBackend();
+      if (kid) await b.updateChild(a.pass, kid.id, name, birth);
+      // 두 번 눌러 같은 아이가 둘 생기지 않게: 이름·생일이 같은 아이가 이미 있으면 넣지 않는다
+      else if (!kids.some((k) => k.name === name && k.birth_date === birth)) await b.addChild(a.pass, a.home.family_id!, name, birth, kids.length === 0 || kids.some((k) => k.show_health));
+      return Astro.redirect(`/settings/children?done=${kid ? 'saved' : 'added'}`, 303);
+    } catch (err) {
+      if (!(err instanceof BackendError)) throw err;
+      e = err.code === '22023' ? 'limit' : 'error';
+    }
+  }
+}
+const errText = { name: '이름을 1~12자로 써 주세요.', birth: '생일을 골라 주세요.', limit: '아이는 10명까지 넣을 수 있어요.', error: '저장하지 못했어요. 다시 눌러 주세요.' };
+const title = kid ? `${kid.name} 정보 변경` : '아이 추가';
+---
+
+<Parent title={e ? `다시 확인해 주세요 · ${title}` : `${title} · 설정`} tab="settings" savebar alerts={a.home.new_activity ?? 0} waiting={a.home.waiting ?? 0}>
+  <div class="sp-p__nav">
+    <a class="sp-p__back" href="/settings/children">아이</a>
+    <h1 class="sp-p__nav-title">{title}</h1>
+  </div>
+  <form class="sp-p__form" method="post">
+    {e && <p class="sp-p__error" role="alert" id="child-err">{errText[e]}</p>}
+    <div class="sp-p__field">
+      <label class="sp-p__label" for="name">이름</label>
+      <input class="sp-p__input" id="name" name="name" type="text" required maxlength="12" autocomplete="off" value={name} aria-invalid={e === 'name' ? 'true' : undefined} aria-describedby={e === 'name' ? 'child-err' : undefined} />
+    </div>
+    <div class="sp-p__field">
+      <label class="sp-p__label" for="birth">생일</label>
+      <input class="sp-p__input" id="birth" name="birth" type="date" required max={seoulToday()} min="2010-01-01" value={birth} aria-invalid={e === 'birth' ? 'true' : undefined} aria-describedby={e === 'birth' ? 'child-err birth-hint' : 'birth-hint'} />
+      <p class="sp-p__hint" id="birth-hint">생일로 월령과 접종·검진 시기를 계산해요.</p>
+    </div>
+    {isNew && <p class="sp-p__card sp-p__lead">새 아이도 같은 앨범에 담겨요. 사진을 올릴 때 누구 사진인지 고를 수 있어요.</p>}
+    <div class="sp-p__bottom sp-p__savebar">
+      <button class="sp-p__btn" type="submit">{kid ? '저장' : '추가'}</button>
+    </div>
+  </form>
+</Parent>

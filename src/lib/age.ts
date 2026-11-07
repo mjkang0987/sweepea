@@ -1,0 +1,106 @@
+/** 생후 개월(달력 기준, 그달 생일이 안 지났으면 한 달 덜). birth·today는 YYYY-MM-DD */
+export function monthsOld(birth: string, today: string): number {
+  const [by, bm, bd] = birth.split('-').map(Number);
+  const [ty, tm, td] = today.split('-').map(Number);
+  return Math.max(0, (ty - by) * 12 + (tm - bm) - (td < bd ? 1 : 0));
+}
+
+/** 자라는 아기 그림 단계 1~9(109, 사용자 2026-11-01): 강보 ~100일 · 누운 ~6개월 · 앉기 ~8개월 · 기기 ~첫돌 · 서기 ~18개월 · 만세 ~2세 · 걸음마 ~3세 · 어린이 ~6세 · 7세~. 태어나기 전은 1 */
+export function kidStage(birth: string, today: string): number {
+  if (today < birth || Math.round((Date.parse(today) - Date.parse(birth)) / 86_400_000) + 1 <= 100) return 1;
+  const m = monthsOld(birth, today);
+  const i = [6, 8, 12, 18, 24, 36, 84].findIndex((end) => m < end);
+  return i < 0 ? 9 : i + 2;
+}
+
+/** 그 아이 나이의 아기 그림 주소. 생일을 모르면 콩이 */
+export const kidImage = (birth: string | null | undefined, today: string) => (birth ? `/kid/${kidStage(birth, today)}.png` : '/kongi.svg');
+
+/** 사진 찍은 날의 나이(크게 보기 날짜 줄 '생후 13개월 · 10월 21일', 디자인 PhotoView). 한 달 전이면 '생후 N일'(백일처럼 난 날이 1일), 태어나기 전이면 null */
+export function photoAge(birth: string, day: string): string | null {
+  if (day < birth) return null;
+  const months = monthsOld(birth, day);
+  return months > 0 ? `생후 ${months}개월` : `생후 ${Math.round((Date.parse(day) - Date.parse(birth)) / 86_400_000) + 1}일`;
+}
+
+/** "2025년 9월 17일" */
+export function birthLabel(birth: string): string {
+  const [y, m, d] = birth.split('-').map(Number);
+  return `${y}년 ${m}월 ${d}일`;
+}
+
+/** 지울 시각까지 남은 시간: "2일 5시간 남았어요", 하루 미만 "5시간 남았어요", 1시간 미만(또는 알 수 없음) "곧 지워져요". 시간은 내림 */
+export function remainingLabel(untilMs: number, nowMs: number): string {
+  const hours = Math.floor((untilMs - nowMs) / 3_600_000);
+  if (!(hours >= 1)) return '곧 지워져요';
+  const d = Math.floor(hours / 24);
+  const h = hours % 24;
+  return `${d ? `${d}일` : ''}${d && h ? ' ' : ''}${h ? `${h}시간` : ''} 남았어요`;
+}
+
+/** 마지막으로 본 때(서울 날짜 기준): "오늘", "어제", "3일 전" */
+export function seenLabel(iso: string, nowMs: number): string {
+  const day = (ms: number) => Date.parse(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(ms)));
+  const days = Math.round((day(nowMs) - day(Date.parse(iso))) / 86_400_000);
+  return days <= 0 ? '오늘' : days === 1 ? '어제' : `${days}일 전`;
+}
+
+/** 지난 시간: "방금", "10분 전", "3시간 전", 하루 넘으면 seenLabel("어제", "3일 전") */
+export function agoLabel(iso: string, nowMs: number): string {
+  const min = Math.floor((nowMs - Date.parse(iso)) / 60_000);
+  if (min < 1) return '방금';
+  if (min < 60) return `${min}분 전`;
+  if (min < 24 * 60) return `${Math.floor(min / 60)}시간 전`;
+  return seenLabel(iso, nowMs);
+}
+
+/** 기념일로 치는 날 수(사용자 2026-10-29 "1000일까지는 백 단위로, 50일 100일 … 1000일, 그다음에는 돌만"). 태어난 날이 1일째 */
+const DAYS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+const DOL = ['첫돌', '두 돌', '세 돌', '네 돌', '다섯 돌', '여섯 돌', '일곱 돌', '여덟 돌', '아홉 돌', '열 돌'];
+
+/** 그날이 기념일이면 짧은 이름("100일", "첫돌", "두 돌"), 아니면 null(앨범 사진 표시·머리 날짜 줄). 날짜는 서울 YYYY-MM-DD
+ * shortcut: 2월 29일생은 평년엔 생일 없음, 필요하면 2월 28일로 */
+export function dayMark(birth: string, day: string): string | null {
+  const n = Math.round((Date.parse(day) - Date.parse(birth)) / 86_400_000) + 1;
+  if (DAYS.includes(n)) return `${n}일`;
+  const years = Number(day.slice(0, 4)) - Number(birth.slice(0, 4));
+  if (years < 1 || day.slice(5) !== birth.slice(5)) return null;
+  return DOL[years - 1] ?? `${years}돌`;
+}
+
+/** 오늘 또는 다음 기념일(아기 자세히 보기, 153): dayMark와 같은 규칙(50~1000일·돌). 날짜는 서울 YYYY-MM-DD, 열 돌까지 */
+export function nextMark(birth: string, today: string): { mark: string; day: string; inDays: number } | null {
+  const DAY = 86_400_000;
+  const b = Date.parse(birth), t = Date.parse(today);
+  const days = DAYS.map((n) => b + (n - 1) * DAY);
+  const [by, bm, bd] = birth.split('-').map(Number);
+  // shortcut: 2월 29일생 돌은 평년엔 dayMark처럼 건너뜀(그 해 2월 29일이 없으면 다음 해로 밀림), 필요하면 2월 28일로
+  const dols = DOL.map((_, i) => Date.UTC(by + i + 1, bm - 1, bd)).filter((ms) => new Date(ms).getUTCDate() === bd);
+  const next = [...days, ...dols].filter((ms) => ms >= t).sort((x, y) => x - y)[0];
+  if (next === undefined) return null;
+  const day = new Date(next).toISOString().slice(0, 10);
+  return { mark: dayMark(birth, day)!, day, inDays: Math.round((next - t) / DAY) };
+}
+
+/** 오늘이 기념일이면 레이어 제목 뒷부분("태어난 지 200일이에요", "첫돌이에요", "두 돌이에요"), 아니면 null */
+export function milestone(birth: string, today: string): string | null {
+  const m = dayMark(birth, today);
+  if (!m) return null;
+  return m.endsWith('일') && /^\d/.test(m) ? `태어난 지 ${m}이에요` : `${m}이에요`;
+}
+
+/** 오늘 나이 'N개월 N일'(앨범 머리, 사용자 2026-10-29 "아기 정보는 항상 노출, N개월 NN일"). 한 달 전이면 'N일', 딱 달이 차면 'N개월'.
+ *  달 생일이 없는 달(31일생의 30일 달)은 그 달 마지막 날을 달 생일로. 태어나기 전이면 null */
+export function ageLabel(birth: string, today: string): string | null {
+  if (today < birth) return null;
+  const [by, bm, bd] = birth.split('-').map(Number);
+  const [ty, tm, td] = today.split('-').map(Number);
+  // 달 수도 같은 규칙으로: 이번 달 생일(없으면 그 달 마지막 날)이 지났으면 한 달 참(1/31생은 2/28에 1개월, 리뷰 2026-10-29)
+  const lastNow = new Date(Date.UTC(ty, tm, 0)).getUTCDate();
+  const m = (ty - by) * 12 + (tm - bm) - (td < Math.min(bd, lastNow) ? 1 : 0);
+  const y = by + Math.floor((bm - 1 + m) / 12), mo = (bm - 1 + m) % 12;
+  const last = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+  const anniv = Date.UTC(y, mo, Math.min(bd, last));
+  const d = Math.round((Date.UTC(ty, tm - 1, td) - anniv) / 86_400_000);
+  return m === 0 ? `${d}일` : d === 0 ? `${m}개월` : `${m}개월 ${d}일`;
+}

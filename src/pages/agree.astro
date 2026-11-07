@@ -1,0 +1,52 @@
+---
+// 약관 동의(152): 가족방이 있는데 지금 약관 동의 기록이 없는 엄빠(기존 가입자·초대받아 들어온 엄빠·약관이 바뀐 뒤)가 오는 곳.
+// loadParent가 여기로 보낸다. 이 화면은 loadParent를 안 써서(돌고 돌지 않게) 직접 확인. 스크립트 없이 폼 POST
+import Parent from '../layouts/Parent.astro';
+import Agree from '../components/Agree.astro';
+import { BackendError, getBackend } from '../lib/backend';
+import { CONSENT, hasAgreed } from '../lib/consent';
+import { currentParent } from '../lib/pass';
+
+Astro.response.headers.set('cache-control', 'private, no-store');
+const pass = await currentParent(Astro.cookies);
+if (!pass) return Astro.redirect('/');
+const b = getBackend();
+const home = await b.parentHome(pass);
+// 처음 설정 전이면 설정 1단계에서 받는다
+if (!home.family_id) return Astro.redirect('/setup');
+// 초대받아 막 들어온 엄빠면 동의 뒤 '함께 관리해요' 안내까지 이어서
+const next = Astro.url.searchParams.get('joined') === '1' ? '/home?joined=1' : '/home';
+if (hasAgreed(home, 'terms')) return Astro.redirect(next);
+// 예전 버전에 동의한 적이 있으면 약관이 바뀐 것(154)
+const changed = (home.agreed ?? []).some((x) => x.startsWith('terms:'));
+let error = false;
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData().catch(() => null);
+  if (form?.get('agree_terms') === '1' && form?.get('agree_privacy') === '1') {
+    try {
+      await b.agree(pass, 'terms', CONSENT.terms);
+      return Astro.redirect(next, 303);
+    } catch (e) {
+      if (!(e instanceof BackendError)) throw e;
+    }
+  }
+  error = true;
+}
+---
+
+<Parent title={error ? '다시 확인해 주세요 · 약관 동의' : '약관 동의'} savebar>
+  <form class="sp-p__form" method="post">
+    <header class="sp-p__head">
+      <h1 class="sp-p__title">{changed ? '약관이 바뀌었어요' : '약관에 동의해 주세요'}</h1>
+      <p class="sp-p__lead">{changed ? "이용약관과 개인정보 처리방침이 바뀌었어요. '보기'로 확인한 뒤 다시 동의해 주세요." : '스위피를 계속 쓰려면 이용약관과 개인정보 처리방침 동의가 필요해요. 한 번만 하면 돼요.'}</p>
+    </header>
+    <Agree from="/agree" error={error} />
+    <div class="sp-p__bottom sp-p__savebar">
+      <button class="sp-p__btn" type="submit">동의하고 계속하기</button>
+    </div>
+  </form>
+  <form class="sp-p__form" method="post" action="/logout">
+    <p class="sp-p__hint">동의하지 않으면 스위피를 쓸 수 없어요. 계정을 지우고 싶으면 <a class="sp-p__fine-link" href="/privacy?from=%2Fagree">개인정보 처리방침</a>의 연락처로 알려 주세요.</p>
+    <button class="sp-p__btn sp-p__btn--text" type="submit">동의하지 않고 로그아웃</button>
+  </form>
+</Parent>

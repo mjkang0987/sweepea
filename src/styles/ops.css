@@ -1,0 +1,759 @@
+/* 운영자 화면(.sp-o, 164). 디자인 OpsHome·OpsFamilies·OpsFamily·OpsHomeMobile. 스위피 토큰 그대로, 콩이·유리 없이 차분하게 */
+.sp-o {
+  /* 넓은 화면에서 오래 보는 표·숫자라 엄빠·가족 화면보다 글자 단계를 한 칸씩 올림(168) */
+  --subhead-size: var(--body-size);
+  --subhead-line: var(--body-line);
+  --footnote-size: 0.9375rem;
+  --footnote-line: 1.25rem;
+  --headline-size: 1.25rem;
+  --headline-line: 1.625rem;
+  box-sizing: border-box;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  word-break: keep-all;
+}
+.sp-o__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) 0 var(--space-5);
+  border-bottom: 1px solid var(--separator);
+  background: var(--bar);
+}
+.sp-o__brand {
+  margin: 0 auto 0 0;
+  font-size: var(--subhead-size);
+  font-weight: 700;
+}
+.sp-o__nav-item {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  color: var(--label-2);
+  font-size: var(--subhead-size);
+  font-weight: 500;
+  text-decoration: none;
+}
+.sp-o__nav-item[aria-current='page'] {
+  color: var(--pea-ink);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--pea-ink);
+}
+.sp-o__main {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: var(--space-5) var(--space-4) 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+@media (min-width: 64rem) {
+  .sp-o {
+    flex-direction: row;
+  }
+  .sp-o__nav {
+    flex: none;
+    width: 13.75rem;
+    box-sizing: border-box;
+    padding: var(--space-6) var(--space-4);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+    border-bottom: 0;
+    border-right: 1px solid var(--separator);
+    background: none;
+  }
+  .sp-o__brand {
+    margin: 0 0 var(--space-4) var(--space-3);
+    font-size: var(--headline-size);
+  }
+  .sp-o__nav-item {
+    border-radius: 10px;
+    color: var(--label);
+  }
+  .sp-o__nav-item[aria-current='page'] {
+    background: var(--pea-tint);
+    color: var(--pea-deep);
+    box-shadow: none;
+  }
+  .sp-o__main {
+    padding: var(--space-8) var(--space-8) 3rem;
+  }
+}
+@media (forced-colors: active) {
+  .sp-o__nav-item[aria-current='page'] {
+    outline: 2px solid CanvasText;
+  }
+}
+
+.sp-o__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.sp-o__head--row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sp-o__title {
+  margin: 0;
+  font-size: var(--large-title-size);
+  line-height: var(--large-title-line);
+  font-weight: var(--large-title-weight);
+  letter-spacing: var(--large-title-tracking);
+  font-variant-numeric: tabular-nums;
+}
+.sp-o__lead {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--label-2);
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-o__sub {
+  margin: 0;
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+}
+.sp-o__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 2.75rem;
+  width: max-content;
+  color: var(--pea-ink);
+  font-size: var(--subhead-size);
+  text-decoration: none;
+}
+
+/* 두 단: 넓으면 본문 + 오른쪽 칸 */
+.sp-o__cols,
+.sp-o__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+@media (min-width: 64rem) {
+  .sp-o__cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22.5rem;
+    align-items: start;
+  }
+  .sp-o__cols--narrow {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+  }
+}
+/* 살펴볼 것은 소스에서 먼저(읽는 순서·Tab 순서도 먼저), 넓은 화면에선 오른쪽 칸으로 */
+@media (min-width: 64rem) {
+  .sp-o__first {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .sp-o__col--main {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}
+
+/* 숫자 카드 */
+.sp-o__stats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+@media (min-width: 64rem) {
+  .sp-o__stats--5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .sp-o__stats--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.sp-o__stats--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.sp-o__stat {
+  min-width: 0;
+  padding: 0.875rem var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+}
+.sp-o__stats--in .sp-o__stat {
+  padding: 0;
+}
+.sp-o__stat-label {
+  order: -1;
+  margin: 0;
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+}
+.sp-o__stat-num {
+  margin: 2px 0 0;
+  font-size: 2.125rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
+}
+.sp-o__stat-prev {
+  margin: 0;
+  color: var(--label-2);
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+
+/* 이름·숫자 줄 */
+.sp-o__kv {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-o__kv-name {
+  color: var(--label);
+}
+.sp-o__kv-val {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sp-o__prev {
+  color: var(--label-2);
+  font-weight: 400;
+}
+.sp-o__big {
+  margin: 0;
+  font-size: 2.125rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 들어오다 멈춘 곳 */
+.sp-o__funnel {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.sp-o__step {
+  display: grid;
+  grid-template-columns: 11rem 1fr 3rem;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-o__step-bar {
+  height: 0.75rem;
+  border-radius: 999px;
+  background: var(--fill);
+  overflow: hidden;
+}
+.sp-o__step-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--pea);
+}
+
+/* 살펴볼 것 */
+.sp-o__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sp-o__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 3.25rem;
+  padding: 0.375rem var(--space-2);
+  border-radius: 10px;
+  color: var(--label);
+  text-decoration: none;
+}
+.sp-o__row:hover {
+  background: var(--fill);
+}
+.sp-o__row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+  font-weight: 500;
+}
+.sp-o__row-meta {
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+  font-weight: 400;
+}
+.sp-o__chev {
+  flex: none;
+}
+
+/* 기간 줄 */
+.sp-o__period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+.sp-o__period-seg {
+  max-width: 100%;
+}
+.sp-o__period-seg .sp-p__seg-item {
+  padding: 0 var(--space-4);
+}
+.sp-o__period-form {
+  flex: 1 1 20rem;
+  max-width: 26rem;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.sp-o__date {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+}
+/* 거르기 칸(.sp-o__select)도 날짜 칸과 같은 모양 */
+.sp-o__date-input,
+.sp-o__select {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  padding: 0 0.625rem;
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--label);
+  font: inherit;
+  font-size: var(--subhead-size);
+}
+/* 휴대폰 폭에선 날짜 칸이 좁아 글자를 한 단계 낮춤(안 그러면 연도가 잘림) */
+@media (max-width: 30rem) {
+  .sp-o__date-input {
+    font-size: var(--footnote-size);
+  }
+}
+.sp-o__date-sep {
+  color: var(--label-2);
+}
+.sp-o__date-go {
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 10px;
+  background: var(--fill);
+  color: var(--label);
+  font: inherit;
+  font-size: var(--subhead-size);
+  font-weight: 600;
+}
+.sp-o__period-note {
+  flex-basis: 100%;
+}
+
+/* 막대 그래프 */
+.sp-o__chart {
+  position: relative;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-o__chart-scroll {
+  overflow-x: auto;
+  direction: rtl;
+  border-radius: 4px;
+}
+.sp-o__chart-inner {
+  direction: ltr;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-o__bars {
+  /* 위 2rem은 말풍선 자리(가장 높은 막대 위에도 뜨게) */
+  margin-top: 2rem;
+  height: 10rem;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+.sp-o__bar {
+  flex: 1;
+  min-width: 12px;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  border-radius: 3px;
+}
+.sp-o__bar:hover {
+  background: var(--fill);
+}
+/* 말풍선: 밀기 칸 바깥(그래프 figure) 오른쪽 위 고정 자리. 밀어 둔 상태에서도 안 잘림, 어느 날인지는 회색 칸·말풍선 앞 날짜 */
+.sp-o__tip {
+  display: none;
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--label);
+  color: var(--bg);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.sp-o__bar:hover .sp-o__tip {
+  display: block;
+}
+/* 스크립트가 있으면 막대 바로 위 말풍선 하나(.sp-o__float)로 */
+.sp-o__chart--js .sp-o__bar:hover .sp-o__tip {
+  display: none;
+}
+.sp-o__float {
+  position: absolute;
+  z-index: 2;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--label);
+  color: var(--bg);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.sp-o__float[hidden] {
+  display: none;
+}
+.sp-o__bar-a,
+.sp-o__bar-b {
+  border-radius: 3px;
+}
+.sp-o__bar-a,
+.sp-o__key-a {
+  background: var(--pea);
+}
+.sp-o__bar-b,
+.sp-o__key-b {
+  /* 두 색(틸·회색)은 밝기 차가 작아서 엄빠 쪽은 속 빈 막대로 모양까지 다르게 */
+  box-shadow: inset 0 0 0 2px var(--label-2);
+}
+.sp-o__chart-ends {
+  display: flex;
+  justify-content: space-between;
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+}
+.sp-o__legend {
+  display: flex;
+  gap: var(--space-4);
+}
+.sp-o__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sp-o__key-a,
+.sp-o__key-b {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+@media (forced-colors: active) {
+  .sp-o__bar-a,
+  .sp-o__key-a {
+    background: Highlight;
+  }
+  .sp-o__bar-b,
+  .sp-o__key-b {
+    box-shadow: inset 0 0 0 2px CanvasText;
+  }
+}
+.sp-o__numbers-open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--pea-ink);
+  font-size: var(--subhead-size);
+  cursor: pointer;
+}
+
+/* 표 */
+.sp-o__table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.sp-o__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--subhead-size);
+  line-height: var(--subhead-line);
+}
+.sp-o__cell {
+  height: 3rem;
+  padding: 0 var(--space-3);
+  text-align: left;
+  white-space: nowrap;
+}
+.sp-o__cell--head {
+  height: 2.75rem;
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+  font-weight: 500;
+}
+.sp-o__cell--row {
+  font-weight: 600;
+}
+/* 방문 기록의 본 화면(179): 길면 줄바꿈(다른 칸은 한 줄) */
+.sp-o__screens {
+  min-width: 16rem;
+  height: auto;
+  padding-block: var(--space-2);
+  white-space: normal;
+  word-break: keep-all;
+}
+.sp-o__tr {
+  border-top: 1px solid var(--separator);
+}
+/* 가족방 목록: 줄 어디를 눌러도 상세로(번호 링크를 줄 전체로 늘림), 올리면 줄이 회색 */
+.sp-o__tr--link {
+  position: relative;
+}
+/* 줄이 아니라 칸마다 칠함(WebKit이 줄 배경을 칸 경계마다 1px 띄워 칠함) */
+.sp-o__tr--link:hover .sp-o__cell,
+.sp-o__tr--link:focus-within .sp-o__cell {
+  background: var(--fill);
+}
+.sp-o__tr--link .sp-o__id::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.sp-o__table--small .sp-o__cell {
+  height: 2.25rem;
+  padding: 0 var(--space-2);
+}
+.sp-o__table--small .sp-o__cell--row {
+  font-weight: 400;
+}
+.sp-o__cell.sp-o__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sp-o__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 2.75rem;
+  color: var(--label-2);
+  text-decoration: none;
+}
+.sp-o__sort[aria-current='true'] {
+  color: var(--pea-ink);
+}
+.sp-o__id {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3rem;
+  color: var(--pea-ink);
+  font-variant-numeric: tabular-nums;
+}
+.sp-o__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--pea-tint);
+  color: var(--pea-deep);
+  font-size: var(--footnote-size);
+  font-weight: 600;
+}
+.sp-o__badge--warn {
+  /* 밝은 화면 --fill 위 빨강은 4.41:1이라 바탕을 --bg로(5.38:1) */
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--separator);
+  color: var(--danger);
+}
+.sp-o__warn {
+  color: var(--danger);
+  font-weight: 600;
+}
+.sp-o__start {
+  text-align: left;
+  font-size: var(--title-2-size);
+  line-height: var(--title-2-line);
+}
+.sp-o__mono {
+  font-variant-numeric: tabular-nums;
+  color: var(--label-2);
+}
+.sp-o__kv--set {
+  /* 이름은 한 줄, 긴 값이 꺾임 */
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+
+/* 카드(엄빠 화면 .sp-p__card)는 운영 화면에서만 안쪽 여백을 넓게 */
+.sp-o .sp-p__card {
+  padding: var(--space-5);
+}
+.sp-o__link {
+  color: var(--pea-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* 계정 목록 가족방 묶음 머리줄(171) */
+.sp-o__cell.sp-o__group {
+  /* --fill 위 틸 링크는 4.5:1이 안 돼서 바탕은 --bg로 */
+  background: var(--bg);
+  font-weight: 600;
+}
+.sp-o__group .sp-o__id {
+  min-height: 2.75rem;
+}
+.sp-o__group-meta {
+  margin-left: var(--space-3);
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+  font-weight: 400;
+}
+/* 숫자 카드 숫자 → 그 목록·칸으로(172). 밑줄로 링크임을 보이고, 카드 전체가 눌리게 */
+.sp-o__stat:has(.sp-o__num-link) {
+  position: relative;
+}
+.sp-o__num-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--label-2);
+}
+.sp-o__num-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+}
+.sp-o__stat:has(.sp-o__num-link):hover {
+  background: var(--fill);
+}
+.sp-o__num-link:hover {
+  text-decoration-color: currentColor;
+}
+.sp-o .sp-p__card-title {
+  /* 숫자 카드에서 #칸으로 갈 때 제목이 화면 끝에 붙지 않게 */
+  scroll-margin-top: var(--space-5);
+}
+/* 목록 거르기 줄·쪽 넘기기(174, OpsFilter·OpsPager) */
+.sp-o__filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.sp-o__filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 8rem;
+}
+.sp-o__filter-label {
+  color: var(--label-2);
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line);
+}
+.sp-o__filter-clear {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--pea-ink);
+  font-size: var(--subhead-size);
+}
+.sp-o__pager {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+.sp-o__pages {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+.sp-o__page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  padding: 0 var(--space-1);
+  border-radius: 10px;
+  color: var(--label);
+  font-size: var(--subhead-size);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+/* 번호 링크만(지금 쪽·…·비활성 빼고) */
+.sp-o__page--link:hover {
+  background: var(--fill);
+}
+.sp-o__page--now {
+  background: var(--label);
+  color: var(--bg);
+}
+.sp-o__page--arrow {
+  min-width: 2rem;
+  font-size: var(--title-2-size);
+}
+.sp-o__page--gap {
+  min-width: 1.25rem;
+  padding: 0;
+  color: var(--label-2);
+}
+.sp-o__page--off {
+  visibility: hidden;
+}
+.sp-o__pager-at {
+  margin: 0;
+  min-width: 8rem;
+  text-align: center;
+  color: var(--label-2);
+  font-size: var(--subhead-size);
+  font-variant-numeric: tabular-nums;
+}

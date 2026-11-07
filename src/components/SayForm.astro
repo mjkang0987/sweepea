@@ -1,0 +1,22 @@
+---
+// "하린이에게 한마디" 보내기. 결과(주소 say=…)는 페이지가 토스트로 알려 준다(lib/say)
+interface Props {
+  mediaId: string;
+  back: string;
+  /** 폼 보낼 곳(기본은 가족 크게 보기 /album/<id>) */
+  action?: string;
+  child: string;
+  /** 넘겨 보기 카드마다 둘 때 id가 겹치지 않게 */
+  idSuffix?: string;
+}
+const { mediaId, back, action = `/album/${mediaId}`, child, idSuffix = '' } = Astro.props;
+---
+
+<form class="sp-say" id={`say${idSuffix}`} method="post" action={action}>
+  <input type="hidden" name="back" value={back} />
+  <label class="sp-vh" for={`say-body${idSuffix}`}>{child}에게 한마디</label>
+  <div class="sp-f__row">
+    <input class="sp-f__input" id={`say-body${idSuffix}`} name="body" type="text" maxlength="200" autocomplete="off" placeholder={`${child}에게 한마디`} />
+    <button class="sp-f__btn" type="submit">보내기</button>
+  </div>
+</form>

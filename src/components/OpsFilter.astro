@@ -1,0 +1,35 @@
+---
+// 운영 목록 거르기 줄(174, 세 목록 공용): 고르는 칸(네이티브 select) + 거르기 버튼, GET 폼이라 스크립트 없음.
+// 기간·정렬·가족방 같은 달고 다닐 값은 숨은 칸으로 넘기고, 쪽(o)은 처음으로
+import { periodQuery, withKeep, type FilterSpec, type Period } from '../lib/ops';
+
+interface Props {
+  path: string;
+  period: Period;
+  spec: FilterSpec;
+  /** 지금 거른 값 */
+  value: Record<string, string>;
+  /** 거르기 말고 달고 다닐 값(정렬·가족방) */
+  keep?: Record<string, string>;
+}
+const { path, period, spec, value, keep = {} } = Astro.props;
+const hidden = [...new URLSearchParams(periodQuery(period)), ...Object.entries(keep).filter(([, v]) => v)];
+const on = Object.keys(value).length > 0;
+---
+
+<form class="sp-o__filter" method="get" action={path} aria-label="거르기">
+  {hidden.map(([k, v]) => <input type="hidden" name={k} value={v} />)}
+  {
+    Object.entries(spec).map(([k, f]) => (
+      <label class="sp-o__filter-field">
+        <span class="sp-o__filter-label">{f.label}</span>
+        <select class="sp-o__select" name={k}>
+          <option value="">전체</option>
+          {Object.entries(f.options).map(([v, name]) => <option value={v} selected={value[k] === v}>{name}</option>)}
+        </select>
+      </label>
+    ))
+  }
+  <button class="sp-o__date-go" type="submit">거르기</button>
+  {on && <a class="sp-o__filter-clear" href={withKeep(path, period, keep)}>거르기 지우기</a>}
+</form>

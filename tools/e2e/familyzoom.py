@@ -1,0 +1,75 @@
+# 가족 앨범 사진 크기(98a): 모아 보기 −/+ 1·2·3칸 = 사진 전부 → 월별 달 카드(대표 5장까지, 사용자 2026-11-01, 누르면 그 달부터 3칸).
+# 보기(넘겨/모아)와 칸 단계는 그 기기에 기억(달 카드로 들어간 쪽은 빼고) (mock, 인자: 스크린샷 폴더 엔진)
+import os,sys
+from playwright.sync_api import sync_playwright
+B='http://localhost:4321'; D=os.path.dirname(os.path.abspath(__file__))+'/'
+# u2.jpg는 EXIF가 없어(takenat.py가 '파일 시각'을 보려고) 파일 시각이 찍은 날: 검사를 쓴 10월로 고정해야 달 묶음 수가 날짜와 상관없이 같다
+os.utime(D+'u2.jpg',(1793242800,1793242800))  # 2026-10-29 12:00 서울
+W=sys.argv[1] if len(sys.argv)>1 else '/tmp'
+eng=sys.argv[2] if len(sys.argv)>2 else 'chromium'
+fails=[]
+def check(c,m): print(('OK ' if c else 'FAIL ')+m); c or fails.append(m)
+COLS="getComputedStyle(document.querySelector('.sp-a__grid')).gridTemplateColumns.split(' ').length"
+with sync_playwright() as p:
+    br=getattr(p,eng).launch()
+    pg=br.new_context(viewport={'width':390,'height':844}).new_page()
+    pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
+    pg.fill('#child','하린'); pg.fill('#birth','2025-01-03'); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
+    pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
+    pg.goto(B+'/upload'); pg.set_input_files('#up-files',[D+f for f in ['u0.jpg','u1.jpg','u2.jpg','u0.jpg','u1.jpg','u2.jpg']])
+    pg.wait_for_function("!document.querySelector('#up-actions button').disabled",timeout=60000)
+    pg.get_by_role('button',name='보내지 않고 올리기만').click(); pg.wait_for_url('**/home**',timeout=60000)
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='링크 만들기 (가족)').click(); pg.wait_for_selector('#link-url')
+    code=pg.locator('#link-url').input_value().rsplit('/',1)[1]
+    g=br.new_context(viewport={'width':390,'height':844}).new_page(); g.goto(B+'/i/'+code)
+    g.fill('#who-name','외할머니'); g.get_by_role('button',name='들어가기').click(); g.wait_for_url('**/password**'); g.fill('#pw','0917'); g.get_by_role('button',name='들어가기').click(); g.wait_for_url('**/wait')
+    pg.goto(B+'/settings/family'); pg.get_by_role('button',name='승인 외할머니').click(); pg.wait_for_function("document.getElementById('fam-live')?.textContent.includes('승인했어요')")
+    g.goto(B+'/album'); g.wait_for_timeout(300)
+    for btn in ('사진 보기','보기','닫기'):
+        if g.get_by_role('button',name=btn,exact=True).count(): g.get_by_role('button',name=btn,exact=True).first.click(); g.wait_for_load_state()
+    check(g.locator('.sp-a__swipe').count()==1,'처음은 넘겨 보기')
+    g.get_by_role('link',name='모아 보기').click(); g.wait_for_url('**v=list**'); g.wait_for_selector('.sp-a__cell-img')
+    check(g.evaluate(COLS) is not None and g.locator('.sp-a__grid--2').count()>0,'모아 보기 처음 2칸')
+    g.evaluate("window.__same=1")
+    g.get_by_role('link',name='작게(한 줄에 더 많이)').click(); g.wait_for_url('**z=3**'); g.wait_for_selector('.sp-a__grid--3 .sp-a__cell-img'); g.wait_for_timeout(500)
+    check(g.evaluate("window.__same")==1,'크기 바꿔도 페이지 전환 없음(같은 문서)')
+    check(g.evaluate(COLS)==3 and g.locator('.sp-a__cell').count()==6,'작게 → 3칸, 사진 전부')
+    # 날짜 묶음이 짧아(사진 2장) 실제로 붙는 모습 대신 계산된 값으로
+    st=g.evaluate("(()=>{const c=getComputedStyle(document.querySelector('.sp-a__day-title'));return [c.position,c.top,c.backgroundColor!=='rgba(0, 0, 0, 0)']})()")
+    check(st[0]=='sticky' and st[1]=='0px' and st[2],f'날짜 제목이 위에 붙어 같이 이동 {st}')
+    g.get_by_role('link',name='작게(한 줄에 더 많이)').click(); g.wait_for_url('**z=5**'); g.wait_for_selector('.sp-a__grid--5 .sp-a__cell-img')
+    check(g.evaluate(COLS)==5,'5칸')
+    g.get_by_role('link',name='작게(달마다 대표 사진)').click(); g.wait_for_url('**z=m**'); g.wait_for_selector('.sp-a__mcard-pics--m')
+    cards=g.locator('.sp-a__mcard'); t=cards.first.inner_text().replace('\n',' ')
+    check(cards.count()==2 and '4장' in t,f'월별: 달 카드 2장, 장 수 ({cards.count()}, {t})')
+    check(cards.first.locator('.sp-a__mcard-img').count()==4,'대표 5장까지(이 달 사진 4장이라 4장)')
+    g.get_by_role('link',name='작게(해마다 대표 사진)').click(); g.wait_for_url('**z=y**'); g.wait_for_selector('.sp-a__mcard-pics--y')
+    yt=g.locator('.sp-a__mcard').first.inner_text().replace('\n',' ')
+    check(g.locator('.sp-a__mcard').count()==1 and '9–10월' in yt and g.locator('.sp-a__mcard').first.locator('.sp-a__mcard-img').count()==5,f'연별 카드: 기간·대표 5장 ({yt})')
+    check(g.locator('.sp-a__zoom-btn[aria-disabled=true]').inner_text()=='−','연별이면 작게 꺼짐')
+    g.get_by_role('link',name='크게(한 줄에 더 적게)').click(); g.wait_for_url('**z=m**'); g.wait_for_selector('.sp-a__mcard-pics--m')
+    fs=g.evaluate("parseFloat(getComputedStyle(document.querySelector('.sp-a__mcard-title')).fontSize)"); check(fs>=28,f'달 제목은 어르신 글자 ({fs}px)')
+    g.screenshot(path=W+'/fz-m.png')
+    g.goto(B+'/album'); g.wait_for_timeout(300)
+    check(g.locator('.sp-a__mcard').count()==2,'다시 열면 모아 보기·월별 기억')
+    cards.nth(1).click(); g.wait_for_url('**at=**'); g.wait_for_selector('.sp-a__cell-img'); g.wait_for_timeout(500)
+    check('z=3' in g.url and g.evaluate(COLS)==3 and g.locator('.sp-a__cell').count()==6 and g.locator('[id$="-09"]').count()==1,'달 카드 → 처음부터 그려 그 달로(위로 올리면 최근 달도)')
+    g.locator('.sp-a__cell-link').first.click(); g.wait_for_url('**/album/**')
+    g.get_by_role('link',name='닫기').first.click(); g.wait_for_url('**/album?**'); g.wait_for_timeout(300)
+    check('z=3' in g.url and g.locator('.sp-a__cell').count()>0,'크게 보기에서 닫으면 보던 3칸으로')
+    g.goto(B+'/album'); g.wait_for_timeout(300)
+    check(g.locator('.sp-a__mcard').count()==2,'달 카드로 들어간 3칸·크게 보기·닫고 돌아온 쪽은 기억 안 함')
+    g.get_by_role('link',name='넘겨 보기').click(); g.wait_for_load_state(); g.goto(B+'/album'); g.wait_for_timeout(300)
+    check(g.locator('.sp-a__swipe').count()==1,'넘겨 보기를 고르면 다음에도 넘겨 보기')
+    # 132: 그 자리에서 크기를 바꾸면 위 탭 두 줄(보기 방식·사진 종류) 링크 모두 새 칸 단계로(예전엔 첫 줄만)
+    g.goto(B+'/album?v=list&z=3'); g.wait_for_selector('.sp-a__cell-img'); g.get_by_role('link',name='작게(한 줄에 더 많이)').click(); g.wait_for_function("location.search.includes('z=5')"); g.wait_for_timeout(500)
+    h=g.get_by_role('navigation',name='사진 종류').get_by_role('link',name='사진',exact=True).get_attribute('href')
+    check('z=5' in h,'크기 바꾼 뒤 사진 종류 탭 링크도 5칸 '+h)
+    # 132: 달 카드에서도 사진 종류 탭이 보임(카드가 거르기를 따름)
+    g.goto(B+'/album?v=list&z=m'); check(g.get_by_role('navigation',name='사진 종류').count()==1,'달 카드에도 사진 종류 탭')
+    # 넓은 화면: −/+는 넓은 사진 영역의 오른쪽 아래(휴대폰 폭 기준으로 가운데쯤 뜨던 것, 2026-11-01)
+    g.set_viewport_size({'width':1440,'height':900}); g.goto(B+'/album?v=list&z=2'); g.wait_for_selector('.sp-a__cell-img')
+    pr=g.evaluate("(()=>{const z=document.querySelector('.sp-a__zoom').getBoundingClientRect(),d=document.querySelector('.sp-a__day').getBoundingClientRect();return [Math.round(z.right),Math.round(d.right)]})()")
+    check(abs(pr[0]-pr[1])<=2 and pr[0]>1000,f'넓은 화면 −/+는 사진 영역 오른쪽 끝 {pr}')
+    br.close()
+print('FAILS',fails)
