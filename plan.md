@@ -1427,6 +1427,13 @@
   - Cloudflare Access(2026-11-04): Zero Trust Free, 팀 quiet-shadow-4d0e.cloudflareaccess.com, 앱 대상 sweepea.co.kr/ops·/ops/*(아래 주소까지 로그인으로 넘어감 확인), 정책 owner = Allow·Emails pikaworks.help@gmail.com, 로그인 방법은 One-time PIN 추가(처음엔 Cloudflare 계정 로그인만 있었음). Worker 비밀 값(Secret) OPS_USER_IDS(엄빠 카카오 계정 id)·OPS_ACCESS_TEAM·OPS_ACCESS_AUD — 없으면 404. AUD는 /ops 302 로그인 주소의 kid 값과 같음. 운영에서 열림 확인(사용자 "오 됨")
   - 남은 것(사용자): 처리방침 7일 전 고지 조항과 시행일·다시 동의 받을지(CONSENT.terms는 안 올림)
 
+### 184. fix/alerts-empty-copy — 알림 빈 글을 사진이 있을 땐 다르게 (진행 중)
+- 요구(웹 UX 점검 2026-11-03 남은 것, 사용자 2026-11-07 "웹 UX 남은 것" 고름): 알림 화면 '아직 반응이 없어요. 사진을 올리고 카톡으로 보내 보세요.'가 사진을 올린 뒤에도 같아서, 이미 올린 엄빠에겐 맞지 않음
+- 구현 방식: 서버가 이미 받는 sp_parent_home의 photo_count·video_count로 나눔(새 호출 없음). 사진·영상이 0이면 지금 글 그대로, 있으면 '아직 반응이 없어요. 가족이 사진을 보고 하트나 한마디를 남기면 여기에 모여요.'
+- 보드: 알림 빈 화면 보드는 원래 없음(ParentReactions는 반응 있는 모습), 글자만 바뀌어 보드는 안 만듦
+- 영향 파일: `src/pages/reactions.astro`, 검사 tools/e2e/alertsempty.py
+- 예상 결과: 처음 가입한 엄빠는 지금 글, 사진을 올린 뒤엔 새 글
+
 ### 183. feature/empty-upload — 엄빠 앨범이 비었을 때 가운데 '사진 추가하기' (완료, 0.53.0)
 - 요구(웹 UX 점검 2026-11-03 남은 것, 사용자 2026-11-07 "웹 UX 남은 것" 고름): 사진이 하나도 없을 때 올리는 길이 오른쪽 아래 둥근 + 뿐이라 처음 온 엄빠가 못 찾을 수 있음
 - 문서·구현 차이(발견): 보드 ParentEmpty엔 탭바 위에 떠 있는 '사진 추가하기' 알약이 있지만, 102(유리 탭바)에서 떠 있던 버튼을 일부러 뺐고 ParentEmpty 보드는 옛 탭바 그대로였음
