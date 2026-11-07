@@ -13,7 +13,7 @@ with sync_playwright() as p:
     pg.goto(B+'/login'); pg.get_by_role('link',name='개발용으로 계속하기').click(); pg.wait_for_url('**/setup')
     pg.fill('#child','하린'); pg.fill('#birth',birth); pg.check('input[name=agree_terms]'); pg.check('input[name=agree_privacy]'); pg.get_by_role('button',name='다음').click(); pg.wait_for_url('**/setup/password**')
     pg.fill('#pw','0917'); pg.get_by_role('button',name='시작하기').click(); pg.wait_for_url('**/home')
-    nav=pg.locator('.sp-p__tabs'); pill=pg.locator('.sp-p__tabs-pill'); add=pg.get_by_role('link',name='사진 추가')
+    nav=pg.locator('.sp-p__tabs'); pill=pg.locator('.sp-p__tabs-pill'); add=pg.get_by_role('link',name='사진 추가',exact=True)
     nb=pill.bounding_box(); ab=add.bounding_box()
     check(nb['x']>=19 and nb['y']+nb['height']<=H-7,f'캡슐이 떠 있음(양옆·아래 여백) {nb}')
     check(abs(nb['height']-64)<=2,'캡슐 높이 4rem')
